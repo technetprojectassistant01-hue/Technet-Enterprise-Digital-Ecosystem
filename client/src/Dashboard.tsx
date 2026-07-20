@@ -25,6 +25,7 @@ function Dashboard() {
           {user?.role === 'ADMIN' && (
             <NavLink to="/dashboard/users">User Management</NavLink>
           )}
+          <NavLink to="/dashboard/settings">Settings</NavLink>
         </nav>
       </aside>
 

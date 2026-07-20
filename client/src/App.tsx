@@ -3,6 +3,7 @@ import Login from './Login'
 import Dashboard from './Dashboard'
 import DashboardHome from './DashboardHome'
 import UsersPage from './UsersPage'
+import SettingsPage from './SettingsPage'
 import ProtectedRoute from './ProtectedRoute'
 import AdminRoute from './AdminRoute'
 
@@ -13,6 +14,7 @@ function App() {
       <Route element={<ProtectedRoute />}>
         <Route path="/dashboard" element={<Dashboard />}>
           <Route index element={<DashboardHome />} />
+          <Route path="settings" element={<SettingsPage />} />
           <Route element={<AdminRoute />}>
             <Route path="users" element={<UsersPage />} />
           </Route>

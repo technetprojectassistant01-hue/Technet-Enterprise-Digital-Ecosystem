@@ -47,6 +47,13 @@ export function fetchMe() {
   return request<{ user: CurrentUser }>('/api/auth/me')
 }
 
+export function changePassword(currentPassword: string, newPassword: string) {
+  return request<{ ok: true }>('/api/auth/change-password', {
+    method: 'POST',
+    body: JSON.stringify({ currentPassword, newPassword }),
+  })
+}
+
 export function listUsers() {
   return request<{ users: ManagedUser[] }>('/api/users')
 }
