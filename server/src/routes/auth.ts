@@ -9,6 +9,16 @@ const router = Router();
 const COOKIE_NAME = "token";
 const isProduction = process.env.NODE_ENV === "production";
 
+// Client (Cloudflare) and server (Railway) are different sites in
+// production, so the session cookie needs SameSite=None to be sent on
+// cross-site fetch calls. In dev both run on localhost (same site), so
+// Lax is fine and avoids needing HTTPS locally.
+const cookieOptions = {
+  httpOnly: true,
+  secure: isProduction,
+  sameSite: (isProduction ? "none" : "lax") as "none" | "lax",
+};
+
 router.post("/login", async (req, res) => {
   const { email, password } = req.body ?? {};
 
@@ -29,9 +39,7 @@ router.post("/login", async (req, res) => {
   const token = signAuthToken({ sub: user.id, role: user.role });
 
   res.cookie(COOKIE_NAME, token, {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: "lax",
+    ...cookieOptions,
     maxAge: 8 * 60 * 60 * 1000,
   });
 
@@ -41,7 +49,7 @@ router.post("/login", async (req, res) => {
 });
 
 router.post("/logout", (_req, res) => {
-  res.clearCookie(COOKIE_NAME);
+  res.clearCookie(COOKIE_NAME, cookieOptions);
   res.json({ ok: true });
 });
 
