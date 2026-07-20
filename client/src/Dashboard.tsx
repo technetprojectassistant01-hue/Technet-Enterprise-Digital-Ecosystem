@@ -1,7 +1,13 @@
+import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import './Dashboard.css'
 
-const NAV_ITEMS = ['Overview', 'Employees', 'Projects', 'Reports', 'Settings']
+const NAV_ITEMS = [
+  { label: 'Overview', to: '/dashboard' },
+  { label: 'Employees', to: '/dashboard/employees' },
+  { label: 'Projects', to: '/dashboard/projects' },
+  { label: 'Reports', to: '/dashboard/reports' },
+]
 
 function Dashboard() {
   const { user, logout } = useAuth()
@@ -11,11 +17,14 @@ function Dashboard() {
       <aside className="sidebar">
         <div className="brand">Technet ERP</div>
         <nav>
-          {NAV_ITEMS.map((item, i) => (
-            <a key={item} className={i === 0 ? 'active' : ''} href="#">
-              {item}
-            </a>
+          {NAV_ITEMS.map((item) => (
+            <NavLink key={item.to} to={item.to} end={item.to === '/dashboard'}>
+              {item.label}
+            </NavLink>
           ))}
+          {user?.role === 'ADMIN' && (
+            <NavLink to="/dashboard/users">User Management</NavLink>
+          )}
         </nav>
       </aside>
 
@@ -32,8 +41,7 @@ function Dashboard() {
         </header>
 
         <main className="content">
-          <h1>Overview</h1>
-          <p>Welcome back, {user?.name || user?.email}. Dashboard modules will go here.</p>
+          <Outlet />
         </main>
       </div>
     </div>

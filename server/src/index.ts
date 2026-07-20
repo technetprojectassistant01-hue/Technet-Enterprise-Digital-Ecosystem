@@ -5,6 +5,7 @@ import helmet from "helmet";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
 import authRouter from "./routes/auth";
+import usersRouter from "./routes/users";
 import { requireAuth, requireRole } from "./middleware/auth";
 
 const app = express();
@@ -26,6 +27,7 @@ app.get("/api/health", (_req, res) => {
 });
 
 app.use("/api/auth", authRouter);
+app.use("/api/users", usersRouter);
 
 app.get("/api/admin/ping", requireAuth, requireRole("ADMIN"), (_req, res) => {
   res.json({ ok: true, message: "You have admin access" });

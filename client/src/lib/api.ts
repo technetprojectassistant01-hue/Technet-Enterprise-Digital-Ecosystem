@@ -9,6 +9,10 @@ export interface CurrentUser {
   role: Role
 }
 
+export interface ManagedUser extends CurrentUser {
+  createdAt: string
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
@@ -41,4 +45,29 @@ export function logout() {
 
 export function fetchMe() {
   return request<{ user: CurrentUser }>('/api/auth/me')
+}
+
+export function listUsers() {
+  return request<{ users: ManagedUser[] }>('/api/users')
+}
+
+export function createUser(input: { email: string; password: string; name?: string; role: Role }) {
+  return request<{ user: ManagedUser }>('/api/users', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function updateUser(
+  id: string,
+  input: Partial<{ name: string; role: Role; password: string }>,
+) {
+  return request<{ user: ManagedUser }>(`/api/users/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
+}
+
+export function deleteUser(id: string) {
+  return request<null>(`/api/users/${id}`, { method: 'DELETE' })
 }
