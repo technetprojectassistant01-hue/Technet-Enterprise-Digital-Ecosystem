@@ -19,6 +19,8 @@ import {
   CreditCard,
   FileSignature,
   ScrollText,
+  Truck,
+  ClipboardList,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -52,7 +54,16 @@ export const MAIN_NAV: NavItem[] = [
           { label: 'Contracts', to: '/dashboard/erp/finance/contracts', icon: ScrollText },
         ],
       },
-      { label: 'Procurement', to: '/dashboard/erp/procurement', icon: ShoppingCart },
+      {
+        label: 'Procurement',
+        to: '/dashboard/erp/procurement',
+        icon: ShoppingCart,
+        children: [
+          { label: 'Suppliers', to: '/dashboard/erp/procurement/suppliers', icon: Truck },
+          { label: 'Requisitions', to: '/dashboard/erp/procurement/requisitions', icon: ClipboardList },
+          { label: 'Purchase Orders', to: '/dashboard/erp/procurement/purchase-orders', icon: ShoppingCart },
+        ],
+      },
       { label: 'HR', to: '/dashboard/erp/hr', icon: Users },
       { label: 'Projects', to: '/dashboard/erp/projects', icon: FolderKanban },
       { label: 'Documents', to: '/dashboard/erp/documents', icon: FileText },

@@ -1,5 +1,13 @@
 import type { BadgeTone } from '../dashboard/ui'
-import type { ContractStatus, InvoiceStatus, QuotationStatus, EmploymentStatus, ProjectStatus } from '../lib/api'
+import type {
+  ContractStatus,
+  InvoiceStatus,
+  QuotationStatus,
+  EmploymentStatus,
+  ProjectStatus,
+  RequisitionStatus,
+  PurchaseOrderStatus,
+} from '../lib/api'
 
 export const contractStatusTone: Record<ContractStatus, BadgeTone> = {
   PLANNING: 'neutral',
@@ -48,4 +56,20 @@ export const projectStatusTransitions: Record<ProjectStatus, ProjectStatus[]> = 
   COMPLETED: ['CLOSED'],
   CLOSED: [],
   CANCELLED: [],
+}
+
+export const requisitionStatusTone: Record<RequisitionStatus, BadgeTone> = {
+  SUBMITTED: 'warning',
+  APPROVED: 'accent',
+  REJECTED: 'danger',
+  CONVERTED: 'success',
+}
+
+export const purchaseOrderStatusTone: Record<PurchaseOrderStatus, BadgeTone> = {
+  DRAFT: 'neutral',
+  SENT: 'warning',
+  PARTIALLY_RECEIVED: 'warning',
+  FULLY_RECEIVED: 'accent',
+  CLOSED: 'success',
+  CANCELLED: 'danger',
 }

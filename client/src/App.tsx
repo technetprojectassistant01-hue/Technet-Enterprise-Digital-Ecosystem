@@ -7,7 +7,6 @@ import {
   Megaphone,
   LineChart,
   ShieldCheck,
-  ShoppingCart,
   FileText,
 } from 'lucide-react'
 import Login from './Login'
@@ -26,6 +25,12 @@ import ContractsPage from './erp/ContractsPage'
 import EmployeesPage from './erp/EmployeesPage'
 import ProjectsPage from './erp/ProjectsPage'
 import ProjectDetailPage from './erp/ProjectDetailPage'
+import ProcurementLayout from './erp/ProcurementLayout'
+import SuppliersPage from './erp/SuppliersPage'
+import RequisitionsPage from './erp/RequisitionsPage'
+import RequisitionDetailPage from './erp/RequisitionDetailPage'
+import PurchaseOrdersPage from './erp/PurchaseOrdersPage'
+import PurchaseOrderDetailPage from './erp/PurchaseOrderDetailPage'
 import ModuleStub from './dashboard/ModuleStub'
 import UsersPage from './UsersPage'
 import SettingsPage from './SettingsPage'
@@ -51,10 +56,14 @@ function App() {
               <Route path="quotations" element={<QuotationsPage />} />
               <Route path="contracts" element={<ContractsPage />} />
             </Route>
-            <Route
-              path="procurement"
-              element={<ModuleStub title="Procurement" icon={ShoppingCart} />}
-            />
+            <Route path="procurement" element={<ProcurementLayout />}>
+              <Route index element={<Navigate to="suppliers" replace />} />
+              <Route path="suppliers" element={<SuppliersPage />} />
+              <Route path="requisitions" element={<RequisitionsPage />} />
+              <Route path="requisitions/:id" element={<RequisitionDetailPage />} />
+              <Route path="purchase-orders" element={<PurchaseOrdersPage />} />
+              <Route path="purchase-orders/:id" element={<PurchaseOrderDetailPage />} />
+            </Route>
             <Route path="hr" element={<EmployeesPage />} />
             <Route path="projects" element={<ProjectsPage />} />
             <Route path="projects/:id" element={<ProjectDetailPage />} />

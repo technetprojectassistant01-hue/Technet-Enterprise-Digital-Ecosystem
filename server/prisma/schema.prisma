@@ -69,9 +69,18 @@ enum InvoiceStatus {
 
 enum PurchaseOrderStatus {
   DRAFT
-  ORDERED
-  RECEIVED
+  SENT
+  PARTIALLY_RECEIVED
+  FULLY_RECEIVED
+  CLOSED
   CANCELLED
+}
+
+enum RequisitionStatus {
+  SUBMITTED
+  APPROVED
+  REJECTED
+  CONVERTED
 }
 
 enum StockMovementType {
@@ -96,10 +105,13 @@ model User {
   role         Role     @default(EMPLOYEE)
   createdAt    DateTime @default(now())
 
-  employee             Employee?
-  stockMovements       StockMovement[]
-  uploadedDocuments    Document[]
-  projectStatusChanges ProjectStatusHistory[]
+  employee                 Employee?
+  stockMovements           StockMovement[]
+  uploadedDocuments        Document[]
+  projectStatusChanges     ProjectStatusHistory[]
+  requisitionsRequested    PurchaseRequisition[]      @relation("RequisitionRequester")
+  requisitionStatusChanges RequisitionStatusHistory[] @relation("RequisitionStatusChanger")
+  goodsReceipts            GoodsReceipt[]
 }
 
 model Employee {
@@ -197,14 +209,15 @@ model Expense {
 }
 
 model Supplier {
-  id          String   @id @default(uuid())
-  name        String
-  contactName String?
-  email       String?
-  phone       String?
-  address     String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String   @id @default(uuid())
+  name         String
+  contactName  String?
+  email        String?
+  phone        String?
+  address      String?
+  paymentTerms String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   purchaseOrders PurchaseOrder[]
   expenses       Expense[]
@@ -212,18 +225,21 @@ model Supplier {
 }
 
 model PurchaseOrder {
-  id           String              @id @default(uuid())
-  poNumber     String              @unique
-  supplierId   String
-  supplier     Supplier            @relation(fields: [supplierId], references: [id])
-  status       PurchaseOrderStatus @default(DRAFT)
-  orderDate    DateTime            @default(now())
-  expectedDate DateTime?
-  totalAmount  Decimal             @db.Decimal(14, 2)
-  createdAt    DateTime            @default(now())
-  updatedAt    DateTime            @updatedAt
+  id            String              @id @default(uuid())
+  poNumber      String              @unique
+  supplierId    String
+  supplier      Supplier            @relation(fields: [supplierId], references: [id])
+  requisitionId String?
+  requisition   PurchaseRequisition? @relation(fields: [requisitionId], references: [id])
+  status        PurchaseOrderStatus @default(DRAFT)
+  orderDate     DateTime            @default(now())
+  expectedDate  DateTime?
+  totalAmount   Decimal             @db.Decimal(14, 2)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
 
-  items PurchaseOrderItem[]
+  items         PurchaseOrderItem[]
+  goodsReceipts GoodsReceipt[]
 }
 
 model PurchaseOrderItem {
@@ -235,6 +251,69 @@ model PurchaseOrderItem {
   description     String
   quantity        Int
   unitCost        Decimal        @db.Decimal(14, 2)
+
+  goodsReceiptItems GoodsReceiptItem[]
+}
+
+model PurchaseRequisition {
+  id                String            @id @default(uuid())
+  requisitionNumber String            @unique
+  projectId         String?
+  project           Project?          @relation(fields: [projectId], references: [id])
+  requestedById     String
+  requestedBy       User              @relation("RequisitionRequester", fields: [requestedById], references: [id])
+  status            RequisitionStatus @default(SUBMITTED)
+  neededByDate      DateTime?
+  notes             String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  items          PurchaseRequisitionItem[]
+  statusHistory  RequisitionStatusHistory[]
+  purchaseOrders PurchaseOrder[]
+}
+
+model PurchaseRequisitionItem {
+  id              String              @id @default(uuid())
+  requisitionId   String
+  requisition     PurchaseRequisition @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+  inventoryItemId String?
+  inventoryItem   InventoryItem?      @relation(fields: [inventoryItemId], references: [id])
+  description     String
+  quantity        Int
+}
+
+model RequisitionStatusHistory {
+  id            String              @id @default(uuid())
+  requisitionId String
+  requisition   PurchaseRequisition @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+  fromStatus    RequisitionStatus?
+  toStatus      RequisitionStatus
+  changedById   String
+  changedBy     User                @relation("RequisitionStatusChanger", fields: [changedById], references: [id])
+  note          String?
+  createdAt     DateTime            @default(now())
+}
+
+model GoodsReceipt {
+  id              String        @id @default(uuid())
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  receivedById    String
+  receivedBy      User          @relation(fields: [receivedById], references: [id])
+  notes           String?
+  createdAt       DateTime      @default(now())
+
+  items GoodsReceiptItem[]
+}
+
+model GoodsReceiptItem {
+  id                  String            @id @default(uuid())
+  goodsReceiptId      String
+  goodsReceipt        GoodsReceipt      @relation(fields: [goodsReceiptId], references: [id], onDelete: Cascade)
+  purchaseOrderItemId String
+  purchaseOrderItem   PurchaseOrderItem @relation(fields: [purchaseOrderItemId], references: [id])
+  quantityReceived    Int
 }
 
 model InventoryItem {
@@ -254,6 +333,7 @@ model InventoryItem {
 
   movements          StockMovement[]
   purchaseOrderItems PurchaseOrderItem[]
+  requisitionItems   PurchaseRequisitionItem[]
 }
 
 model StockMovement {
@@ -291,6 +371,7 @@ model Project {
   expenses      Expense[]
   assignments   ProjectAssignment[]
   statusHistory ProjectStatusHistory[]
+  requisitions  PurchaseRequisition[]
 }
 
 model ProjectAssignment {

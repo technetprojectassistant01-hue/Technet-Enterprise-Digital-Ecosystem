@@ -564,3 +564,260 @@ export function assignToProject(id: string, employeeId: string, roleOnProject?: 
 export function unassignFromProject(id: string, employeeId: string) {
   return request<null>(`/api/projects/${id}/assignments/${employeeId}`, { method: 'DELETE' })
 }
+
+export interface SupplierSummary {
+  id: string
+  name: string
+}
+
+export interface Supplier extends SupplierSummary {
+  contactName: string | null
+  email: string | null
+  phone: string | null
+  address: string | null
+  paymentTerms: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface SupplierInput {
+  name: string
+  contactName?: string
+  email?: string
+  phone?: string
+  address?: string
+  paymentTerms?: string
+}
+
+export function listSuppliers(params: { search?: string } = {}) {
+  const query = new URLSearchParams()
+  if (params.search) query.set('search', params.search)
+  const qs = query.toString()
+  return request<{ suppliers: Supplier[] }>(`/api/suppliers${qs ? `?${qs}` : ''}`)
+}
+
+export function createSupplier(input: SupplierInput) {
+  return request<{ supplier: Supplier }>('/api/suppliers', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function updateSupplier(id: string, input: Partial<SupplierInput>) {
+  return request<{ supplier: Supplier }>(`/api/suppliers/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
+}
+
+export function deleteSupplier(id: string) {
+  return request<null>(`/api/suppliers/${id}`, { method: 'DELETE' })
+}
+
+export type RequisitionStatus = 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'CONVERTED'
+
+export interface RequisitionLineItem {
+  id: string
+  description: string
+  quantity: number
+  inventoryItemId: string | null
+  inventoryItem?: { id: string; sku: string; name: string } | null
+}
+
+export interface Requisition {
+  id: string
+  requisitionNumber: string
+  projectId: string | null
+  project: ProjectSummary | null
+  requestedById: string
+  requestedBy: { id: string; name: string | null; email: string }
+  status: RequisitionStatus
+  neededByDate: string | null
+  notes: string | null
+  items: RequisitionLineItem[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface RequisitionStatusHistoryEntry {
+  id: string
+  fromStatus: RequisitionStatus | null
+  toStatus: RequisitionStatus
+  note: string | null
+  createdAt: string
+  changedBy: { id: string; name: string | null; email: string }
+}
+
+export interface RequisitionDetail extends Requisition {
+  statusHistory: RequisitionStatusHistoryEntry[]
+  purchaseOrders: { id: string; poNumber: string; status: PurchaseOrderStatus }[]
+}
+
+export interface RequisitionItemInput {
+  description: string
+  quantity: number
+  inventoryItemId?: string
+}
+
+export interface RequisitionInput {
+  requisitionNumber: string
+  projectId?: string
+  neededByDate?: string
+  notes?: string
+  items: RequisitionItemInput[]
+}
+
+export function listRequisitions(params: { search?: string; status?: RequisitionStatus; projectId?: string } = {}) {
+  const query = new URLSearchParams()
+  if (params.search) query.set('search', params.search)
+  if (params.status) query.set('status', params.status)
+  if (params.projectId) query.set('projectId', params.projectId)
+  const qs = query.toString()
+  return request<{ requisitions: Requisition[] }>(`/api/requisitions${qs ? `?${qs}` : ''}`)
+}
+
+export function getRequisition(id: string) {
+  return request<{ requisition: RequisitionDetail }>(`/api/requisitions/${id}`)
+}
+
+export function createRequisition(input: RequisitionInput) {
+  return request<{ requisition: Requisition }>('/api/requisitions', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function approveRequisition(id: string, note?: string) {
+  return request<{ requisition: Requisition }>(`/api/requisitions/${id}/approve`, {
+    method: 'POST',
+    body: JSON.stringify({ note }),
+  })
+}
+
+export function rejectRequisition(id: string, note: string) {
+  return request<{ requisition: Requisition }>(`/api/requisitions/${id}/reject`, {
+    method: 'POST',
+    body: JSON.stringify({ note }),
+  })
+}
+
+export function convertRequisitionToPO(
+  id: string,
+  input: { supplierId: string; poNumber: string; expectedDate?: string; items: { requisitionItemId: string; unitCost: number }[] },
+) {
+  return request<{ purchaseOrder: PurchaseOrder }>(`/api/requisitions/${id}/convert`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function deleteRequisition(id: string) {
+  return request<null>(`/api/requisitions/${id}`, { method: 'DELETE' })
+}
+
+export type PurchaseOrderStatus = 'DRAFT' | 'SENT' | 'PARTIALLY_RECEIVED' | 'FULLY_RECEIVED' | 'CLOSED' | 'CANCELLED'
+
+export interface PurchaseOrderLineItem {
+  id: string
+  description: string
+  quantity: number
+  unitCost: string
+  inventoryItemId: string | null
+  inventoryItem?: { id: string; sku: string; name: string } | null
+  goodsReceiptItems?: { id: string; quantityReceived: number }[]
+}
+
+export interface PurchaseOrder {
+  id: string
+  poNumber: string
+  supplierId: string
+  supplier: SupplierSummary
+  requisitionId: string | null
+  status: PurchaseOrderStatus
+  orderDate: string
+  expectedDate: string | null
+  totalAmount: string
+  items: PurchaseOrderLineItem[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface GoodsReceiptItem {
+  id: string
+  purchaseOrderItemId: string
+  quantityReceived: number
+}
+
+export interface GoodsReceipt {
+  id: string
+  purchaseOrderId: string
+  receivedBy: { id: string; name: string | null; email: string }
+  notes: string | null
+  items: GoodsReceiptItem[]
+  createdAt: string
+}
+
+export interface PurchaseOrderDetail extends PurchaseOrder {
+  requisition: { id: string; requisitionNumber: string } | null
+  goodsReceipts: GoodsReceipt[]
+}
+
+export interface PurchaseOrderItemInput {
+  description: string
+  quantity: number
+  unitCost: number
+  inventoryItemId?: string
+}
+
+export interface PurchaseOrderInput {
+  supplierId: string
+  poNumber: string
+  expectedDate?: string
+  items: PurchaseOrderItemInput[]
+}
+
+export function listPurchaseOrders(params: { search?: string; status?: PurchaseOrderStatus; supplierId?: string } = {}) {
+  const query = new URLSearchParams()
+  if (params.search) query.set('search', params.search)
+  if (params.status) query.set('status', params.status)
+  if (params.supplierId) query.set('supplierId', params.supplierId)
+  const qs = query.toString()
+  return request<{ purchaseOrders: PurchaseOrder[] }>(`/api/purchase-orders${qs ? `?${qs}` : ''}`)
+}
+
+export function getPurchaseOrder(id: string) {
+  return request<{ purchaseOrder: PurchaseOrderDetail }>(`/api/purchase-orders/${id}`)
+}
+
+export function createPurchaseOrder(input: PurchaseOrderInput) {
+  return request<{ purchaseOrder: PurchaseOrder }>('/api/purchase-orders', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function sendPurchaseOrder(id: string) {
+  return request<{ purchaseOrder: PurchaseOrder }>(`/api/purchase-orders/${id}/send`, { method: 'POST' })
+}
+
+export function cancelPurchaseOrder(id: string) {
+  return request<{ purchaseOrder: PurchaseOrder }>(`/api/purchase-orders/${id}/cancel`, { method: 'POST' })
+}
+
+export function closePurchaseOrder(id: string) {
+  return request<{ purchaseOrder: PurchaseOrder }>(`/api/purchase-orders/${id}/close`, { method: 'POST' })
+}
+
+export function receivePurchaseOrder(
+  id: string,
+  input: { items: { purchaseOrderItemId: string; quantityReceived: number }[]; notes?: string },
+) {
+  return request<{ goodsReceipt: GoodsReceipt }>(`/api/purchase-orders/${id}/receive`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function deletePurchaseOrder(id: string) {
+  return request<null>(`/api/purchase-orders/${id}`, { method: 'DELETE' })
+}
