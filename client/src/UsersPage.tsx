@@ -2,9 +2,12 @@ import { useEffect, useState, type FormEvent } from 'react'
 import * as api from './lib/api'
 import type { ManagedUser, Role } from './lib/api'
 import { useAuth } from './context/AuthContext'
-import './UsersPage.css'
+import { Panel } from './dashboard/ui'
 
 const ROLES: Role[] = ['ADMIN', 'MANAGER', 'EMPLOYEE']
+
+const inputClass =
+  'rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
 
 function UsersPage() {
   const { user: currentUser } = useAuth()
@@ -70,99 +73,115 @@ function UsersPage() {
   }
 
   return (
-    <div className="users-page">
-      <div className="users-header">
-        <h1>User Management</h1>
-        <button type="button" onClick={() => setShowForm((v) => !v)}>
+    <div className="max-w-4xl">
+      <div className="mb-5 flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-ink-100">User Management</h1>
+        <button
+          type="button"
+          onClick={() => setShowForm((v) => !v)}
+          className="rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark"
+        >
           {showForm ? 'Cancel' : 'Add user'}
         </button>
       </div>
 
       {showForm && (
-        <form className="user-form" onSubmit={handleCreate}>
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-          <input
-            type="text"
-            placeholder="Name (optional)"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <input
-            type="password"
-            placeholder="Password (min 8 characters)"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            minLength={8}
-            required
-          />
-          <select value={role} onChange={(e) => setRole(e.target.value as Role)}>
-            {ROLES.map((r) => (
-              <option key={r} value={r}>
-                {r}
-              </option>
-            ))}
-          </select>
-          <button type="submit" disabled={submitting}>
-            {submitting ? 'Creating…' : 'Create'}
-          </button>
-          {formError && <p className="form-error">{formError}</p>}
-        </form>
+        <Panel className="mb-5">
+          <form onSubmit={handleCreate} className="flex flex-wrap items-center gap-3">
+            <input
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className={inputClass}
+            />
+            <input
+              type="text"
+              placeholder="Name (optional)"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className={inputClass}
+            />
+            <input
+              type="password"
+              placeholder="Password (min 8 characters)"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              minLength={8}
+              required
+              className={inputClass}
+            />
+            <select value={role} onChange={(e) => setRole(e.target.value as Role)} className={inputClass}>
+              {ROLES.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {submitting ? 'Creating…' : 'Create'}
+            </button>
+            {formError && <p className="w-full text-sm text-red-400">{formError}</p>}
+          </form>
+        </Panel>
       )}
 
-      {error && <p className="form-error">{error}</p>}
+      {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
 
       {loading ? (
-        <p>Loading users…</p>
+        <p className="text-sm text-ink-400">Loading users…</p>
       ) : (
-        <table className="users-table">
-          <thead>
-            <tr>
-              <th>Email</th>
-              <th>Name</th>
-              <th>Role</th>
-              <th>Created</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((u) => (
-              <tr key={u.id}>
-                <td>{u.email}</td>
-                <td>{u.name || '—'}</td>
-                <td>
-                  <select
-                    value={u.role}
-                    disabled={u.id === currentUser?.id}
-                    onChange={(e) => handleRoleChange(u.id, e.target.value as Role)}
-                  >
-                    {ROLES.map((r) => (
-                      <option key={r} value={r}>
-                        {r}
-                      </option>
-                    ))}
-                  </select>
-                </td>
-                <td>{new Date(u.createdAt).toLocaleDateString()}</td>
-                <td>
-                  <button
-                    type="button"
-                    className="delete"
-                    disabled={u.id === currentUser?.id}
-                    onClick={() => handleDelete(u.id, u.email)}
-                  >
-                    Delete
-                  </button>
-                </td>
+        <Panel className="p-0">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
+                <th className="px-5 py-3 font-semibold">EMAIL</th>
+                <th className="px-5 py-3 font-semibold">NAME</th>
+                <th className="px-5 py-3 font-semibold">ROLE</th>
+                <th className="px-5 py-3 font-semibold">CREATED</th>
+                <th className="px-5 py-3" />
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {users.map((u) => (
+                <tr key={u.id} className="border-b border-ink-800 last:border-0">
+                  <td className="px-5 py-3 text-ink-100">{u.email}</td>
+                  <td className="px-5 py-3 text-ink-300">{u.name || '—'}</td>
+                  <td className="px-5 py-3">
+                    <select
+                      value={u.role}
+                      disabled={u.id === currentUser?.id}
+                      onChange={(e) => handleRoleChange(u.id, e.target.value as Role)}
+                      className="rounded-md border border-ink-600 bg-ink-950 px-2 py-1 text-xs text-ink-100 disabled:opacity-50"
+                    >
+                      {ROLES.map((r) => (
+                        <option key={r} value={r}>
+                          {r}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="px-5 py-3 text-ink-400">{new Date(u.createdAt).toLocaleDateString()}</td>
+                  <td className="px-5 py-3">
+                    <button
+                      type="button"
+                      disabled={u.id === currentUser?.id}
+                      onClick={() => handleDelete(u.id, u.email)}
+                      className="rounded-md border border-red-400/50 px-3 py-1 text-xs text-red-400 hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Panel>
       )}
     </div>
   )
