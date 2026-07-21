@@ -1,23 +1,18 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Plus, Pencil, Trash2, CheckCircle2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, CheckCircle2, Receipt } from 'lucide-react'
 import * as api from '../lib/api'
 import type { Invoice, InvoiceStatus } from '../lib/api'
-import { Panel, StatCard, Modal } from '../dashboard/ui'
+import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { useCustomers } from './useCustomers'
+import { useToast } from '../dashboard/ToastContext'
+import { useConfirm } from '../dashboard/ConfirmContext'
+import { invoiceStatusTone as statusTone } from './statusTones'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
 const labelClass = 'text-xs font-semibold tracking-widest text-ink-400'
 
 const STATUSES: InvoiceStatus[] = ['DRAFT', 'SENT', 'PAID', 'OVERDUE', 'CANCELLED']
-
-const statusClasses: Record<InvoiceStatus, string> = {
-  DRAFT: 'bg-ink-700 text-ink-300',
-  SENT: 'bg-amber-400/10 text-amber-400',
-  PAID: 'bg-cyan-accent/10 text-cyan-accent',
-  OVERDUE: 'bg-red-400/10 text-red-400',
-  CANCELLED: 'bg-ink-700 text-ink-400',
-}
 
 interface FormState {
   customerId: string
@@ -36,6 +31,8 @@ const EMPTY_FORM: FormState = {
 }
 
 function InvoicesPage() {
+  const toast = useToast()
+  const confirm = useConfirm()
   const customers = useCustomers()
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(true)
@@ -119,6 +116,7 @@ function InvoicesPage() {
           dueDate: form.dueDate || undefined,
         })
       }
+      toast.success(editing ? 'Invoice updated' : 'Invoice created')
       closeForm()
       load()
     } catch (err) {
@@ -129,21 +127,29 @@ function InvoicesPage() {
   }
 
   async function handleDelete(inv: Invoice) {
-    if (!confirm(`Delete invoice ${inv.invoiceNumber}? This cannot be undone.`)) return
+    const ok = await confirm({
+      title: 'Delete invoice',
+      message: `Delete invoice ${inv.invoiceNumber}? This cannot be undone.`,
+      confirmLabel: 'Delete',
+      tone: 'danger',
+    })
+    if (!ok) return
     try {
       await api.deleteInvoice(inv.id)
+      toast.success(`Deleted invoice ${inv.invoiceNumber}`)
       load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete invoice')
+      toast.error(err instanceof Error ? err.message : 'Failed to delete invoice')
     }
   }
 
   async function markPaid(inv: Invoice) {
     try {
       await api.updateInvoice(inv.id, { status: 'PAID' })
+      toast.success(`Invoice ${inv.invoiceNumber} marked paid`)
       load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update invoice')
+      toast.error(err instanceof Error ? err.message : 'Failed to update invoice')
     }
   }
 
@@ -179,9 +185,9 @@ function InvoicesPage() {
         {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
 
         {loading ? (
-          <p className="text-sm text-ink-400">Loading invoices…</p>
+          <TableSkeleton cols={6} />
         ) : invoices.length === 0 ? (
-          <p className="text-sm text-ink-400">No invoices yet.</p>
+          <EmptyState icon={Receipt} message="No invoices yet. Create your first invoice to get started." />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
@@ -202,9 +208,7 @@ function InvoicesPage() {
                     <td className="px-3 py-3 text-ink-300">{inv.customer.company || inv.customer.name}</td>
                     <td className="px-3 py-3 text-ink-100">${Number(inv.amount).toLocaleString()}</td>
                     <td className="px-3 py-3">
-                      <span className={`rounded px-2 py-1 text-xs font-medium ${statusClasses[inv.status]}`}>
-                        {inv.status}
-                      </span>
+                      <Badge tone={statusTone[inv.status]}>{inv.status}</Badge>
                     </td>
                     <td className="px-3 py-3 text-ink-400">{inv.dueDate ? inv.dueDate.slice(0, 10) : '—'}</td>
                     <td className="px-3 py-3">

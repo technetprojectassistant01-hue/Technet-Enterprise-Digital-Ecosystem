@@ -146,6 +146,64 @@ export function Modal({
   )
 }
 
+export type BadgeTone = 'neutral' | 'accent' | 'warning' | 'danger' | 'success'
+
+const badgeToneClasses: Record<BadgeTone, string> = {
+  neutral: 'bg-ink-700 text-ink-300',
+  accent: 'bg-cyan-accent/10 text-cyan-accent',
+  warning: 'bg-amber-400/10 text-amber-400',
+  danger: 'bg-red-400/10 text-red-400',
+  success: 'bg-emerald-400/10 text-emerald-400',
+}
+
+export function Badge({ tone = 'neutral', children }: { tone?: BadgeTone; children: ReactNode }) {
+  return (
+    <span
+      className={`inline-block rounded px-2 py-1 text-xs font-medium ${badgeToneClasses[tone]}`}
+    >
+      {children}
+    </span>
+  )
+}
+
+export function EmptyState({
+  icon: Icon,
+  message,
+  action,
+}: {
+  icon: LucideIcon
+  message: string
+  action?: ReactNode
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
+      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-ink-800 text-ink-500">
+        <Icon className="h-5 w-5" />
+      </span>
+      <p className="text-sm text-ink-400">{message}</p>
+      {action}
+    </div>
+  )
+}
+
+export function TableSkeleton({ rows = 4, cols = 4 }: { rows?: number; cols?: number }) {
+  return (
+    <div className="flex flex-col gap-3">
+      {Array.from({ length: rows }).map((_, r) => (
+        <div key={r} className="flex gap-4">
+          {Array.from({ length: cols }).map((_, c) => (
+            <span
+              key={c}
+              className="h-4 flex-1 rounded bg-[linear-gradient(90deg,var(--color-ink-800)_25%,var(--color-ink-700)_50%,var(--color-ink-800)_75%)] bg-[length:200%_100%] animate-shimmer"
+              style={{ animationDelay: `${r * 60}ms` }}
+            />
+          ))}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export function Avatar({ name, size = 36 }: { name: string; size?: number }) {
   const initials = name
     .split(' ')

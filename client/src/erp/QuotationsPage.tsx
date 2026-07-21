@@ -1,23 +1,18 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, FileSignature } from 'lucide-react'
 import * as api from '../lib/api'
 import type { Quotation, QuotationStatus } from '../lib/api'
-import { Panel, StatCard, Modal } from '../dashboard/ui'
+import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { useCustomers } from './useCustomers'
+import { useToast } from '../dashboard/ToastContext'
+import { useConfirm } from '../dashboard/ConfirmContext'
+import { quotationStatusTone as statusTone } from './statusTones'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
 const labelClass = 'text-xs font-semibold tracking-widest text-ink-400'
 
 const STATUSES: QuotationStatus[] = ['DRAFT', 'SENT', 'ACCEPTED', 'REJECTED', 'EXPIRED']
-
-const statusClasses: Record<QuotationStatus, string> = {
-  DRAFT: 'bg-ink-700 text-ink-300',
-  SENT: 'bg-amber-400/10 text-amber-400',
-  ACCEPTED: 'bg-cyan-accent/10 text-cyan-accent',
-  REJECTED: 'bg-red-400/10 text-red-400',
-  EXPIRED: 'bg-ink-700 text-ink-400',
-}
 
 interface FormState {
   customerId: string
@@ -30,6 +25,8 @@ interface FormState {
 const EMPTY_FORM: FormState = { customerId: '', title: '', amount: '', status: 'DRAFT', expiresAt: '' }
 
 function QuotationsPage() {
+  const toast = useToast()
+  const confirm = useConfirm()
   const customers = useCustomers()
   const [quotations, setQuotations] = useState<Quotation[]>([])
   const [loading, setLoading] = useState(true)
@@ -113,6 +110,7 @@ function QuotationsPage() {
           expiresAt: form.expiresAt || undefined,
         })
       }
+      toast.success(editing ? 'Quotation updated' : 'Quotation created')
       closeForm()
       load()
     } catch (err) {
@@ -123,12 +121,19 @@ function QuotationsPage() {
   }
 
   async function handleDelete(q: Quotation) {
-    if (!confirm(`Delete quotation "${q.title}"? This cannot be undone.`)) return
+    const ok = await confirm({
+      title: 'Delete quotation',
+      message: `Delete quotation "${q.title}"? This cannot be undone.`,
+      confirmLabel: 'Delete',
+      tone: 'danger',
+    })
+    if (!ok) return
     try {
       await api.deleteQuotation(q.id)
+      toast.success('Quotation deleted')
       load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete quotation')
+      toast.error(err instanceof Error ? err.message : 'Failed to delete quotation')
     }
   }
 
@@ -162,9 +167,9 @@ function QuotationsPage() {
         {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
 
         {loading ? (
-          <p className="text-sm text-ink-400">Loading quotations…</p>
+          <TableSkeleton cols={5} />
         ) : quotations.length === 0 ? (
-          <p className="text-sm text-ink-400">No quotations yet.</p>
+          <EmptyState icon={FileSignature} message="No quotations yet. Create your first quotation to get started." />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
@@ -184,9 +189,7 @@ function QuotationsPage() {
                     <td className="px-3 py-3 text-ink-300">{q.customer.company || q.customer.name}</td>
                     <td className="px-3 py-3 text-ink-100">${Number(q.amount).toLocaleString()}</td>
                     <td className="px-3 py-3">
-                      <span className={`rounded px-2 py-1 text-xs font-medium ${statusClasses[q.status]}`}>
-                        {q.status}
-                      </span>
+                      <Badge tone={statusTone[q.status]}>{q.status}</Badge>
                     </td>
                     <td className="px-3 py-3">
                       <div className="flex items-center justify-end gap-3 text-ink-400">

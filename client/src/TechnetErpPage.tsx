@@ -15,7 +15,8 @@ import {
 } from 'lucide-react'
 import * as api from './lib/api'
 import type { InventoryItem, Customer, Invoice, Expense, Quotation, Contract } from './lib/api'
-import { Panel, StatCard, BarChart } from './dashboard/ui'
+import { Panel, StatCard, BarChart, Badge, EmptyState, TableSkeleton } from './dashboard/ui'
+import { contractStatusTone } from './erp/statusTones'
 
 const PIPELINE_STEPS = [
   { label: 'CUSTOMERS', icon: UserPlus },
@@ -23,13 +24,6 @@ const PIPELINE_STEPS = [
   { label: 'CONTRACT', icon: Radio },
   { label: 'PROJECT', icon: Wrench },
 ]
-
-const contractStatusClasses: Record<string, string> = {
-  IN_PROGRESS: 'bg-cyan-accent/10 text-cyan-accent',
-  PLANNING: 'bg-ink-700 text-ink-300',
-  COMPLETED: 'bg-emerald-400/10 text-emerald-400',
-  CANCELLED: 'bg-red-400/10 text-red-400',
-}
 
 const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
 
@@ -286,9 +280,9 @@ function TechnetErpPage() {
           }
         >
           {inventory === null ? (
-            <p className="text-sm text-ink-400">Loading…</p>
+            <TableSkeleton rows={2} cols={2} />
           ) : lowStockItems.length === 0 ? (
-            <p className="text-sm text-ink-400">No low-stock items.</p>
+            <EmptyState icon={AlertTriangle} message="No low-stock items." />
           ) : (
             <div className="flex flex-col gap-3">
               {lowStockItems.slice(0, 5).map((item) => (
@@ -324,9 +318,9 @@ function TechnetErpPage() {
           }
         >
           {contracts === null ? (
-            <p className="text-sm text-ink-400">Loading…</p>
+            <TableSkeleton rows={3} cols={4} />
           ) : activeContracts.length === 0 ? (
-            <p className="text-sm text-ink-400">No active contracts yet.</p>
+            <EmptyState icon={Receipt} message="No active contracts yet." />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
@@ -353,13 +347,7 @@ function TechnetErpPage() {
                         <td className="py-3 text-ink-300">{c.service}</td>
                         <td className="py-3 font-medium text-ink-100">${Number(c.value).toLocaleString()}</td>
                         <td className="py-3">
-                          <span
-                            className={`rounded px-2 py-1 text-xs font-medium ${
-                              contractStatusClasses[c.status] ?? 'bg-ink-700 text-ink-300'
-                            }`}
-                          >
-                            {c.status.replace('_', ' ')}
-                          </span>
+                          <Badge tone={contractStatusTone[c.status]}>{c.status.replace('_', ' ')}</Badge>
                         </td>
                         <td className="py-3 text-ink-400">
                           <MoreHorizontal className="h-4 w-4" />
@@ -375,9 +363,9 @@ function TechnetErpPage() {
 
         <Panel title="Recent Activity">
           {!loaded ? (
-            <p className="text-sm text-ink-400">Loading…</p>
+            <TableSkeleton rows={4} cols={1} />
           ) : activity.length === 0 ? (
-            <p className="text-sm text-ink-400">No activity yet.</p>
+            <EmptyState icon={UserCheck} message="No activity yet." />
           ) : (
             <div className="flex flex-col gap-4">
               {activity.map((item, i) => (

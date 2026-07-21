@@ -1,8 +1,11 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { UserCog } from 'lucide-react'
 import * as api from './lib/api'
 import type { ManagedUser, Role } from './lib/api'
 import { useAuth } from './context/AuthContext'
-import { Panel } from './dashboard/ui'
+import { Panel, EmptyState, TableSkeleton } from './dashboard/ui'
+import { useToast } from './dashboard/ToastContext'
+import { useConfirm } from './dashboard/ConfirmContext'
 
 const ROLES: Role[] = ['ADMIN', 'MANAGER', 'EMPLOYEE']
 
@@ -10,6 +13,8 @@ const inputClass =
   'rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
 
 function UsersPage() {
+  const toast = useToast()
+  const confirm = useConfirm()
   const { user: currentUser } = useAuth()
   const [users, setUsers] = useState<ManagedUser[]>([])
   const [loading, setLoading] = useState(true)
@@ -40,6 +45,7 @@ function UsersPage() {
     setSubmitting(true)
     try {
       await api.createUser({ email, password, name: name || undefined, role })
+      toast.success(`User ${email} created`)
       setEmail('')
       setName('')
       setPassword('')
@@ -56,19 +62,27 @@ function UsersPage() {
   async function handleRoleChange(id: string, newRole: Role) {
     try {
       await api.updateUser(id, { role: newRole })
+      toast.success('Role updated')
       loadUsers()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update role')
+      toast.error(err instanceof Error ? err.message : 'Failed to update role')
     }
   }
 
   async function handleDelete(id: string, email: string) {
-    if (!confirm(`Delete user ${email}? This cannot be undone.`)) return
+    const ok = await confirm({
+      title: 'Delete user',
+      message: `Delete user ${email}? This cannot be undone.`,
+      confirmLabel: 'Delete',
+      tone: 'danger',
+    })
+    if (!ok) return
     try {
       await api.deleteUser(id)
+      toast.success(`Deleted ${email}`)
       loadUsers()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete user')
+      toast.error(err instanceof Error ? err.message : 'Failed to delete user')
     }
   }
 
@@ -134,7 +148,13 @@ function UsersPage() {
       {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
 
       {loading ? (
-        <p className="text-sm text-ink-400">Loading users…</p>
+        <Panel>
+          <TableSkeleton cols={5} />
+        </Panel>
+      ) : users.length === 0 ? (
+        <Panel>
+          <EmptyState icon={UserCog} message="No users yet." />
+        </Panel>
       ) : (
         <Panel className="p-0">
           <table className="w-full text-left text-sm">

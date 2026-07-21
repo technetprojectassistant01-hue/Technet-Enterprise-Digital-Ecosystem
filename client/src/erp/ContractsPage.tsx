@@ -1,22 +1,18 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, ScrollText } from 'lucide-react'
 import * as api from '../lib/api'
 import type { Contract, ContractStatus } from '../lib/api'
-import { Panel, StatCard, Modal } from '../dashboard/ui'
+import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { useCustomers } from './useCustomers'
+import { useToast } from '../dashboard/ToastContext'
+import { useConfirm } from '../dashboard/ConfirmContext'
+import { contractStatusTone as statusTone } from './statusTones'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
 const labelClass = 'text-xs font-semibold tracking-widest text-ink-400'
 
 const STATUSES: ContractStatus[] = ['PLANNING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED']
-
-const statusClasses: Record<ContractStatus, string> = {
-  PLANNING: 'bg-ink-700 text-ink-300',
-  IN_PROGRESS: 'bg-cyan-accent/10 text-cyan-accent',
-  COMPLETED: 'bg-emerald-400/10 text-emerald-400',
-  CANCELLED: 'bg-red-400/10 text-red-400',
-}
 
 interface FormState {
   customerId: string
@@ -37,6 +33,8 @@ const EMPTY_FORM: FormState = {
 }
 
 function ContractsPage() {
+  const toast = useToast()
+  const confirm = useConfirm()
   const customers = useCustomers()
   const [contracts, setContracts] = useState<Contract[]>([])
   const [loading, setLoading] = useState(true)
@@ -123,6 +121,7 @@ function ContractsPage() {
           endDate: form.endDate || undefined,
         })
       }
+      toast.success(editing ? 'Contract updated' : 'Contract created')
       closeForm()
       load()
     } catch (err) {
@@ -133,12 +132,19 @@ function ContractsPage() {
   }
 
   async function handleDelete(c: Contract) {
-    if (!confirm(`Delete the contract for "${c.service}"? This cannot be undone.`)) return
+    const ok = await confirm({
+      title: 'Delete contract',
+      message: `Delete the contract for "${c.service}"? This cannot be undone.`,
+      confirmLabel: 'Delete',
+      tone: 'danger',
+    })
+    if (!ok) return
     try {
       await api.deleteContract(c.id)
+      toast.success('Contract deleted')
       load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete contract')
+      toast.error(err instanceof Error ? err.message : 'Failed to delete contract')
     }
   }
 
@@ -173,9 +179,9 @@ function ContractsPage() {
         {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
 
         {loading ? (
-          <p className="text-sm text-ink-400">Loading contracts…</p>
+          <TableSkeleton cols={5} />
         ) : contracts.length === 0 ? (
-          <p className="text-sm text-ink-400">No contracts yet.</p>
+          <EmptyState icon={ScrollText} message="No contracts yet. Create your first contract to get started." />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
@@ -195,9 +201,7 @@ function ContractsPage() {
                     <td className="px-3 py-3 text-ink-300">{c.service}</td>
                     <td className="px-3 py-3 text-ink-100">${Number(c.value).toLocaleString()}</td>
                     <td className="px-3 py-3">
-                      <span className={`rounded px-2 py-1 text-xs font-medium ${statusClasses[c.status]}`}>
-                        {c.status.replace('_', ' ')}
-                      </span>
+                      <Badge tone={statusTone[c.status]}>{c.status.replace('_', ' ')}</Badge>
                     </td>
                     <td className="px-3 py-3">
                       <div className="flex items-center justify-end gap-3 text-ink-400">
