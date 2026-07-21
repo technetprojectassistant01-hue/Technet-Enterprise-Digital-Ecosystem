@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   Calendar,
   Download,
@@ -11,6 +13,8 @@ import {
   UserCheck,
   PackageX,
 } from 'lucide-react'
+import * as api from './lib/api'
+import type { InventoryItem } from './lib/api'
 import { Panel, StatCard, BarChart } from './dashboard/ui'
 
 const REVENUE_DATA = [
@@ -40,12 +44,6 @@ const PIPELINE_STEPS = [
   { label: 'PROJECT', icon: Wrench, active: false },
 ]
 
-const INVENTORY_ALERTS = [
-  { name: 'Electrical Cable (10mm)', sku: 'EC-10-993', status: '12m Left', sub: 'Min: 50m', tone: 'warning' as const },
-  { name: 'PVC Pipe (4 Inch)', sku: 'PVC-4-002', status: '5 Units', sub: 'Min: 20 Units', tone: 'warning' as const },
-  { name: 'Steel Mounting Brackets', sku: 'ST-BR-01', status: 'Low Stock', sub: 'Restock Soon', tone: 'muted' as const },
-]
-
 const CONTRACTS = [
   { initial: 'A', company: 'ABC Ltd', service: 'Substation Maintenance', value: '$45,000.00', status: 'In Progress' },
   { initial: 'X', company: 'XYZ Corp', service: 'Renewable Grid Link', value: '$128,400.00', status: 'Planning' },
@@ -71,6 +69,17 @@ const statusClasses: Record<string, string> = {
 }
 
 function TechnetErpPage() {
+  const [inventory, setInventory] = useState<InventoryItem[] | null>(null)
+
+  useEffect(() => {
+    api
+      .listInventory()
+      .then(({ items }) => setInventory(items))
+      .catch(() => setInventory([]))
+  }, [])
+
+  const lowStockItems = (inventory ?? []).filter((i) => i.quantity <= i.minStockLevel)
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
@@ -96,7 +105,20 @@ function TechnetErpPage() {
         <StatCard label="TOTAL CUSTOMERS" value="245" delta="+12%" />
         <StatCard label="ACTIVE QUOTATIONS" value="32" delta="8 Pending" deltaTone="warning" />
         <StatCard label="MONTHLY REVENUE" value="$1.2M" delta="+5.4%" />
-        <StatCard label="INVENTORY ITEMS" value="124" delta="4 Low Stock" deltaTone="warning" />
+        <Link to="/dashboard/erp/inventory" className="block">
+          <StatCard
+            label="INVENTORY ITEMS"
+            value={inventory === null ? '—' : inventory.length}
+            delta={
+              inventory === null
+                ? undefined
+                : lowStockItems.length > 0
+                  ? `${lowStockItems.length} Low Stock`
+                  : 'All stocked'
+            }
+            deltaTone="warning"
+          />
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -174,27 +196,40 @@ function TechnetErpPage() {
           </div>
         </Panel>
 
-        <Panel title="Inventory Alerts" icon={AlertTriangle}>
-          <div className="flex flex-col gap-3">
-            {INVENTORY_ALERTS.map((item) => (
-              <div key={item.sku} className="rounded-lg bg-ink-800 px-4 py-3">
-                <div className="flex items-start justify-between gap-2">
-                  <span className="text-sm font-medium text-ink-100">{item.name}</span>
-                  <span
-                    className={`shrink-0 text-sm font-semibold ${
-                      item.tone === 'warning' ? 'text-red-400' : 'text-ink-300'
-                    }`}
-                  >
-                    {item.status}
-                  </span>
+        <Panel
+          title="Inventory Alerts"
+          icon={AlertTriangle}
+          action={
+            <Link
+              to="/dashboard/erp/inventory"
+              className="text-xs font-semibold text-cyan-accent hover:underline"
+            >
+              Manage &gt;
+            </Link>
+          }
+        >
+          {inventory === null ? (
+            <p className="text-sm text-ink-400">Loading…</p>
+          ) : lowStockItems.length === 0 ? (
+            <p className="text-sm text-ink-400">No low-stock items.</p>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {lowStockItems.slice(0, 5).map((item) => (
+                <div key={item.id} className="rounded-lg bg-ink-800 px-4 py-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-sm font-medium text-ink-100">{item.name}</span>
+                    <span className="shrink-0 text-sm font-semibold text-red-400">
+                      {item.quantity} {item.unitOfMeasure}
+                    </span>
+                  </div>
+                  <div className="mt-1 flex items-center justify-between text-xs text-ink-400">
+                    <span>SKU: {item.sku}</span>
+                    <span>Min: {item.minStockLevel}</span>
+                  </div>
                 </div>
-                <div className="mt-1 flex items-center justify-between text-xs text-ink-400">
-                  <span>SKU: {item.sku}</span>
-                  <span>{item.sub}</span>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </Panel>
       </div>
 

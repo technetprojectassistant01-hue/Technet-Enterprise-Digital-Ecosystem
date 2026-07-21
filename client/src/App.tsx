@@ -1,10 +1,24 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
-import { Wrench, Share2, Workflow, Users, Megaphone, LineChart, ShieldCheck } from 'lucide-react'
+import {
+  Wrench,
+  Share2,
+  Workflow,
+  Users,
+  Megaphone,
+  LineChart,
+  ShieldCheck,
+  Landmark,
+  ShoppingCart,
+  FolderKanban,
+  FileText,
+} from 'lucide-react'
 import Login from './Login'
 import ForgotPassword from './ForgotPassword'
 import Dashboard from './Dashboard'
 import DashboardHome from './DashboardHome'
+import ErpLayout from './erp/ErpLayout'
 import TechnetErpPage from './TechnetErpPage'
+import InventoryPage from './erp/InventoryPage'
 import ModuleStub from './dashboard/ModuleStub'
 import UsersPage from './UsersPage'
 import SettingsPage from './SettingsPage'
@@ -19,7 +33,24 @@ function App() {
       <Route element={<ProtectedRoute />}>
         <Route path="/dashboard" element={<Dashboard />}>
           <Route index element={<DashboardHome />} />
-          <Route path="erp" element={<TechnetErpPage />} />
+          <Route path="erp" element={<ErpLayout />}>
+            <Route index element={<TechnetErpPage />} />
+            <Route path="inventory" element={<InventoryPage />} />
+            <Route path="finance" element={<ModuleStub title="Finance" icon={Landmark} />} />
+            <Route
+              path="procurement"
+              element={<ModuleStub title="Procurement" icon={ShoppingCart} />}
+            />
+            <Route path="hr" element={<ModuleStub title="HR" icon={Users} />} />
+            <Route
+              path="projects"
+              element={<ModuleStub title="Project Registration" icon={FolderKanban} />}
+            />
+            <Route
+              path="documents"
+              element={<ModuleStub title="Document Management" icon={FileText} />}
+            />
+          </Route>
           <Route
             path="maintenance"
             element={<ModuleStub title="Technet Maintenance" icon={Wrench} />}

@@ -78,3 +78,78 @@ export function updateUser(
 export function deleteUser(id: string) {
   return request<null>(`/api/users/${id}`, { method: 'DELETE' })
 }
+
+export type MovementType = 'IN' | 'OUT' | 'ADJUSTMENT'
+
+export interface InventoryItem {
+  id: string
+  sku: string
+  name: string
+  category: string | null
+  unitOfMeasure: string
+  quantity: number
+  minStockLevel: number
+  unitCost: string | null
+  location: string | null
+  supplierId: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface StockMovement {
+  id: string
+  inventoryItemId: string
+  type: MovementType
+  quantity: number
+  reason: string | null
+  createdById: string
+  createdAt: string
+}
+
+export function listInventory(params: { search?: string; lowStock?: boolean } = {}) {
+  const query = new URLSearchParams()
+  if (params.search) query.set('search', params.search)
+  if (params.lowStock) query.set('lowStock', 'true')
+  const qs = query.toString()
+  return request<{ items: InventoryItem[] }>(`/api/inventory${qs ? `?${qs}` : ''}`)
+}
+
+export function getInventoryItem(id: string) {
+  return request<{ item: InventoryItem & { movements: StockMovement[] } }>(`/api/inventory/${id}`)
+}
+
+export interface InventoryItemInput {
+  sku: string
+  name: string
+  category?: string
+  unitOfMeasure?: string
+  quantity?: number
+  minStockLevel?: number
+  unitCost?: number | null
+  location?: string
+}
+
+export function createInventoryItem(input: InventoryItemInput) {
+  return request<{ item: InventoryItem }>('/api/inventory', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function updateInventoryItem(id: string, input: Partial<InventoryItemInput>) {
+  return request<{ item: InventoryItem }>(`/api/inventory/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
+}
+
+export function deleteInventoryItem(id: string) {
+  return request<null>(`/api/inventory/${id}`, { method: 'DELETE' })
+}
+
+export function adjustStock(id: string, input: { type: MovementType; quantity: number; reason?: string }) {
+  return request<{ item: InventoryItem }>(`/api/inventory/${id}/adjust`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
