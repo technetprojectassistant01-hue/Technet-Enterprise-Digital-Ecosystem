@@ -153,3 +153,236 @@ export function adjustStock(id: string, input: { type: MovementType; quantity: n
     body: JSON.stringify(input),
   })
 }
+
+export interface CustomerSummary {
+  id: string
+  name: string
+  company: string | null
+}
+
+export interface Customer extends CustomerSummary {
+  email: string | null
+  phone: string | null
+  address: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CustomerInput {
+  name: string
+  email?: string
+  phone?: string
+  company?: string
+  address?: string
+}
+
+export function listCustomers(params: { search?: string } = {}) {
+  const query = new URLSearchParams()
+  if (params.search) query.set('search', params.search)
+  const qs = query.toString()
+  return request<{ customers: Customer[] }>(`/api/customers${qs ? `?${qs}` : ''}`)
+}
+
+export function createCustomer(input: CustomerInput) {
+  return request<{ customer: Customer }>('/api/customers', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function updateCustomer(id: string, input: Partial<CustomerInput>) {
+  return request<{ customer: Customer }>(`/api/customers/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
+}
+
+export function deleteCustomer(id: string) {
+  return request<null>(`/api/customers/${id}`, { method: 'DELETE' })
+}
+
+export type InvoiceStatus = 'DRAFT' | 'SENT' | 'PAID' | 'OVERDUE' | 'CANCELLED'
+
+export interface Invoice {
+  id: string
+  customerId: string
+  customer: CustomerSummary
+  invoiceNumber: string
+  amount: string
+  status: InvoiceStatus
+  issueDate: string
+  dueDate: string | null
+  paidAt: string | null
+  createdAt: string
+}
+
+export interface InvoiceInput {
+  customerId: string
+  invoiceNumber: string
+  amount: number
+  status?: InvoiceStatus
+  issueDate?: string
+  dueDate?: string
+}
+
+export function listInvoices(params: { status?: InvoiceStatus } = {}) {
+  const query = new URLSearchParams()
+  if (params.status) query.set('status', params.status)
+  const qs = query.toString()
+  return request<{ invoices: Invoice[] }>(`/api/invoices${qs ? `?${qs}` : ''}`)
+}
+
+export function createInvoice(input: InvoiceInput) {
+  return request<{ invoice: Invoice }>('/api/invoices', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function updateInvoice(id: string, input: Partial<Omit<InvoiceInput, 'customerId'>>) {
+  return request<{ invoice: Invoice }>(`/api/invoices/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
+}
+
+export function deleteInvoice(id: string) {
+  return request<null>(`/api/invoices/${id}`, { method: 'DELETE' })
+}
+
+export interface Expense {
+  id: string
+  category: string
+  description: string | null
+  amount: string
+  date: string
+  supplierId: string | null
+  createdAt: string
+}
+
+export interface ExpenseInput {
+  category: string
+  description?: string
+  amount: number
+  date?: string
+}
+
+export function listExpenses(params: { category?: string } = {}) {
+  const query = new URLSearchParams()
+  if (params.category) query.set('category', params.category)
+  const qs = query.toString()
+  return request<{ expenses: Expense[] }>(`/api/expenses${qs ? `?${qs}` : ''}`)
+}
+
+export function createExpense(input: ExpenseInput) {
+  return request<{ expense: Expense }>('/api/expenses', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function updateExpense(id: string, input: Partial<ExpenseInput>) {
+  return request<{ expense: Expense }>(`/api/expenses/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
+}
+
+export function deleteExpense(id: string) {
+  return request<null>(`/api/expenses/${id}`, { method: 'DELETE' })
+}
+
+export type QuotationStatus = 'DRAFT' | 'SENT' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED'
+
+export interface Quotation {
+  id: string
+  customerId: string
+  customer: CustomerSummary
+  title: string
+  amount: string
+  status: QuotationStatus
+  issuedAt: string
+  expiresAt: string | null
+  createdAt: string
+}
+
+export interface QuotationInput {
+  customerId: string
+  title: string
+  amount: number
+  status?: QuotationStatus
+  expiresAt?: string
+}
+
+export function listQuotations(params: { status?: QuotationStatus } = {}) {
+  const query = new URLSearchParams()
+  if (params.status) query.set('status', params.status)
+  const qs = query.toString()
+  return request<{ quotations: Quotation[] }>(`/api/quotations${qs ? `?${qs}` : ''}`)
+}
+
+export function createQuotation(input: QuotationInput) {
+  return request<{ quotation: Quotation }>('/api/quotations', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function updateQuotation(id: string, input: Partial<Omit<QuotationInput, 'customerId'>>) {
+  return request<{ quotation: Quotation }>(`/api/quotations/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
+}
+
+export function deleteQuotation(id: string) {
+  return request<null>(`/api/quotations/${id}`, { method: 'DELETE' })
+}
+
+export type ContractStatus = 'PLANNING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
+
+export interface Contract {
+  id: string
+  customerId: string
+  customer: CustomerSummary
+  service: string
+  value: string
+  status: ContractStatus
+  startDate: string | null
+  endDate: string | null
+  createdAt: string
+}
+
+export interface ContractInput {
+  customerId: string
+  service: string
+  value: number
+  status?: ContractStatus
+  startDate?: string
+  endDate?: string
+}
+
+export function listContracts(params: { status?: ContractStatus } = {}) {
+  const query = new URLSearchParams()
+  if (params.status) query.set('status', params.status)
+  const qs = query.toString()
+  return request<{ contracts: Contract[] }>(`/api/contracts${qs ? `?${qs}` : ''}`)
+}
+
+export function createContract(input: ContractInput) {
+  return request<{ contract: Contract }>('/api/contracts', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function updateContract(id: string, input: Partial<Omit<ContractInput, 'customerId'>>) {
+  return request<{ contract: Contract }>(`/api/contracts/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
+}
+
+export function deleteContract(id: string) {
+  return request<null>(`/api/contracts/${id}`, { method: 'DELETE' })
+}

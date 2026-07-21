@@ -7,7 +7,6 @@ import {
   Megaphone,
   LineChart,
   ShieldCheck,
-  Landmark,
   ShoppingCart,
   FolderKanban,
   FileText,
@@ -19,6 +18,12 @@ import DashboardHome from './DashboardHome'
 import ErpLayout from './erp/ErpLayout'
 import TechnetErpPage from './TechnetErpPage'
 import InventoryPage from './erp/InventoryPage'
+import FinanceLayout from './erp/FinanceLayout'
+import CustomersPage from './erp/CustomersPage'
+import InvoicesPage from './erp/InvoicesPage'
+import ExpensesPage from './erp/ExpensesPage'
+import QuotationsPage from './erp/QuotationsPage'
+import ContractsPage from './erp/ContractsPage'
 import ModuleStub from './dashboard/ModuleStub'
 import UsersPage from './UsersPage'
 import SettingsPage from './SettingsPage'
@@ -36,7 +41,14 @@ function App() {
           <Route path="erp" element={<ErpLayout />}>
             <Route index element={<TechnetErpPage />} />
             <Route path="inventory" element={<InventoryPage />} />
-            <Route path="finance" element={<ModuleStub title="Finance" icon={Landmark} />} />
+            <Route path="finance" element={<FinanceLayout />}>
+              <Route index element={<Navigate to="customers" replace />} />
+              <Route path="customers" element={<CustomersPage />} />
+              <Route path="invoices" element={<InvoicesPage />} />
+              <Route path="expenses" element={<ExpensesPage />} />
+              <Route path="quotations" element={<QuotationsPage />} />
+              <Route path="contracts" element={<ContractsPage />} />
+            </Route>
             <Route
               path="procurement"
               element={<ModuleStub title="Procurement" icon={ShoppingCart} />}

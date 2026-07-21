@@ -14,71 +14,126 @@ import {
   PackageX,
 } from 'lucide-react'
 import * as api from './lib/api'
-import type { InventoryItem } from './lib/api'
+import type { InventoryItem, Customer, Invoice, Expense, Quotation, Contract } from './lib/api'
 import { Panel, StatCard, BarChart } from './dashboard/ui'
 
-const REVENUE_DATA = [
-  { label: 'JAN', value: 78 },
-  { label: 'FEB', value: 92 },
-  { label: 'MAR', value: 70 },
-  { label: 'APR', value: 105 },
-  { label: 'MAY', value: 138 },
-  { label: 'JUN', value: 100 },
-  { label: 'JUL', value: 112 },
-  { label: 'AUG', value: 128 },
-  { label: 'SEP', value: 96 },
-  { label: 'OCT', value: 118 },
-]
-
-const FINANCE_ROWS = [
-  { label: 'REVENUE', value: '$1,240,500.00', tone: 'accent' as const },
-  { label: 'EXPENSES', value: '$842,200.00', tone: 'default' as const },
-  { label: 'PROFIT', value: '$398,300.00', tone: 'accent' as const },
-  { label: 'OUTSTANDING INVOICES', value: '$156,000.00', tone: 'warning' as const },
-]
-
 const PIPELINE_STEPS = [
-  { label: 'LEAD', icon: UserPlus, active: true },
-  { label: 'QUOTE', icon: FileText, active: true },
-  { label: 'CONTRACT', icon: Radio, active: false },
-  { label: 'PROJECT', icon: Wrench, active: false },
+  { label: 'CUSTOMERS', icon: UserPlus },
+  { label: 'QUOTE', icon: FileText },
+  { label: 'CONTRACT', icon: Radio },
+  { label: 'PROJECT', icon: Wrench },
 ]
 
-const CONTRACTS = [
-  { initial: 'A', company: 'ABC Ltd', service: 'Substation Maintenance', value: '$45,000.00', status: 'In Progress' },
-  { initial: 'X', company: 'XYZ Corp', service: 'Renewable Grid Link', value: '$128,400.00', status: 'Planning' },
-  { initial: 'D', company: 'Delta Co', service: 'Instrumentation Setup', value: '$12,000.00', status: 'In Progress' },
-]
-
-const ACTIVITY = [
-  { icon: Receipt, tone: 'accent' as const, title: 'Quotation QT-882 Created', detail: 'For Apex Engineering · 2 mins ago' },
-  { icon: Receipt, tone: 'accent' as const, title: 'Invoice #8841 Paid', detail: '$12,400.00 received · 1 hour ago' },
-  { icon: UserCheck, tone: 'default' as const, title: 'New Customer Added', detail: 'Solaris Power Ltd · 3 hours ago' },
-  { icon: PackageX, tone: 'warning' as const, title: 'Stock Alert Triggered', detail: 'PVC Pipe (4 Inch) Low · 5 hours ago' },
-]
-
-const toneClasses: Record<'accent' | 'default' | 'warning', string> = {
-  accent: 'border-cyan-accent',
-  default: 'border-ink-600',
-  warning: 'border-red-400/70',
+const contractStatusClasses: Record<string, string> = {
+  IN_PROGRESS: 'bg-cyan-accent/10 text-cyan-accent',
+  PLANNING: 'bg-ink-700 text-ink-300',
+  COMPLETED: 'bg-emerald-400/10 text-emerald-400',
+  CANCELLED: 'bg-red-400/10 text-red-400',
 }
 
-const statusClasses: Record<string, string> = {
-  'In Progress': 'bg-cyan-accent/10 text-cyan-accent',
-  Planning: 'bg-ink-700 text-ink-300',
+const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
+
+function timeAgo(iso: string) {
+  const diffMs = Date.now() - new Date(iso).getTime()
+  const mins = Math.floor(diffMs / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}h ago`
+  return `${Math.floor(hours / 24)}d ago`
 }
 
 function TechnetErpPage() {
   const [inventory, setInventory] = useState<InventoryItem[] | null>(null)
+  const [customers, setCustomers] = useState<Customer[] | null>(null)
+  const [invoices, setInvoices] = useState<Invoice[] | null>(null)
+  const [expenses, setExpenses] = useState<Expense[] | null>(null)
+  const [quotations, setQuotations] = useState<Quotation[] | null>(null)
+  const [contracts, setContracts] = useState<Contract[] | null>(null)
 
   useEffect(() => {
-    api
-      .listInventory()
-      .then(({ items }) => setInventory(items))
-      .catch(() => setInventory([]))
+    api.listInventory().then(({ items }) => setInventory(items)).catch(() => setInventory([]))
+    api.listCustomers().then(({ customers }) => setCustomers(customers)).catch(() => setCustomers([]))
+    api.listInvoices().then(({ invoices }) => setInvoices(invoices)).catch(() => setInvoices([]))
+    api.listExpenses().then(({ expenses }) => setExpenses(expenses)).catch(() => setExpenses([]))
+    api.listQuotations().then(({ quotations }) => setQuotations(quotations)).catch(() => setQuotations([]))
+    api.listContracts().then(({ contracts }) => setContracts(contracts)).catch(() => setContracts([]))
   }, [])
 
   const lowStockItems = (inventory ?? []).filter((i) => i.quantity <= i.minStockLevel)
+
+  const paidInvoices = (invoices ?? []).filter((i) => i.status === 'PAID')
+  const revenue = paidInvoices.reduce((sum, i) => sum + Number(i.amount), 0)
+  const totalExpenses = (expenses ?? []).reduce((sum, e) => sum + Number(e.amount), 0)
+  const profit = revenue - totalExpenses
+  const outstanding = (invoices ?? [])
+    .filter((i) => i.status === 'SENT' || i.status === 'OVERDUE')
+    .reduce((sum, i) => sum + Number(i.amount), 0)
+
+  const now = new Date()
+  const monthlyRevenue = paidInvoices
+    .filter((i) => {
+      const d = new Date(i.paidAt || i.issueDate)
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+    })
+    .reduce((sum, i) => sum + Number(i.amount), 0)
+
+  const revenueTrend = Array.from({ length: 10 }).map((_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - (9 - i), 1)
+    const total = paidInvoices
+      .filter((inv) => {
+        const pd = new Date(inv.paidAt || inv.issueDate)
+        return pd.getMonth() === d.getMonth() && pd.getFullYear() === d.getFullYear()
+      })
+      .reduce((sum, inv) => sum + Number(inv.amount), 0)
+    return { label: MONTHS[d.getMonth()], value: total }
+  })
+
+  const activeQuotations = (quotations ?? []).filter((q) => q.status === 'DRAFT' || q.status === 'SENT')
+  const acceptedQuotations = (quotations ?? []).filter((q) => q.status === 'ACCEPTED')
+  const conversionRate = quotations && quotations.length > 0
+    ? Math.round((acceptedQuotations.length / quotations.length) * 100)
+    : 0
+  const pipelineProgress = quotations && quotations.length > 0
+    ? Math.min(100, Math.round(((contracts?.length ?? 0) / quotations.length) * 100))
+    : 0
+
+  const activeContracts = (contracts ?? []).filter((c) => c.status !== 'COMPLETED' && c.status !== 'CANCELLED')
+
+  const activity = [
+    ...(customers ?? []).map((c) => ({
+      icon: UserCheck,
+      tone: 'default' as const,
+      title: 'New Customer Added',
+      detail: `${c.company || c.name} · ${timeAgo(c.createdAt)}`,
+      at: c.createdAt,
+    })),
+    ...(invoices ?? []).map((i) => ({
+      icon: Receipt,
+      tone: 'accent' as const,
+      title: i.status === 'PAID' ? `Invoice ${i.invoiceNumber} Paid` : `Invoice ${i.invoiceNumber} Created`,
+      detail: `$${Number(i.amount).toLocaleString()} · ${timeAgo(i.createdAt)}`,
+      at: i.createdAt,
+    })),
+    ...(quotations ?? []).map((q) => ({
+      icon: Receipt,
+      tone: 'accent' as const,
+      title: `Quotation "${q.title}" Created`,
+      detail: `For ${q.customer.company || q.customer.name} · ${timeAgo(q.createdAt)}`,
+      at: q.createdAt,
+    })),
+    ...lowStockItems.map((item) => ({
+      icon: PackageX,
+      tone: 'warning' as const,
+      title: 'Stock Alert Triggered',
+      detail: `${item.name} Low · ${timeAgo(item.updatedAt)}`,
+      at: item.updatedAt,
+    })),
+  ]
+    .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
+    .slice(0, 5)
+
+  const loaded = customers !== null && invoices !== null && expenses !== null && quotations !== null && contracts !== null
 
   return (
     <div className="flex flex-col gap-6">
@@ -102,9 +157,23 @@ function TechnetErpPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="TOTAL CUSTOMERS" value="245" delta="+12%" />
-        <StatCard label="ACTIVE QUOTATIONS" value="32" delta="8 Pending" deltaTone="warning" />
-        <StatCard label="MONTHLY REVENUE" value="$1.2M" delta="+5.4%" />
+        <Link to="/dashboard/erp/finance/customers" className="block">
+          <StatCard label="TOTAL CUSTOMERS" value={customers === null ? '—' : customers.length} />
+        </Link>
+        <Link to="/dashboard/erp/finance/quotations" className="block">
+          <StatCard
+            label="ACTIVE QUOTATIONS"
+            value={quotations === null ? '—' : activeQuotations.length}
+            delta={quotations === null ? undefined : `${activeQuotations.length} Pending`}
+            deltaTone="warning"
+          />
+        </Link>
+        <Link to="/dashboard/erp/finance/invoices" className="block">
+          <StatCard
+            label="MONTHLY REVENUE"
+            value={invoices === null ? '—' : `$${monthlyRevenue.toLocaleString()}`}
+          />
+        </Link>
         <Link to="/dashboard/erp/inventory" className="block">
           <StatCard
             label="INVENTORY ITEMS"
@@ -125,74 +194,82 @@ function TechnetErpPage() {
         <Panel
           className="lg:col-span-2"
           title="Monthly Revenue Trend"
-          action={<span className="text-xs font-semibold text-cyan-accent">2026 PROJECTED</span>}
+          action={<span className="text-xs font-semibold text-cyan-accent">LAST 10 MONTHS</span>}
         >
-          <BarChart data={REVENUE_DATA} highlight={(label) => label === 'MAY'} />
+          <BarChart data={revenueTrend} highlight={(_, i) => i === revenueTrend.length - 1} />
         </Panel>
 
         <Panel title="Finance Summary">
           <div className="flex flex-col gap-3">
-            {FINANCE_ROWS.map((row) => (
-              <div
-                key={row.label}
-                className={`rounded-lg border-l-2 bg-ink-800 px-4 py-3 ${toneClasses[row.tone]}`}
-              >
-                <div className="text-[11px] font-semibold tracking-widest text-ink-400">
-                  {row.label}
-                </div>
-                <div
-                  className={`mt-1 text-lg font-semibold ${
-                    row.tone === 'accent' ? 'text-cyan-accent' : 'text-ink-100'
-                  }`}
-                >
-                  {row.value}
-                </div>
+            <div className="rounded-lg border-l-2 border-cyan-accent bg-ink-800 px-4 py-3">
+              <div className="text-[11px] font-semibold tracking-widest text-ink-400">REVENUE</div>
+              <div className="mt-1 text-lg font-semibold text-cyan-accent">${revenue.toLocaleString()}</div>
+            </div>
+            <div className="rounded-lg border-l-2 border-ink-600 bg-ink-800 px-4 py-3">
+              <div className="text-[11px] font-semibold tracking-widest text-ink-400">EXPENSES</div>
+              <div className="mt-1 text-lg font-semibold text-ink-100">${totalExpenses.toLocaleString()}</div>
+            </div>
+            <div className="rounded-lg border-l-2 border-cyan-accent bg-ink-800 px-4 py-3">
+              <div className="text-[11px] font-semibold tracking-widest text-ink-400">PROFIT</div>
+              <div className="mt-1 text-lg font-semibold text-cyan-accent">${profit.toLocaleString()}</div>
+            </div>
+            <div className="rounded-lg border-l-2 border-red-400/70 bg-ink-800 px-4 py-3">
+              <div className="text-[11px] font-semibold tracking-widest text-ink-400">
+                OUTSTANDING INVOICES
               </div>
-            ))}
+              <div className="mt-1 text-lg font-semibold text-ink-100">${outstanding.toLocaleString()}</div>
+            </div>
           </div>
-          <button className="mt-4 w-full rounded-md border border-ink-700 py-2.5 text-sm text-cyan-accent hover:bg-ink-800">
+          <Link
+            to="/dashboard/erp/finance/invoices"
+            className="mt-4 block w-full rounded-md border border-ink-700 py-2.5 text-center text-sm text-cyan-accent hover:bg-ink-800"
+          >
             View Full Statement
-          </button>
+          </Link>
         </Panel>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Panel
           className="lg:col-span-2"
-          title="Customer Pipeline"
-          action={<span className="text-xs text-ink-400">CONVERSION RATE: 68%</span>}
+          title="Sales Pipeline"
+          action={<span className="text-xs text-ink-400">CONVERSION RATE: {conversionRate}%</span>}
         >
           <span className="inline-block rounded bg-cyan-accent/10 px-2 py-1 text-[11px] font-semibold tracking-widest text-cyan-accent">
-            LEAD ACQUISITION
+            QUOTATIONS → CONTRACTS
           </span>
           <div className="mt-3 flex items-center justify-between text-xs text-ink-400">
             <span />
-            <span className="text-cyan-accent">85% Complete</span>
+            <span className="text-cyan-accent">{pipelineProgress}% Complete</span>
           </div>
           <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-ink-700">
-            <div className="h-full w-[85%] rounded-full bg-cyan-accent" />
+            <div className="h-full rounded-full bg-cyan-accent" style={{ width: `${pipelineProgress}%` }} />
           </div>
 
           <div className="mt-8 flex items-center">
-            {PIPELINE_STEPS.map((step, i) => (
-              <div key={step.label} className="flex flex-1 items-center last:flex-none">
-                <div className="flex flex-col items-center gap-2">
-                  <div
-                    className={`flex h-10 w-10 items-center justify-center rounded-lg border ${
-                      step.active
-                        ? 'border-cyan-accent text-cyan-accent'
-                        : 'border-ink-600 text-ink-500'
-                    }`}
-                  >
-                    <step.icon className="h-4 w-4" />
+            {PIPELINE_STEPS.map((step, i) => {
+              const active =
+                (step.label === 'CUSTOMERS' && (customers?.length ?? 0) > 0) ||
+                (step.label === 'QUOTE' && (quotations?.length ?? 0) > 0) ||
+                (step.label === 'CONTRACT' && (contracts?.length ?? 0) > 0)
+              return (
+                <div key={step.label} className="flex flex-1 items-center last:flex-none">
+                  <div className="flex flex-col items-center gap-2">
+                    <div
+                      className={`flex h-10 w-10 items-center justify-center rounded-lg border ${
+                        active ? 'border-cyan-accent text-cyan-accent' : 'border-ink-600 text-ink-500'
+                      }`}
+                    >
+                      <step.icon className="h-4 w-4" />
+                    </div>
+                    <span className="text-[10px] tracking-widest text-ink-400">{step.label}</span>
                   </div>
-                  <span className="text-[10px] tracking-widest text-ink-400">{step.label}</span>
+                  {i < PIPELINE_STEPS.length - 1 && (
+                    <div className="mx-2 mt-[-18px] h-px flex-1 bg-ink-700" />
+                  )}
                 </div>
-                {i < PIPELINE_STEPS.length - 1 && (
-                  <div className="mx-2 mt-[-18px] h-px flex-1 bg-ink-700" />
-                )}
-              </div>
-            ))}
+              )
+            })}
           </div>
         </Panel>
 
@@ -238,74 +315,92 @@ function TechnetErpPage() {
           className="lg:col-span-2"
           title="Active Customer Contracts"
           action={
-            <a href="#" className="text-xs font-semibold text-cyan-accent hover:underline">
+            <Link
+              to="/dashboard/erp/finance/contracts"
+              className="text-xs font-semibold text-cyan-accent hover:underline"
+            >
               View All &gt;
-            </a>
+            </Link>
           }
         >
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="text-[11px] tracking-widest text-ink-400">
-                  <th className="pb-3 font-semibold">COMPANY</th>
-                  <th className="pb-3 font-semibold">SERVICE</th>
-                  <th className="pb-3 font-semibold">CONTRACT VALUE</th>
-                  <th className="pb-3 font-semibold">STATUS</th>
-                  <th className="pb-3 font-semibold" />
-                </tr>
-              </thead>
-              <tbody>
-                {CONTRACTS.map((c) => (
-                  <tr key={c.company} className="border-t border-ink-800">
-                    <td className="flex items-center gap-3 py-3">
-                      <span className="flex h-8 w-8 items-center justify-center rounded-md bg-ink-700 text-xs font-semibold text-ink-200">
-                        {c.initial}
-                      </span>
-                      {c.company}
-                    </td>
-                    <td className="py-3 text-ink-300">{c.service}</td>
-                    <td className="py-3 font-medium text-ink-100">{c.value}</td>
-                    <td className="py-3">
-                      <span
-                        className={`rounded px-2 py-1 text-xs font-medium ${
-                          statusClasses[c.status] ?? 'bg-ink-700 text-ink-300'
-                        }`}
-                      >
-                        {c.status.toUpperCase()}
-                      </span>
-                    </td>
-                    <td className="py-3 text-ink-400">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </td>
+          {contracts === null ? (
+            <p className="text-sm text-ink-400">Loading…</p>
+          ) : activeContracts.length === 0 ? (
+            <p className="text-sm text-ink-400">No active contracts yet.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="text-[11px] tracking-widest text-ink-400">
+                    <th className="pb-3 font-semibold">COMPANY</th>
+                    <th className="pb-3 font-semibold">SERVICE</th>
+                    <th className="pb-3 font-semibold">CONTRACT VALUE</th>
+                    <th className="pb-3 font-semibold">STATUS</th>
+                    <th className="pb-3 font-semibold" />
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {activeContracts.slice(0, 5).map((c) => {
+                    const label = c.customer.company || c.customer.name
+                    return (
+                      <tr key={c.id} className="border-t border-ink-800">
+                        <td className="flex items-center gap-3 py-3">
+                          <span className="flex h-8 w-8 items-center justify-center rounded-md bg-ink-700 text-xs font-semibold text-ink-200">
+                            {label[0]?.toUpperCase()}
+                          </span>
+                          {label}
+                        </td>
+                        <td className="py-3 text-ink-300">{c.service}</td>
+                        <td className="py-3 font-medium text-ink-100">${Number(c.value).toLocaleString()}</td>
+                        <td className="py-3">
+                          <span
+                            className={`rounded px-2 py-1 text-xs font-medium ${
+                              contractStatusClasses[c.status] ?? 'bg-ink-700 text-ink-300'
+                            }`}
+                          >
+                            {c.status.replace('_', ' ')}
+                          </span>
+                        </td>
+                        <td className="py-3 text-ink-400">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </Panel>
 
         <Panel title="Recent Activity">
-          <div className="flex flex-col gap-4">
-            {ACTIVITY.map((item, i) => (
-              <div key={i} className="flex gap-3">
-                <span
-                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
-                    item.tone === 'accent'
-                      ? 'bg-cyan-accent/15 text-cyan-accent'
-                      : item.tone === 'warning'
-                        ? 'bg-red-400/15 text-red-400'
-                        : 'bg-ink-700 text-ink-300'
-                  }`}
-                >
-                  <item.icon className="h-3.5 w-3.5" />
-                </span>
-                <div>
-                  <div className="text-sm text-ink-100">{item.title}</div>
-                  <div className="mt-0.5 text-xs text-ink-400">{item.detail}</div>
+          {!loaded ? (
+            <p className="text-sm text-ink-400">Loading…</p>
+          ) : activity.length === 0 ? (
+            <p className="text-sm text-ink-400">No activity yet.</p>
+          ) : (
+            <div className="flex flex-col gap-4">
+              {activity.map((item, i) => (
+                <div key={i} className="flex gap-3">
+                  <span
+                    className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
+                      item.tone === 'accent'
+                        ? 'bg-cyan-accent/15 text-cyan-accent'
+                        : item.tone === 'warning'
+                          ? 'bg-red-400/15 text-red-400'
+                          : 'bg-ink-700 text-ink-300'
+                    }`}
+                  >
+                    <item.icon className="h-3.5 w-3.5" />
+                  </span>
+                  <div>
+                    <div className="text-sm text-ink-100">{item.title}</div>
+                    <div className="mt-0.5 text-xs text-ink-400">{item.detail}</div>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </Panel>
       </div>
     </div>

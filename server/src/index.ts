@@ -7,6 +7,11 @@ import cookieParser from "cookie-parser";
 import authRouter from "./routes/auth";
 import usersRouter from "./routes/users";
 import inventoryRouter from "./routes/inventory";
+import customersRouter from "./routes/customers";
+import invoicesRouter from "./routes/invoices";
+import expensesRouter from "./routes/expenses";
+import quotationsRouter from "./routes/quotations";
+import contractsRouter from "./routes/contracts";
 import { requireAuth, requireRole } from "./middleware/auth";
 
 const app = express();
@@ -30,6 +35,11 @@ app.get("/api/health", (_req, res) => {
 app.use("/api/auth", authRouter);
 app.use("/api/users", usersRouter);
 app.use("/api/inventory", inventoryRouter);
+app.use("/api/customers", customersRouter);
+app.use("/api/invoices", invoicesRouter);
+app.use("/api/expenses", expensesRouter);
+app.use("/api/quotations", quotationsRouter);
+app.use("/api/contracts", contractsRouter);
 
 app.get("/api/admin/ping", requireAuth, requireRole("ADMIN"), (_req, res) => {
   res.json({ ok: true, message: "You have admin access" });
