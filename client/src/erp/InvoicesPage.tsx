@@ -4,6 +4,7 @@ import * as api from '../lib/api'
 import type { Invoice, InvoiceStatus } from '../lib/api'
 import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { useCustomers } from './useCustomers'
+import { useProjects } from './useProjects'
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
 import { invoiceStatusTone as statusTone } from './statusTones'
@@ -16,6 +17,7 @@ const STATUSES: InvoiceStatus[] = ['DRAFT', 'SENT', 'PAID', 'OVERDUE', 'CANCELLE
 
 interface FormState {
   customerId: string
+  projectId: string
   invoiceNumber: string
   amount: string
   status: InvoiceStatus
@@ -24,6 +26,7 @@ interface FormState {
 
 const EMPTY_FORM: FormState = {
   customerId: '',
+  projectId: '',
   invoiceNumber: '',
   amount: '',
   status: 'DRAFT',
@@ -34,6 +37,7 @@ function InvoicesPage() {
   const toast = useToast()
   const confirm = useConfirm()
   const customers = useCustomers()
+  const projects = useProjects()
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -65,6 +69,7 @@ function InvoicesPage() {
   function openEdit(inv: Invoice) {
     setForm({
       customerId: inv.customerId,
+      projectId: inv.projectId || '',
       invoiceNumber: inv.invoiceNumber,
       amount: inv.amount,
       status: inv.status,
@@ -106,10 +111,12 @@ function InvoicesPage() {
           amount,
           status: form.status,
           dueDate: form.dueDate || undefined,
+          projectId: form.projectId || null,
         })
       } else {
         await api.createInvoice({
           customerId: form.customerId,
+          projectId: form.projectId || null,
           invoiceNumber: form.invoiceNumber,
           amount,
           status: form.status,
@@ -185,7 +192,7 @@ function InvoicesPage() {
         {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
 
         {loading ? (
-          <TableSkeleton cols={6} />
+          <TableSkeleton cols={7} />
         ) : invoices.length === 0 ? (
           <EmptyState icon={Receipt} message="No invoices yet. Create your first invoice to get started." />
         ) : (
@@ -195,6 +202,7 @@ function InvoicesPage() {
                 <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
                   <th className="px-3 py-3 font-semibold">INVOICE #</th>
                   <th className="px-3 py-3 font-semibold">CUSTOMER</th>
+                  <th className="px-3 py-3 font-semibold">PROJECT</th>
                   <th className="px-3 py-3 font-semibold">AMOUNT</th>
                   <th className="px-3 py-3 font-semibold">STATUS</th>
                   <th className="px-3 py-3 font-semibold">DUE</th>
@@ -206,6 +214,9 @@ function InvoicesPage() {
                   <tr key={inv.id} className="border-b border-ink-800 last:border-0">
                     <td className="px-3 py-3 font-medium text-ink-100">{inv.invoiceNumber}</td>
                     <td className="px-3 py-3 text-ink-300">{inv.customer.company || inv.customer.name}</td>
+                    <td className="px-3 py-3 text-ink-300">
+                      {projects.find((p) => p.id === inv.projectId)?.name || '—'}
+                    </td>
                     <td className="px-3 py-3 text-ink-100">${Number(inv.amount).toLocaleString()}</td>
                     <td className="px-3 py-3">
                       <Badge tone={statusTone[inv.status]}>{inv.status}</Badge>
@@ -253,6 +264,21 @@ function InvoicesPage() {
                 </select>
               </div>
             )}
+            <div>
+              <label className={labelClass}>PROJECT (OPTIONAL)</label>
+              <select
+                value={form.projectId}
+                onChange={(e) => setForm({ ...form, projectId: e.target.value })}
+                className={`mt-2 ${inputClass}`}
+              >
+                <option value="">—</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div>
               <label className={labelClass}>INVOICE NUMBER</label>
               <input

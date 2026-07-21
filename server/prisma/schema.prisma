@@ -26,11 +26,22 @@ enum EmploymentStatus {
 }
 
 enum ProjectStatus {
-  PLANNING
+  QUOTED
+  APPROVED
   IN_PROGRESS
   ON_HOLD
   COMPLETED
+  CLOSED
   CANCELLED
+}
+
+enum ServiceCategory {
+  ELECTRICAL
+  ELV_SECURITY
+  MECHANICAL
+  PLUMBING
+  SAFETY
+  OTHER
 }
 
 enum ContractStatus {
@@ -85,17 +96,30 @@ model User {
   role         Role     @default(EMPLOYEE)
   createdAt    DateTime @default(now())
 
-  // HR fields
+  employee             Employee?
+  stockMovements       StockMovement[]
+  uploadedDocuments    Document[]
+  projectStatusChanges ProjectStatusHistory[]
+}
+
+model Employee {
+  id               String           @id @default(uuid())
+  employeeCode     String           @unique
+  firstName        String
+  lastName         String
+  email            String?
   phone            String?
   position         String?
   department       String?
-  hireDate         DateTime?
   employmentStatus EmploymentStatus @default(ACTIVE)
-  salary           Decimal?         @db.Decimal(14, 2)
+  hireDate         DateTime?
+  userId           String?          @unique
+  user             User?            @relation(fields: [userId], references: [id])
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
 
-  stockMovements     StockMovement[]
-  managedProjects    Project[]       @relation("ProjectManager")
-  uploadedDocuments  Document[]
+  managedProjects    Project[]           @relation("ProjectManager")
+  projectAssignments ProjectAssignment[]
 }
 
 model Customer {
@@ -147,6 +171,8 @@ model Invoice {
   id            String        @id @default(uuid())
   customerId    String
   customer      Customer      @relation(fields: [customerId], references: [id])
+  projectId     String?
+  project       Project?      @relation(fields: [projectId], references: [id])
   invoiceNumber String        @unique
   amount        Decimal       @db.Decimal(14, 2)
   status        InvoiceStatus @default(DRAFT)
@@ -165,6 +191,8 @@ model Expense {
   date        DateTime  @default(now())
   supplierId  String?
   supplier    Supplier? @relation(fields: [supplierId], references: [id])
+  projectId   String?
+  project     Project?  @relation(fields: [projectId], references: [id])
   createdAt   DateTime  @default(now())
 }
 
@@ -241,23 +269,52 @@ model StockMovement {
 }
 
 model Project {
-  id          String        @id @default(uuid())
-  name        String
-  customerId  String?
-  customer    Customer?     @relation(fields: [customerId], references: [id])
-  contractId  String?
-  contract    Contract?     @relation(fields: [contractId], references: [id])
-  description String?
-  status      ProjectStatus @default(PLANNING)
-  startDate   DateTime?
-  endDate     DateTime?
-  budget      Decimal?      @db.Decimal(14, 2)
-  managerId   String?
-  manager     User?         @relation("ProjectManager", fields: [managerId], references: [id])
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id              String          @id @default(uuid())
+  name            String
+  customerId      String?
+  customer        Customer?       @relation(fields: [customerId], references: [id])
+  contractId      String?
+  contract        Contract?       @relation(fields: [contractId], references: [id])
+  description     String?
+  serviceCategory ServiceCategory @default(OTHER)
+  status          ProjectStatus   @default(QUOTED)
+  startDate       DateTime?
+  endDate         DateTime?
+  budget          Decimal?        @db.Decimal(14, 2)
+  managerId       String?
+  manager         Employee?       @relation("ProjectManager", fields: [managerId], references: [id])
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
 
-  documents Document[]
+  documents     Document[]
+  invoices      Invoice[]
+  expenses      Expense[]
+  assignments   ProjectAssignment[]
+  statusHistory ProjectStatusHistory[]
+}
+
+model ProjectAssignment {
+  id            String   @id @default(uuid())
+  projectId     String
+  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  employeeId    String
+  employee      Employee @relation(fields: [employeeId], references: [id])
+  roleOnProject String?
+  assignedAt    DateTime @default(now())
+
+  @@unique([projectId, employeeId])
+}
+
+model ProjectStatusHistory {
+  id          String         @id @default(uuid())
+  projectId   String
+  project     Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  fromStatus  ProjectStatus?
+  toStatus    ProjectStatus
+  changedById String
+  changedBy   User           @relation(fields: [changedById], references: [id])
+  note        String?
+  createdAt   DateTime       @default(now())
 }
 
 model Document {

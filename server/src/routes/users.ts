@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { Prisma } from "../generated/prisma/client";
 import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
+import { isUniqueConstraintError, isForeignKeyConstraintError, isNotFoundError } from "../lib/prismaErrors";
 
 const router = Router();
 const ROLES = ["ADMIN", "MANAGER", "EMPLOYEE"] as const;
@@ -53,9 +54,7 @@ router.post("/", async (req, res) => {
     });
     res.status(201).json({ user });
   } catch (err) {
-    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
-      return res.status(409).json({ error: "A user with that email already exists" });
-    }
+    if (isUniqueConstraintError(err)) return res.status(409).json({ error: "A user with that email already exists" });
     throw err;
   }
 });
@@ -87,9 +86,7 @@ router.patch("/:id", async (req, res) => {
     });
     res.json({ user });
   } catch (err) {
-    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") {
-      return res.status(404).json({ error: "User not found" });
-    }
+    if (isNotFoundError(err)) return res.status(404).json({ error: "User not found" });
     throw err;
   }
 });
@@ -105,8 +102,9 @@ router.delete("/:id", async (req, res) => {
     await prisma.user.delete({ where: { id } });
     res.status(204).end();
   } catch (err) {
-    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") {
-      return res.status(404).json({ error: "User not found" });
+    if (isNotFoundError(err)) return res.status(404).json({ error: "User not found" });
+    if (isForeignKeyConstraintError(err)) {
+      return res.status(409).json({ error: "User has related records (stock movements, documents, or activity) and cannot be deleted" });
     }
     throw err;
   }

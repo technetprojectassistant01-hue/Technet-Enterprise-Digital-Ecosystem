@@ -2,6 +2,7 @@ import { Router } from "express";
 import { Prisma } from "../generated/prisma/client";
 import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
+import { isForeignKeyConstraintError, isNotFoundError } from "../lib/prismaErrors";
 
 const router = Router();
 
@@ -75,9 +76,7 @@ router.patch("/:id", requireRole("ADMIN", "MANAGER"), async (req, res) => {
     const customer = await prisma.customer.update({ where: { id }, data });
     res.json({ customer });
   } catch (err) {
-    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") {
-      return res.status(404).json({ error: "Customer not found" });
-    }
+    if (isNotFoundError(err)) return res.status(404).json({ error: "Customer not found" });
     throw err;
   }
 });
@@ -88,13 +87,11 @@ router.delete("/:id", requireRole("ADMIN", "MANAGER"), async (req, res) => {
     await prisma.customer.delete({ where: { id } });
     res.status(204).end();
   } catch (err) {
-    if (err instanceof Prisma.PrismaClientKnownRequestError) {
-      if (err.code === "P2025") return res.status(404).json({ error: "Customer not found" });
-      if (err.code === "P2003") {
-        return res
-          .status(409)
-          .json({ error: "Customer has related invoices, quotations, or contracts and cannot be deleted" });
-      }
+    if (isNotFoundError(err)) return res.status(404).json({ error: "Customer not found" });
+    if (isForeignKeyConstraintError(err)) {
+      return res
+        .status(409)
+        .json({ error: "Customer has related invoices, quotations, contracts, or projects and cannot be deleted" });
     }
     throw err;
   }

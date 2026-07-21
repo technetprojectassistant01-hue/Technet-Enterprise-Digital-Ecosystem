@@ -5,6 +5,7 @@ import type { Expense } from '../lib/api'
 import { Panel, StatCard, Modal, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
+import { useProjects } from './useProjects'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -15,13 +16,15 @@ interface FormState {
   description: string
   amount: string
   date: string
+  projectId: string
 }
 
-const EMPTY_FORM: FormState = { category: '', description: '', amount: '', date: '' }
+const EMPTY_FORM: FormState = { category: '', description: '', amount: '', date: '', projectId: '' }
 
 function ExpensesPage() {
   const toast = useToast()
   const confirm = useConfirm()
+  const projects = useProjects()
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -56,6 +59,7 @@ function ExpensesPage() {
       description: exp.description || '',
       amount: exp.amount,
       date: exp.date.slice(0, 10),
+      projectId: exp.projectId || '',
     })
     setFormError(null)
     setEditing(exp)
@@ -88,6 +92,7 @@ function ExpensesPage() {
         description: form.description || undefined,
         amount,
         date: form.date || undefined,
+        projectId: form.projectId || null,
       }
       if (editing) {
         await api.updateExpense(editing.id, input)
@@ -142,7 +147,7 @@ function ExpensesPage() {
         {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
 
         {loading ? (
-          <TableSkeleton cols={5} />
+          <TableSkeleton cols={6} />
         ) : expenses.length === 0 ? (
           <EmptyState icon={CreditCard} message="No expenses yet. Add your first expense to get started." />
         ) : (
@@ -152,6 +157,7 @@ function ExpensesPage() {
                 <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
                   <th className="px-3 py-3 font-semibold">CATEGORY</th>
                   <th className="px-3 py-3 font-semibold">DESCRIPTION</th>
+                  <th className="px-3 py-3 font-semibold">PROJECT</th>
                   <th className="px-3 py-3 font-semibold">AMOUNT</th>
                   <th className="px-3 py-3 font-semibold">DATE</th>
                   <th className="px-3 py-3" />
@@ -162,6 +168,9 @@ function ExpensesPage() {
                   <tr key={exp.id} className="border-b border-ink-800 last:border-0">
                     <td className="px-3 py-3 font-medium text-ink-100">{exp.category}</td>
                     <td className="px-3 py-3 text-ink-300">{exp.description || '—'}</td>
+                    <td className="px-3 py-3 text-ink-300">
+                      {projects.find((p) => p.id === exp.projectId)?.name || '—'}
+                    </td>
                     <td className="px-3 py-3 text-ink-100">${Number(exp.amount).toLocaleString()}</td>
                     <td className="px-3 py-3 text-ink-400">{exp.date.slice(0, 10)}</td>
                     <td className="px-3 py-3">
@@ -201,6 +210,21 @@ function ExpensesPage() {
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
                 className={`mt-2 ${inputClass}`}
               />
+            </div>
+            <div>
+              <label className={labelClass}>PROJECT (OPTIONAL)</label>
+              <select
+                value={form.projectId}
+                onChange={(e) => setForm({ ...form, projectId: e.target.value })}
+                className={`mt-2 ${inputClass}`}
+              >
+                <option value="">—</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>

@@ -12,6 +12,8 @@ import invoicesRouter from "./routes/invoices";
 import expensesRouter from "./routes/expenses";
 import quotationsRouter from "./routes/quotations";
 import contractsRouter from "./routes/contracts";
+import employeesRouter from "./routes/employees";
+import projectsRouter from "./routes/projects";
 import { requireAuth, requireRole } from "./middleware/auth";
 
 const app = express();
@@ -40,6 +42,8 @@ app.use("/api/invoices", invoicesRouter);
 app.use("/api/expenses", expensesRouter);
 app.use("/api/quotations", quotationsRouter);
 app.use("/api/contracts", contractsRouter);
+app.use("/api/employees", employeesRouter);
+app.use("/api/projects", projectsRouter);
 
 app.get("/api/admin/ping", requireAuth, requireRole("ADMIN"), (_req, res) => {
   res.json({ ok: true, message: "You have admin access" });

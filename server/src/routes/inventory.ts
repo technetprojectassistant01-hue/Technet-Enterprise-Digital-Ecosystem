@@ -2,6 +2,7 @@ import { Router } from "express";
 import { Prisma } from "../generated/prisma/client";
 import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
+import { isUniqueConstraintError, isForeignKeyConstraintError, isNotFoundError } from "../lib/prismaErrors";
 
 const router = Router();
 const MOVEMENT_TYPES = ["IN", "OUT", "ADJUSTMENT"] as const;
@@ -69,9 +70,7 @@ router.post("/", requireRole("ADMIN", "MANAGER"), async (req, res) => {
     });
     res.status(201).json({ item });
   } catch (err) {
-    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
-      return res.status(409).json({ error: "An item with that SKU already exists" });
-    }
+    if (isUniqueConstraintError(err)) return res.status(409).json({ error: "An item with that SKU already exists" });
     throw err;
   }
 });
@@ -96,10 +95,8 @@ router.patch("/:id", requireRole("ADMIN", "MANAGER"), async (req, res) => {
     });
     res.json({ item });
   } catch (err) {
-    if (err instanceof Prisma.PrismaClientKnownRequestError) {
-      if (err.code === "P2025") return res.status(404).json({ error: "Inventory item not found" });
-      if (err.code === "P2002") return res.status(409).json({ error: "An item with that SKU already exists" });
-    }
+    if (isNotFoundError(err)) return res.status(404).json({ error: "Inventory item not found" });
+    if (isUniqueConstraintError(err)) return res.status(409).json({ error: "An item with that SKU already exists" });
     throw err;
   }
 });
@@ -110,8 +107,9 @@ router.delete("/:id", requireRole("ADMIN", "MANAGER"), async (req, res) => {
     await prisma.inventoryItem.delete({ where: { id } });
     res.status(204).end();
   } catch (err) {
-    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") {
-      return res.status(404).json({ error: "Inventory item not found" });
+    if (isNotFoundError(err)) return res.status(404).json({ error: "Inventory item not found" });
+    if (isForeignKeyConstraintError(err)) {
+      return res.status(409).json({ error: "Item is referenced by a purchase order and cannot be deleted" });
     }
     throw err;
   }

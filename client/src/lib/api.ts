@@ -207,6 +207,7 @@ export interface Invoice {
   id: string
   customerId: string
   customer: CustomerSummary
+  projectId: string | null
   invoiceNumber: string
   amount: string
   status: InvoiceStatus
@@ -218,6 +219,7 @@ export interface Invoice {
 
 export interface InvoiceInput {
   customerId: string
+  projectId?: string | null
   invoiceNumber: string
   amount: number
   status?: InvoiceStatus
@@ -225,9 +227,10 @@ export interface InvoiceInput {
   dueDate?: string
 }
 
-export function listInvoices(params: { status?: InvoiceStatus } = {}) {
+export function listInvoices(params: { status?: InvoiceStatus; projectId?: string } = {}) {
   const query = new URLSearchParams()
   if (params.status) query.set('status', params.status)
+  if (params.projectId) query.set('projectId', params.projectId)
   const qs = query.toString()
   return request<{ invoices: Invoice[] }>(`/api/invoices${qs ? `?${qs}` : ''}`)
 }
@@ -257,6 +260,7 @@ export interface Expense {
   amount: string
   date: string
   supplierId: string | null
+  projectId: string | null
   createdAt: string
 }
 
@@ -265,11 +269,13 @@ export interface ExpenseInput {
   description?: string
   amount: number
   date?: string
+  projectId?: string | null
 }
 
-export function listExpenses(params: { category?: string } = {}) {
+export function listExpenses(params: { category?: string; projectId?: string } = {}) {
   const query = new URLSearchParams()
   if (params.category) query.set('category', params.category)
+  if (params.projectId) query.set('projectId', params.projectId)
   const qs = query.toString()
   return request<{ expenses: Expense[] }>(`/api/expenses${qs ? `?${qs}` : ''}`)
 }
@@ -385,4 +391,176 @@ export function updateContract(id: string, input: Partial<Omit<ContractInput, 'c
 
 export function deleteContract(id: string) {
   return request<null>(`/api/contracts/${id}`, { method: 'DELETE' })
+}
+
+export type EmploymentStatus = 'ACTIVE' | 'ON_LEAVE' | 'TERMINATED'
+
+export interface EmployeeSummary {
+  id: string
+  firstName: string
+  lastName: string
+  position: string | null
+}
+
+export interface Employee extends EmployeeSummary {
+  employeeCode: string
+  email: string | null
+  phone: string | null
+  department: string | null
+  employmentStatus: EmploymentStatus
+  hireDate: string | null
+  userId: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface EmployeeInput {
+  employeeCode: string
+  firstName: string
+  lastName: string
+  email?: string
+  phone?: string
+  position?: string
+  department?: string
+  employmentStatus?: EmploymentStatus
+  hireDate?: string
+}
+
+export function listEmployees(params: { search?: string } = {}) {
+  const query = new URLSearchParams()
+  if (params.search) query.set('search', params.search)
+  const qs = query.toString()
+  return request<{ employees: Employee[] }>(`/api/employees${qs ? `?${qs}` : ''}`)
+}
+
+export function createEmployee(input: EmployeeInput) {
+  return request<{ employee: Employee }>('/api/employees', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function updateEmployee(id: string, input: Partial<EmployeeInput>) {
+  return request<{ employee: Employee }>(`/api/employees/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
+}
+
+export function deleteEmployee(id: string) {
+  return request<null>(`/api/employees/${id}`, { method: 'DELETE' })
+}
+
+export type ProjectStatus =
+  | 'QUOTED'
+  | 'APPROVED'
+  | 'IN_PROGRESS'
+  | 'ON_HOLD'
+  | 'COMPLETED'
+  | 'CLOSED'
+  | 'CANCELLED'
+
+export type ServiceCategory = 'ELECTRICAL' | 'ELV_SECURITY' | 'MECHANICAL' | 'PLUMBING' | 'SAFETY' | 'OTHER'
+
+export interface ProjectSummary {
+  id: string
+  name: string
+}
+
+export interface Project extends ProjectSummary {
+  customerId: string | null
+  customer: CustomerSummary | null
+  contractId: string | null
+  description: string | null
+  serviceCategory: ServiceCategory
+  status: ProjectStatus
+  startDate: string | null
+  endDate: string | null
+  budget: string | null
+  managerId: string | null
+  manager: EmployeeSummary | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ProjectAssignment {
+  id: string
+  projectId: string
+  employeeId: string
+  employee: EmployeeSummary
+  roleOnProject: string | null
+  assignedAt: string
+}
+
+export interface ProjectStatusHistoryEntry {
+  id: string
+  projectId: string
+  fromStatus: ProjectStatus | null
+  toStatus: ProjectStatus
+  note: string | null
+  createdAt: string
+  changedBy: { id: string; name: string | null; email: string }
+}
+
+export interface ProjectDetail extends Project {
+  assignments: ProjectAssignment[]
+  invoices: Invoice[]
+  expenses: Expense[]
+  statusHistory: ProjectStatusHistoryEntry[]
+}
+
+export interface ProjectInput {
+  name: string
+  customerId?: string | null
+  contractId?: string | null
+  description?: string
+  serviceCategory?: ServiceCategory
+  budget?: number | null
+  startDate?: string
+  endDate?: string
+  managerId?: string | null
+}
+
+export function listProjects(params: { search?: string; status?: ProjectStatus } = {}) {
+  const query = new URLSearchParams()
+  if (params.search) query.set('search', params.search)
+  if (params.status) query.set('status', params.status)
+  const qs = query.toString()
+  return request<{ projects: Project[] }>(`/api/projects${qs ? `?${qs}` : ''}`)
+}
+
+export function getProject(id: string) {
+  return request<{ project: ProjectDetail }>(`/api/projects/${id}`)
+}
+
+export function createProject(input: ProjectInput) {
+  return request<{ project: Project }>('/api/projects', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function updateProject(id: string, input: Partial<ProjectInput>) {
+  return request<{ project: Project }>(`/api/projects/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
+}
+
+export function updateProjectStatus(id: string, status: ProjectStatus, note?: string) {
+  return request<{ project: Project }>(`/api/projects/${id}/status`, {
+    method: 'POST',
+    body: JSON.stringify({ status, note }),
+  })
+}
+
+export function assignToProject(id: string, employeeId: string, roleOnProject?: string) {
+  return request<{ assignment: ProjectAssignment }>(`/api/projects/${id}/assignments`, {
+    method: 'POST',
+    body: JSON.stringify({ employeeId, roleOnProject }),
+  })
+}
+
+export function unassignFromProject(id: string, employeeId: string) {
+  return request<null>(`/api/projects/${id}/assignments/${employeeId}`, { method: 'DELETE' })
 }

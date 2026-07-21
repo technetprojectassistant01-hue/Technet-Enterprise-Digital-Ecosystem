@@ -2,6 +2,7 @@ import { Router } from "express";
 import { Prisma } from "../generated/prisma/client";
 import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
+import { isForeignKeyConstraintError, isNotFoundError } from "../lib/prismaErrors";
 
 const router = Router();
 const STATUSES = ["DRAFT", "SENT", "ACCEPTED", "REJECTED", "EXPIRED"] as const;
@@ -54,9 +55,7 @@ router.post("/", requireRole("ADMIN", "MANAGER"), async (req, res) => {
     });
     res.status(201).json({ quotation });
   } catch (err) {
-    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2003") {
-      return res.status(400).json({ error: "Customer not found" });
-    }
+    if (isForeignKeyConstraintError(err)) return res.status(400).json({ error: "Customer not found" });
     throw err;
   }
 });
@@ -86,9 +85,7 @@ router.patch("/:id", requireRole("ADMIN", "MANAGER"), async (req, res) => {
     });
     res.json({ quotation });
   } catch (err) {
-    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") {
-      return res.status(404).json({ error: "Quotation not found" });
-    }
+    if (isNotFoundError(err)) return res.status(404).json({ error: "Quotation not found" });
     throw err;
   }
 });
@@ -99,9 +96,7 @@ router.delete("/:id", requireRole("ADMIN", "MANAGER"), async (req, res) => {
     await prisma.quotation.delete({ where: { id } });
     res.status(204).end();
   } catch (err) {
-    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") {
-      return res.status(404).json({ error: "Quotation not found" });
-    }
+    if (isNotFoundError(err)) return res.status(404).json({ error: "Quotation not found" });
     throw err;
   }
 });

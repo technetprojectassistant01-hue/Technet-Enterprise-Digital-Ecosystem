@@ -8,7 +8,6 @@ import {
   LineChart,
   ShieldCheck,
   ShoppingCart,
-  FolderKanban,
   FileText,
 } from 'lucide-react'
 import Login from './Login'
@@ -24,6 +23,9 @@ import InvoicesPage from './erp/InvoicesPage'
 import ExpensesPage from './erp/ExpensesPage'
 import QuotationsPage from './erp/QuotationsPage'
 import ContractsPage from './erp/ContractsPage'
+import EmployeesPage from './erp/EmployeesPage'
+import ProjectsPage from './erp/ProjectsPage'
+import ProjectDetailPage from './erp/ProjectDetailPage'
 import ModuleStub from './dashboard/ModuleStub'
 import UsersPage from './UsersPage'
 import SettingsPage from './SettingsPage'
@@ -53,11 +55,9 @@ function App() {
               path="procurement"
               element={<ModuleStub title="Procurement" icon={ShoppingCart} />}
             />
-            <Route path="hr" element={<ModuleStub title="HR" icon={Users} />} />
-            <Route
-              path="projects"
-              element={<ModuleStub title="Project Registration" icon={FolderKanban} />}
-            />
+            <Route path="hr" element={<EmployeesPage />} />
+            <Route path="projects" element={<ProjectsPage />} />
+            <Route path="projects/:id" element={<ProjectDetailPage />} />
             <Route
               path="documents"
               element={<ModuleStub title="Document Management" icon={FileText} />}
