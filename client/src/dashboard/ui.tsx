@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { X, type LucideIcon } from 'lucide-react'
 
 export function Panel({
@@ -16,7 +16,7 @@ export function Panel({
 }) {
   return (
     <div
-      className={`rounded-xl border border-ink-700 bg-ink-900 p-6 ${className}`}
+      className={`animate-fade-in-up rounded-xl border border-ink-700 bg-ink-900 p-6 transition-colors duration-150 hover:border-ink-600 ${className}`}
     >
       {title && (
         <div className="mb-4 flex items-center justify-between">
@@ -46,7 +46,7 @@ export function StatCard({
   sub?: string
 }) {
   return (
-    <div className="rounded-xl border border-ink-700 bg-ink-900 p-5">
+    <div className="animate-fade-in-up rounded-xl border border-ink-700 bg-ink-900 p-5 transition-all duration-150 hover:-translate-y-0.5 hover:border-ink-600 hover:shadow-lg hover:shadow-black/20">
       <span className="text-xs font-semibold tracking-widest text-ink-400">{label}</span>
       <div className="mt-2 flex items-baseline justify-between">
         <span className="text-2xl font-semibold text-ink-100">{value}</span>
@@ -75,6 +75,13 @@ export function BarChart({
   height?: number
 }) {
   const max = Math.max(...data.map((d) => d.value), 1)
+  const [grown, setGrown] = useState(false)
+
+  useEffect(() => {
+    setGrown(false)
+    const id = requestAnimationFrame(() => setGrown(true))
+    return () => cancelAnimationFrame(id)
+  }, [data])
 
   return (
     <div>
@@ -82,10 +89,13 @@ export function BarChart({
         {data.map((d, i) => (
           <div
             key={d.label}
-            className={`flex-1 rounded-t-sm ${
+            className={`flex-1 rounded-t-sm transition-[height] duration-500 ease-out ${
               highlight?.(d.label, i) ? 'bg-cyan-accent' : 'bg-ink-600'
             }`}
-            style={{ height: `${(d.value / max) * 100}%` }}
+            style={{
+              height: grown ? `${(d.value / max) * 100}%` : '0%',
+              transitionDelay: `${i * 30}ms`,
+            }}
             title={`${d.label}: ${d.value}`}
           />
         ))}
@@ -112,11 +122,11 @@ export function Modal({
 }) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      className="animate-backdrop-in fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg rounded-xl border border-ink-700 bg-ink-900 p-6 shadow-2xl"
+        className="animate-scale-in w-full max-w-lg rounded-xl border border-ink-700 bg-ink-900 p-6 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
