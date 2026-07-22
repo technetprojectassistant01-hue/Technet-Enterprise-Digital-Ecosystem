@@ -310,6 +310,7 @@ export interface Expense {
   amount: string
   date: string
   supplierId: string | null
+  supplier: SupplierSummary | null
   projectId: string | null
   createdAt: string
 }
@@ -320,6 +321,7 @@ export interface ExpenseInput {
   amount: number
   date?: string
   projectId?: string | null
+  supplierId?: string | null
 }
 
 export function listExpenses(params: { category?: string; projectId?: string } = {}) {
@@ -1170,4 +1172,79 @@ export function interventionSignatureUrl(id: string) {
 
 export function interventionAttachmentUrl(id: string) {
   return `${API_URL}/api/intervention-reports/${id}/attachment`
+}
+
+// ---------- Document Management ----------
+
+export type DocumentCategory = 'CONTRACT' | 'INVOICE' | 'HR' | 'PROJECT' | 'GENERAL'
+
+export const DOCUMENT_CATEGORY_LABELS: Record<DocumentCategory, string> = {
+  CONTRACT: 'Contract',
+  INVOICE: 'Invoice',
+  HR: 'HR',
+  PROJECT: 'Project',
+  GENERAL: 'General',
+}
+
+export interface Document {
+  id: string
+  title: string
+  category: DocumentCategory
+  fileName: string
+  mimeType: string
+  sizeBytes: number
+  projectId: string | null
+  project: { id: string; name: string } | null
+  customerId: string | null
+  customer: CustomerSummary | null
+  uploadedBy: { id: string; name: string | null; email: string }
+  createdAt: string
+}
+
+export interface DocumentInput {
+  title: string
+  category?: DocumentCategory
+  projectId?: string | null
+  customerId?: string | null
+  fileData: string
+  fileName: string
+}
+
+export function listDocuments(params: { category?: DocumentCategory; projectId?: string; customerId?: string; search?: string } = {}) {
+  const query = new URLSearchParams()
+  if (params.category) query.set('category', params.category)
+  if (params.projectId) query.set('projectId', params.projectId)
+  if (params.customerId) query.set('customerId', params.customerId)
+  if (params.search) query.set('search', params.search)
+  const qs = query.toString()
+  return request<{ documents: Document[] }>(`/api/documents${qs ? `?${qs}` : ''}`)
+}
+
+export function createDocument(input: DocumentInput) {
+  return request<{ document: Document }>('/api/documents', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export interface DocumentUpdateInput {
+  title?: string
+  category?: DocumentCategory
+  projectId?: string | null
+  customerId?: string | null
+}
+
+export function updateDocument(id: string, input: DocumentUpdateInput) {
+  return request<{ document: Document }>(`/api/documents/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
+}
+
+export function deleteDocument(id: string) {
+  return request<null>(`/api/documents/${id}`, { method: 'DELETE' })
+}
+
+export function documentDownloadUrl(id: string) {
+  return `${API_URL}/api/documents/${id}/download`
 }

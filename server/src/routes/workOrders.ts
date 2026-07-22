@@ -3,6 +3,7 @@ import { Prisma } from "../generated/prisma/client";
 import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { isForeignKeyConstraintError, isNotFoundError, isUniqueConstraintError } from "../lib/prismaErrors";
+import { formatInterventionNumber } from "../lib/interventionNumber";
 
 const router = Router();
 
@@ -63,7 +64,7 @@ router.get("/:id", async (req, res) => {
         orderBy: { createdAt: "desc" },
         select: {
           id: true,
-          interventionNumber: true,
+          sequenceNumber: true,
           status: true,
           workCompleted: true,
           createdAt: true,
@@ -72,7 +73,15 @@ router.get("/:id", async (req, res) => {
     },
   });
   if (!workOrder) return res.status(404).json({ error: "Work order not found" });
-  res.json({ workOrder });
+  res.json({
+    workOrder: {
+      ...workOrder,
+      interventionReports: workOrder.interventionReports.map((r) => ({
+        ...r,
+        interventionNumber: formatInterventionNumber(r.sequenceNumber),
+      })),
+    },
+  });
 });
 
 router.post("/", requireRole("ADMIN", "MANAGER"), async (req, res) => {

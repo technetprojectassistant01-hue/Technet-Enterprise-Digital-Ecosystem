@@ -19,12 +19,16 @@ router.get("/", async (req, res) => {
     where.projectId = projectId;
   }
 
-  const expenses = await prisma.expense.findMany({ where, orderBy: { date: "desc" } });
+  const expenses = await prisma.expense.findMany({
+    where,
+    include: { supplier: { select: { id: true, name: true } } },
+    orderBy: { date: "desc" },
+  });
   res.json({ expenses });
 });
 
 router.post("/", requireRole("ADMIN", "MANAGER"), async (req, res) => {
-  const { category, description, amount, date, projectId } = req.body ?? {};
+  const { category, description, amount, date, projectId, supplierId } = req.body ?? {};
 
   if (typeof category !== "string" || !category.trim()) {
     return res.status(400).json({ error: "Category is required" });
@@ -41,18 +45,20 @@ router.post("/", requireRole("ADMIN", "MANAGER"), async (req, res) => {
         amount,
         date: date ? new Date(date) : new Date(),
         projectId: typeof projectId === "string" && projectId ? projectId : null,
+        supplierId: typeof supplierId === "string" && supplierId ? supplierId : null,
       },
+      include: { supplier: { select: { id: true, name: true } } },
     });
     res.status(201).json({ expense });
   } catch (err) {
-    if (isForeignKeyConstraintError(err)) return res.status(400).json({ error: "Project not found" });
+    if (isForeignKeyConstraintError(err)) return res.status(400).json({ error: "Project or supplier not found" });
     throw err;
   }
 });
 
 router.patch("/:id", requireRole("ADMIN", "MANAGER"), async (req, res) => {
   const id = req.params.id as string;
-  const { category, description, amount, date, projectId } = req.body ?? {};
+  const { category, description, amount, date, projectId, supplierId } = req.body ?? {};
 
   if (amount !== undefined && (!Number.isFinite(amount) || amount <= 0)) {
     return res.status(400).json({ error: "Amount must be a positive number" });
@@ -64,13 +70,18 @@ router.patch("/:id", requireRole("ADMIN", "MANAGER"), async (req, res) => {
   if (amount !== undefined) data.amount = amount;
   if (date !== undefined) data.date = new Date(date);
   if (projectId !== undefined) data.project = projectId ? { connect: { id: projectId } } : { disconnect: true };
+  if (supplierId !== undefined) data.supplier = supplierId ? { connect: { id: supplierId } } : { disconnect: true };
 
   try {
-    const expense = await prisma.expense.update({ where: { id }, data });
+    const expense = await prisma.expense.update({
+      where: { id },
+      data,
+      include: { supplier: { select: { id: true, name: true } } },
+    });
     res.json({ expense });
   } catch (err) {
     if (isNotFoundError(err)) return res.status(404).json({ error: "Expense not found" });
-    if (isForeignKeyConstraintError(err)) return res.status(400).json({ error: "Project not found" });
+    if (isForeignKeyConstraintError(err)) return res.status(400).json({ error: "Project or supplier not found" });
     throw err;
   }
 });

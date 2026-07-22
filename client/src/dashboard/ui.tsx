@@ -88,7 +88,7 @@ export function BarChart({
       <div className="flex items-end gap-3" style={{ height }}>
         {data.map((d, i) => (
           <div
-            key={d.label}
+            key={i}
             className={`flex-1 rounded-t-sm transition-[height] duration-500 ease-out ${
               highlight?.(d.label, i) ? 'bg-cyan-accent' : 'bg-ink-600'
             }`}

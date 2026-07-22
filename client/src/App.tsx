@@ -6,7 +6,6 @@ import {
   Megaphone,
   LineChart,
   ShieldCheck,
-  FileText,
 } from 'lucide-react'
 import Login from './Login'
 import ForgotPassword from './ForgotPassword'
@@ -32,6 +31,7 @@ import RequisitionsPage from './erp/RequisitionsPage'
 import RequisitionDetailPage from './erp/RequisitionDetailPage'
 import PurchaseOrdersPage from './erp/PurchaseOrdersPage'
 import PurchaseOrderDetailPage from './erp/PurchaseOrderDetailPage'
+import DocumentsPage from './erp/DocumentsPage'
 import OperationsLayout from './operations/OperationsLayout'
 import WorkOrdersPage from './operations/WorkOrdersPage'
 import WorkOrderDetailPage from './operations/WorkOrderDetailPage'
@@ -77,10 +77,7 @@ function App() {
             <Route path="hr" element={<EmployeesPage />} />
             <Route path="projects" element={<ProjectsPage />} />
             <Route path="projects/:id" element={<ProjectDetailPage />} />
-            <Route
-              path="documents"
-              element={<ModuleStub title="Document Management" icon={FileText} />}
-            />
+            <Route path="documents" element={<DocumentsPage />} />
           </Route>
           <Route
             path="maintenance"

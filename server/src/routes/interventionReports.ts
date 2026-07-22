@@ -3,6 +3,7 @@ import { Prisma } from "../generated/prisma/client";
 import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { isForeignKeyConstraintError, isNotFoundError } from "../lib/prismaErrors";
+import { formatInterventionNumber } from "../lib/interventionNumber";
 
 const router = Router();
 
@@ -86,10 +87,6 @@ function decodeDataUrl(input: unknown): { buffer: Buffer; mimeType: string } | n
   if (!match) return null;
   const [, mimeType, data] = match;
   return { buffer: Buffer.from(data, "base64"), mimeType };
-}
-
-function formatInterventionNumber(sequenceNumber: number): string {
-  return `INT-${String(sequenceNumber).padStart(6, "0")}`;
 }
 
 function withInterventionNumber<T extends { sequenceNumber: number }>(report: T) {
