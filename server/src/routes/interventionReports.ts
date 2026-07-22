@@ -2,7 +2,7 @@ import { Router } from "express";
 import { Prisma } from "../generated/prisma/client";
 import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
-import { isForeignKeyConstraintError, isNotFoundError, isUniqueConstraintError } from "../lib/prismaErrors";
+import { isForeignKeyConstraintError, isNotFoundError } from "../lib/prismaErrors";
 
 const router = Router();
 
@@ -35,7 +35,7 @@ const USER_SELECT = { id: true, name: true, email: true };
 // /signature and /attachment endpoints below, so JSON payloads stay small.
 const DETAIL_SELECT = {
   id: true,
-  interventionNumber: true,
+  sequenceNumber: true,
   workOrderId: true,
   date: true,
   contactPerson: true,
@@ -88,6 +88,14 @@ function decodeDataUrl(input: unknown): { buffer: Buffer; mimeType: string } | n
   return { buffer: Buffer.from(data, "base64"), mimeType };
 }
 
+function formatInterventionNumber(sequenceNumber: number): string {
+  return `INT-${String(sequenceNumber).padStart(6, "0")}`;
+}
+
+function withInterventionNumber<T extends { sequenceNumber: number }>(report: T) {
+  return { ...report, interventionNumber: formatInterventionNumber(report.sequenceNumber) };
+}
+
 router.use(requireAuth);
 
 router.get("/", async (req, res) => {
@@ -106,14 +114,14 @@ router.get("/", async (req, res) => {
     select: DETAIL_SELECT,
     orderBy: { date: "desc" },
   });
-  res.json({ interventionReports });
+  res.json({ interventionReports: interventionReports.map(withInterventionNumber) });
 });
 
 router.get("/:id", async (req, res) => {
   const id = req.params.id as string;
   const interventionReport = await prisma.interventionReport.findUnique({ where: { id }, select: DETAIL_SELECT });
   if (!interventionReport) return res.status(404).json({ error: "Intervention report not found" });
-  res.json({ interventionReport });
+  res.json({ interventionReport: withInterventionNumber(interventionReport) });
 });
 
 router.get("/:id/signature", async (req, res) => {
@@ -139,7 +147,6 @@ router.get("/:id/attachment", async (req, res) => {
 router.post("/", requireRole("ADMIN", "MANAGER"), async (req, res) => {
   const {
     workOrderId,
-    interventionNumber,
     date,
     contactPerson,
     contactPhone,
@@ -168,9 +175,6 @@ router.post("/", requireRole("ADMIN", "MANAGER"), async (req, res) => {
 
   if (typeof workOrderId !== "string" || !workOrderId) {
     return res.status(400).json({ error: "workOrderId is required" });
-  }
-  if (typeof interventionNumber !== "string" || !interventionNumber.trim()) {
-    return res.status(400).json({ error: "Intervention number is required" });
   }
   if (!JOB_CATEGORIES.includes(jobCategory)) {
     return res.status(400).json({ error: "Invalid job category" });
@@ -209,7 +213,6 @@ router.post("/", requireRole("ADMIN", "MANAGER"), async (req, res) => {
     const created = await prisma.interventionReport.create({
       data: {
         workOrderId,
-        interventionNumber: interventionNumber.trim(),
         date: date ? new Date(date) : new Date(),
         contactPerson: typeof contactPerson === "string" && contactPerson ? contactPerson : null,
         contactPhone: typeof contactPhone === "string" && contactPhone ? contactPhone : null,
@@ -249,11 +252,8 @@ router.post("/", requireRole("ADMIN", "MANAGER"), async (req, res) => {
       where: { id: created.id },
       select: DETAIL_SELECT,
     });
-    res.status(201).json({ interventionReport });
+    res.status(201).json({ interventionReport: withInterventionNumber(interventionReport!) });
   } catch (err) {
-    if (isUniqueConstraintError(err)) {
-      return res.status(409).json({ error: "An intervention report with that number already exists" });
-    }
     if (isForeignKeyConstraintError(err)) return res.status(400).json({ error: "Work order or technician not found" });
     throw err;
   }
@@ -271,7 +271,7 @@ async function review(id: string, reviewerId: string, toStatus: "APPROVED" | "RE
     data: { status: toStatus, reviewedById: reviewerId, reviewedAt: new Date(), reviewNote: note || null },
   });
   const interventionReport = await prisma.interventionReport.findUnique({ where: { id }, select: DETAIL_SELECT });
-  return { interventionReport };
+  return { interventionReport: withInterventionNumber(interventionReport!) };
 }
 
 router.post("/:id/approve", requireRole("ADMIN"), async (req, res) => {

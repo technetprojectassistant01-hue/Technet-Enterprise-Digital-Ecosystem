@@ -36,7 +36,6 @@ function InterventionReportFormPage() {
   const employees = useEmployees()
 
   const [workOrderId, setWorkOrderId] = useState(preselectedWorkOrderId)
-  const [interventionNumber, setInterventionNumber] = useState('')
   const [contactPerson, setContactPerson] = useState('')
   const [contactPhone, setContactPhone] = useState('')
   const [contactEmail, setContactEmail] = useState('')
@@ -98,10 +97,6 @@ function InterventionReportFormPage() {
       setFormError('Select a work order')
       return
     }
-    if (!interventionNumber.trim()) {
-      setFormError('Intervention number is required')
-      return
-    }
     if (!natureOfIntervention.trim()) {
       setFormError('Nature of intervention is required')
       return
@@ -128,7 +123,6 @@ function InterventionReportFormPage() {
 
       const { interventionReport } = await api.createInterventionReport({
         workOrderId,
-        interventionNumber,
         contactPerson: contactPerson || undefined,
         contactPhone: contactPhone || undefined,
         contactEmail: contactEmail || undefined,
@@ -179,27 +173,17 @@ function InterventionReportFormPage() {
       <form onSubmit={handleSubmit} className="flex flex-col gap-6">
         <Panel title="Work Order & Contact">
           <div className="flex flex-col gap-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className={labelClass}>WORK ORDER</label>
-                <select value={workOrderId} onChange={(e) => setWorkOrderId(e.target.value)} className={`mt-2 ${inputClass}`}>
-                  <option value="">Select a work order</option>
-                  {workOrders.map((wo) => (
-                    <option key={wo.id} value={wo.id}>
-                      {wo.workOrderNumber} — {wo.title}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className={labelClass}>INTERVENTION NUMBER</label>
-                <input
-                  value={interventionNumber}
-                  onChange={(e) => setInterventionNumber(e.target.value)}
-                  required
-                  className={`mt-2 ${inputClass}`}
-                />
-              </div>
+            <div>
+              <label className={labelClass}>WORK ORDER</label>
+              <select value={workOrderId} onChange={(e) => setWorkOrderId(e.target.value)} className={`mt-2 ${inputClass}`}>
+                <option value="">Select a work order</option>
+                {workOrders.map((wo) => (
+                  <option key={wo.id} value={wo.id}>
+                    {wo.workOrderNumber} — {wo.title}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-ink-500">The intervention number is assigned automatically on submit.</p>
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div>

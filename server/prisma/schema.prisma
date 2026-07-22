@@ -562,7 +562,7 @@ model DailyWorkReportWorkOrder {
 
 model InterventionReport {
   id                   String          @id @default(uuid())
-  interventionNumber   String          @unique
+  sequenceNumber       Int             @unique @default(autoincrement())
   workOrderId          String
   workOrder            WorkOrder       @relation(fields: [workOrderId], references: [id])
   date                 DateTime        @default(now())

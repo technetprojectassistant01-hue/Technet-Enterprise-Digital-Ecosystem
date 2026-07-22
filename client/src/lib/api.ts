@@ -1101,7 +1101,6 @@ export interface InterventionReport {
 
 export interface InterventionReportInput {
   workOrderId: string
-  interventionNumber: string
   date?: string
   contactPerson?: string
   contactPhone?: string
