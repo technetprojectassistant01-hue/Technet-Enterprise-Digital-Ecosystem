@@ -16,9 +16,19 @@ interface FormState {
   phone: string
   company: string
   address: string
+  vatNumber: string
+  taxNumber: string
 }
 
-const EMPTY_FORM: FormState = { name: '', email: '', phone: '', company: '', address: '' }
+const EMPTY_FORM: FormState = {
+  name: '',
+  email: '',
+  phone: '',
+  company: '',
+  address: '',
+  vatNumber: '',
+  taxNumber: '',
+}
 
 function toFormState(c: Customer): FormState {
   return {
@@ -27,6 +37,8 @@ function toFormState(c: Customer): FormState {
     phone: c.phone || '',
     company: c.company || '',
     address: c.address || '',
+    vatNumber: c.vatNumber || '',
+    taxNumber: c.taxNumber || '',
   }
 }
 
@@ -94,6 +106,8 @@ function CustomersPage() {
         phone: form.phone || undefined,
         company: form.company || undefined,
         address: form.address || undefined,
+        vatNumber: form.vatNumber || undefined,
+        taxNumber: form.taxNumber || undefined,
       }
       if (editing) {
         await api.updateCustomer(editing.id, input)
@@ -241,6 +255,22 @@ function CustomersPage() {
                 <input
                   value={form.address}
                   onChange={(e) => setForm({ ...form, address: e.target.value })}
+                  className={`mt-2 ${inputClass}`}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>VAT NUMBER</label>
+                <input
+                  value={form.vatNumber}
+                  onChange={(e) => setForm({ ...form, vatNumber: e.target.value })}
+                  className={`mt-2 ${inputClass}`}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>BRN</label>
+                <input
+                  value={form.taxNumber}
+                  onChange={(e) => setForm({ ...form, taxNumber: e.target.value })}
                   className={`mt-2 ${inputClass}`}
                 />
               </div>

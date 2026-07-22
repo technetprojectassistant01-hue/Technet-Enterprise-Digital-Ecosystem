@@ -17,6 +17,7 @@ import * as api from './lib/api'
 import type { InventoryItem, Customer, Invoice, Expense, Quotation, Contract } from './lib/api'
 import { Panel, StatCard, BarChart, Badge, EmptyState, TableSkeleton } from './dashboard/ui'
 import { contractStatusTone } from './erp/statusTones'
+import { formatMoney } from './lib/format'
 
 const PIPELINE_STEPS = [
   { label: 'CUSTOMERS', icon: UserPlus },
@@ -57,12 +58,12 @@ function TechnetErpPage() {
   const lowStockItems = (inventory ?? []).filter((i) => i.quantity <= i.minStockLevel)
 
   const paidInvoices = (invoices ?? []).filter((i) => i.status === 'PAID')
-  const revenue = paidInvoices.reduce((sum, i) => sum + Number(i.amount), 0)
+  const revenue = paidInvoices.reduce((sum, i) => sum + Number(i.total), 0)
   const totalExpenses = (expenses ?? []).reduce((sum, e) => sum + Number(e.amount), 0)
   const profit = revenue - totalExpenses
   const outstanding = (invoices ?? [])
     .filter((i) => i.status === 'SENT' || i.status === 'OVERDUE')
-    .reduce((sum, i) => sum + Number(i.amount), 0)
+    .reduce((sum, i) => sum + Number(i.total), 0)
 
   const now = new Date()
   const monthlyRevenue = paidInvoices
@@ -70,7 +71,7 @@ function TechnetErpPage() {
       const d = new Date(i.paidAt || i.issueDate)
       return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
     })
-    .reduce((sum, i) => sum + Number(i.amount), 0)
+    .reduce((sum, i) => sum + Number(i.total), 0)
 
   const revenueTrend = Array.from({ length: 10 }).map((_, i) => {
     const d = new Date(now.getFullYear(), now.getMonth() - (9 - i), 1)
@@ -79,7 +80,7 @@ function TechnetErpPage() {
         const pd = new Date(inv.paidAt || inv.issueDate)
         return pd.getMonth() === d.getMonth() && pd.getFullYear() === d.getFullYear()
       })
-      .reduce((sum, inv) => sum + Number(inv.amount), 0)
+      .reduce((sum, inv) => sum + Number(inv.total), 0)
     return { label: MONTHS[d.getMonth()], value: total }
   })
 
@@ -106,7 +107,7 @@ function TechnetErpPage() {
       icon: Receipt,
       tone: 'accent' as const,
       title: i.status === 'PAID' ? `Invoice ${i.invoiceNumber} Paid` : `Invoice ${i.invoiceNumber} Created`,
-      detail: `$${Number(i.amount).toLocaleString()} · ${timeAgo(i.createdAt)}`,
+      detail: `${formatMoney(i.total)} · ${timeAgo(i.createdAt)}`,
       at: i.createdAt,
     })),
     ...(quotations ?? []).map((q) => ({
@@ -165,7 +166,7 @@ function TechnetErpPage() {
         <Link to="/dashboard/erp/finance/invoices" className="block">
           <StatCard
             label="MONTHLY REVENUE"
-            value={invoices === null ? '—' : `$${monthlyRevenue.toLocaleString()}`}
+            value={invoices === null ? '—' : formatMoney(monthlyRevenue)}
           />
         </Link>
         <Link to="/dashboard/erp/inventory" className="block">
@@ -197,21 +198,21 @@ function TechnetErpPage() {
           <div className="flex flex-col gap-3">
             <div className="rounded-lg border-l-2 border-cyan-accent bg-ink-800 px-4 py-3">
               <div className="text-[11px] font-semibold tracking-widest text-ink-400">REVENUE</div>
-              <div className="mt-1 text-lg font-semibold text-cyan-accent">${revenue.toLocaleString()}</div>
+              <div className="mt-1 text-lg font-semibold text-cyan-accent">{formatMoney(revenue)}</div>
             </div>
             <div className="rounded-lg border-l-2 border-ink-600 bg-ink-800 px-4 py-3">
               <div className="text-[11px] font-semibold tracking-widest text-ink-400">EXPENSES</div>
-              <div className="mt-1 text-lg font-semibold text-ink-100">${totalExpenses.toLocaleString()}</div>
+              <div className="mt-1 text-lg font-semibold text-ink-100">{formatMoney(totalExpenses)}</div>
             </div>
             <div className="rounded-lg border-l-2 border-cyan-accent bg-ink-800 px-4 py-3">
               <div className="text-[11px] font-semibold tracking-widest text-ink-400">PROFIT</div>
-              <div className="mt-1 text-lg font-semibold text-cyan-accent">${profit.toLocaleString()}</div>
+              <div className="mt-1 text-lg font-semibold text-cyan-accent">{formatMoney(profit)}</div>
             </div>
             <div className="rounded-lg border-l-2 border-red-400/70 bg-ink-800 px-4 py-3">
               <div className="text-[11px] font-semibold tracking-widest text-ink-400">
                 OUTSTANDING INVOICES
               </div>
-              <div className="mt-1 text-lg font-semibold text-ink-100">${outstanding.toLocaleString()}</div>
+              <div className="mt-1 text-lg font-semibold text-ink-100">{formatMoney(outstanding)}</div>
             </div>
           </div>
           <Link
@@ -345,7 +346,7 @@ function TechnetErpPage() {
                           {label}
                         </td>
                         <td className="py-3 text-ink-300">{c.service}</td>
-                        <td className="py-3 font-medium text-ink-100">${Number(c.value).toLocaleString()}</td>
+                        <td className="py-3 font-medium text-ink-100">{formatMoney(c.value)}</td>
                         <td className="py-3">
                           <Badge tone={contractStatusTone[c.status]}>{c.status.replace('_', ' ')}</Badge>
                         </td>

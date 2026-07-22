@@ -8,6 +8,7 @@ import { useToast } from '../dashboard/ToastContext'
 import { useCustomers } from './useCustomers'
 import { useEmployees } from './useEmployees'
 import { projectStatusTone } from './statusTones'
+import { formatMoney } from '../lib/format'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -173,7 +174,7 @@ function ProjectsPage() {
                       {p.manager ? `${p.manager.firstName} ${p.manager.lastName}` : '—'}
                     </td>
                     <td className="px-3 py-3 text-ink-100">
-                      {p.budget ? `$${Number(p.budget).toLocaleString()}` : '—'}
+                      {p.budget ? formatMoney(p.budget) : '—'}
                     </td>
                     <td className="px-3 py-3">
                       <Badge tone={projectStatusTone[p.status as ProjectStatus]}>{p.status.replace('_', ' ')}</Badge>

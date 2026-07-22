@@ -8,6 +8,7 @@ import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
 import { useEmployees } from './useEmployees'
 import { projectStatusTone, projectStatusTransitions, invoiceStatusTone } from './statusTones'
+import { formatMoney } from '../lib/format'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -117,7 +118,7 @@ function ProjectDetailPage() {
     return <EmptyState icon={X} message={error || 'Project not found'} />
   }
 
-  const invoiced = project.invoices.reduce((sum, i) => sum + Number(i.amount), 0)
+  const invoiced = project.invoices.reduce((sum, i) => sum + Number(i.total), 0)
   const expensed = project.expenses.reduce((sum, e) => sum + Number(e.amount), 0)
   const budget = project.budget ? Number(project.budget) : null
   const variance = budget !== null ? budget - expensed : null
@@ -163,12 +164,12 @@ function ProjectDetailPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="BUDGET" value={budget !== null ? `$${budget.toLocaleString()}` : '—'} />
-        <StatCard label="INVOICED" value={`$${invoiced.toLocaleString()}`} />
-        <StatCard label="EXPENSED" value={`$${expensed.toLocaleString()}`} />
+        <StatCard label="BUDGET" value={budget !== null ? formatMoney(budget) : '—'} />
+        <StatCard label="INVOICED" value={formatMoney(invoiced)} />
+        <StatCard label="EXPENSED" value={formatMoney(expensed)} />
         <StatCard
           label="VARIANCE"
-          value={variance !== null ? `$${variance.toLocaleString()}` : '—'}
+          value={variance !== null ? formatMoney(variance) : '—'}
           deltaTone={variance !== null && variance < 0 ? 'warning' : 'positive'}
         />
       </div>
@@ -230,7 +231,7 @@ function ProjectDetailPage() {
                 <div key={inv.id} className="flex items-center justify-between rounded-lg bg-ink-800 px-4 py-2.5">
                   <span className="text-sm text-ink-100">{inv.invoiceNumber}</span>
                   <div className="flex items-center gap-3">
-                    <span className="text-sm text-ink-300">${Number(inv.amount).toLocaleString()}</span>
+                    <span className="text-sm text-ink-300">{formatMoney(inv.total)}</span>
                     <Badge tone={invoiceStatusTone[inv.status]}>{inv.status}</Badge>
                   </div>
                 </div>
@@ -255,7 +256,7 @@ function ProjectDetailPage() {
               {project.expenses.map((exp) => (
                 <div key={exp.id} className="flex items-center justify-between rounded-lg bg-ink-800 px-4 py-2.5">
                   <span className="text-sm text-ink-100">{exp.category}</span>
-                  <span className="text-sm text-ink-300">${Number(exp.amount).toLocaleString()}</span>
+                  <span className="text-sm text-ink-300">{formatMoney(exp.amount)}</span>
                 </div>
               ))}
             </div>

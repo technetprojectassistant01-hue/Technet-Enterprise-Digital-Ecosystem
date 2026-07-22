@@ -6,6 +6,7 @@ import { Panel, StatCard, Modal, EmptyState, TableSkeleton } from '../dashboard/
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
 import { useProjects } from './useProjects'
+import { formatMoney } from '../lib/format'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -141,7 +142,7 @@ function ExpensesPage() {
         </button>
       </div>
 
-      <StatCard label="TOTAL EXPENSES" value={`$${totalExpenses.toLocaleString()}`} />
+      <StatCard label="TOTAL EXPENSES" value={formatMoney(totalExpenses)} />
 
       <Panel>
         {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
@@ -171,7 +172,7 @@ function ExpensesPage() {
                     <td className="px-3 py-3 text-ink-300">
                       {projects.find((p) => p.id === exp.projectId)?.name || '—'}
                     </td>
-                    <td className="px-3 py-3 text-ink-100">${Number(exp.amount).toLocaleString()}</td>
+                    <td className="px-3 py-3 text-ink-100">{formatMoney(exp.amount)}</td>
                     <td className="px-3 py-3 text-ink-400">{exp.date.slice(0, 10)}</td>
                     <td className="px-3 py-3">
                       <div className="flex items-center justify-end gap-3 text-ink-400">

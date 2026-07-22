@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Plus, Pencil, Trash2, FileSignature } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Plus, Trash2, FileSignature } from 'lucide-react'
 import * as api from '../lib/api'
 import type { Quotation, QuotationStatus } from '../lib/api'
 import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
@@ -7,22 +8,12 @@ import { useCustomers } from './useCustomers'
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
 import { quotationStatusTone as statusTone } from './statusTones'
+import { formatMoney } from '../lib/format'
+import SalesLineItemsEditor, { EMPTY_SALES_LINE_ITEM, type SalesLineItemRow } from './SalesLineItemsEditor'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
 const labelClass = 'text-xs font-semibold tracking-widest text-ink-400'
-
-const STATUSES: QuotationStatus[] = ['DRAFT', 'SENT', 'ACCEPTED', 'REJECTED', 'EXPIRED']
-
-interface FormState {
-  customerId: string
-  title: string
-  amount: string
-  status: QuotationStatus
-  expiresAt: string
-}
-
-const EMPTY_FORM: FormState = { customerId: '', title: '', amount: '', status: 'DRAFT', expiresAt: '' }
 
 function QuotationsPage() {
   const toast = useToast()
@@ -32,9 +23,14 @@ function QuotationsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const [editing, setEditing] = useState<Quotation | null>(null)
   const [showCreate, setShowCreate] = useState(false)
-  const [form, setForm] = useState<FormState>(EMPTY_FORM)
+  const [customerId, setCustomerId] = useState('')
+  const [quotationNumber, setQuotationNumber] = useState('')
+  const [title, setTitle] = useState('')
+  const [status, setStatus] = useState<QuotationStatus>('DRAFT')
+  const [vatRate, setVatRate] = useState('15')
+  const [expiresAt, setExpiresAt] = useState('')
+  const [items, setItems] = useState<SalesLineItemRow[]>([{ ...EMPTY_SALES_LINE_ITEM }])
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -50,71 +46,58 @@ function QuotationsPage() {
   useEffect(load, [])
 
   function openCreate() {
-    setForm({ ...EMPTY_FORM, customerId: customers[0]?.id || '' })
+    setCustomerId(customers[0]?.id || '')
+    setQuotationNumber('')
+    setTitle('')
+    setStatus('DRAFT')
+    setVatRate('15')
+    setExpiresAt('')
+    setItems([{ ...EMPTY_SALES_LINE_ITEM }])
     setFormError(null)
-    setEditing(null)
     setShowCreate(true)
   }
 
-  function openEdit(q: Quotation) {
-    setForm({
-      customerId: q.customerId,
-      title: q.title,
-      amount: q.amount,
-      status: q.status,
-      expiresAt: q.expiresAt ? q.expiresAt.slice(0, 10) : '',
-    })
-    setFormError(null)
-    setEditing(q)
-    setShowCreate(false)
-  }
-
-  function closeForm() {
-    setShowCreate(false)
-    setEditing(null)
-  }
+  const liveSubtotal = items.reduce((sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0), 0)
+  const liveVatAmount = liveSubtotal * ((Number(vatRate) || 0) / 100)
+  const liveTotal = liveSubtotal + liveVatAmount
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setFormError(null)
 
-    const amount = Number(form.amount)
-    if (!form.title.trim()) {
-      setFormError('Title is required')
-      return
-    }
-    if (!amount || amount <= 0) {
-      setFormError('Amount must be a positive number')
-      return
-    }
-    if (!editing && !form.customerId) {
+    if (!customerId) {
       setFormError('Select a customer')
+      return
+    }
+    if (!quotationNumber.trim()) {
+      setFormError('Quotation number is required')
+      return
+    }
+    if (!title.trim()) {
+      setFormError('Title is required')
       return
     }
 
     setSubmitting(true)
     try {
-      if (editing) {
-        await api.updateQuotation(editing.id, {
-          title: form.title,
-          amount,
-          status: form.status,
-          expiresAt: form.expiresAt || undefined,
-        })
-      } else {
-        await api.createQuotation({
-          customerId: form.customerId,
-          title: form.title,
-          amount,
-          status: form.status,
-          expiresAt: form.expiresAt || undefined,
-        })
-      }
-      toast.success(editing ? 'Quotation updated' : 'Quotation created')
-      closeForm()
+      await api.createQuotation({
+        customerId,
+        quotationNumber,
+        title,
+        status,
+        vatRate: Number(vatRate) || 0,
+        expiresAt: expiresAt || undefined,
+        items: items.map((item) => ({
+          description: item.description,
+          quantity: Number(item.quantity),
+          unitPrice: Number(item.unitPrice),
+        })),
+      })
+      toast.success('Quotation created')
+      setShowCreate(false)
       load()
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Failed to save quotation')
+      setFormError(err instanceof Error ? err.message : 'Failed to create quotation')
     } finally {
       setSubmitting(false)
     }
@@ -175,9 +158,10 @@ function QuotationsPage() {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
+                  <th className="px-3 py-3 font-semibold">QUOTATION #</th>
                   <th className="px-3 py-3 font-semibold">TITLE</th>
                   <th className="px-3 py-3 font-semibold">CUSTOMER</th>
-                  <th className="px-3 py-3 font-semibold">AMOUNT</th>
+                  <th className="px-3 py-3 font-semibold">TOTAL</th>
                   <th className="px-3 py-3 font-semibold">STATUS</th>
                   <th className="px-3 py-3" />
                 </tr>
@@ -185,17 +169,22 @@ function QuotationsPage() {
               <tbody>
                 {quotations.map((q) => (
                   <tr key={q.id} className="border-b border-ink-800 last:border-0">
-                    <td className="px-3 py-3 font-medium text-ink-100">{q.title}</td>
+                    <td className="px-3 py-3">
+                      <Link
+                        to={`/dashboard/erp/finance/quotations/${q.id}`}
+                        className="font-medium text-ink-100 hover:text-cyan-accent hover:underline"
+                      >
+                        {q.quotationNumber}
+                      </Link>
+                    </td>
+                    <td className="px-3 py-3 text-ink-300">{q.title}</td>
                     <td className="px-3 py-3 text-ink-300">{q.customer.company || q.customer.name}</td>
-                    <td className="px-3 py-3 text-ink-100">${Number(q.amount).toLocaleString()}</td>
+                    <td className="px-3 py-3 text-ink-100">{formatMoney(q.total)}</td>
                     <td className="px-3 py-3">
                       <Badge tone={statusTone[q.status]}>{q.status}</Badge>
                     </td>
                     <td className="px-3 py-3">
                       <div className="flex items-center justify-end gap-3 text-ink-400">
-                        <button type="button" onClick={() => openEdit(q)} aria-label="Edit quotation" className="hover:text-ink-100">
-                          <Pencil className="h-4 w-4" />
-                        </button>
                         <button type="button" onClick={() => handleDelete(q)} aria-label="Delete quotation" className="hover:text-red-400">
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -209,17 +198,14 @@ function QuotationsPage() {
         )}
       </Panel>
 
-      {(showCreate || editing) && (
-        <Modal title={editing ? 'Edit Quotation' : 'New Quotation'} onClose={closeForm}>
+      {showCreate && (
+        <Modal title="New Quotation" onClose={() => setShowCreate(false)}>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            {!editing && (
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={labelClass}>CUSTOMER</label>
-                <select
-                  value={form.customerId}
-                  onChange={(e) => setForm({ ...form, customerId: e.target.value })}
-                  className={`mt-2 ${inputClass}`}
-                >
+                <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className={`mt-2 ${inputClass}`}>
+                  <option value="">Select a customer</option>
                   {customers.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.company || c.name}
@@ -227,52 +213,72 @@ function QuotationsPage() {
                   ))}
                 </select>
               </div>
-            )}
-            <div>
-              <label className={labelClass}>TITLE</label>
-              <input
-                value={form.title}
-                onChange={(e) => setForm({ ...form, title: e.target.value })}
-                required
-                className={`mt-2 ${inputClass}`}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className={labelClass}>AMOUNT</label>
+                <label className={labelClass}>QUOTATION NUMBER</label>
                 <input
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={form.amount}
-                  onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                  value={quotationNumber}
+                  onChange={(e) => setQuotationNumber(e.target.value)}
                   required
                   className={`mt-2 ${inputClass}`}
                 />
               </div>
+            </div>
+            <div>
+              <label className={labelClass}>TITLE</label>
+              <input value={title} onChange={(e) => setTitle(e.target.value)} required className={`mt-2 ${inputClass}`} />
+            </div>
+            <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className={labelClass}>STATUS</label>
                 <select
-                  value={form.status}
-                  onChange={(e) => setForm({ ...form, status: e.target.value as QuotationStatus })}
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value as QuotationStatus)}
                   className={`mt-2 ${inputClass}`}
                 >
-                  {STATUSES.map((s) => (
+                  {(['DRAFT', 'SENT', 'ACCEPTED', 'REJECTED', 'EXPIRED'] as QuotationStatus[]).map((s) => (
                     <option key={s} value={s}>
                       {s}
                     </option>
                   ))}
                 </select>
               </div>
+              <div>
+                <label className={labelClass}>VAT %</label>
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={vatRate}
+                  onChange={(e) => setVatRate(e.target.value)}
+                  className={`mt-2 ${inputClass}`}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>EXPIRES</label>
+                <input
+                  type="date"
+                  value={expiresAt}
+                  onChange={(e) => setExpiresAt(e.target.value)}
+                  className={`mt-2 ${inputClass}`}
+                />
+              </div>
             </div>
-            <div>
-              <label className={labelClass}>EXPIRES</label>
-              <input
-                type="date"
-                value={form.expiresAt}
-                onChange={(e) => setForm({ ...form, expiresAt: e.target.value })}
-                className={`mt-2 ${inputClass}`}
-              />
+
+            <SalesLineItemsEditor items={items} onChange={setItems} />
+
+            <div className="flex flex-col gap-1 rounded-md bg-ink-800 px-4 py-3 text-sm">
+              <div className="flex items-center justify-between text-ink-300">
+                <span>Subtotal</span>
+                <span>{formatMoney(liveSubtotal)}</span>
+              </div>
+              <div className="flex items-center justify-between text-ink-300">
+                <span>VAT ({vatRate || 0}%)</span>
+                <span>{formatMoney(liveVatAmount)}</span>
+              </div>
+              <div className="flex items-center justify-between font-semibold text-cyan-accent">
+                <span>Total</span>
+                <span>{formatMoney(liveTotal)}</span>
+              </div>
             </div>
 
             {formError && <p className="text-sm text-red-400">{formError}</p>}
@@ -282,7 +288,7 @@ function QuotationsPage() {
               disabled={submitting}
               className="rounded-md bg-cyan-accent py-2.5 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark disabled:cursor-not-allowed disabled:opacity-70"
             >
-              {submitting ? 'Saving…' : editing ? 'Save Changes' : 'Create Quotation'}
+              {submitting ? 'Creating…' : 'Create Quotation'}
             </button>
           </form>
         </Modal>

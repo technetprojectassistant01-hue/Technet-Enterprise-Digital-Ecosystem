@@ -7,6 +7,7 @@ import { useCustomers } from './useCustomers'
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
 import { contractStatusTone as statusTone } from './statusTones'
+import { formatMoney } from '../lib/format'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -172,7 +173,7 @@ function ContractsPage() {
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
         <StatCard label="ACTIVE CONTRACTS" value={contracts.filter((c) => c.status !== 'COMPLETED' && c.status !== 'CANCELLED').length} />
-        <StatCard label="ACTIVE VALUE" value={`$${activeValue.toLocaleString()}`} />
+        <StatCard label="ACTIVE VALUE" value={formatMoney(activeValue)} />
       </div>
 
       <Panel>
@@ -199,7 +200,7 @@ function ContractsPage() {
                   <tr key={c.id} className="border-b border-ink-800 last:border-0">
                     <td className="px-3 py-3 font-medium text-ink-100">{c.customer.company || c.customer.name}</td>
                     <td className="px-3 py-3 text-ink-300">{c.service}</td>
-                    <td className="px-3 py-3 text-ink-100">${Number(c.value).toLocaleString()}</td>
+                    <td className="px-3 py-3 text-ink-100">{formatMoney(c.value)}</td>
                     <td className="px-3 py-3">
                       <Badge tone={statusTone[c.status]}>{c.status.replace('_', ' ')}</Badge>
                     </td>

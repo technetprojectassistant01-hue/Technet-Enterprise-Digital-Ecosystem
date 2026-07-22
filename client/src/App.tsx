@@ -19,8 +19,10 @@ import InventoryPage from './erp/InventoryPage'
 import FinanceLayout from './erp/FinanceLayout'
 import CustomersPage from './erp/CustomersPage'
 import InvoicesPage from './erp/InvoicesPage'
+import InvoiceDetailPage from './erp/InvoiceDetailPage'
 import ExpensesPage from './erp/ExpensesPage'
 import QuotationsPage from './erp/QuotationsPage'
+import QuotationDetailPage from './erp/QuotationDetailPage'
 import ContractsPage from './erp/ContractsPage'
 import EmployeesPage from './erp/EmployeesPage'
 import ProjectsPage from './erp/ProjectsPage'
@@ -52,8 +54,10 @@ function App() {
               <Route index element={<Navigate to="customers" replace />} />
               <Route path="customers" element={<CustomersPage />} />
               <Route path="invoices" element={<InvoicesPage />} />
+              <Route path="invoices/:id" element={<InvoiceDetailPage />} />
               <Route path="expenses" element={<ExpensesPage />} />
               <Route path="quotations" element={<QuotationsPage />} />
+              <Route path="quotations/:id" element={<QuotationDetailPage />} />
               <Route path="contracts" element={<ContractsPage />} />
             </Route>
             <Route path="procurement" element={<ProcurementLayout />}>

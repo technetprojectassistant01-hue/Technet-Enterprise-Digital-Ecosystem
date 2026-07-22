@@ -164,6 +164,8 @@ export interface Customer extends CustomerSummary {
   email: string | null
   phone: string | null
   address: string | null
+  vatNumber: string | null
+  taxNumber: string | null
   createdAt: string
   updatedAt: string
 }
@@ -174,6 +176,8 @@ export interface CustomerInput {
   phone?: string
   company?: string
   address?: string
+  vatNumber?: string
+  taxNumber?: string
 }
 
 export function listCustomers(params: { search?: string } = {}) {
@@ -203,28 +207,58 @@ export function deleteCustomer(id: string) {
 
 export type InvoiceStatus = 'DRAFT' | 'SENT' | 'PAID' | 'OVERDUE' | 'CANCELLED'
 
+export interface SalesDocumentCustomer extends CustomerSummary {
+  address: string | null
+  email: string | null
+  phone: string | null
+  vatNumber: string | null
+  taxNumber: string | null
+}
+
+export interface SalesLineItem {
+  id: string
+  description: string
+  quantity: number
+  unitPrice: string
+}
+
 export interface Invoice {
   id: string
   customerId: string
-  customer: CustomerSummary
+  customer: SalesDocumentCustomer
   projectId: string | null
   invoiceNumber: string
-  amount: string
   status: InvoiceStatus
+  vatRate: string
+  subtotal: string
+  vatAmount: string
+  total: string
+  poReference: string | null
+  terms: string | null
+  items: SalesLineItem[]
   issueDate: string
   dueDate: string | null
   paidAt: string | null
   createdAt: string
 }
 
+export interface SalesLineItemInput {
+  description: string
+  quantity: number
+  unitPrice: number
+}
+
 export interface InvoiceInput {
   customerId: string
   projectId?: string | null
   invoiceNumber: string
-  amount: number
+  vatRate?: number
   status?: InvoiceStatus
   issueDate?: string
   dueDate?: string
+  poReference?: string
+  terms?: string
+  items: SalesLineItemInput[]
 }
 
 export function listInvoices(params: { status?: InvoiceStatus; projectId?: string } = {}) {
@@ -235,6 +269,10 @@ export function listInvoices(params: { status?: InvoiceStatus; projectId?: strin
   return request<{ invoices: Invoice[] }>(`/api/invoices${qs ? `?${qs}` : ''}`)
 }
 
+export function getInvoice(id: string) {
+  return request<{ invoice: Invoice }>(`/api/invoices/${id}`)
+}
+
 export function createInvoice(input: InvoiceInput) {
   return request<{ invoice: Invoice }>('/api/invoices', {
     method: 'POST',
@@ -242,7 +280,15 @@ export function createInvoice(input: InvoiceInput) {
   })
 }
 
-export function updateInvoice(id: string, input: Partial<Omit<InvoiceInput, 'customerId'>>) {
+export interface InvoiceUpdateInput {
+  status?: InvoiceStatus
+  dueDate?: string | null
+  projectId?: string | null
+  poReference?: string | null
+  terms?: string | null
+}
+
+export function updateInvoice(id: string, input: InvoiceUpdateInput) {
   return request<{ invoice: Invoice }>(`/api/invoices/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(input),
@@ -251,6 +297,10 @@ export function updateInvoice(id: string, input: Partial<Omit<InvoiceInput, 'cus
 
 export function deleteInvoice(id: string) {
   return request<null>(`/api/invoices/${id}`, { method: 'DELETE' })
+}
+
+export function invoicePdfUrl(id: string) {
+  return `${API_URL}/api/invoices/${id}/pdf`
 }
 
 export interface Expense {
@@ -303,10 +353,15 @@ export type QuotationStatus = 'DRAFT' | 'SENT' | 'ACCEPTED' | 'REJECTED' | 'EXPI
 export interface Quotation {
   id: string
   customerId: string
-  customer: CustomerSummary
+  customer: SalesDocumentCustomer
+  quotationNumber: string
   title: string
-  amount: string
   status: QuotationStatus
+  vatRate: string
+  subtotal: string
+  vatAmount: string
+  total: string
+  items: SalesLineItem[]
   issuedAt: string
   expiresAt: string | null
   createdAt: string
@@ -314,10 +369,12 @@ export interface Quotation {
 
 export interface QuotationInput {
   customerId: string
+  quotationNumber: string
   title: string
-  amount: number
+  vatRate?: number
   status?: QuotationStatus
   expiresAt?: string
+  items: SalesLineItemInput[]
 }
 
 export function listQuotations(params: { status?: QuotationStatus } = {}) {
@@ -327,6 +384,10 @@ export function listQuotations(params: { status?: QuotationStatus } = {}) {
   return request<{ quotations: Quotation[] }>(`/api/quotations${qs ? `?${qs}` : ''}`)
 }
 
+export function getQuotation(id: string) {
+  return request<{ quotation: Quotation }>(`/api/quotations/${id}`)
+}
+
 export function createQuotation(input: QuotationInput) {
   return request<{ quotation: Quotation }>('/api/quotations', {
     method: 'POST',
@@ -334,7 +395,13 @@ export function createQuotation(input: QuotationInput) {
   })
 }
 
-export function updateQuotation(id: string, input: Partial<Omit<QuotationInput, 'customerId'>>) {
+export interface QuotationUpdateInput {
+  title?: string
+  status?: QuotationStatus
+  expiresAt?: string | null
+}
+
+export function updateQuotation(id: string, input: QuotationUpdateInput) {
   return request<{ quotation: Quotation }>(`/api/quotations/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(input),
@@ -343,6 +410,10 @@ export function updateQuotation(id: string, input: Partial<Omit<QuotationInput, 
 
 export function deleteQuotation(id: string) {
   return request<null>(`/api/quotations/${id}`, { method: 'DELETE' })
+}
+
+export function quotationPdfUrl(id: string) {
+  return `${API_URL}/api/quotations/${id}/pdf`
 }
 
 export type ContractStatus = 'PLANNING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'

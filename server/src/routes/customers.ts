@@ -43,7 +43,7 @@ router.get("/:id", async (req, res) => {
 });
 
 router.post("/", requireRole("ADMIN", "MANAGER"), async (req, res) => {
-  const { name, email, phone, company, address } = req.body ?? {};
+  const { name, email, phone, company, address, vatNumber, taxNumber } = req.body ?? {};
 
   if (typeof name !== "string" || !name.trim()) {
     return res.status(400).json({ error: "Name is required" });
@@ -56,6 +56,8 @@ router.post("/", requireRole("ADMIN", "MANAGER"), async (req, res) => {
       phone: typeof phone === "string" && phone ? phone : null,
       company: typeof company === "string" && company ? company : null,
       address: typeof address === "string" && address ? address : null,
+      vatNumber: typeof vatNumber === "string" && vatNumber ? vatNumber : null,
+      taxNumber: typeof taxNumber === "string" && taxNumber ? taxNumber : null,
     },
   });
   res.status(201).json({ customer });
@@ -63,7 +65,7 @@ router.post("/", requireRole("ADMIN", "MANAGER"), async (req, res) => {
 
 router.patch("/:id", requireRole("ADMIN", "MANAGER"), async (req, res) => {
   const id = req.params.id as string;
-  const { name, email, phone, company, address } = req.body ?? {};
+  const { name, email, phone, company, address, vatNumber, taxNumber } = req.body ?? {};
 
   const data: Prisma.CustomerUpdateInput = {};
   if (typeof name === "string" && name.trim()) data.name = name.trim();
@@ -71,6 +73,8 @@ router.patch("/:id", requireRole("ADMIN", "MANAGER"), async (req, res) => {
   if (phone !== undefined) data.phone = phone || null;
   if (company !== undefined) data.company = company || null;
   if (address !== undefined) data.address = address || null;
+  if (vatNumber !== undefined) data.vatNumber = vatNumber || null;
+  if (taxNumber !== undefined) data.taxNumber = taxNumber || null;
 
   try {
     const customer = await prisma.customer.update({ where: { id }, data });

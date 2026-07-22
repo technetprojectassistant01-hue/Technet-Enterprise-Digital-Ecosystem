@@ -7,6 +7,7 @@ import { Panel, Badge, Modal, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
 import { purchaseOrderStatusTone } from './statusTones'
+import { formatMoney } from '../lib/format'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -228,7 +229,7 @@ function PurchaseOrderDetailPage() {
                 return (
                   <tr key={item.id} className="border-b border-ink-800 last:border-0">
                     <td className="px-3 py-3 font-medium text-ink-100">{item.description}</td>
-                    <td className="px-3 py-3 text-ink-300">${Number(item.unitCost).toLocaleString()}</td>
+                    <td className="px-3 py-3 text-ink-300">{formatMoney(item.unitCost)}</td>
                     <td className="px-3 py-3 text-ink-300">{item.quantity}</td>
                     <td className="px-3 py-3 text-cyan-accent">{received}</td>
                     <td className="px-3 py-3 text-ink-400">{item.quantity - received}</td>
@@ -239,7 +240,7 @@ function PurchaseOrderDetailPage() {
             <tfoot>
               <tr>
                 <td colSpan={5} className="px-3 pt-3 text-right text-sm font-semibold text-ink-100">
-                  Total: ${Number(po.totalAmount).toLocaleString()}
+                  Total: {formatMoney(po.totalAmount)}
                 </td>
               </tr>
             </tfoot>

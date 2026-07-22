@@ -141,6 +141,8 @@ model Customer {
   phone     String?
   company   String?
   address   String?
+  vatNumber String?
+  taxNumber String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -167,16 +169,31 @@ model Contract {
 }
 
 model Quotation {
-  id         String          @id @default(uuid())
-  customerId String
-  customer   Customer        @relation(fields: [customerId], references: [id])
-  title      String
-  amount     Decimal         @db.Decimal(14, 2)
-  status     QuotationStatus @default(DRAFT)
-  issuedAt   DateTime        @default(now())
-  expiresAt  DateTime?
-  createdAt  DateTime        @default(now())
-  updatedAt  DateTime        @updatedAt
+  id              String          @id @default(uuid())
+  customerId      String
+  customer        Customer        @relation(fields: [customerId], references: [id])
+  quotationNumber String          @unique
+  title           String
+  status          QuotationStatus @default(DRAFT)
+  vatRate         Decimal         @db.Decimal(5, 2) @default(15)
+  subtotal        Decimal         @db.Decimal(14, 2)
+  vatAmount       Decimal         @db.Decimal(14, 2)
+  total           Decimal         @db.Decimal(14, 2)
+  issuedAt        DateTime        @default(now())
+  expiresAt       DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  items QuotationItem[]
+}
+
+model QuotationItem {
+  id          String    @id @default(uuid())
+  quotationId String
+  quotation   Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  description String
+  quantity    Int
+  unitPrice   Decimal   @db.Decimal(14, 2)
 }
 
 model Invoice {
@@ -186,13 +203,29 @@ model Invoice {
   projectId     String?
   project       Project?      @relation(fields: [projectId], references: [id])
   invoiceNumber String        @unique
-  amount        Decimal       @db.Decimal(14, 2)
   status        InvoiceStatus @default(DRAFT)
+  vatRate       Decimal       @db.Decimal(5, 2) @default(15)
+  subtotal      Decimal       @db.Decimal(14, 2)
+  vatAmount     Decimal       @db.Decimal(14, 2)
+  total         Decimal       @db.Decimal(14, 2)
+  poReference   String?
+  terms         String?
   issueDate     DateTime      @default(now())
   dueDate       DateTime?
   paidAt        DateTime?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
+
+  items InvoiceItem[]
+}
+
+model InvoiceItem {
+  id          String  @id @default(uuid())
+  invoiceId   String
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  description String
+  quantity    Int
+  unitPrice   Decimal @db.Decimal(14, 2)
 }
 
 model Expense {

@@ -5,6 +5,7 @@ import type { InventoryItem, MovementType } from '../lib/api'
 import { Panel, StatCard, Modal, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
+import { formatMoney } from '../lib/format'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -227,10 +228,7 @@ function InventoryPage() {
           delta={lowStockCount > 0 ? 'Needs attention' : undefined}
           deltaTone="warning"
         />
-        <StatCard
-          label="STOCK VALUE"
-          value={`$${totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
-        />
+        <StatCard label="STOCK VALUE" value={formatMoney(totalValue)} />
       </div>
 
       <Panel>
@@ -287,7 +285,7 @@ function InventoryPage() {
                       </td>
                       <td className="px-3 py-3 text-ink-400">{item.minStockLevel}</td>
                       <td className="px-3 py-3 text-ink-300">
-                        {item.unitCost ? `$${Number(item.unitCost).toLocaleString()}` : '—'}
+                        {item.unitCost ? formatMoney(item.unitCost) : '—'}
                       </td>
                       <td className="px-3 py-3 text-ink-300">{item.location || '—'}</td>
                       <td className="px-3 py-3">

@@ -10,6 +10,7 @@ import { useSuppliers } from './useSuppliers'
 import { useInventoryItems } from './useInventoryItems'
 import LineItemsEditor, { EMPTY_LINE_ITEM, type LineItemRow } from './LineItemsEditor'
 import { purchaseOrderStatusTone } from './statusTones'
+import { formatMoney } from '../lib/format'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -134,7 +135,7 @@ function PurchaseOrdersPage() {
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
         <StatCard label="OPEN ORDERS" value={openCount} />
-        <StatCard label="TOTAL VALUE" value={`$${totalValue.toLocaleString()}`} />
+        <StatCard label="TOTAL VALUE" value={formatMoney(totalValue)} />
       </div>
 
       <Panel>
@@ -182,7 +183,7 @@ function PurchaseOrdersPage() {
                     </td>
                     <td className="px-3 py-3 text-ink-300">{po.supplier.name}</td>
                     <td className="px-3 py-3 text-ink-300">{po.items.length}</td>
-                    <td className="px-3 py-3 text-ink-100">${Number(po.totalAmount).toLocaleString()}</td>
+                    <td className="px-3 py-3 text-ink-100">{formatMoney(po.totalAmount)}</td>
                     <td className="px-3 py-3">
                       <Badge tone={purchaseOrderStatusTone[po.status]}>{po.status.replace('_', ' ')}</Badge>
                     </td>
@@ -238,7 +239,7 @@ function PurchaseOrdersPage() {
 
             <div className="flex items-center justify-between rounded-md bg-ink-800 px-4 py-3">
               <span className="text-sm text-ink-300">Total</span>
-              <span className="text-lg font-semibold text-cyan-accent">${liveTotal.toLocaleString()}</span>
+              <span className="text-lg font-semibold text-cyan-accent">{formatMoney(liveTotal)}</span>
             </div>
 
             {formError && <p className="text-sm text-red-400">{formError}</p>}
