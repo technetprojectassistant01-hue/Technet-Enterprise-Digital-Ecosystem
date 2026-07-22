@@ -21,6 +21,8 @@ import {
   ScrollText,
   Truck,
   ClipboardList,
+  CalendarClock,
+  ClipboardCheck,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -71,7 +73,16 @@ export const MAIN_NAV: NavItem[] = [
   },
   { label: 'Technet Maintenance', to: '/dashboard/maintenance', icon: Wrench },
   { label: 'Technet Connect', to: '/dashboard/connect', icon: Share2 },
-  { label: 'Technet Operations', to: '/dashboard/operations', icon: Workflow },
+  {
+    label: 'Technet Operations',
+    to: '/dashboard/operations',
+    icon: Workflow,
+    children: [
+      { label: 'Work Orders', to: '/dashboard/operations/work-orders', icon: CalendarClock },
+      { label: 'Daily Reports', to: '/dashboard/operations/daily-reports', icon: ClipboardList },
+      { label: 'Intervention Reports', to: '/dashboard/operations/intervention-reports', icon: ClipboardCheck },
+    ],
+  },
   { label: 'Technet Workforce', to: '/dashboard/workforce', icon: Users },
   { label: 'Technet Digital Marketing', to: '/dashboard/marketing', icon: Megaphone },
   { label: 'Technet Insight', to: '/dashboard/insight', icon: LineChart },

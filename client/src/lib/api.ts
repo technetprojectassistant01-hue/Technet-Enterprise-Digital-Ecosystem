@@ -892,3 +892,283 @@ export function receivePurchaseOrder(
 export function deletePurchaseOrder(id: string) {
   return request<null>(`/api/purchase-orders/${id}`, { method: 'DELETE' })
 }
+
+// ---------- Field Service Operations ----------
+
+export type JobCategory =
+  | 'INSTALLATION'
+  | 'START_UP_COMMISSIONING'
+  | 'OUTDOOR_REPAIR'
+  | 'WORKSHOP_REPAIR'
+  | 'SERVICING'
+  | 'MAINTENANCE_CONTRACT'
+  | 'SURVEY'
+  | 'OTHERS'
+
+export const JOB_CATEGORY_LABELS: Record<JobCategory, string> = {
+  INSTALLATION: 'Installation',
+  START_UP_COMMISSIONING: 'Start Up & Commissioning',
+  OUTDOOR_REPAIR: 'Outdoor Repair',
+  WORKSHOP_REPAIR: 'Workshop Repair',
+  SERVICING: 'Servicing',
+  MAINTENANCE_CONTRACT: 'Maintenance Contract',
+  SURVEY: 'Survey',
+  OTHERS: 'Others',
+}
+
+export type WorkOrderStatus = 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
+export type WarrantyStatus = 'YES' | 'NO' | 'UNKNOWN'
+export type ReportStatus = 'SUBMITTED' | 'APPROVED' | 'REJECTED'
+
+export interface WorkOrderCustomer extends CustomerSummary {
+  address: string | null
+}
+
+export interface WorkOrder {
+  id: string
+  workOrderNumber: string
+  customerId: string
+  customer: WorkOrderCustomer
+  projectId: string | null
+  title: string
+  jobCategory: JobCategory
+  description: string | null
+  status: WorkOrderStatus
+  scheduledDate: string
+  technicians: { id: string; employee: EmployeeSummary }[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface WorkOrderDetail extends WorkOrder {
+  project: { id: string; name: string } | null
+  interventionReports: {
+    id: string
+    interventionNumber: string
+    status: ReportStatus
+    workCompleted: boolean
+    createdAt: string
+  }[]
+}
+
+export interface WorkOrderInput {
+  customerId: string
+  projectId?: string | null
+  workOrderNumber: string
+  title: string
+  jobCategory: JobCategory
+  description?: string
+  scheduledDate: string
+  technicianIds: string[]
+}
+
+export function listWorkOrders(params: { status?: WorkOrderStatus; customerId?: string; technicianId?: string } = {}) {
+  const query = new URLSearchParams()
+  if (params.status) query.set('status', params.status)
+  if (params.customerId) query.set('customerId', params.customerId)
+  if (params.technicianId) query.set('technicianId', params.technicianId)
+  const qs = query.toString()
+  return request<{ workOrders: WorkOrder[] }>(`/api/work-orders${qs ? `?${qs}` : ''}`)
+}
+
+export function getWorkOrder(id: string) {
+  return request<{ workOrder: WorkOrderDetail }>(`/api/work-orders/${id}`)
+}
+
+export function createWorkOrder(input: WorkOrderInput) {
+  return request<{ workOrder: WorkOrder }>('/api/work-orders', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export interface WorkOrderUpdateInput {
+  title?: string
+  description?: string | null
+  scheduledDate?: string
+  status?: WorkOrderStatus
+  technicianIds?: string[]
+}
+
+export function updateWorkOrder(id: string, input: WorkOrderUpdateInput) {
+  return request<{ workOrder: WorkOrder }>(`/api/work-orders/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
+}
+
+export function deleteWorkOrder(id: string) {
+  return request<null>(`/api/work-orders/${id}`, { method: 'DELETE' })
+}
+
+export interface DailyWorkReport {
+  id: string
+  date: string
+  summary: string
+  hours: string | null
+  status: ReportStatus
+  submittedBy: { id: string; name: string | null; email: string }
+  reviewedBy: { id: string; name: string | null; email: string } | null
+  reviewedAt: string | null
+  reviewNote: string | null
+  technicians: { id: string; employee: EmployeeSummary }[]
+  workOrders: { id: string; workOrder: { id: string; workOrderNumber: string; title: string } }[]
+  createdAt: string
+}
+
+export interface DailyWorkReportInput {
+  date: string
+  summary: string
+  hours?: number
+  technicianIds: string[]
+  workOrderIds: string[]
+}
+
+export function listDailyReports(params: { status?: ReportStatus } = {}) {
+  const query = new URLSearchParams()
+  if (params.status) query.set('status', params.status)
+  const qs = query.toString()
+  return request<{ dailyWorkReports: DailyWorkReport[] }>(`/api/daily-reports${qs ? `?${qs}` : ''}`)
+}
+
+export function createDailyReport(input: DailyWorkReportInput) {
+  return request<{ dailyWorkReport: DailyWorkReport }>('/api/daily-reports', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function approveDailyReport(id: string, note?: string) {
+  return request<{ dailyWorkReport: DailyWorkReport }>(`/api/daily-reports/${id}/approve`, {
+    method: 'POST',
+    body: JSON.stringify({ note }),
+  })
+}
+
+export function rejectDailyReport(id: string, note?: string) {
+  return request<{ dailyWorkReport: DailyWorkReport }>(`/api/daily-reports/${id}/reject`, {
+    method: 'POST',
+    body: JSON.stringify({ note }),
+  })
+}
+
+export function deleteDailyReport(id: string) {
+  return request<null>(`/api/daily-reports/${id}`, { method: 'DELETE' })
+}
+
+export interface InterventionReport {
+  id: string
+  interventionNumber: string
+  workOrderId: string
+  workOrder: {
+    id: string
+    workOrderNumber: string
+    title: string
+    customer: WorkOrderCustomer
+  }
+  date: string
+  contactPerson: string | null
+  contactPhone: string | null
+  contactEmail: string | null
+  jobCategory: JobCategory
+  equipment: string | null
+  make: string | null
+  model: string | null
+  serialNo: string | null
+  dateInstalled: string | null
+  natureOfIntervention: string
+  actionTaken: string
+  workCompleted: boolean
+  incompleteDetails: string | null
+  timeIn: string | null
+  timeOut: string | null
+  warrantyStatus: WarrantyStatus | null
+  technicianReport: string | null
+  comments: string | null
+  signedByName: string | null
+  signedAt: string | null
+  attachmentFileName: string | null
+  attachmentMimeType: string | null
+  status: ReportStatus
+  createdBy: { id: string; name: string | null; email: string }
+  reviewedBy: { id: string; name: string | null; email: string } | null
+  reviewedAt: string | null
+  reviewNote: string | null
+  technicians: { id: string; employee: EmployeeSummary }[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface InterventionReportInput {
+  workOrderId: string
+  interventionNumber: string
+  date?: string
+  contactPerson?: string
+  contactPhone?: string
+  contactEmail?: string
+  jobCategory: JobCategory
+  equipment?: string
+  make?: string
+  model?: string
+  serialNo?: string
+  dateInstalled?: string
+  natureOfIntervention: string
+  actionTaken: string
+  workCompleted: boolean
+  incompleteDetails?: string
+  timeIn?: string
+  timeOut?: string
+  warrantyStatus?: WarrantyStatus
+  technicianReport?: string
+  comments?: string
+  technicianIds: string[]
+  signedByName?: string
+  signatureData?: string
+  attachmentData?: string
+  attachmentFileName?: string
+}
+
+export function listInterventionReports(params: { status?: ReportStatus; workOrderId?: string } = {}) {
+  const query = new URLSearchParams()
+  if (params.status) query.set('status', params.status)
+  if (params.workOrderId) query.set('workOrderId', params.workOrderId)
+  const qs = query.toString()
+  return request<{ interventionReports: InterventionReport[] }>(`/api/intervention-reports${qs ? `?${qs}` : ''}`)
+}
+
+export function getInterventionReport(id: string) {
+  return request<{ interventionReport: InterventionReport }>(`/api/intervention-reports/${id}`)
+}
+
+export function createInterventionReport(input: InterventionReportInput) {
+  return request<{ interventionReport: InterventionReport }>('/api/intervention-reports', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function approveInterventionReport(id: string, note?: string) {
+  return request<{ interventionReport: InterventionReport }>(`/api/intervention-reports/${id}/approve`, {
+    method: 'POST',
+    body: JSON.stringify({ note }),
+  })
+}
+
+export function rejectInterventionReport(id: string, note?: string) {
+  return request<{ interventionReport: InterventionReport }>(`/api/intervention-reports/${id}/reject`, {
+    method: 'POST',
+    body: JSON.stringify({ note }),
+  })
+}
+
+export function deleteInterventionReport(id: string) {
+  return request<null>(`/api/intervention-reports/${id}`, { method: 'DELETE' })
+}
+
+export function interventionSignatureUrl(id: string) {
+  return `${API_URL}/api/intervention-reports/${id}/signature`
+}
+
+export function interventionAttachmentUrl(id: string) {
+  return `${API_URL}/api/intervention-reports/${id}/attachment`
+}

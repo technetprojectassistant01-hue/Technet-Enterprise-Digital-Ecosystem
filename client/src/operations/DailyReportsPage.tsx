@@ -1,0 +1,285 @@
+import { useEffect, useState, type FormEvent } from 'react'
+import { Plus, Check, X as XIcon, ClipboardList } from 'lucide-react'
+import * as api from '../lib/api'
+import type { DailyWorkReport } from '../lib/api'
+import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
+import { useEmployees } from '../erp/useEmployees'
+import { useToast } from '../dashboard/ToastContext'
+import { useConfirm } from '../dashboard/ConfirmContext'
+import { useAuth } from '../context/AuthContext'
+import { reportStatusTone } from '../erp/statusTones'
+import { useWorkOrders } from './useWorkOrders'
+
+const inputClass =
+  'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
+const labelClass = 'text-xs font-semibold tracking-widest text-ink-400'
+
+function todayISO() {
+  return new Date().toISOString().slice(0, 10)
+}
+
+function DailyReportsPage() {
+  const toast = useToast()
+  const confirm = useConfirm()
+  const { user } = useAuth()
+  const employees = useEmployees()
+  const workOrders = useWorkOrders()
+  const [reports, setReports] = useState<DailyWorkReport[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const [showCreate, setShowCreate] = useState(false)
+  const [date, setDate] = useState(todayISO())
+  const [summary, setSummary] = useState('')
+  const [hours, setHours] = useState('')
+  const [technicianIds, setTechnicianIds] = useState<string[]>([])
+  const [workOrderIds, setWorkOrderIds] = useState<string[]>([])
+  const [formError, setFormError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+
+  function load() {
+    setLoading(true)
+    api
+      .listDailyReports()
+      .then(({ dailyWorkReports }) => setReports(dailyWorkReports))
+      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load daily reports'))
+      .finally(() => setLoading(false))
+  }
+
+  useEffect(load, [])
+
+  function openCreate() {
+    setDate(todayISO())
+    setSummary('')
+    setHours('')
+    setTechnicianIds([])
+    setWorkOrderIds([])
+    setFormError(null)
+    setShowCreate(true)
+  }
+
+  function toggle(list: string[], set: (v: string[]) => void, id: string) {
+    set(list.includes(id) ? list.filter((v) => v !== id) : [...list, id])
+  }
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    setFormError(null)
+
+    if (!summary.trim()) {
+      setFormError('Summary is required')
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      await api.createDailyReport({
+        date,
+        summary,
+        hours: hours ? Number(hours) : undefined,
+        technicianIds,
+        workOrderIds,
+      })
+      toast.success('Daily report submitted')
+      setShowCreate(false)
+      load()
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'Failed to submit daily report')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleApprove(r: DailyWorkReport) {
+    try {
+      await api.approveDailyReport(r.id)
+      toast.success('Report approved')
+      load()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to approve report')
+    }
+  }
+
+  async function handleReject(r: DailyWorkReport) {
+    const ok = await confirm({
+      title: 'Reject daily report',
+      message: `Reject the report from ${r.date.slice(0, 10)}?`,
+      confirmLabel: 'Reject',
+      tone: 'danger',
+    })
+    if (!ok) return
+    try {
+      await api.rejectDailyReport(r.id)
+      toast.success('Report rejected')
+      load()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to reject report')
+    }
+  }
+
+  const isAdmin = user?.role === 'ADMIN'
+  const pendingCount = reports.filter((r) => r.status === 'SUBMITTED').length
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={openCreate}
+          className="flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark"
+        >
+          <Plus className="h-4 w-4" />
+          New Daily Report
+        </button>
+      </div>
+
+      <StatCard label="PENDING REVIEW" value={pendingCount} deltaTone="warning" />
+
+      <Panel>
+        {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
+
+        {loading ? (
+          <TableSkeleton cols={5} />
+        ) : reports.length === 0 ? (
+          <EmptyState icon={ClipboardList} message="No daily reports yet." />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
+                  <th className="px-3 py-3 font-semibold">DATE</th>
+                  <th className="px-3 py-3 font-semibold">SUMMARY</th>
+                  <th className="px-3 py-3 font-semibold">TECHNICIANS</th>
+                  <th className="px-3 py-3 font-semibold">HOURS</th>
+                  <th className="px-3 py-3 font-semibold">STATUS</th>
+                  <th className="px-3 py-3" />
+                </tr>
+              </thead>
+              <tbody>
+                {reports.map((r) => (
+                  <tr key={r.id} className="border-b border-ink-800 last:border-0">
+                    <td className="px-3 py-3 text-ink-100">{r.date.slice(0, 10)}</td>
+                    <td className="px-3 py-3 max-w-sm truncate text-ink-300" title={r.summary}>
+                      {r.summary}
+                    </td>
+                    <td className="px-3 py-3 text-ink-300">
+                      {r.technicians.length === 0
+                        ? '—'
+                        : r.technicians.map((t) => `${t.employee.firstName} ${t.employee.lastName}`).join(', ')}
+                    </td>
+                    <td className="px-3 py-3 text-ink-400">{r.hours ? Number(r.hours) : '—'}</td>
+                    <td className="px-3 py-3">
+                      <Badge tone={reportStatusTone[r.status]}>{r.status}</Badge>
+                    </td>
+                    <td className="px-3 py-3">
+                      {isAdmin && r.status === 'SUBMITTED' && (
+                        <div className="flex items-center justify-end gap-3">
+                          <button type="button" onClick={() => handleApprove(r)} aria-label="Approve" className="text-ink-400 hover:text-cyan-accent">
+                            <Check className="h-4 w-4" />
+                          </button>
+                          <button type="button" onClick={() => handleReject(r)} aria-label="Reject" className="text-ink-400 hover:text-red-400">
+                            <XIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Panel>
+
+      {showCreate && (
+        <Modal title="New Daily Report" onClose={() => setShowCreate(false)}>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={labelClass}>DATE</label>
+                <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required className={`mt-2 ${inputClass}`} />
+              </div>
+              <div>
+                <label className={labelClass}>HOURS (OPTIONAL)</label>
+                <input
+                  type="number"
+                  min={0}
+                  step="0.5"
+                  value={hours}
+                  onChange={(e) => setHours(e.target.value)}
+                  className={`mt-2 ${inputClass}`}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className={labelClass}>SUMMARY</label>
+              <textarea
+                value={summary}
+                onChange={(e) => setSummary(e.target.value)}
+                rows={3}
+                required
+                placeholder="What was done today..."
+                className={`mt-2 ${inputClass}`}
+              />
+            </div>
+
+            <div>
+              <label className={labelClass}>TECHNICIANS (OPTIONAL)</label>
+              <div className="mt-2 flex max-h-32 flex-col gap-1.5 overflow-y-auto rounded-md border border-ink-700 bg-ink-950 p-3">
+                {employees.length === 0 ? (
+                  <p className="text-xs text-ink-500">No employees yet.</p>
+                ) : (
+                  employees.map((emp) => (
+                    <label key={emp.id} className="flex items-center gap-2 text-sm text-ink-200">
+                      <input
+                        type="checkbox"
+                        checked={technicianIds.includes(emp.id)}
+                        onChange={() => toggle(technicianIds, setTechnicianIds, emp.id)}
+                        className="accent-cyan-accent"
+                      />
+                      {emp.firstName} {emp.lastName}
+                    </label>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div>
+              <label className={labelClass}>WORK ORDERS TOUCHED (OPTIONAL)</label>
+              <div className="mt-2 flex max-h-32 flex-col gap-1.5 overflow-y-auto rounded-md border border-ink-700 bg-ink-950 p-3">
+                {workOrders.length === 0 ? (
+                  <p className="text-xs text-ink-500">No work orders yet.</p>
+                ) : (
+                  workOrders.map((wo) => (
+                    <label key={wo.id} className="flex items-center gap-2 text-sm text-ink-200">
+                      <input
+                        type="checkbox"
+                        checked={workOrderIds.includes(wo.id)}
+                        onChange={() => toggle(workOrderIds, setWorkOrderIds, wo.id)}
+                        className="accent-cyan-accent"
+                      />
+                      {wo.workOrderNumber} — {wo.title}
+                    </label>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {formError && <p className="text-sm text-red-400">{formError}</p>}
+
+            <button
+              type="submit"
+              disabled={submitting}
+              className="rounded-md bg-cyan-accent py-2.5 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {submitting ? 'Submitting…' : 'Submit Report'}
+            </button>
+          </form>
+        </Modal>
+      )}
+    </div>
+  )
+}
+
+export default DailyReportsPage

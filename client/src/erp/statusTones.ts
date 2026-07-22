@@ -7,6 +7,8 @@ import type {
   ProjectStatus,
   RequisitionStatus,
   PurchaseOrderStatus,
+  WorkOrderStatus,
+  ReportStatus,
 } from '../lib/api'
 
 export const contractStatusTone: Record<ContractStatus, BadgeTone> = {
@@ -72,4 +74,17 @@ export const purchaseOrderStatusTone: Record<PurchaseOrderStatus, BadgeTone> = {
   FULLY_RECEIVED: 'accent',
   CLOSED: 'success',
   CANCELLED: 'danger',
+}
+
+export const workOrderStatusTone: Record<WorkOrderStatus, BadgeTone> = {
+  SCHEDULED: 'neutral',
+  IN_PROGRESS: 'warning',
+  COMPLETED: 'success',
+  CANCELLED: 'danger',
+}
+
+export const reportStatusTone: Record<ReportStatus, BadgeTone> = {
+  SUBMITTED: 'warning',
+  APPROVED: 'success',
+  REJECTED: 'danger',
 }

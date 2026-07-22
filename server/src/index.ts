@@ -17,6 +17,9 @@ import projectsRouter from "./routes/projects";
 import suppliersRouter from "./routes/suppliers";
 import requisitionsRouter from "./routes/requisitions";
 import purchaseOrdersRouter from "./routes/purchaseOrders";
+import workOrdersRouter from "./routes/workOrders";
+import dailyReportsRouter from "./routes/dailyReports";
+import interventionReportsRouter from "./routes/interventionReports";
 import { requireAuth, requireRole } from "./middleware/auth";
 
 const app = express();
@@ -30,7 +33,7 @@ app.use(
   }),
 );
 app.use(morgan("dev"));
-app.use(express.json());
+app.use(express.json({ limit: "15mb" }));
 app.use(cookieParser());
 
 app.get("/api/health", (_req, res) => {
@@ -50,6 +53,9 @@ app.use("/api/projects", projectsRouter);
 app.use("/api/suppliers", suppliersRouter);
 app.use("/api/requisitions", requisitionsRouter);
 app.use("/api/purchase-orders", purchaseOrdersRouter);
+app.use("/api/work-orders", workOrdersRouter);
+app.use("/api/daily-reports", dailyReportsRouter);
+app.use("/api/intervention-reports", interventionReportsRouter);
 
 app.get("/api/admin/ping", requireAuth, requireRole("ADMIN"), (_req, res) => {
   res.json({ ok: true, message: "You have admin access" });

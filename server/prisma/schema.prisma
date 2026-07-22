@@ -97,6 +97,36 @@ enum DocumentCategory {
   GENERAL
 }
 
+enum JobCategory {
+  INSTALLATION
+  START_UP_COMMISSIONING
+  OUTDOOR_REPAIR
+  WORKSHOP_REPAIR
+  SERVICING
+  MAINTENANCE_CONTRACT
+  SURVEY
+  OTHERS
+}
+
+enum WorkOrderStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum WarrantyStatus {
+  YES
+  NO
+  UNKNOWN
+}
+
+enum ReportStatus {
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
@@ -112,6 +142,12 @@ model User {
   requisitionsRequested    PurchaseRequisition[]      @relation("RequisitionRequester")
   requisitionStatusChanges RequisitionStatusHistory[] @relation("RequisitionStatusChanger")
   goodsReceipts            GoodsReceipt[]
+
+  workOrdersCreated           WorkOrder[]          @relation("WorkOrderCreator")
+  dailyWorkReportsSubmitted   DailyWorkReport[]    @relation("DailyReportSubmitter")
+  dailyWorkReportsReviewed    DailyWorkReport[]    @relation("DailyReportReviewer")
+  interventionReportsCreated  InterventionReport[] @relation("InterventionReportCreator")
+  interventionReportsReviewed InterventionReport[] @relation("InterventionReportReviewer")
 }
 
 model Employee {
@@ -132,6 +168,10 @@ model Employee {
 
   managedProjects    Project[]           @relation("ProjectManager")
   projectAssignments ProjectAssignment[]
+
+  workOrderAssignments          WorkOrderTechnician[]
+  dailyWorkReportAssignments    DailyWorkReportTechnician[]
+  interventionReportAssignments InterventionReportTechnician[]
 }
 
 model Customer {
@@ -151,6 +191,7 @@ model Customer {
   invoices   Invoice[]
   projects   Project[]
   documents  Document[]
+  workOrders WorkOrder[]
 }
 
 model Contract {
@@ -175,7 +216,7 @@ model Quotation {
   quotationNumber String          @unique
   title           String
   status          QuotationStatus @default(DRAFT)
-  vatRate         Decimal         @db.Decimal(5, 2) @default(15)
+  vatRate         Decimal         @default(15) @db.Decimal(5, 2)
   subtotal        Decimal         @db.Decimal(14, 2)
   vatAmount       Decimal         @db.Decimal(14, 2)
   total           Decimal         @db.Decimal(14, 2)
@@ -204,7 +245,7 @@ model Invoice {
   project       Project?      @relation(fields: [projectId], references: [id])
   invoiceNumber String        @unique
   status        InvoiceStatus @default(DRAFT)
-  vatRate       Decimal       @db.Decimal(5, 2) @default(15)
+  vatRate       Decimal       @default(15) @db.Decimal(5, 2)
   subtotal      Decimal       @db.Decimal(14, 2)
   vatAmount     Decimal       @db.Decimal(14, 2)
   total         Decimal       @db.Decimal(14, 2)
@@ -258,18 +299,18 @@ model Supplier {
 }
 
 model PurchaseOrder {
-  id            String              @id @default(uuid())
-  poNumber      String              @unique
+  id            String               @id @default(uuid())
+  poNumber      String               @unique
   supplierId    String
-  supplier      Supplier            @relation(fields: [supplierId], references: [id])
+  supplier      Supplier             @relation(fields: [supplierId], references: [id])
   requisitionId String?
   requisition   PurchaseRequisition? @relation(fields: [requisitionId], references: [id])
-  status        PurchaseOrderStatus @default(DRAFT)
-  orderDate     DateTime            @default(now())
+  status        PurchaseOrderStatus  @default(DRAFT)
+  orderDate     DateTime             @default(now())
   expectedDate  DateTime?
-  totalAmount   Decimal             @db.Decimal(14, 2)
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @updatedAt
+  totalAmount   Decimal              @db.Decimal(14, 2)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
 
   items         PurchaseOrderItem[]
   goodsReceipts GoodsReceipt[]
@@ -405,6 +446,7 @@ model Project {
   assignments   ProjectAssignment[]
   statusHistory ProjectStatusHistory[]
   requisitions  PurchaseRequisition[]
+  workOrders    WorkOrder[]
 }
 
 model ProjectAssignment {
@@ -446,4 +488,127 @@ model Document {
   uploadedById String
   uploadedBy   User             @relation(fields: [uploadedById], references: [id])
   createdAt    DateTime         @default(now())
+}
+
+model WorkOrder {
+  id              String          @id @default(uuid())
+  workOrderNumber String          @unique
+  customerId      String
+  customer        Customer        @relation(fields: [customerId], references: [id])
+  projectId       String?
+  project         Project?        @relation(fields: [projectId], references: [id])
+  title           String
+  jobCategory     JobCategory
+  description     String?
+  status          WorkOrderStatus @default(SCHEDULED)
+  scheduledDate   DateTime
+  createdById     String
+  createdBy       User            @relation("WorkOrderCreator", fields: [createdById], references: [id])
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  technicians          WorkOrderTechnician[]
+  interventionReports  InterventionReport[]
+  dailyWorkReportLinks DailyWorkReportWorkOrder[]
+}
+
+model WorkOrderTechnician {
+  id          String    @id @default(uuid())
+  workOrderId String
+  workOrder   WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  employeeId  String
+  employee    Employee  @relation(fields: [employeeId], references: [id])
+
+  @@unique([workOrderId, employeeId])
+}
+
+model DailyWorkReport {
+  id            String       @id @default(uuid())
+  date          DateTime
+  summary       String
+  hours         Decimal?     @db.Decimal(5, 2)
+  status        ReportStatus @default(SUBMITTED)
+  submittedById String
+  submittedBy   User         @relation("DailyReportSubmitter", fields: [submittedById], references: [id])
+  reviewedById  String?
+  reviewedBy    User?        @relation("DailyReportReviewer", fields: [reviewedById], references: [id])
+  reviewedAt    DateTime?
+  reviewNote    String?
+  createdAt     DateTime     @default(now())
+
+  technicians DailyWorkReportTechnician[]
+  workOrders  DailyWorkReportWorkOrder[]
+}
+
+model DailyWorkReportTechnician {
+  id                String          @id @default(uuid())
+  dailyWorkReportId String
+  dailyWorkReport   DailyWorkReport @relation(fields: [dailyWorkReportId], references: [id], onDelete: Cascade)
+  employeeId        String
+  employee          Employee        @relation(fields: [employeeId], references: [id])
+
+  @@unique([dailyWorkReportId, employeeId])
+}
+
+model DailyWorkReportWorkOrder {
+  id                String          @id @default(uuid())
+  dailyWorkReportId String
+  dailyWorkReport   DailyWorkReport @relation(fields: [dailyWorkReportId], references: [id], onDelete: Cascade)
+  workOrderId       String
+  workOrder         WorkOrder       @relation(fields: [workOrderId], references: [id])
+
+  @@unique([dailyWorkReportId, workOrderId])
+}
+
+model InterventionReport {
+  id                   String          @id @default(uuid())
+  interventionNumber   String          @unique
+  workOrderId          String
+  workOrder            WorkOrder       @relation(fields: [workOrderId], references: [id])
+  date                 DateTime        @default(now())
+  contactPerson        String?
+  contactPhone         String?
+  contactEmail         String?
+  jobCategory          JobCategory
+  equipment            String?
+  make                 String?
+  model                String?
+  serialNo             String?
+  dateInstalled        DateTime?
+  natureOfIntervention String
+  actionTaken          String
+  workCompleted        Boolean         @default(true)
+  incompleteDetails    String?
+  timeIn               String?
+  timeOut              String?
+  warrantyStatus       WarrantyStatus?
+  technicianReport     String?
+  comments             String?
+  signatureData        Bytes?
+  signedByName         String?
+  signedAt             DateTime?
+  attachmentData       Bytes?
+  attachmentFileName   String?
+  attachmentMimeType   String?
+  status               ReportStatus    @default(SUBMITTED)
+  createdById          String
+  createdBy            User            @relation("InterventionReportCreator", fields: [createdById], references: [id])
+  reviewedById         String?
+  reviewedBy           User?           @relation("InterventionReportReviewer", fields: [reviewedById], references: [id])
+  reviewedAt           DateTime?
+  reviewNote           String?
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  technicians InterventionReportTechnician[]
+}
+
+model InterventionReportTechnician {
+  id                   String             @id @default(uuid())
+  interventionReportId String
+  interventionReport   InterventionReport @relation(fields: [interventionReportId], references: [id], onDelete: Cascade)
+  employeeId           String
+  employee             Employee           @relation(fields: [employeeId], references: [id])
+
+  @@unique([interventionReportId, employeeId])
 }

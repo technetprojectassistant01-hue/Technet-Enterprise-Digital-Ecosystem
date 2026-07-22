@@ -2,7 +2,6 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import {
   Wrench,
   Share2,
-  Workflow,
   Users,
   Megaphone,
   LineChart,
@@ -33,6 +32,13 @@ import RequisitionsPage from './erp/RequisitionsPage'
 import RequisitionDetailPage from './erp/RequisitionDetailPage'
 import PurchaseOrdersPage from './erp/PurchaseOrdersPage'
 import PurchaseOrderDetailPage from './erp/PurchaseOrderDetailPage'
+import OperationsLayout from './operations/OperationsLayout'
+import WorkOrdersPage from './operations/WorkOrdersPage'
+import WorkOrderDetailPage from './operations/WorkOrderDetailPage'
+import DailyReportsPage from './operations/DailyReportsPage'
+import InterventionReportsPage from './operations/InterventionReportsPage'
+import InterventionReportFormPage from './operations/InterventionReportFormPage'
+import InterventionReportDetailPage from './operations/InterventionReportDetailPage'
 import ModuleStub from './dashboard/ModuleStub'
 import UsersPage from './UsersPage'
 import SettingsPage from './SettingsPage'
@@ -84,10 +90,15 @@ function App() {
             path="connect"
             element={<ModuleStub title="Technet Connect" icon={Share2} />}
           />
-          <Route
-            path="operations"
-            element={<ModuleStub title="Technet Operations" icon={Workflow} />}
-          />
+          <Route path="operations" element={<OperationsLayout />}>
+            <Route index element={<Navigate to="work-orders" replace />} />
+            <Route path="work-orders" element={<WorkOrdersPage />} />
+            <Route path="work-orders/:id" element={<WorkOrderDetailPage />} />
+            <Route path="daily-reports" element={<DailyReportsPage />} />
+            <Route path="intervention-reports" element={<InterventionReportsPage />} />
+            <Route path="intervention-reports/new" element={<InterventionReportFormPage />} />
+            <Route path="intervention-reports/:id" element={<InterventionReportDetailPage />} />
+          </Route>
           <Route
             path="workforce"
             element={<ModuleStub title="Technet Workforce" icon={Users} />}

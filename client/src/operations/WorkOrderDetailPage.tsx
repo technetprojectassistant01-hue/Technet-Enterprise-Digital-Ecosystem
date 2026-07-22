@@ -1,0 +1,185 @@
+import { useEffect, useState } from 'react'
+import { Link, useParams } from 'react-router-dom'
+import { ArrowLeft, X, Trash2, FileText, Plus } from 'lucide-react'
+import * as api from '../lib/api'
+import type { WorkOrderDetail, WorkOrderStatus } from '../lib/api'
+import { JOB_CATEGORY_LABELS } from '../lib/api'
+import { Panel, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
+import { useToast } from '../dashboard/ToastContext'
+import { useConfirm } from '../dashboard/ConfirmContext'
+import { workOrderStatusTone, reportStatusTone } from '../erp/statusTones'
+
+function WorkOrderDetailPage() {
+  const { id } = useParams<{ id: string }>()
+  const toast = useToast()
+  const confirm = useConfirm()
+
+  const [workOrder, setWorkOrder] = useState<WorkOrderDetail | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [actioning, setActioning] = useState(false)
+
+  function load() {
+    if (!id) return
+    setLoading(true)
+    api
+      .getWorkOrder(id)
+      .then(({ workOrder }) => setWorkOrder(workOrder))
+      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load work order'))
+      .finally(() => setLoading(false))
+  }
+
+  useEffect(load, [id])
+
+  async function setStatus(status: WorkOrderStatus) {
+    if (!workOrder) return
+    setActioning(true)
+    try {
+      await api.updateWorkOrder(workOrder.id, { status })
+      toast.success('Work order updated')
+      load()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update work order')
+    } finally {
+      setActioning(false)
+    }
+  }
+
+  async function handleDelete() {
+    if (!workOrder) return
+    const ok = await confirm({
+      title: 'Delete work order',
+      message: `Delete ${workOrder.workOrderNumber}? This cannot be undone.`,
+      confirmLabel: 'Delete',
+      tone: 'danger',
+    })
+    if (!ok) return
+    try {
+      await api.deleteWorkOrder(workOrder.id)
+      toast.success('Work order deleted')
+      window.location.href = '/dashboard/operations/work-orders'
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete work order')
+    }
+  }
+
+  if (loading) return <TableSkeleton rows={6} cols={4} />
+  if (error || !workOrder) return <EmptyState icon={X} message={error || 'Work order not found'} />
+
+  return (
+    <div className="flex flex-col gap-6">
+      <Link
+        to="/dashboard/operations/work-orders"
+        className="flex w-fit items-center gap-2 text-sm text-ink-400 hover:text-ink-100"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back to Work Orders
+      </Link>
+
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+        <div>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-ink-100">{workOrder.workOrderNumber}</h1>
+            <Badge tone={workOrderStatusTone[workOrder.status]}>{workOrder.status.replace('_', ' ')}</Badge>
+          </div>
+          <p className="mt-1 text-sm text-ink-300">
+            {workOrder.title} · {workOrder.customer.company || workOrder.customer.name} ·{' '}
+            {JOB_CATEGORY_LABELS[workOrder.jobCategory]} · Scheduled {workOrder.scheduledDate.slice(0, 10)}
+          </p>
+          {workOrder.description && <p className="mt-2 text-sm text-ink-400">{workOrder.description}</p>}
+        </div>
+
+        <div className="flex gap-3">
+          {workOrder.status === 'SCHEDULED' && (
+            <button
+              type="button"
+              onClick={() => setStatus('IN_PROGRESS')}
+              disabled={actioning}
+              className="rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark disabled:opacity-70"
+            >
+              Start Work
+            </button>
+          )}
+          {workOrder.status === 'IN_PROGRESS' && (
+            <button
+              type="button"
+              onClick={() => setStatus('COMPLETED')}
+              disabled={actioning}
+              className="rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark disabled:opacity-70"
+            >
+              Mark Completed
+            </button>
+          )}
+          {(workOrder.status === 'SCHEDULED' || workOrder.status === 'IN_PROGRESS') && (
+            <button
+              type="button"
+              onClick={() => setStatus('CANCELLED')}
+              disabled={actioning}
+              className="rounded-md border border-red-400/50 px-4 py-2 text-sm text-red-400 hover:bg-red-400/10 disabled:opacity-70"
+            >
+              Cancel
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={handleDelete}
+            className="flex items-center gap-2 rounded-md border border-ink-700 px-4 py-2 text-sm text-ink-300 hover:bg-ink-800"
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete
+          </button>
+        </div>
+      </div>
+
+      <Panel title="Assigned Technicians">
+        {workOrder.technicians.length === 0 ? (
+          <p className="text-sm text-ink-400">No technicians assigned yet.</p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {workOrder.technicians.map((t) => (
+              <span key={t.id} className="rounded-full bg-ink-800 px-3 py-1.5 text-xs text-ink-200">
+                {t.employee.firstName} {t.employee.lastName}
+                {t.employee.position && <span className="text-ink-500"> · {t.employee.position}</span>}
+              </span>
+            ))}
+          </div>
+        )}
+      </Panel>
+
+      <Panel
+        title="Intervention Reports"
+        action={
+          <Link
+            to={`/dashboard/operations/intervention-reports/new?workOrderId=${workOrder.id}`}
+            className="flex items-center gap-1.5 text-xs font-semibold text-cyan-accent hover:underline"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            File Report
+          </Link>
+        }
+      >
+        {workOrder.interventionReports.length === 0 ? (
+          <EmptyState icon={FileText} message="No intervention reports filed for this work order yet." />
+        ) : (
+          <div className="flex flex-col gap-2">
+            {workOrder.interventionReports.map((r) => (
+              <Link
+                key={r.id}
+                to={`/dashboard/operations/intervention-reports/${r.id}`}
+                className="flex items-center justify-between rounded-lg bg-ink-800 px-4 py-2.5 hover:bg-ink-700"
+              >
+                <span className="text-sm text-ink-100">{r.interventionNumber}</span>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-ink-400">{r.workCompleted ? 'Work completed' : 'Incomplete'}</span>
+                  <Badge tone={reportStatusTone[r.status]}>{r.status}</Badge>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </Panel>
+    </div>
+  )
+}
+
+export default WorkOrderDetailPage
