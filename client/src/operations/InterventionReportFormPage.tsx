@@ -1,12 +1,14 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Paperclip } from 'lucide-react'
+import { ArrowLeft, Paperclip, X as XIcon, ImagePlus } from 'lucide-react'
 import * as api from '../lib/api'
 import type { JobCategory, WarrantyStatus } from '../lib/api'
-import { JOB_CATEGORY_LABELS } from '../lib/api'
+import { JOB_CATEGORY_LABELS, WORK_TYPE_LABELS } from '../lib/api'
+import type { ServiceCategory } from '../lib/api'
 import { Panel } from '../dashboard/ui'
 import { useToast } from '../dashboard/ToastContext'
 import { useEmployees } from '../erp/useEmployees'
+import { useCustomers } from '../erp/useCustomers'
 import { useWorkOrders } from './useWorkOrders'
 import SignaturePad from './SignaturePad'
 
@@ -15,6 +17,7 @@ const inputClass =
 const labelClass = 'text-xs font-semibold tracking-widest text-ink-400'
 
 const JOB_CATEGORIES = Object.keys(JOB_CATEGORY_LABELS) as JobCategory[]
+const WORK_TYPES = Object.keys(WORK_TYPE_LABELS) as ServiceCategory[]
 const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024
 
 function readFileAsDataUrl(file: File): Promise<string> {
@@ -26,20 +29,72 @@ function readFileAsDataUrl(file: File): Promise<string> {
   })
 }
 
+function PhotoPicker({
+  label,
+  files,
+  onChange,
+}: {
+  label: string
+  files: File[]
+  onChange: (files: File[]) => void
+}) {
+  function handleSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const selected = Array.from(e.target.files || []).filter((f) => f.size <= MAX_ATTACHMENT_BYTES)
+    onChange([...files, ...selected])
+    e.target.value = ''
+  }
+
+  function removeAt(index: number) {
+    onChange(files.filter((_, i) => i !== index))
+  }
+
+  return (
+    <div>
+      <label className={labelClass}>{label}</label>
+      <div className="mt-2 flex items-center gap-3 rounded-md border border-dashed border-ink-600 bg-ink-950 px-4 py-3">
+        <ImagePlus className="h-4 w-4 shrink-0 text-ink-400" />
+        <input
+          type="file"
+          accept="image/*"
+          multiple
+          onChange={handleSelect}
+          className="w-full text-sm text-ink-300 file:mr-3 file:rounded file:border-0 file:bg-ink-800 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-ink-200"
+        />
+      </div>
+      {files.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {files.map((f, i) => (
+            <span key={i} className="flex items-center gap-1.5 rounded-full bg-ink-800 px-3 py-1 text-xs text-ink-200">
+              {f.name}
+              <button type="button" onClick={() => removeAt(i)} aria-label={`Remove ${f.name}`} className="text-ink-400 hover:text-red-400">
+                <XIcon className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      <p className="mt-1 text-xs text-ink-500">Images only. Max 8MB each.</p>
+    </div>
+  )
+}
+
 function InterventionReportFormPage() {
   const toast = useToast()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const preselectedWorkOrderId = searchParams.get('workOrderId') || ''
 
+  const customers = useCustomers()
   const workOrders = useWorkOrders()
   const employees = useEmployees()
 
+  const [customerId, setCustomerId] = useState('')
   const [workOrderId, setWorkOrderId] = useState(preselectedWorkOrderId)
   const [contactPerson, setContactPerson] = useState('')
   const [contactPhone, setContactPhone] = useState('')
   const [contactEmail, setContactEmail] = useState('')
   const [jobCategory, setJobCategory] = useState<JobCategory>('SERVICING')
+  const [workType, setWorkType] = useState<ServiceCategory>('ELECTRICAL')
 
   const [equipment, setEquipment] = useState('')
   const [make, setMake] = useState('')
@@ -58,6 +113,10 @@ function InterventionReportFormPage() {
   const [warrantyStatus, setWarrantyStatus] = useState<WarrantyStatus | ''>('')
   const [technicianReport, setTechnicianReport] = useState('')
   const [comments, setComments] = useState('')
+  const [additionalInfo, setAdditionalInfo] = useState('')
+
+  const [equipmentPhotos, setEquipmentPhotos] = useState<File[]>([])
+  const [workDonePhotos, setWorkDonePhotos] = useState<File[]>([])
 
   const [signedByName, setSignedByName] = useState('')
   const [signatureData, setSignatureData] = useState<string | null>(null)
@@ -70,7 +129,10 @@ function InterventionReportFormPage() {
   useEffect(() => {
     if (!preselectedWorkOrderId) return
     const wo = workOrders.find((w) => w.id === preselectedWorkOrderId)
-    if (wo) setJobCategory(wo.jobCategory)
+    if (wo) {
+      setJobCategory(wo.jobCategory)
+      setCustomerId((prev) => prev || wo.customerId)
+    }
   }, [preselectedWorkOrderId, workOrders])
 
   function toggleTechnician(id: string) {
@@ -93,8 +155,8 @@ function InterventionReportFormPage() {
     e.preventDefault()
     setFormError(null)
 
-    if (!workOrderId) {
-      setFormError('Select a work order')
+    if (!customerId) {
+      setFormError('Select a customer')
       return
     }
     if (!natureOfIntervention.trim()) {
@@ -122,11 +184,13 @@ function InterventionReportFormPage() {
       }
 
       const { interventionReport } = await api.createInterventionReport({
-        workOrderId,
+        customerId,
+        workOrderId: workOrderId || undefined,
         contactPerson: contactPerson || undefined,
         contactPhone: contactPhone || undefined,
         contactEmail: contactEmail || undefined,
         jobCategory,
+        workType,
         equipment: equipment || undefined,
         make: make || undefined,
         model: model || undefined,
@@ -140,12 +204,23 @@ function InterventionReportFormPage() {
         warrantyStatus: warrantyStatus || undefined,
         technicianReport: technicianReport || undefined,
         comments: comments || undefined,
+        additionalInfo: additionalInfo || undefined,
         technicianIds,
         signedByName,
         signatureData,
         attachmentData,
         attachmentFileName: attachmentFile?.name,
       })
+
+      const photoUploads = [
+        ...equipmentPhotos.map((f) => ({ file: f, kind: 'EQUIPMENT' as const })),
+        ...workDonePhotos.map((f) => ({ file: f, kind: 'WORK_DONE' as const })),
+      ]
+      for (const { file, kind } of photoUploads) {
+        const fileData = await readFileAsDataUrl(file)
+        await api.uploadInterventionReportPhoto(interventionReport.id, { kind, fileData, fileName: file.name })
+      }
+
       toast.success('Intervention report submitted')
       navigate(`/dashboard/operations/intervention-reports/${interventionReport.id}`)
     } catch (err) {
@@ -171,20 +246,33 @@ function InterventionReportFormPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-        <Panel title="Work Order & Contact">
+        <Panel title="Customer & Contact">
           <div className="flex flex-col gap-4">
-            <div>
-              <label className={labelClass}>WORK ORDER</label>
-              <select value={workOrderId} onChange={(e) => setWorkOrderId(e.target.value)} className={`mt-2 ${inputClass}`}>
-                <option value="">Select a work order</option>
-                {workOrders.map((wo) => (
-                  <option key={wo.id} value={wo.id}>
-                    {wo.workOrderNumber} — {wo.title}
-                  </option>
-                ))}
-              </select>
-              <p className="mt-1 text-xs text-ink-500">The intervention number is assigned automatically on submit.</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={labelClass}>CUSTOMER</label>
+                <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className={`mt-2 ${inputClass}`}>
+                  <option value="">Select a customer</option>
+                  {customers.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.company || c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={labelClass}>WORK ORDER (OPTIONAL)</label>
+                <select value={workOrderId} onChange={(e) => setWorkOrderId(e.target.value)} className={`mt-2 ${inputClass}`}>
+                  <option value="">— link now, or add later —</option>
+                  {workOrders.map((wo) => (
+                    <option key={wo.id} value={wo.id}>
+                      {wo.workOrderNumber} — {wo.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
+            <p className="text-xs text-ink-500">The intervention number is assigned automatically on submit.</p>
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className={labelClass}>CONTACT PERSON</label>
@@ -204,41 +292,65 @@ function InterventionReportFormPage() {
                 />
               </div>
             </div>
-            <div>
-              <label className={labelClass}>JOB CATEGORY</label>
-              <select
-                value={jobCategory}
-                onChange={(e) => setJobCategory(e.target.value as JobCategory)}
-                className={`mt-2 ${inputClass}`}
-              >
-                {JOB_CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {JOB_CATEGORY_LABELS[c]}
-                  </option>
-                ))}
-              </select>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={labelClass}>JOB CATEGORY</label>
+                <select
+                  value={jobCategory}
+                  onChange={(e) => setJobCategory(e.target.value as JobCategory)}
+                  className={`mt-2 ${inputClass}`}
+                >
+                  {JOB_CATEGORIES.map((c) => (
+                    <option key={c} value={c}>
+                      {JOB_CATEGORY_LABELS[c]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={labelClass}>WORK TYPE</label>
+                <select
+                  value={workType}
+                  onChange={(e) => setWorkType(e.target.value as ServiceCategory)}
+                  className={`mt-2 ${inputClass}`}
+                >
+                  {WORK_TYPES.map((t) => (
+                    <option key={t} value={t}>
+                      {WORK_TYPE_LABELS[t]}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
         </Panel>
 
         <Panel title="Equipment / System (optional)">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={labelClass}>EQUIPMENT</label>
-              <input value={equipment} onChange={(e) => setEquipment(e.target.value)} className={`mt-2 ${inputClass}`} />
+          <div className="flex flex-col gap-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={labelClass}>EQUIPMENT</label>
+                <input value={equipment} onChange={(e) => setEquipment(e.target.value)} className={`mt-2 ${inputClass}`} />
+              </div>
+              <div>
+                <label className={labelClass}>MAKE</label>
+                <input value={make} onChange={(e) => setMake(e.target.value)} className={`mt-2 ${inputClass}`} />
+              </div>
+              <div>
+                <label className={labelClass}>MODEL</label>
+                <input value={model} onChange={(e) => setModel(e.target.value)} className={`mt-2 ${inputClass}`} />
+              </div>
+              <div>
+                <label className={labelClass}>SERIAL NUMBER(S)</label>
+                <input
+                  value={serialNo}
+                  onChange={(e) => setSerialNo(e.target.value)}
+                  placeholder="Comma-separated if multiple"
+                  className={`mt-2 ${inputClass}`}
+                />
+              </div>
             </div>
-            <div>
-              <label className={labelClass}>MAKE</label>
-              <input value={make} onChange={(e) => setMake(e.target.value)} className={`mt-2 ${inputClass}`} />
-            </div>
-            <div>
-              <label className={labelClass}>MODEL</label>
-              <input value={model} onChange={(e) => setModel(e.target.value)} className={`mt-2 ${inputClass}`} />
-            </div>
-            <div>
-              <label className={labelClass}>SERIAL NO.</label>
-              <input value={serialNo} onChange={(e) => setSerialNo(e.target.value)} className={`mt-2 ${inputClass}`} />
-            </div>
+            <PhotoPicker label="EQUIPMENT PHOTOS" files={equipmentPhotos} onChange={setEquipmentPhotos} />
           </div>
         </Panel>
 
@@ -288,6 +400,7 @@ function InterventionReportFormPage() {
                 />
               </div>
             )}
+            <PhotoPicker label="PHOTOS OF WORK DONE" files={workDonePhotos} onChange={setWorkDonePhotos} />
           </div>
         </Panel>
 
@@ -362,6 +475,16 @@ function InterventionReportFormPage() {
             <div>
               <label className={labelClass}>COMMENTS / RECOMMENDATIONS</label>
               <textarea value={comments} onChange={(e) => setComments(e.target.value)} rows={2} className={`mt-2 ${inputClass}`} />
+            </div>
+            <div>
+              <label className={labelClass}>OTHER IMPORTANT INFORMATION</label>
+              <textarea
+                value={additionalInfo}
+                onChange={(e) => setAdditionalInfo(e.target.value)}
+                rows={2}
+                placeholder="Anything else worth recording for this customer/equipment's history..."
+                className={`mt-2 ${inputClass}`}
+              />
             </div>
           </div>
         </Panel>

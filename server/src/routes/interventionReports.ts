@@ -19,30 +19,46 @@ const JOB_CATEGORIES = [
 ] as const;
 type JobCategory = (typeof JOB_CATEGORIES)[number];
 
+const WORK_TYPES = ["ELECTRICAL", "ELV_SECURITY", "MECHANICAL", "PLUMBING", "SAFETY", "OTHER"] as const;
+type WorkType = (typeof WORK_TYPES)[number];
+
 const WARRANTY_STATUSES = ["YES", "NO", "UNKNOWN"] as const;
 type WarrantyStatus = (typeof WARRANTY_STATUSES)[number];
 
 const STATUSES = ["SUBMITTED", "APPROVED", "REJECTED"] as const;
 type Status = (typeof STATUSES)[number];
 
+const REMINDER_INTERVALS = ["MONTHLY", "QUARTERLY", "SEMI_ANNUAL"] as const;
+type ReminderInterval = (typeof REMINDER_INTERVALS)[number];
+const REMINDER_MONTHS: Record<ReminderInterval, number> = { MONTHLY: 1, QUARTERLY: 3, SEMI_ANNUAL: 6 };
+
+const PHOTO_KINDS = ["EQUIPMENT", "WORK_DONE"] as const;
+type PhotoKind = (typeof PHOTO_KINDS)[number];
+
 const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024;
 const ALLOWED_ATTACHMENT_MIME = ["image/jpeg", "image/png", "image/webp", "image/heic", "application/pdf"];
+const ALLOWED_PHOTO_MIME = ["image/jpeg", "image/png", "image/webp", "image/heic"];
 
 const EMPLOYEE_SELECT = { id: true, firstName: true, lastName: true, position: true };
 const USER_SELECT = { id: true, name: true, email: true };
+const CUSTOMER_SELECT = { id: true, name: true, company: true, address: true };
 
-// Bytes columns (signatureData/attachmentData) are deliberately excluded from
-// every list/detail response — they're only ever streamed via the dedicated
-// /signature and /attachment endpoints below, so JSON payloads stay small.
+// Bytes columns (signatureData/attachmentData, and photo bytes in their own
+// table) are deliberately excluded from every list/detail response — they're
+// only ever streamed via the dedicated binary endpoints below, so JSON
+// payloads stay small.
 const DETAIL_SELECT = {
   id: true,
   sequenceNumber: true,
+  customerId: true,
+  customer: { select: CUSTOMER_SELECT },
   workOrderId: true,
   date: true,
   contactPerson: true,
   contactPhone: true,
   contactEmail: true,
   jobCategory: true,
+  workType: true,
   equipment: true,
   make: true,
   model: true,
@@ -57,6 +73,9 @@ const DETAIL_SELECT = {
   warrantyStatus: true,
   technicianReport: true,
   comments: true,
+  additionalInfo: true,
+  reminderInterval: true,
+  nextReminderAt: true,
   signedByName: true,
   signedAt: true,
   attachmentFileName: true,
@@ -73,12 +92,12 @@ const DETAIL_SELECT = {
       id: true,
       workOrderNumber: true,
       title: true,
-      customer: { select: { id: true, name: true, company: true, address: true } },
     },
   },
   createdBy: { select: USER_SELECT },
   reviewedBy: { select: USER_SELECT },
   technicians: { include: { employee: { select: EMPLOYEE_SELECT } } },
+  photos: { select: { id: true, kind: true, fileName: true, mimeType: true, createdAt: true } },
 } satisfies Prisma.InterventionReportSelect;
 
 function decodeDataUrl(input: unknown): { buffer: Buffer; mimeType: string } | null {
@@ -96,7 +115,7 @@ function withInterventionNumber<T extends { sequenceNumber: number }>(report: T)
 router.use(requireAuth);
 
 router.get("/", async (req, res) => {
-  const { status, workOrderId } = req.query;
+  const { status, workOrderId, customerId, dueRemindersOnly } = req.query;
 
   const where: Prisma.InterventionReportWhereInput = {};
   if (typeof status === "string" && STATUSES.includes(status as Status)) {
@@ -104,6 +123,12 @@ router.get("/", async (req, res) => {
   }
   if (typeof workOrderId === "string" && workOrderId) {
     where.workOrderId = workOrderId;
+  }
+  if (typeof customerId === "string" && customerId) {
+    where.customerId = customerId;
+  }
+  if (dueRemindersOnly === "true") {
+    where.nextReminderAt = { lte: new Date() };
   }
 
   const interventionReports = await prisma.interventionReport.findMany({
@@ -141,14 +166,82 @@ router.get("/:id/attachment", async (req, res) => {
   res.send(Buffer.from(report.attachmentData));
 });
 
+router.get("/:id/photos", async (req, res) => {
+  const id = req.params.id as string;
+  const photos = await prisma.interventionReportPhoto.findMany({
+    where: { interventionReportId: id },
+    select: { id: true, kind: true, fileName: true, mimeType: true, createdAt: true },
+    orderBy: { createdAt: "asc" },
+  });
+  res.json({ photos });
+});
+
+router.get("/:id/photos/:photoId", async (req, res) => {
+  const { id, photoId } = req.params as { id: string; photoId: string };
+  const photo = await prisma.interventionReportPhoto.findFirst({
+    where: { id: photoId, interventionReportId: id },
+    select: { data: true, mimeType: true, fileName: true },
+  });
+  if (!photo) return res.status(404).json({ error: "Photo not found" });
+  res.setHeader("Content-Type", photo.mimeType);
+  res.setHeader("Content-Disposition", `inline; filename="${photo.fileName}"`);
+  res.send(Buffer.from(photo.data));
+});
+
+router.post("/:id/photos", requireRole("ADMIN", "MANAGER"), async (req, res) => {
+  const id = req.params.id as string;
+  const { kind, fileData, fileName } = req.body ?? {};
+
+  if (!PHOTO_KINDS.includes(kind)) {
+    return res.status(400).json({ error: "Invalid photo kind" });
+  }
+  const file = decodeDataUrl(fileData);
+  if (!file) return res.status(400).json({ error: "A photo file is required" });
+  if (file.buffer.byteLength > MAX_ATTACHMENT_BYTES) {
+    return res.status(400).json({ error: "Photo must be 8MB or smaller" });
+  }
+  if (!ALLOWED_PHOTO_MIME.includes(file.mimeType)) {
+    return res.status(400).json({ error: "Photo must be a JPEG, PNG, WEBP, or HEIC image" });
+  }
+  if (typeof fileName !== "string" || !fileName.trim()) {
+    return res.status(400).json({ error: "fileName is required" });
+  }
+
+  try {
+    const photo = await prisma.interventionReportPhoto.create({
+      data: {
+        interventionReportId: id,
+        kind: kind as PhotoKind,
+        data: file.buffer as unknown as Uint8Array<ArrayBuffer>,
+        mimeType: file.mimeType,
+        fileName: fileName.trim(),
+      },
+      select: { id: true, kind: true, fileName: true, mimeType: true, createdAt: true },
+    });
+    res.status(201).json({ photo });
+  } catch (err) {
+    if (isForeignKeyConstraintError(err)) return res.status(404).json({ error: "Intervention report not found" });
+    throw err;
+  }
+});
+
+router.delete("/:id/photos/:photoId", requireRole("ADMIN", "MANAGER"), async (req, res) => {
+  const { id, photoId } = req.params as { id: string; photoId: string };
+  const result = await prisma.interventionReportPhoto.deleteMany({ where: { id: photoId, interventionReportId: id } });
+  if (result.count === 0) return res.status(404).json({ error: "Photo not found" });
+  res.status(204).end();
+});
+
 router.post("/", requireRole("ADMIN", "MANAGER"), async (req, res) => {
   const {
+    customerId,
     workOrderId,
     date,
     contactPerson,
     contactPhone,
     contactEmail,
     jobCategory,
+    workType,
     equipment,
     make,
     model,
@@ -163,6 +256,7 @@ router.post("/", requireRole("ADMIN", "MANAGER"), async (req, res) => {
     warrantyStatus,
     technicianReport,
     comments,
+    additionalInfo,
     technicianIds,
     signedByName,
     signatureData,
@@ -170,11 +264,14 @@ router.post("/", requireRole("ADMIN", "MANAGER"), async (req, res) => {
     attachmentFileName,
   } = req.body ?? {};
 
-  if (typeof workOrderId !== "string" || !workOrderId) {
-    return res.status(400).json({ error: "workOrderId is required" });
+  if (typeof customerId !== "string" || !customerId) {
+    return res.status(400).json({ error: "customerId is required" });
   }
   if (!JOB_CATEGORIES.includes(jobCategory)) {
     return res.status(400).json({ error: "Invalid job category" });
+  }
+  if (!WORK_TYPES.includes(workType)) {
+    return res.status(400).json({ error: "Invalid work type" });
   }
   if (typeof natureOfIntervention !== "string" || !natureOfIntervention.trim()) {
     return res.status(400).json({ error: "Nature of intervention is required" });
@@ -209,12 +306,14 @@ router.post("/", requireRole("ADMIN", "MANAGER"), async (req, res) => {
   try {
     const created = await prisma.interventionReport.create({
       data: {
-        workOrderId,
+        customerId,
+        workOrderId: typeof workOrderId === "string" && workOrderId ? workOrderId : null,
         date: date ? new Date(date) : new Date(),
         contactPerson: typeof contactPerson === "string" && contactPerson ? contactPerson : null,
         contactPhone: typeof contactPhone === "string" && contactPhone ? contactPhone : null,
         contactEmail: typeof contactEmail === "string" && contactEmail ? contactEmail : null,
         jobCategory: jobCategory as JobCategory,
+        workType: workType as WorkType,
         equipment: typeof equipment === "string" && equipment ? equipment : null,
         make: typeof make === "string" && make ? make : null,
         model: typeof model === "string" && model ? model : null,
@@ -229,6 +328,7 @@ router.post("/", requireRole("ADMIN", "MANAGER"), async (req, res) => {
         warrantyStatus: (warrantyStatus as WarrantyStatus) || null,
         technicianReport: typeof technicianReport === "string" && technicianReport ? technicianReport : null,
         comments: typeof comments === "string" && comments ? comments : null,
+        additionalInfo: typeof additionalInfo === "string" && additionalInfo ? additionalInfo : null,
         signedByName: typeof signedByName === "string" && signedByName ? signedByName : null,
         signedAt: signature ? new Date() : null,
         signatureData: signature ? (signature.buffer as unknown as Uint8Array<ArrayBuffer>) : null,
@@ -241,7 +341,7 @@ router.post("/", requireRole("ADMIN", "MANAGER"), async (req, res) => {
       select: { id: true, workOrderId: true, workCompleted: true },
     });
 
-    if (created.workCompleted) {
+    if (created.workOrderId && created.workCompleted) {
       await prisma.workOrder.update({ where: { id: created.workOrderId }, data: { status: "COMPLETED" } });
     }
 
@@ -251,7 +351,52 @@ router.post("/", requireRole("ADMIN", "MANAGER"), async (req, res) => {
     });
     res.status(201).json({ interventionReport: withInterventionNumber(interventionReport!) });
   } catch (err) {
-    if (isForeignKeyConstraintError(err)) return res.status(400).json({ error: "Work order or technician not found" });
+    if (isForeignKeyConstraintError(err)) return res.status(400).json({ error: "Customer, work order, or technician not found" });
+    throw err;
+  }
+});
+
+router.patch("/:id", requireRole("ADMIN", "MANAGER"), async (req, res) => {
+  const id = req.params.id as string;
+  const { workOrderId } = req.body ?? {};
+
+  const data: Prisma.InterventionReportUpdateInput = {};
+  if (workOrderId !== undefined) {
+    data.workOrder = workOrderId ? { connect: { id: workOrderId } } : { disconnect: true };
+  }
+
+  try {
+    await prisma.interventionReport.update({ where: { id }, data });
+    const interventionReport = await prisma.interventionReport.findUnique({ where: { id }, select: DETAIL_SELECT });
+    res.json({ interventionReport: withInterventionNumber(interventionReport!) });
+  } catch (err) {
+    if (isNotFoundError(err)) return res.status(404).json({ error: "Intervention report not found" });
+    if (isForeignKeyConstraintError(err)) return res.status(400).json({ error: "Work order not found" });
+    throw err;
+  }
+});
+
+router.post("/:id/reminder", requireRole("ADMIN", "MANAGER"), async (req, res) => {
+  const id = req.params.id as string;
+  const { interval } = req.body ?? {};
+
+  if (interval !== null && !REMINDER_INTERVALS.includes(interval)) {
+    return res.status(400).json({ error: "Invalid reminder interval" });
+  }
+
+  const nextReminderAt = interval
+    ? new Date(new Date().setMonth(new Date().getMonth() + REMINDER_MONTHS[interval as ReminderInterval]))
+    : null;
+
+  try {
+    await prisma.interventionReport.update({
+      where: { id },
+      data: { reminderInterval: interval, nextReminderAt },
+    });
+    const interventionReport = await prisma.interventionReport.findUnique({ where: { id }, select: DETAIL_SELECT });
+    res.json({ interventionReport: withInterventionNumber(interventionReport!) });
+  } catch (err) {
+    if (isNotFoundError(err)) return res.status(404).json({ error: "Intervention report not found" });
     throw err;
   }
 });

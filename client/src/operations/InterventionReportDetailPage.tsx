@@ -1,16 +1,21 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, X, Check, Download } from 'lucide-react'
+import { ArrowLeft, X, Check, Download, Link2, BellRing } from 'lucide-react'
 import * as api from '../lib/api'
-import type { InterventionReport } from '../lib/api'
-import { JOB_CATEGORY_LABELS } from '../lib/api'
+import type { InterventionReport, ReminderInterval } from '../lib/api'
+import { JOB_CATEGORY_LABELS, WORK_TYPE_LABELS, REMINDER_INTERVAL_LABELS } from '../lib/api'
 import { Panel, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
 import { reportStatusTone } from '../erp/statusTones'
+import { useWorkOrders } from './useWorkOrders'
 
 const fieldLabelClass = 'text-[11px] font-semibold tracking-widest text-ink-400'
+const inputClass =
+  'rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
+
+const REMINDER_OPTIONS: ReminderInterval[] = ['MONTHLY', 'QUARTERLY', 'SEMI_ANNUAL']
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -21,23 +26,54 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
   )
 }
 
+function PhotoGrid({ reportId, photos, kind, label }: { reportId: string; photos: InterventionReport['photos']; kind: 'EQUIPMENT' | 'WORK_DONE'; label: string }) {
+  const filtered = photos.filter((p) => p.kind === kind)
+  return (
+    <div>
+      <div className={fieldLabelClass}>{label}</div>
+      {filtered.length === 0 ? (
+        <p className="mt-1 text-sm text-ink-500">None uploaded.</p>
+      ) : (
+        <div className="mt-2 flex flex-wrap gap-3">
+          {filtered.map((p) => (
+            <a key={p.id} href={api.interventionPhotoUrl(reportId, p.id)} target="_blank" rel="noreferrer">
+              <img
+                src={api.interventionPhotoUrl(reportId, p.id)}
+                alt={p.fileName}
+                className="h-24 w-24 rounded-md border border-ink-700 object-cover hover:border-cyan-accent"
+              />
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function InterventionReportDetailPage() {
   const { id } = useParams<{ id: string }>()
   const toast = useToast()
   const confirm = useConfirm()
   const { user } = useAuth()
+  const workOrders = useWorkOrders()
 
   const [report, setReport] = useState<InterventionReport | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [actioning, setActioning] = useState(false)
 
+  const [linkWorkOrderId, setLinkWorkOrderId] = useState('')
+  const [reminderChoice, setReminderChoice] = useState<ReminderInterval | ''>('')
+
   function load() {
     if (!id) return
     setLoading(true)
     api
       .getInterventionReport(id)
-      .then(({ interventionReport }) => setReport(interventionReport))
+      .then(({ interventionReport }) => {
+        setReport(interventionReport)
+        setReminderChoice(interventionReport.reminderInterval || '')
+      })
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load intervention report'))
       .finally(() => setLoading(false))
   }
@@ -79,10 +115,39 @@ function InterventionReportDetailPage() {
     }
   }
 
+  async function handleLinkWorkOrder() {
+    if (!report || !linkWorkOrderId) return
+    setActioning(true)
+    try {
+      await api.linkWorkOrderToInterventionReport(report.id, linkWorkOrderId)
+      toast.success('Work order linked')
+      load()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to link work order')
+    } finally {
+      setActioning(false)
+    }
+  }
+
+  async function handleSetReminder() {
+    if (!report) return
+    setActioning(true)
+    try {
+      await api.setInterventionReportReminder(report.id, reminderChoice || null)
+      toast.success(reminderChoice ? 'Reminder set' : 'Reminder cleared')
+      load()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update reminder')
+    } finally {
+      setActioning(false)
+    }
+  }
+
   if (loading) return <TableSkeleton rows={6} cols={4} />
   if (error || !report) return <EmptyState icon={X} message={error || 'Intervention report not found'} />
 
   const isAdmin = user?.role === 'ADMIN'
+  const reminderDue = !!report.nextReminderAt && new Date(report.nextReminderAt) <= new Date()
 
   return (
     <div className="flex flex-col gap-6">
@@ -99,12 +164,18 @@ function InterventionReportDetailPage() {
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold text-ink-100">{report.interventionNumber}</h1>
             <Badge tone={reportStatusTone[report.status]}>{report.status}</Badge>
+            {reminderDue && <Badge tone="warning">REMINDER DUE</Badge>}
           </div>
           <p className="mt-1 text-sm text-ink-300">
-            <Link to={`/dashboard/operations/work-orders/${report.workOrderId}`} className="text-cyan-accent hover:underline">
-              {report.workOrder.workOrderNumber}
-            </Link>{' '}
-            · {report.workOrder.customer.company || report.workOrder.customer.name} · {report.date.slice(0, 10)}
+            {report.customer.company || report.customer.name} · {WORK_TYPE_LABELS[report.workType]} · {report.date.slice(0, 10)}
+            {report.workOrder && (
+              <>
+                {' · '}
+                <Link to={`/dashboard/operations/work-orders/${report.workOrder.id}`} className="text-cyan-accent hover:underline">
+                  {report.workOrder.workOrderNumber}
+                </Link>
+              </>
+            )}
           </p>
         </div>
 
@@ -140,11 +211,38 @@ function InterventionReportDetailPage() {
         </Panel>
       )}
 
+      {!report.workOrder && (
+        <Panel title="Work Order">
+          <div className="flex items-end gap-3">
+            <div className="flex-1">
+              <label className={fieldLabelClass}>LINK A WORK ORDER (OPTIONAL)</label>
+              <select value={linkWorkOrderId} onChange={(e) => setLinkWorkOrderId(e.target.value)} className={`mt-2 w-full ${inputClass}`}>
+                <option value="">Select a work order</option>
+                {workOrders.map((wo) => (
+                  <option key={wo.id} value={wo.id}>
+                    {wo.workOrderNumber} — {wo.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button
+              type="button"
+              onClick={handleLinkWorkOrder}
+              disabled={!linkWorkOrderId || actioning}
+              className="flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Link2 className="h-4 w-4" />
+              Link
+            </button>
+          </div>
+        </Panel>
+      )}
+
       <Panel title="Job Category & Contact">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Field label="JOB CATEGORY" value={JOB_CATEGORY_LABELS[report.jobCategory]} />
+          <Field label="WORK TYPE" value={WORK_TYPE_LABELS[report.workType]} />
           <Field label="CONTACT PERSON" value={report.contactPerson} />
-          <Field label="CONTACT PHONE" value={report.contactPhone} />
         </div>
       </Panel>
 
@@ -172,6 +270,13 @@ function InterventionReportDetailPage() {
         </div>
       </Panel>
 
+      <Panel title="Photos">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+          <PhotoGrid reportId={report.id} photos={report.photos} kind="EQUIPMENT" label="EQUIPMENT PHOTOS" />
+          <PhotoGrid reportId={report.id} photos={report.photos} kind="WORK_DONE" label="PHOTOS OF WORK DONE" />
+        </div>
+      </Panel>
+
       <Panel title="Technicians">
         {report.technicians.length === 0 ? (
           <p className="text-sm text-ink-400">No technicians recorded.</p>
@@ -194,7 +299,43 @@ function InterventionReportDetailPage() {
           />
           <Field label="TECHNICIAN'S REPORT" value={report.technicianReport} />
           <Field label="COMMENTS / RECOMMENDATIONS" value={report.comments} />
+          <Field label="OTHER IMPORTANT INFORMATION" value={report.additionalInfo} />
         </div>
+      </Panel>
+
+      <Panel title="Follow-up Reminder">
+        <div className="flex items-end gap-3">
+          <div className="flex-1 max-w-xs">
+            <label className={fieldLabelClass}>REMIND ME</label>
+            <select
+              value={reminderChoice}
+              onChange={(e) => setReminderChoice(e.target.value as ReminderInterval | '')}
+              className={`mt-2 w-full ${inputClass}`}
+            >
+              <option value="">No reminder</option>
+              {REMINDER_OPTIONS.map((opt) => (
+                <option key={opt} value={opt}>
+                  {REMINDER_INTERVAL_LABELS[opt]}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button
+            type="button"
+            onClick={handleSetReminder}
+            disabled={actioning || reminderChoice === (report.reminderInterval || '')}
+            className="flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <BellRing className="h-4 w-4" />
+            Save
+          </button>
+          {report.nextReminderAt && (
+            <span className="pb-2.5 text-xs text-ink-400">Next: {report.nextReminderAt.slice(0, 10)}</span>
+          )}
+        </div>
+        <p className="mt-2 text-xs text-ink-500">
+          This surfaces the report under "Reminders Due" in the list once the date passes — no email or SMS is sent.
+        </p>
       </Panel>
 
       <Panel title="Sign-off & Attachment">

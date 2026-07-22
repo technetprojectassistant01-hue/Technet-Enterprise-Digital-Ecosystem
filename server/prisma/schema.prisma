@@ -127,6 +127,17 @@ enum ReportStatus {
   REJECTED
 }
 
+enum ReminderInterval {
+  MONTHLY
+  QUARTERLY
+  SEMI_ANNUAL
+}
+
+enum PhotoKind {
+  EQUIPMENT
+  WORK_DONE
+}
+
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
@@ -186,12 +197,13 @@ model Customer {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  contracts  Contract[]
-  quotations Quotation[]
-  invoices   Invoice[]
-  projects   Project[]
-  documents  Document[]
-  workOrders WorkOrder[]
+  contracts           Contract[]
+  quotations          Quotation[]
+  invoices            Invoice[]
+  projects            Project[]
+  documents           Document[]
+  workOrders          WorkOrder[]
+  interventionReports InterventionReport[]
 }
 
 model Contract {
@@ -561,15 +573,18 @@ model DailyWorkReportWorkOrder {
 }
 
 model InterventionReport {
-  id                   String          @id @default(uuid())
-  sequenceNumber       Int             @unique @default(autoincrement())
-  workOrderId          String
-  workOrder            WorkOrder       @relation(fields: [workOrderId], references: [id])
-  date                 DateTime        @default(now())
+  id                   String            @id @default(uuid())
+  sequenceNumber       Int               @unique @default(autoincrement())
+  customerId           String
+  customer             Customer          @relation(fields: [customerId], references: [id])
+  workOrderId          String?
+  workOrder            WorkOrder?        @relation(fields: [workOrderId], references: [id])
+  date                 DateTime          @default(now())
   contactPerson        String?
   contactPhone         String?
   contactEmail         String?
   jobCategory          JobCategory
+  workType             ServiceCategory
   equipment            String?
   make                 String?
   model                String?
@@ -577,30 +592,34 @@ model InterventionReport {
   dateInstalled        DateTime?
   natureOfIntervention String
   actionTaken          String
-  workCompleted        Boolean         @default(true)
+  workCompleted        Boolean           @default(true)
   incompleteDetails    String?
   timeIn               String?
   timeOut              String?
   warrantyStatus       WarrantyStatus?
   technicianReport     String?
   comments             String?
+  additionalInfo       String?
+  reminderInterval     ReminderInterval?
+  nextReminderAt       DateTime?
   signatureData        Bytes?
   signedByName         String?
   signedAt             DateTime?
   attachmentData       Bytes?
   attachmentFileName   String?
   attachmentMimeType   String?
-  status               ReportStatus    @default(SUBMITTED)
+  status               ReportStatus      @default(SUBMITTED)
   createdById          String
-  createdBy            User            @relation("InterventionReportCreator", fields: [createdById], references: [id])
+  createdBy            User              @relation("InterventionReportCreator", fields: [createdById], references: [id])
   reviewedById         String?
-  reviewedBy           User?           @relation("InterventionReportReviewer", fields: [reviewedById], references: [id])
+  reviewedBy           User?             @relation("InterventionReportReviewer", fields: [reviewedById], references: [id])
   reviewedAt           DateTime?
   reviewNote           String?
-  createdAt            DateTime        @default(now())
-  updatedAt            DateTime        @updatedAt
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
 
   technicians InterventionReportTechnician[]
+  photos      InterventionReportPhoto[]
 }
 
 model InterventionReportTechnician {
@@ -611,4 +630,15 @@ model InterventionReportTechnician {
   employee             Employee           @relation(fields: [employeeId], references: [id])
 
   @@unique([interventionReportId, employeeId])
+}
+
+model InterventionReportPhoto {
+  id                   String             @id @default(uuid())
+  interventionReportId String
+  interventionReport   InterventionReport @relation(fields: [interventionReportId], references: [id], onDelete: Cascade)
+  kind                 PhotoKind
+  data                 Bytes
+  fileName             String
+  mimeType             String
+  createdAt            DateTime           @default(now())
 }

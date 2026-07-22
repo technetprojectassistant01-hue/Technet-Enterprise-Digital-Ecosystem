@@ -1058,21 +1058,46 @@ export function deleteDailyReport(id: string) {
   return request<null>(`/api/daily-reports/${id}`, { method: 'DELETE' })
 }
 
+export const WORK_TYPE_LABELS: Record<ServiceCategory, string> = {
+  ELECTRICAL: 'Electrical',
+  ELV_SECURITY: 'ELV & Security',
+  MECHANICAL: 'Mechanical',
+  PLUMBING: 'Plumbing',
+  SAFETY: 'Safety',
+  OTHER: 'Other',
+}
+
+export type ReminderInterval = 'MONTHLY' | 'QUARTERLY' | 'SEMI_ANNUAL'
+
+export const REMINDER_INTERVAL_LABELS: Record<ReminderInterval, string> = {
+  MONTHLY: 'Monthly',
+  QUARTERLY: 'Every 3 Months',
+  SEMI_ANNUAL: 'Every 6 Months',
+}
+
+export type PhotoKind = 'EQUIPMENT' | 'WORK_DONE'
+
+export interface InterventionReportPhoto {
+  id: string
+  kind: PhotoKind
+  fileName: string
+  mimeType: string
+  createdAt: string
+}
+
 export interface InterventionReport {
   id: string
   interventionNumber: string
-  workOrderId: string
-  workOrder: {
-    id: string
-    workOrderNumber: string
-    title: string
-    customer: WorkOrderCustomer
-  }
+  customerId: string
+  customer: WorkOrderCustomer
+  workOrderId: string | null
+  workOrder: { id: string; workOrderNumber: string; title: string } | null
   date: string
   contactPerson: string | null
   contactPhone: string | null
   contactEmail: string | null
   jobCategory: JobCategory
+  workType: ServiceCategory
   equipment: string | null
   make: string | null
   model: string | null
@@ -1087,6 +1112,9 @@ export interface InterventionReport {
   warrantyStatus: WarrantyStatus | null
   technicianReport: string | null
   comments: string | null
+  additionalInfo: string | null
+  reminderInterval: ReminderInterval | null
+  nextReminderAt: string | null
   signedByName: string | null
   signedAt: string | null
   attachmentFileName: string | null
@@ -1097,17 +1125,20 @@ export interface InterventionReport {
   reviewedAt: string | null
   reviewNote: string | null
   technicians: { id: string; employee: EmployeeSummary }[]
+  photos: InterventionReportPhoto[]
   createdAt: string
   updatedAt: string
 }
 
 export interface InterventionReportInput {
-  workOrderId: string
+  customerId: string
+  workOrderId?: string
   date?: string
   contactPerson?: string
   contactPhone?: string
   contactEmail?: string
   jobCategory: JobCategory
+  workType: ServiceCategory
   equipment?: string
   make?: string
   model?: string
@@ -1122,6 +1153,7 @@ export interface InterventionReportInput {
   warrantyStatus?: WarrantyStatus
   technicianReport?: string
   comments?: string
+  additionalInfo?: string
   technicianIds: string[]
   signedByName?: string
   signatureData?: string
@@ -1129,10 +1161,14 @@ export interface InterventionReportInput {
   attachmentFileName?: string
 }
 
-export function listInterventionReports(params: { status?: ReportStatus; workOrderId?: string } = {}) {
+export function listInterventionReports(
+  params: { status?: ReportStatus; workOrderId?: string; customerId?: string; dueRemindersOnly?: boolean } = {},
+) {
   const query = new URLSearchParams()
   if (params.status) query.set('status', params.status)
   if (params.workOrderId) query.set('workOrderId', params.workOrderId)
+  if (params.customerId) query.set('customerId', params.customerId)
+  if (params.dueRemindersOnly) query.set('dueRemindersOnly', 'true')
   const qs = query.toString()
   return request<{ interventionReports: InterventionReport[] }>(`/api/intervention-reports${qs ? `?${qs}` : ''}`)
 }
@@ -1145,6 +1181,20 @@ export function createInterventionReport(input: InterventionReportInput) {
   return request<{ interventionReport: InterventionReport }>('/api/intervention-reports', {
     method: 'POST',
     body: JSON.stringify(input),
+  })
+}
+
+export function linkWorkOrderToInterventionReport(id: string, workOrderId: string | null) {
+  return request<{ interventionReport: InterventionReport }>(`/api/intervention-reports/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ workOrderId }),
+  })
+}
+
+export function setInterventionReportReminder(id: string, interval: ReminderInterval | null) {
+  return request<{ interventionReport: InterventionReport }>(`/api/intervention-reports/${id}/reminder`, {
+    method: 'POST',
+    body: JSON.stringify({ interval }),
   })
 }
 
@@ -1172,6 +1222,21 @@ export function interventionSignatureUrl(id: string) {
 
 export function interventionAttachmentUrl(id: string) {
   return `${API_URL}/api/intervention-reports/${id}/attachment`
+}
+
+export function uploadInterventionReportPhoto(id: string, input: { kind: PhotoKind; fileData: string; fileName: string }) {
+  return request<{ photo: InterventionReportPhoto }>(`/api/intervention-reports/${id}/photos`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function deleteInterventionReportPhoto(id: string, photoId: string) {
+  return request<null>(`/api/intervention-reports/${id}/photos/${photoId}`, { method: 'DELETE' })
+}
+
+export function interventionPhotoUrl(id: string, photoId: string) {
+  return `${API_URL}/api/intervention-reports/${id}/photos/${photoId}`
 }
 
 // ---------- Document Management ----------
