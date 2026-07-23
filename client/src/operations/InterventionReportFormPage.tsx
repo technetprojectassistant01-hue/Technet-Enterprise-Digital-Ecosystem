@@ -19,6 +19,52 @@ const labelClass = 'text-xs font-semibold tracking-widest text-ink-400'
 const JOB_CATEGORIES = Object.keys(JOB_CATEGORY_LABELS) as JobCategory[]
 const WORK_TYPES = Object.keys(WORK_TYPE_LABELS) as ServiceCategory[]
 const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024
+const DRAFT_STORAGE_KEY = 'intervention-report-draft'
+
+function RequiredMark() {
+  return (
+    <span className="text-red-400" aria-hidden="true">
+      {' '}
+      *
+    </span>
+  )
+}
+
+interface DraftFields {
+  customerId: string
+  workOrderId: string
+  contactPerson: string
+  contactPhone: string
+  contactEmail: string
+  jobCategory: JobCategory
+  workType: ServiceCategory
+  workTypeOther: string
+  equipment: string
+  make: string
+  model: string
+  serialNo: string
+  natureOfIntervention: string
+  actionTaken: string
+  workCompleted: boolean
+  incompleteDetails: string
+  technicianIds: string[]
+  timeIn: string
+  timeOut: string
+  warrantyStatus: WarrantyStatus | ''
+  technicianReport: string
+  comments: string
+  additionalInfo: string
+  signedByName: string
+}
+
+function loadDraft(): DraftFields | null {
+  try {
+    const raw = localStorage.getItem(DRAFT_STORAGE_KEY)
+    return raw ? (JSON.parse(raw) as DraftFields) : null
+  } catch {
+    return null
+  }
+}
 
 function readFileAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -88,43 +134,139 @@ function InterventionReportFormPage() {
   const workOrders = useWorkOrders()
   const employees = useEmployees()
 
-  const [customerId, setCustomerId] = useState('')
-  const [workOrderId, setWorkOrderId] = useState(preselectedWorkOrderId)
-  const [contactPerson, setContactPerson] = useState('')
-  const [contactPhone, setContactPhone] = useState('')
-  const [contactEmail, setContactEmail] = useState('')
-  const [jobCategory, setJobCategory] = useState<JobCategory>('SERVICING')
-  const [workType, setWorkType] = useState<ServiceCategory>('ELECTRICAL')
+  const [draft] = useState(() => loadDraft())
+  const [draftRestored, setDraftRestored] = useState(() => draft !== null)
 
-  const [equipment, setEquipment] = useState('')
-  const [make, setMake] = useState('')
-  const [model, setModel] = useState('')
-  const [serialNo, setSerialNo] = useState('')
+  const [customerId, setCustomerId] = useState(draft?.customerId ?? '')
+  const [workOrderId, setWorkOrderId] = useState(draft?.workOrderId || preselectedWorkOrderId)
+  const [contactPerson, setContactPerson] = useState(draft?.contactPerson ?? '')
+  const [contactPhone, setContactPhone] = useState(draft?.contactPhone ?? '')
+  const [contactEmail, setContactEmail] = useState(draft?.contactEmail ?? '')
+  const [jobCategory, setJobCategory] = useState<JobCategory>(draft?.jobCategory ?? 'SERVICING')
+  const [workType, setWorkType] = useState<ServiceCategory>(draft?.workType ?? 'ELECTRICAL')
+  const [workTypeOther, setWorkTypeOther] = useState(draft?.workTypeOther ?? '')
 
-  const [natureOfIntervention, setNatureOfIntervention] = useState('')
-  const [actionTaken, setActionTaken] = useState('')
-  const [workCompleted, setWorkCompleted] = useState(true)
-  const [incompleteDetails, setIncompleteDetails] = useState('')
+  const [equipment, setEquipment] = useState(draft?.equipment ?? '')
+  const [make, setMake] = useState(draft?.make ?? '')
+  const [model, setModel] = useState(draft?.model ?? '')
+  const [serialNo, setSerialNo] = useState(draft?.serialNo ?? '')
 
-  const [technicianIds, setTechnicianIds] = useState<string[]>([])
-  const [timeIn, setTimeIn] = useState('')
-  const [timeOut, setTimeOut] = useState('')
+  const [natureOfIntervention, setNatureOfIntervention] = useState(draft?.natureOfIntervention ?? '')
+  const [actionTaken, setActionTaken] = useState(draft?.actionTaken ?? '')
+  const [workCompleted, setWorkCompleted] = useState(draft?.workCompleted ?? true)
+  const [incompleteDetails, setIncompleteDetails] = useState(draft?.incompleteDetails ?? '')
 
-  const [warrantyStatus, setWarrantyStatus] = useState<WarrantyStatus | ''>('')
-  const [technicianReport, setTechnicianReport] = useState('')
-  const [comments, setComments] = useState('')
-  const [additionalInfo, setAdditionalInfo] = useState('')
+  const [technicianIds, setTechnicianIds] = useState<string[]>(draft?.technicianIds ?? [])
+  const [timeIn, setTimeIn] = useState(draft?.timeIn ?? '')
+  const [timeOut, setTimeOut] = useState(draft?.timeOut ?? '')
+
+  const [warrantyStatus, setWarrantyStatus] = useState<WarrantyStatus | ''>(draft?.warrantyStatus ?? '')
+  const [technicianReport, setTechnicianReport] = useState(draft?.technicianReport ?? '')
+  const [comments, setComments] = useState(draft?.comments ?? '')
+  const [additionalInfo, setAdditionalInfo] = useState(draft?.additionalInfo ?? '')
 
   const [equipmentPhotos, setEquipmentPhotos] = useState<File[]>([])
   const [workDonePhotos, setWorkDonePhotos] = useState<File[]>([])
 
-  const [signedByName, setSignedByName] = useState('')
+  const [signedByName, setSignedByName] = useState(draft?.signedByName ?? '')
   const [signatureData, setSignatureData] = useState<string | null>(null)
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null)
   const [attachmentError, setAttachmentError] = useState<string | null>(null)
 
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    const fields: DraftFields = {
+      customerId,
+      workOrderId,
+      contactPerson,
+      contactPhone,
+      contactEmail,
+      jobCategory,
+      workType,
+      workTypeOther,
+      equipment,
+      make,
+      model,
+      serialNo,
+      natureOfIntervention,
+      actionTaken,
+      workCompleted,
+      incompleteDetails,
+      technicianIds,
+      timeIn,
+      timeOut,
+      warrantyStatus,
+      technicianReport,
+      comments,
+      additionalInfo,
+      signedByName,
+    }
+    const hasContent = Object.values(fields).some((v) => (Array.isArray(v) ? v.length > 0 : Boolean(v) && v !== true))
+    const timeout = setTimeout(() => {
+      if (hasContent) {
+        localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(fields))
+      } else {
+        localStorage.removeItem(DRAFT_STORAGE_KEY)
+      }
+    }, 400)
+    return () => clearTimeout(timeout)
+  }, [
+    customerId,
+    workOrderId,
+    contactPerson,
+    contactPhone,
+    contactEmail,
+    jobCategory,
+    workType,
+    workTypeOther,
+    equipment,
+    make,
+    model,
+    serialNo,
+    natureOfIntervention,
+    actionTaken,
+    workCompleted,
+    incompleteDetails,
+    technicianIds,
+    timeIn,
+    timeOut,
+    warrantyStatus,
+    technicianReport,
+    comments,
+    additionalInfo,
+    signedByName,
+  ])
+
+  function discardDraft() {
+    localStorage.removeItem(DRAFT_STORAGE_KEY)
+    setDraftRestored(false)
+    setCustomerId('')
+    setWorkOrderId(preselectedWorkOrderId)
+    setContactPerson('')
+    setContactPhone('')
+    setContactEmail('')
+    setJobCategory('SERVICING')
+    setWorkType('ELECTRICAL')
+    setWorkTypeOther('')
+    setEquipment('')
+    setMake('')
+    setModel('')
+    setSerialNo('')
+    setNatureOfIntervention('')
+    setActionTaken('')
+    setWorkCompleted(true)
+    setIncompleteDetails('')
+    setTechnicianIds([])
+    setTimeIn('')
+    setTimeOut('')
+    setWarrantyStatus('')
+    setTechnicianReport('')
+    setComments('')
+    setAdditionalInfo('')
+    setSignedByName('')
+  }
 
   useEffect(() => {
     if (!preselectedWorkOrderId) return
@@ -191,6 +333,7 @@ function InterventionReportFormPage() {
         contactEmail: contactEmail || undefined,
         jobCategory,
         workType,
+        workTypeOther: workType === 'OTHER' ? workTypeOther || undefined : undefined,
         equipment: equipment || undefined,
         make: make || undefined,
         model: model || undefined,
@@ -221,6 +364,7 @@ function InterventionReportFormPage() {
         await api.uploadInterventionReportPhoto(interventionReport.id, { kind, fileData, fileName: file.name })
       }
 
+      localStorage.removeItem(DRAFT_STORAGE_KEY)
       toast.success('Intervention report submitted')
       navigate(`/dashboard/operations/intervention-reports/${interventionReport.id}`)
     } catch (err) {
@@ -243,14 +387,36 @@ function InterventionReportFormPage() {
       <div>
         <h1 className="text-2xl font-bold text-ink-100">New Intervention Report</h1>
         <p className="mt-1 text-sm text-ink-300">Fill this in right after the site visit.</p>
+        <p className="mt-1 text-xs text-ink-500">
+          <span className="text-red-400">*</span> required field
+        </p>
       </div>
+
+      {draftRestored && (
+        <div className="flex items-center justify-between gap-3 rounded-md border border-cyan-accent/40 bg-cyan-accent/10 px-4 py-3 text-sm text-ink-200">
+          <p>
+            We restored your unsaved draft from last time. Photos, the attached file, and the signature couldn't be
+            restored — you'll need to re-add those.
+          </p>
+          <button
+            type="button"
+            onClick={discardDraft}
+            className="shrink-0 rounded-md border border-ink-600 px-3 py-1.5 text-xs font-semibold text-ink-300 hover:bg-ink-800"
+          >
+            Discard draft
+          </button>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-6">
         <Panel title="Customer & Contact">
           <div className="flex flex-col gap-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className={labelClass}>CUSTOMER</label>
+                <label className={labelClass}>
+                  CUSTOMER
+                  <RequiredMark />
+                </label>
                 <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className={`mt-2 ${inputClass}`}>
                   <option value="">Select a customer</option>
                   {customers.map((c) => (
@@ -280,7 +446,12 @@ function InterventionReportFormPage() {
               </div>
               <div>
                 <label className={labelClass}>CONTACT PHONE</label>
-                <input value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} className={`mt-2 ${inputClass}`} />
+                <input
+                  value={contactPhone}
+                  onChange={(e) => setContactPhone(e.target.value)}
+                  placeholder="e.g. 054 123 4567"
+                  className={`mt-2 ${inputClass}`}
+                />
               </div>
               <div>
                 <label className={labelClass}>CONTACT EMAIL</label>
@@ -288,6 +459,7 @@ function InterventionReportFormPage() {
                   type="email"
                   value={contactEmail}
                   onChange={(e) => setContactEmail(e.target.value)}
+                  placeholder="e.g. name@company.com"
                   className={`mt-2 ${inputClass}`}
                 />
               </div>
@@ -322,6 +494,17 @@ function InterventionReportFormPage() {
                 </select>
               </div>
             </div>
+            {workType === 'OTHER' && (
+              <div>
+                <label className={labelClass}>DESCRIBE THE WORK PERFORMED</label>
+                <input
+                  value={workTypeOther}
+                  onChange={(e) => setWorkTypeOther(e.target.value)}
+                  placeholder="e.g. CCTV cable re-routing"
+                  className={`mt-2 ${inputClass}`}
+                />
+              </div>
+            )}
           </div>
         </Panel>
 
@@ -357,7 +540,10 @@ function InterventionReportFormPage() {
         <Panel title="Fault & Work Done">
           <div className="flex flex-col gap-4">
             <div>
-              <label className={labelClass}>NATURE OF INTERVENTION / FAULT REPORTED</label>
+              <label className={labelClass}>
+                NATURE OF INTERVENTION / FAULT REPORTED
+                <RequiredMark />
+              </label>
               <textarea
                 value={natureOfIntervention}
                 onChange={(e) => setNatureOfIntervention(e.target.value)}
@@ -367,7 +553,10 @@ function InterventionReportFormPage() {
               />
             </div>
             <div>
-              <label className={labelClass}>ACTION TAKEN / WORK DONE</label>
+              <label className={labelClass}>
+                ACTION TAKEN / WORK DONE
+                <RequiredMark />
+              </label>
               <textarea
                 value={actionTaken}
                 onChange={(e) => setActionTaken(e.target.value)}
@@ -492,7 +681,10 @@ function InterventionReportFormPage() {
         <Panel title="Sign & Attach">
           <div className="flex flex-col gap-4">
             <div>
-              <label className={labelClass}>SIGNED BY</label>
+              <label className={labelClass}>
+                SIGNED BY
+                <RequiredMark />
+              </label>
               <input
                 value={signedByName}
                 onChange={(e) => setSignedByName(e.target.value)}
@@ -502,7 +694,10 @@ function InterventionReportFormPage() {
               />
             </div>
             <div>
-              <label className={labelClass}>SIGNATURE</label>
+              <label className={labelClass}>
+                SIGNATURE
+                <RequiredMark />
+              </label>
               <div className="mt-2">
                 <SignaturePad onChange={setSignatureData} />
               </div>

@@ -1,12 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Plus, FileText } from 'lucide-react'
 import * as api from '../lib/api'
-import type { InterventionReport } from '../lib/api'
+import type { InterventionReport, ReportStatus } from '../lib/api'
 import { WORK_TYPE_LABELS } from '../lib/api'
 import { Panel, StatCard, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { reportStatusTone } from '../erp/statusTones'
 import { useCustomers } from '../erp/useCustomers'
+
+const STATUS_FILTERS: ReportStatus[] = ['SUBMITTED', 'APPROVED', 'REJECTED']
 
 function InterventionReportsPage() {
   const customers = useCustomers()
@@ -14,21 +16,53 @@ function InterventionReportsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [customerFilter, setCustomerFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState<ReportStatus | ''>('')
+  const [dueRemindersOnly, setDueRemindersOnly] = useState(false)
+  const requestId = useRef(0)
 
-  function load(customerId = customerFilter) {
+  function load(
+    customerId = customerFilter,
+    status = statusFilter,
+    dueOnly = dueRemindersOnly,
+  ) {
+    const thisRequest = ++requestId.current
     setLoading(true)
     api
-      .listInterventionReports({ customerId: customerId || undefined })
-      .then(({ interventionReports }) => setReports(interventionReports))
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load intervention reports'))
-      .finally(() => setLoading(false))
+      .listInterventionReports({
+        customerId: customerId || undefined,
+        status: status || undefined,
+        dueRemindersOnly: dueOnly || undefined,
+      })
+      .then(({ interventionReports }) => {
+        if (thisRequest !== requestId.current) return
+        setReports(interventionReports)
+      })
+      .catch((err) => {
+        if (thisRequest !== requestId.current) return
+        setError(err instanceof Error ? err.message : 'Failed to load intervention reports')
+      })
+      .finally(() => {
+        if (thisRequest !== requestId.current) return
+        setLoading(false)
+      })
   }
 
   useEffect(() => load(), []) // eslint-disable-line react-hooks/exhaustive-deps
 
   function changeCustomerFilter(id: string) {
     setCustomerFilter(id)
-    load(id)
+    load(id, statusFilter, dueRemindersOnly)
+  }
+
+  function changeStatusFilter(status: ReportStatus | '') {
+    setStatusFilter(status)
+    load(customerFilter, status, dueRemindersOnly)
+  }
+
+  function toggleDueReminders() {
+    const next = !dueRemindersOnly
+    setDueRemindersOnly(next)
+    load(customerFilter, statusFilter, next)
   }
 
   const pendingCount = reports.filter((r) => r.status === 'SUBMITTED').length
@@ -47,25 +81,64 @@ function InterventionReportsPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-        <StatCard label="PENDING REVIEW" value={pendingCount} deltaTone="warning" />
-        <StatCard label="REMINDERS DUE" value={dueCount} deltaTone={dueCount > 0 ? 'warning' : undefined} />
+        <button type="button" onClick={() => changeStatusFilter('SUBMITTED')} className="text-left">
+          <StatCard label="PENDING REVIEW" value={pendingCount} deltaTone="warning" />
+        </button>
+        <button type="button" onClick={toggleDueReminders} className="text-left">
+          <StatCard label="REMINDERS DUE" value={dueCount} deltaTone={dueCount > 0 ? 'warning' : undefined} />
+        </button>
       </div>
 
       <Panel>
-        <div className="mb-4 flex max-w-xs flex-col gap-1">
-          <label className="text-xs font-semibold tracking-widest text-ink-400">FILTER BY CUSTOMER</label>
-          <select
-            value={customerFilter}
-            onChange={(e) => changeCustomerFilter(e.target.value)}
-            className="rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent"
+        <div className="mb-4 flex flex-wrap items-end gap-4">
+          <div className="flex max-w-xs flex-1 flex-col gap-1">
+            <label className="text-xs font-semibold tracking-widest text-ink-400">FILTER BY CUSTOMER</label>
+            <select
+              value={customerFilter}
+              onChange={(e) => changeCustomerFilter(e.target.value)}
+              className="rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent"
+            >
+              <option value="">All customers</option>
+              {customers.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.company || c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="mb-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => changeStatusFilter('')}
+            className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+              statusFilter === '' ? 'bg-cyan-accent text-ink-950' : 'bg-ink-800 text-ink-300 hover:bg-ink-700'
+            }`}
           >
-            <option value="">All customers</option>
-            {customers.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.company || c.name}
-              </option>
-            ))}
-          </select>
+            All statuses
+          </button>
+          {STATUS_FILTERS.map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => changeStatusFilter(s)}
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+                statusFilter === s ? 'bg-cyan-accent text-ink-950' : 'bg-ink-800 text-ink-300 hover:bg-ink-700'
+              }`}
+            >
+              {s}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={toggleDueReminders}
+            className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+              dueRemindersOnly ? 'bg-amber-400 text-ink-950' : 'bg-ink-800 text-ink-300 hover:bg-ink-700'
+            }`}
+          >
+            Reminders due only
+          </button>
         </div>
 
         {error && <p className="mb-3 text-sm text-red-400">{error}</p>}

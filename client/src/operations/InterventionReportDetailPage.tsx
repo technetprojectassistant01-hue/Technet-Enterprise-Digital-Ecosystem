@@ -241,7 +241,14 @@ function InterventionReportDetailPage() {
       <Panel title="Job Category & Contact">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Field label="JOB CATEGORY" value={JOB_CATEGORY_LABELS[report.jobCategory]} />
-          <Field label="WORK TYPE" value={WORK_TYPE_LABELS[report.workType]} />
+          <Field
+            label="WORK TYPE"
+            value={
+              report.workType === 'OTHER' && report.workTypeOther
+                ? `${WORK_TYPE_LABELS[report.workType]} — ${report.workTypeOther}`
+                : WORK_TYPE_LABELS[report.workType]
+            }
+          />
           <Field label="CONTACT PERSON" value={report.contactPerson} />
         </div>
       </Panel>

@@ -585,6 +585,7 @@ model InterventionReport {
   contactEmail         String?
   jobCategory          JobCategory
   workType             ServiceCategory
+  workTypeOther        String?
   equipment            String?
   make                 String?
   model                String?

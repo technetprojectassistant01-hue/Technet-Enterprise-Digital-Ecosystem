@@ -1098,6 +1098,7 @@ export interface InterventionReport {
   contactEmail: string | null
   jobCategory: JobCategory
   workType: ServiceCategory
+  workTypeOther: string | null
   equipment: string | null
   make: string | null
   model: string | null
@@ -1139,6 +1140,7 @@ export interface InterventionReportInput {
   contactEmail?: string
   jobCategory: JobCategory
   workType: ServiceCategory
+  workTypeOther?: string
   equipment?: string
   make?: string
   model?: string
