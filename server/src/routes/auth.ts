@@ -13,10 +13,16 @@ const isProduction = process.env.NODE_ENV === "production";
 // production, so the session cookie needs SameSite=None to be sent on
 // cross-site fetch calls. In dev both run on localhost (same site), so
 // Lax is fine and avoids needing HTTPS locally.
+// `partitioned` (CHIPS) keeps the cookie working under browsers' rollout
+// of third-party-cookie blocking — without it, some real-world browser
+// profiles silently drop the cookie after login, leaving every
+// subsequent request unauthenticated even though the login itself
+// "succeeded" client-side.
 const cookieOptions = {
   httpOnly: true,
   secure: isProduction,
   sameSite: (isProduction ? "none" : "lax") as "none" | "lax",
+  partitioned: isProduction,
 };
 
 router.post("/login", async (req, res) => {
