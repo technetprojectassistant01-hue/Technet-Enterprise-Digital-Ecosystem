@@ -18,7 +18,19 @@ function InterventionReportsPage() {
   const [customerFilter, setCustomerFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState<ReportStatus | ''>('')
   const [dueRemindersOnly, setDueRemindersOnly] = useState(false)
+  const [stats, setStats] = useState({ pending: 0, due: 0 })
   const requestId = useRef(0)
+
+  function loadStats(customerId = customerFilter) {
+    Promise.all([
+      api.listInterventionReports({ customerId: customerId || undefined, status: 'SUBMITTED' }),
+      api.listInterventionReports({ customerId: customerId || undefined, dueRemindersOnly: true }),
+    ])
+      .then(([pending, due]) => {
+        setStats({ pending: pending.interventionReports.length, due: due.interventionReports.length })
+      })
+      .catch(() => {})
+  }
 
   function load(
     customerId = customerFilter,
@@ -47,16 +59,26 @@ function InterventionReportsPage() {
       })
   }
 
-  useEffect(() => load(), []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    load()
+    loadStats()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   function changeCustomerFilter(id: string) {
     setCustomerFilter(id)
     load(id, statusFilter, dueRemindersOnly)
+    loadStats(id)
   }
 
   function changeStatusFilter(status: ReportStatus | '') {
     setStatusFilter(status)
     load(customerFilter, status, dueRemindersOnly)
+  }
+
+  function clearAllFilters() {
+    setStatusFilter('')
+    setDueRemindersOnly(false)
+    load(customerFilter, '', false)
   }
 
   function toggleDueReminders() {
@@ -65,8 +87,17 @@ function InterventionReportsPage() {
     load(customerFilter, statusFilter, next)
   }
 
-  const pendingCount = reports.filter((r) => r.status === 'SUBMITTED').length
-  const dueCount = reports.filter((r) => r.nextReminderAt && new Date(r.nextReminderAt) <= new Date()).length
+  function jumpToPendingReview() {
+    setStatusFilter('SUBMITTED')
+    setDueRemindersOnly(false)
+    load(customerFilter, 'SUBMITTED', false)
+  }
+
+  function jumpToRemindersDue() {
+    setStatusFilter('')
+    setDueRemindersOnly(true)
+    load(customerFilter, '', true)
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -81,11 +112,11 @@ function InterventionReportsPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-        <button type="button" onClick={() => changeStatusFilter('SUBMITTED')} className="text-left">
-          <StatCard label="PENDING REVIEW" value={pendingCount} deltaTone="warning" />
+        <button type="button" onClick={jumpToPendingReview} className="text-left">
+          <StatCard label="PENDING REVIEW" value={stats.pending} deltaTone="warning" />
         </button>
-        <button type="button" onClick={toggleDueReminders} className="text-left">
-          <StatCard label="REMINDERS DUE" value={dueCount} deltaTone={dueCount > 0 ? 'warning' : undefined} />
+        <button type="button" onClick={jumpToRemindersDue} className="text-left">
+          <StatCard label="REMINDERS DUE" value={stats.due} deltaTone={stats.due > 0 ? 'warning' : undefined} />
         </button>
       </div>
 
@@ -111,12 +142,12 @@ function InterventionReportsPage() {
         <div className="mb-4 flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={() => changeStatusFilter('')}
+            onClick={clearAllFilters}
             className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
-              statusFilter === '' ? 'bg-cyan-accent text-ink-950' : 'bg-ink-800 text-ink-300 hover:bg-ink-700'
+              statusFilter === '' && !dueRemindersOnly ? 'bg-cyan-accent text-ink-950' : 'bg-ink-800 text-ink-300 hover:bg-ink-700'
             }`}
           >
-            All statuses
+            All
           </button>
           {STATUS_FILTERS.map((s) => (
             <button
