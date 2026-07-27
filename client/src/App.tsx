@@ -22,7 +22,13 @@ import ExpensesPage from './erp/ExpensesPage'
 import QuotationsPage from './erp/QuotationsPage'
 import QuotationDetailPage from './erp/QuotationDetailPage'
 import ContractsPage from './erp/ContractsPage'
-import EmployeesPage from './erp/EmployeesPage'
+import HrLayout from './erp/hr/HrLayout'
+import HrOverviewPage from './erp/hr/HrOverviewPage'
+import EmployeesPage from './erp/hr/EmployeesPage'
+import EmployeeDetailPage from './erp/hr/EmployeeDetailPage'
+import LeavePage from './erp/hr/LeavePage'
+import AttendancePage from './erp/hr/AttendancePage'
+import CertificationsPage from './erp/hr/CertificationsPage'
 import ProjectsPage from './erp/ProjectsPage'
 import ProjectDetailPage from './erp/ProjectDetailPage'
 import ProcurementLayout from './erp/ProcurementLayout'
@@ -74,7 +80,14 @@ function App() {
               <Route path="purchase-orders" element={<PurchaseOrdersPage />} />
               <Route path="purchase-orders/:id" element={<PurchaseOrderDetailPage />} />
             </Route>
-            <Route path="hr" element={<EmployeesPage />} />
+            <Route path="hr" element={<HrLayout />}>
+              <Route index element={<HrOverviewPage />} />
+              <Route path="employees" element={<EmployeesPage />} />
+              <Route path="employees/:id" element={<EmployeeDetailPage />} />
+              <Route path="leave" element={<LeavePage />} />
+              <Route path="attendance" element={<AttendancePage />} />
+              <Route path="certifications" element={<CertificationsPage />} />
+            </Route>
             <Route path="projects" element={<ProjectsPage />} />
             <Route path="projects/:id" element={<ProjectDetailPage />} />
             <Route path="documents" element={<DocumentsPage />} />
