@@ -25,6 +25,36 @@ enum EmploymentStatus {
   TERMINATED
 }
 
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum ContractType {
+  PERMANENT
+  FIXED_TERM
+  CASUAL
+  INTERN
+  CONSULTANT
+}
+
+enum LeaveRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  LATE
+  ABSENT
+  ON_LEAVE
+  PUBLIC_HOLIDAY
+  REST_DAY
+}
+
 enum ProjectStatus {
   QUOTED
   APPROVED
@@ -159,6 +189,11 @@ model User {
   dailyWorkReportsReviewed    DailyWorkReport[]    @relation("DailyReportReviewer")
   interventionReportsCreated  InterventionReport[] @relation("InterventionReportCreator")
   interventionReportsReviewed InterventionReport[] @relation("InterventionReportReviewer")
+
+  leaveRequestsCreated  LeaveRequest[] @relation("LeaveCreator")
+  leaveRequestsReviewed LeaveRequest[] @relation("LeaveReviewer")
+
+  attendanceRecorded AttendanceRecord[] @relation("AttendanceRecorder")
 }
 
 model Employee {
@@ -177,12 +212,170 @@ model Employee {
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 
+  // Personal details
+  nationalId  String?   @unique
+  dateOfBirth DateTime?
+  gender      Gender?
+  address     String?
+
+  // Emergency contact
+  emergencyContactName     String?
+  emergencyContactPhone    String?
+  emergencyContactRelation String?
+
+  // Employment terms
+  contractType     ContractType?
+  jobGrade         String?
+  probationEndDate DateTime?
+  contractEndDate  DateTime?
+  exitDate         DateTime?
+  exitReason       String?
+
+  // Payroll details
+  basicSalary       Decimal? @db.Decimal(12, 2)
+  bankName          String?
+  bankAccountNumber String?
+
+  notes String?
+
   managedProjects    Project[]           @relation("ProjectManager")
   projectAssignments ProjectAssignment[]
 
   workOrderAssignments          WorkOrderTechnician[]
   dailyWorkReportAssignments    DailyWorkReportTechnician[]
   interventionReportAssignments InterventionReportTechnician[]
+
+  leaveBalances     LeaveBalance[]
+  leaveRequests     LeaveRequest[]
+  attendanceRecords AttendanceRecord[]
+  certifications    Certification[]
+  trainingRecords   TrainingRecord[]
+}
+
+model Certification {
+  id                String    @id @default(uuid())
+  employeeId        String
+  employee          Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  name              String
+  category          String?
+  issuingBody       String?
+  certificateNumber String?
+  issueDate         DateTime?
+  expiryDate        DateTime?
+  notes             String?
+
+  documentId String?
+  document   Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([employeeId])
+  @@index([expiryDate])
+}
+
+model TrainingRecord {
+  id            String    @id @default(uuid())
+  employeeId    String
+  employee      Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  title         String
+  provider      String?
+  completedDate DateTime?
+  durationHours Decimal?  @db.Decimal(6, 2)
+  cost          Decimal?  @db.Decimal(12, 2)
+  notes         String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([employeeId])
+}
+
+model AttendanceRecord {
+  id         String           @id @default(uuid())
+  employeeId String
+  employee   Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  date       DateTime
+  status     AttendanceStatus @default(PRESENT)
+
+  // Clock times are stored as "HH:MM" local wall-clock strings. The business
+  // runs in a single timezone, so this avoids UTC conversion errors entirely.
+  clockIn      String?
+  clockOut     String?
+  breakMinutes Int     @default(0)
+
+  hoursWorked   Decimal? @db.Decimal(5, 2)
+  overtimeHours Decimal  @default(0) @db.Decimal(5, 2)
+  note          String?
+
+  recordedById String?
+  recordedBy   User?   @relation("AttendanceRecorder", fields: [recordedById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([employeeId, date])
+  @@index([date])
+}
+
+model LeaveType {
+  id           String   @id @default(uuid())
+  code         String   @unique
+  name         String   @unique
+  daysPerYear  Decimal  @default(0) @db.Decimal(5, 2)
+  paid         Boolean  @default(true)
+  requiresDocs Boolean  @default(false)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  balances LeaveBalance[]
+  requests LeaveRequest[]
+}
+
+model LeaveBalance {
+  id              String   @id @default(uuid())
+  employeeId      String
+  employee        Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveTypeId     String
+  leaveType       LeaveType @relation(fields: [leaveTypeId], references: [id], onDelete: Cascade)
+  year            Int
+  entitledDays    Decimal  @default(0) @db.Decimal(5, 2)
+  carriedOverDays Decimal  @default(0) @db.Decimal(5, 2)
+  usedDays        Decimal  @default(0) @db.Decimal(5, 2)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([employeeId, leaveTypeId, year])
+  @@index([year])
+}
+
+model LeaveRequest {
+  id          String             @id @default(uuid())
+  employeeId  String
+  employee    Employee           @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveTypeId String
+  leaveType   LeaveType          @relation(fields: [leaveTypeId], references: [id])
+  startDate   DateTime
+  endDate     DateTime
+  days        Decimal            @db.Decimal(5, 2)
+  halfDay     Boolean            @default(false)
+  reason      String?
+  status      LeaveRequestStatus @default(PENDING)
+
+  reviewedById String?
+  reviewedBy   User?     @relation("LeaveReviewer", fields: [reviewedById], references: [id])
+  reviewedAt   DateTime?
+  reviewNote   String?
+
+  createdById String?
+  createdBy   User?    @relation("LeaveCreator", fields: [createdById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([employeeId, startDate])
+  @@index([status])
 }
 
 model Customer {
@@ -500,6 +693,8 @@ model Document {
   uploadedById String
   uploadedBy   User             @relation(fields: [uploadedById], references: [id])
   createdAt    DateTime         @default(now())
+
+  certifications Certification[]
 }
 
 model WorkOrder {

@@ -13,6 +13,19 @@ export interface ManagedUser extends CurrentUser {
   createdAt: string
 }
 
+/** Carries the response body so callers can branch on a server error code. */
+export class ApiError extends Error {
+  status: number
+  data: Record<string, unknown> | null
+
+  constructor(message: string, status: number, data: Record<string, unknown> | null) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+    this.data = data
+  }
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
@@ -26,7 +39,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const data = await res.json().catch(() => null)
 
   if (!res.ok) {
-    throw new Error(data?.error || `Request failed (${res.status})`)
+    throw new ApiError(data?.error || `Request failed (${res.status})`, res.status, data)
   }
 
   return data as T
@@ -467,6 +480,8 @@ export function deleteContract(id: string) {
 }
 
 export type EmploymentStatus = 'ACTIVE' | 'ON_LEAVE' | 'TERMINATED'
+export type Gender = 'MALE' | 'FEMALE' | 'OTHER'
+export type ContractType = 'PERMANENT' | 'FIXED_TERM' | 'CASUAL' | 'INTERN' | 'CONSULTANT'
 
 export interface EmployeeSummary {
   id: string
@@ -485,6 +500,39 @@ export interface Employee extends EmployeeSummary {
   userId: string | null
   createdAt: string
   updatedAt: string
+
+  nationalId: string | null
+  dateOfBirth: string | null
+  gender: Gender | null
+  address: string | null
+
+  emergencyContactName: string | null
+  emergencyContactPhone: string | null
+  emergencyContactRelation: string | null
+
+  contractType: ContractType | null
+  jobGrade: string | null
+  probationEndDate: string | null
+  contractEndDate: string | null
+  exitDate: string | null
+  exitReason: string | null
+
+  basicSalary: string | null
+  bankName: string | null
+  bankAccountNumber: string | null
+
+  notes: string | null
+}
+
+export interface EmployeeDetail extends Employee {
+  user: { id: string; email: string; role: Role } | null
+  managedProjects: { id: string; projectNumber: string; name: string; status: ProjectStatus }[]
+  projectAssignments: {
+    id: string
+    role: string | null
+    assignedAt: string
+    project: { id: string; projectNumber: string; name: string; status: ProjectStatus }
+  }[]
 }
 
 export interface EmployeeInput {
@@ -497,13 +545,481 @@ export interface EmployeeInput {
   department?: string
   employmentStatus?: EmploymentStatus
   hireDate?: string
+
+  nationalId?: string
+  dateOfBirth?: string
+  gender?: Gender | ''
+  address?: string
+
+  emergencyContactName?: string
+  emergencyContactPhone?: string
+  emergencyContactRelation?: string
+
+  contractType?: ContractType | ''
+  jobGrade?: string
+  probationEndDate?: string
+  contractEndDate?: string
+  exitDate?: string
+  exitReason?: string
+
+  basicSalary?: string
+  bankName?: string
+  bankAccountNumber?: string
+
+  notes?: string
 }
 
-export function listEmployees(params: { search?: string } = {}) {
+export function listEmployees(
+  params: { search?: string; department?: string; status?: EmploymentStatus } = {},
+) {
   const query = new URLSearchParams()
   if (params.search) query.set('search', params.search)
+  if (params.department) query.set('department', params.department)
+  if (params.status) query.set('status', params.status)
   const qs = query.toString()
   return request<{ employees: Employee[] }>(`/api/employees${qs ? `?${qs}` : ''}`)
+}
+
+export function getEmployee(id: string) {
+  return request<{ employee: EmployeeDetail }>(`/api/employees/${id}`)
+}
+
+export function listDepartments() {
+  return request<{ departments: string[] }>('/api/employees/departments')
+}
+
+/* ---------------------------------------------------------------- *
+ * Leave
+ * ---------------------------------------------------------------- */
+
+export type LeaveRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED'
+
+export interface LeaveType {
+  id: string
+  code: string
+  name: string
+  daysPerYear: string
+  paid: boolean
+  requiresDocs: boolean
+  active: boolean
+}
+
+export interface LeaveTypeSummary {
+  id: string
+  name: string
+  code: string
+  paid: boolean
+}
+
+export interface LeaveBalance {
+  id: string
+  employeeId: string
+  leaveTypeId: string
+  year: number
+  entitledDays: string
+  carriedOverDays: string
+  usedDays: string
+  leaveType: LeaveTypeSummary
+  employee?: { id: string; firstName: string; lastName: string; employeeCode: string }
+}
+
+export interface LeaveRequest {
+  id: string
+  employeeId: string
+  leaveTypeId: string
+  startDate: string
+  endDate: string
+  days: string
+  halfDay: boolean
+  reason: string | null
+  status: LeaveRequestStatus
+  reviewedAt: string | null
+  reviewNote: string | null
+  createdAt: string
+  employee: {
+    id: string
+    firstName: string
+    lastName: string
+    employeeCode: string
+    department: string | null
+  }
+  leaveType: LeaveTypeSummary
+  reviewedBy: { id: string; name: string | null; email: string } | null
+}
+
+export interface LeaveTypeInput {
+  code: string
+  name: string
+  daysPerYear: number
+  paid: boolean
+  requiresDocs: boolean
+  active?: boolean
+}
+
+export interface LeaveRequestInput {
+  employeeId: string
+  leaveTypeId: string
+  startDate: string
+  endDate: string
+  days?: string
+  halfDay?: boolean
+  reason?: string
+}
+
+export function listLeaveTypes(includeInactive = false) {
+  const qs = includeInactive ? '?includeInactive=true' : ''
+  return request<{ leaveTypes: LeaveType[] }>(`/api/leave/types${qs}`)
+}
+
+export function seedLeaveTypes() {
+  return request<{ leaveTypes: LeaveType[] }>('/api/leave/types/seed-defaults', { method: 'POST' })
+}
+
+export function createLeaveType(input: LeaveTypeInput) {
+  return request<{ leaveType: LeaveType }>('/api/leave/types', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function updateLeaveType(id: string, input: Partial<LeaveTypeInput>) {
+  return request<{ leaveType: LeaveType }>(`/api/leave/types/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
+}
+
+export function deleteLeaveType(id: string) {
+  return request<null>(`/api/leave/types/${id}`, { method: 'DELETE' })
+}
+
+export function listLeaveBalances(params: { year?: number; employeeId?: string } = {}) {
+  const query = new URLSearchParams()
+  if (params.year) query.set('year', String(params.year))
+  if (params.employeeId) query.set('employeeId', params.employeeId)
+  const qs = query.toString()
+  return request<{ balances: LeaveBalance[] }>(`/api/leave/balances${qs ? `?${qs}` : ''}`)
+}
+
+export function initializeLeaveBalances(year: number) {
+  return request<{ created: number; year: number }>('/api/leave/balances/initialize', {
+    method: 'POST',
+    body: JSON.stringify({ year }),
+  })
+}
+
+export function setLeaveBalance(input: {
+  employeeId: string
+  leaveTypeId: string
+  year: number
+  entitledDays: number
+  carriedOverDays?: number
+}) {
+  return request<{ balance: LeaveBalance }>('/api/leave/balances', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function listLeaveRequests(
+  params: { status?: LeaveRequestStatus; employeeId?: string; from?: string; to?: string } = {},
+) {
+  const query = new URLSearchParams()
+  if (params.status) query.set('status', params.status)
+  if (params.employeeId) query.set('employeeId', params.employeeId)
+  if (params.from) query.set('from', params.from)
+  if (params.to) query.set('to', params.to)
+  const qs = query.toString()
+  return request<{ requests: LeaveRequest[] }>(`/api/leave/requests${qs ? `?${qs}` : ''}`)
+}
+
+export function getLeaveWorkingDays(startDate: string, endDate: string) {
+  const query = new URLSearchParams({ startDate, endDate })
+  return request<{ days: number }>(`/api/leave/requests/working-days?${query.toString()}`)
+}
+
+export function createLeaveRequest(input: LeaveRequestInput) {
+  return request<{ request: LeaveRequest }>('/api/leave/requests', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function updateLeaveRequest(id: string, input: Partial<LeaveRequestInput>) {
+  return request<{ request: LeaveRequest }>(`/api/leave/requests/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
+}
+
+export function approveLeaveRequest(id: string, options: { note?: string; override?: boolean } = {}) {
+  return request<{ request: LeaveRequest }>(`/api/leave/requests/${id}/approve`, {
+    method: 'POST',
+    body: JSON.stringify(options),
+  })
+}
+
+export function rejectLeaveRequest(id: string, note?: string) {
+  return request<{ request: LeaveRequest }>(`/api/leave/requests/${id}/reject`, {
+    method: 'POST',
+    body: JSON.stringify({ note }),
+  })
+}
+
+export function cancelLeaveRequest(id: string, note?: string) {
+  return request<{ request: LeaveRequest }>(`/api/leave/requests/${id}/cancel`, {
+    method: 'POST',
+    body: JSON.stringify({ note }),
+  })
+}
+
+export function deleteLeaveRequest(id: string) {
+  return request<null>(`/api/leave/requests/${id}`, { method: 'DELETE' })
+}
+
+export function getLeaveSummary() {
+  return request<{
+    pendingCount: number
+    onLeaveToday: LeaveRequest[]
+    upcoming: LeaveRequest[]
+  }>('/api/leave/summary')
+}
+
+export function syncLeaveStatuses() {
+  return request<{ onLeave: number; returned: number }>('/api/leave/sync-statuses', { method: 'POST' })
+}
+
+/* ---------------------------------------------------------------- *
+ * Attendance
+ * ---------------------------------------------------------------- */
+
+export type AttendanceStatus =
+  | 'PRESENT'
+  | 'LATE'
+  | 'ABSENT'
+  | 'ON_LEAVE'
+  | 'PUBLIC_HOLIDAY'
+  | 'REST_DAY'
+
+export interface AttendanceEmployee {
+  id: string
+  firstName: string
+  lastName: string
+  employeeCode: string
+  department: string | null
+}
+
+export interface AttendanceRecord {
+  id: string
+  employeeId: string
+  date: string
+  status: AttendanceStatus
+  clockIn: string | null
+  clockOut: string | null
+  breakMinutes: number
+  hoursWorked: string | null
+  overtimeHours: string
+  note: string | null
+  employee?: AttendanceEmployee
+}
+
+export interface AttendanceRosterRow {
+  employee: AttendanceEmployee
+  record: AttendanceRecord | null
+  onLeaveType: string | null
+  suggestedStatus: AttendanceStatus
+}
+
+export interface AttendanceRecordInput {
+  employeeId: string
+  status: AttendanceStatus
+  clockIn?: string | null
+  clockOut?: string | null
+  breakMinutes?: number
+  overtimeHours?: string
+  note?: string | null
+}
+
+export interface Timesheet {
+  employee: { id: string; firstName: string; lastName: string; employeeCode: string; position: string | null }
+  year: number
+  month: number
+  daysInMonth: number
+  records: AttendanceRecord[]
+  totals: { hours: number; overtime: number; byStatus: Record<string, number> }
+}
+
+export function listAttendance(
+  params: { employeeId?: string; from?: string; to?: string; status?: AttendanceStatus } = {},
+) {
+  const query = new URLSearchParams()
+  if (params.employeeId) query.set('employeeId', params.employeeId)
+  if (params.from) query.set('from', params.from)
+  if (params.to) query.set('to', params.to)
+  if (params.status) query.set('status', params.status)
+  const qs = query.toString()
+  return request<{ records: AttendanceRecord[] }>(`/api/attendance${qs ? `?${qs}` : ''}`)
+}
+
+export function getAttendanceDay(date: string) {
+  return request<{ date: string; isWeekend: boolean; roster: AttendanceRosterRow[] }>(
+    `/api/attendance/day?date=${date}`,
+  )
+}
+
+export function saveAttendanceDay(date: string, records: AttendanceRecordInput[]) {
+  return request<{ saved: number; records: AttendanceRecord[] }>('/api/attendance/bulk', {
+    method: 'POST',
+    body: JSON.stringify({ date, records }),
+  })
+}
+
+export function saveAttendanceRecord(date: string, input: AttendanceRecordInput) {
+  return request<{ record: AttendanceRecord }>('/api/attendance', {
+    method: 'POST',
+    body: JSON.stringify({ date, ...input }),
+  })
+}
+
+export function deleteAttendanceRecord(id: string) {
+  return request<null>(`/api/attendance/${id}`, { method: 'DELETE' })
+}
+
+export function getTimesheet(employeeId: string, year: number, month: number) {
+  const query = new URLSearchParams({ employeeId, year: String(year), month: String(month) })
+  return request<Timesheet>(`/api/attendance/timesheet?${query.toString()}`)
+}
+
+/* ---------------------------------------------------------------- *
+ * Certifications & training
+ * ---------------------------------------------------------------- */
+
+export interface CertificationEmployee {
+  id: string
+  firstName: string
+  lastName: string
+  employeeCode: string
+  position: string | null
+}
+
+export interface Certification {
+  id: string
+  employeeId: string
+  name: string
+  category: string | null
+  issuingBody: string | null
+  certificateNumber: string | null
+  issueDate: string | null
+  expiryDate: string | null
+  notes: string | null
+  documentId: string | null
+  employee: CertificationEmployee
+}
+
+export interface CertificationInput {
+  employeeId: string
+  name: string
+  category?: string
+  issuingBody?: string
+  certificateNumber?: string
+  issueDate?: string
+  expiryDate?: string
+  notes?: string
+}
+
+export interface TrainingRecord {
+  id: string
+  employeeId: string
+  title: string
+  provider: string | null
+  completedDate: string | null
+  durationHours: string | null
+  cost: string | null
+  notes: string | null
+  employee: CertificationEmployee
+}
+
+export interface TrainingRecordInput {
+  employeeId: string
+  title: string
+  provider?: string
+  completedDate?: string
+  durationHours?: string
+  cost?: string
+  notes?: string
+}
+
+export function listCertifications(
+  params: { employeeId?: string; search?: string; status?: 'valid' | 'expiring' | 'expired' } = {},
+) {
+  const query = new URLSearchParams()
+  if (params.employeeId) query.set('employeeId', params.employeeId)
+  if (params.search) query.set('search', params.search)
+  if (params.status) query.set('status', params.status)
+  const qs = query.toString()
+  return request<{ certifications: Certification[]; expiringSoonDays: number }>(
+    `/api/certifications${qs ? `?${qs}` : ''}`,
+  )
+}
+
+export function listExpiringCertifications(days?: number) {
+  const qs = days ? `?days=${days}` : ''
+  return request<{ days: number; expiring: Certification[]; expired: Certification[] }>(
+    `/api/certifications/expiring${qs}`,
+  )
+}
+
+export function createCertification(input: CertificationInput) {
+  return request<{ certification: Certification }>('/api/certifications', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function updateCertification(id: string, input: Partial<CertificationInput>) {
+  return request<{ certification: Certification }>(`/api/certifications/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
+}
+
+export function deleteCertification(id: string) {
+  return request<null>(`/api/certifications/${id}`, { method: 'DELETE' })
+}
+
+export function listTrainingRecords(params: { employeeId?: string; search?: string } = {}) {
+  const query = new URLSearchParams()
+  if (params.employeeId) query.set('employeeId', params.employeeId)
+  if (params.search) query.set('search', params.search)
+  const qs = query.toString()
+  return request<{ records: TrainingRecord[] }>(`/api/training${qs ? `?${qs}` : ''}`)
+}
+
+export function createTrainingRecord(input: TrainingRecordInput) {
+  return request<{ record: TrainingRecord }>('/api/training', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function updateTrainingRecord(id: string, input: Partial<TrainingRecordInput>) {
+  return request<{ record: TrainingRecord }>(`/api/training/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
+}
+
+export function deleteTrainingRecord(id: string) {
+  return request<null>(`/api/training/${id}`, { method: 'DELETE' })
+}
+
+export function getAttendanceSummary(date: string) {
+  return request<{
+    date: string
+    headcount: number
+    recorded: number
+    byStatus: Record<string, number>
+  }>(`/api/attendance/summary?date=${date}`)
 }
 
 export function createEmployee(input: EmployeeInput) {

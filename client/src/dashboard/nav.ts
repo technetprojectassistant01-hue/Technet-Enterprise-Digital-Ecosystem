@@ -23,6 +23,8 @@ import {
   ClipboardList,
   CalendarClock,
   ClipboardCheck,
+  CalendarDays,
+  BadgeCheck,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -66,7 +68,18 @@ export const MAIN_NAV: NavItem[] = [
           { label: 'Purchase Orders', to: '/dashboard/erp/procurement/purchase-orders', icon: ShoppingCart },
         ],
       },
-      { label: 'HR', to: '/dashboard/erp/hr', icon: Users },
+      {
+        label: 'HR',
+        to: '/dashboard/erp/hr',
+        icon: Users,
+        children: [
+          { label: 'Overview', to: '/dashboard/erp/hr', icon: LayoutGrid, end: true },
+          { label: 'Employees', to: '/dashboard/erp/hr/employees', icon: UserCog },
+          { label: 'Leave', to: '/dashboard/erp/hr/leave', icon: CalendarDays },
+          { label: 'Attendance', to: '/dashboard/erp/hr/attendance', icon: ClipboardCheck },
+          { label: 'Certifications', to: '/dashboard/erp/hr/certifications', icon: BadgeCheck },
+        ],
+      },
       { label: 'Projects', to: '/dashboard/erp/projects', icon: FolderKanban },
       { label: 'Documents', to: '/dashboard/erp/documents', icon: FileText },
     ],
