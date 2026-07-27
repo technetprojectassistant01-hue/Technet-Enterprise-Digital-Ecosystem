@@ -114,10 +114,12 @@ export function BarChart({
 export function Modal({
   title,
   onClose,
+  size = 'md',
   children,
 }: {
   title: string
   onClose: () => void
+  size?: 'md' | 'lg'
   children: ReactNode
 }) {
   return (
@@ -126,10 +128,12 @@ export function Modal({
       onClick={onClose}
     >
       <div
-        className="animate-scale-in w-full max-w-lg rounded-xl border border-ink-700 bg-ink-900 p-6 shadow-2xl"
+        className={`animate-scale-in flex max-h-[90vh] w-full flex-col rounded-xl border border-ink-700 bg-ink-900 p-6 shadow-2xl ${
+          size === 'lg' ? 'max-w-3xl' : 'max-w-lg'
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-4 flex shrink-0 items-center justify-between">
           <h2 className="text-base font-semibold text-ink-100">{title}</h2>
           <button
             type="button"
@@ -140,7 +144,7 @@ export function Modal({
             <X className="h-5 w-5" />
           </button>
         </div>
-        {children}
+        <div className="-mr-2 overflow-y-auto pr-2">{children}</div>
       </div>
     </div>
   )

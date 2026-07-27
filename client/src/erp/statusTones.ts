@@ -9,6 +9,8 @@ import type {
   PurchaseOrderStatus,
   WorkOrderStatus,
   ReportStatus,
+  LeaveRequestStatus,
+  AttendanceStatus,
 } from '../lib/api'
 
 export const contractStatusTone: Record<ContractStatus, BadgeTone> = {
@@ -32,6 +34,22 @@ export const quotationStatusTone: Record<QuotationStatus, BadgeTone> = {
   ACCEPTED: 'accent',
   REJECTED: 'danger',
   EXPIRED: 'neutral',
+}
+
+export const attendanceStatusTone: Record<AttendanceStatus, BadgeTone> = {
+  PRESENT: 'success',
+  LATE: 'warning',
+  ABSENT: 'danger',
+  ON_LEAVE: 'accent',
+  PUBLIC_HOLIDAY: 'neutral',
+  REST_DAY: 'neutral',
+}
+
+export const leaveRequestStatusTone: Record<LeaveRequestStatus, BadgeTone> = {
+  PENDING: 'warning',
+  APPROVED: 'success',
+  REJECTED: 'danger',
+  CANCELLED: 'neutral',
 }
 
 export const employmentStatusTone: Record<EmploymentStatus, BadgeTone> = {
