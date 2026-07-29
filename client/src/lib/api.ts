@@ -67,6 +67,20 @@ export function changePassword(currentPassword: string, newPassword: string) {
   })
 }
 
+export function forgotPassword(email: string) {
+  return request<{ ok: true }>('/api/auth/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  })
+}
+
+export function resetPassword(token: string, newPassword: string) {
+  return request<{ ok: true }>('/api/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify({ token, newPassword }),
+  })
+}
+
 export function listUsers() {
   return request<{ users: ManagedUser[] }>('/api/users')
 }

@@ -25,6 +25,7 @@ import dailyReportsRouter from "./routes/dailyReports";
 import interventionReportsRouter from "./routes/interventionReports";
 import documentsRouter from "./routes/documents";
 import { requireAuth, requireRole } from "./middleware/auth";
+import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -69,6 +70,9 @@ app.use("/api/documents", documentsRouter);
 app.get("/api/admin/ping", requireAuth, requireRole("ADMIN"), (_req, res) => {
   res.json({ ok: true, message: "You have admin access" });
 });
+
+app.use("/api", notFoundHandler);
+app.use(errorHandler);
 
 app.listen(PORT, () => {
   console.log(`Server listening on http://localhost:${PORT}`);

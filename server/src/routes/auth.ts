@@ -3,6 +3,8 @@ import bcrypt from "bcryptjs";
 import { prisma } from "../lib/prisma";
 import { signAuthToken } from "../lib/jwt";
 import { requireAuth } from "../middleware/auth";
+import { generateResetToken, hashResetToken } from "../lib/passwordReset";
+import { sendPasswordResetEmail } from "../lib/email";
 
 const router = Router();
 
@@ -94,6 +96,70 @@ router.post("/change-password", requireAuth, async (req, res) => {
 
   const passwordHash = await bcrypt.hash(newPassword, 12);
   await prisma.user.update({ where: { id: user.id }, data: { passwordHash } });
+
+  res.json({ ok: true });
+});
+
+router.post("/forgot-password", async (req, res) => {
+  const { email } = req.body ?? {};
+
+  if (typeof email !== "string" || !email.trim()) {
+    return res.status(400).json({ error: "Email is required" });
+  }
+
+  const user = await prisma.user.findUnique({ where: { email: email.trim() } });
+
+  // Always respond the same way whether or not the account exists, so the
+  // endpoint can't be used to enumerate registered emails.
+  if (user) {
+    await prisma.passwordResetToken.deleteMany({ where: { userId: user.id, usedAt: null } });
+
+    const { token, tokenHash, expiresAt } = generateResetToken();
+    await prisma.passwordResetToken.create({
+      data: { userId: user.id, tokenHash, expiresAt },
+    });
+
+    const clientOrigin = process.env.CLIENT_ORIGIN || "http://localhost:5173";
+    const resetUrl = `${clientOrigin}/reset-password?token=${token}`;
+    await sendPasswordResetEmail(user.email, resetUrl);
+  }
+
+  res.json({ ok: true });
+});
+
+router.post("/reset-password", async (req, res) => {
+  const { token, newPassword } = req.body ?? {};
+
+  if (typeof token !== "string" || !token) {
+    return res.status(400).json({ error: "Reset token is required" });
+  }
+  if (typeof newPassword !== "string" || newPassword.length < 8) {
+    return res.status(400).json({ error: "New password must be at least 8 characters" });
+  }
+
+  const tokenHash = hashResetToken(token);
+  const resetToken = await prisma.passwordResetToken.findUnique({ where: { tokenHash } });
+
+  if (
+    !resetToken ||
+    resetToken.usedAt !== null ||
+    resetToken.expiresAt.getTime() < Date.now()
+  ) {
+    return res.status(400).json({ error: "This reset link is invalid or has expired" });
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, 12);
+
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: resetToken.userId }, data: { passwordHash } }),
+    prisma.passwordResetToken.update({
+      where: { id: resetToken.id },
+      data: { usedAt: new Date() },
+    }),
+    prisma.passwordResetToken.deleteMany({
+      where: { userId: resetToken.userId, usedAt: null },
+    }),
+  ]);
 
   res.json({ ok: true });
 });
