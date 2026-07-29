@@ -194,6 +194,20 @@ model User {
   leaveRequestsReviewed LeaveRequest[] @relation("LeaveReviewer")
 
   attendanceRecorded AttendanceRecord[] @relation("AttendanceRecorder")
+
+  passwordResetTokens PasswordResetToken[]
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
 }
 
 model Employee {

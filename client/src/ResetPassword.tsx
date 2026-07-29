@@ -1,24 +1,38 @@
 import { useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
-import { ArrowLeft, Globe, Mail } from 'lucide-react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { ArrowLeft, Globe, Lock } from 'lucide-react'
 import Logo from './components/Logo'
-import { forgotPassword } from './lib/api'
+import { ApiError, resetPassword } from './lib/api'
 
-function ForgotPassword() {
-  const [email, setEmail] = useState('')
+function ResetPassword() {
+  const [searchParams] = useSearchParams()
+  const token = searchParams.get('token')
+
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [sent, setSent] = useState(false)
+  const [done, setDone] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
+
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters')
+      return
+    }
+    if (password !== confirmPassword) {
+      setError('Passwords do not match')
+      return
+    }
+
     setSubmitting(true)
     try {
-      await forgotPassword(email)
-      setSent(true)
+      await resetPassword(token!, password)
+      setDone(true)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
+      setError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.')
     } finally {
       setSubmitting(false)
     }
@@ -51,12 +65,25 @@ function ForgotPassword() {
         <div className="relative w-full max-w-sm rounded-2xl border border-ink-700 bg-ink-900 p-8 shadow-2xl shadow-black/40">
           <Logo size="lg" stacked className="mb-6" />
 
-          {sent ? (
+          {!token ? (
             <>
-              <h1 className="text-center text-2xl font-semibold text-ink-100">Check Your Inbox</h1>
+              <h1 className="text-center text-2xl font-semibold text-ink-100">Invalid Link</h1>
               <p className="mt-3 text-center text-sm text-ink-300">
-                If an account exists for <span className="text-ink-100">{email}</span>, a secure
-                recovery link is on its way.
+                This password reset link is missing its token. Request a new one to continue.
+              </p>
+              <Link
+                to="/forgot-password"
+                className="mt-8 flex items-center justify-center gap-2 text-sm text-cyan-accent hover:underline"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Request a New Link
+              </Link>
+            </>
+          ) : done ? (
+            <>
+              <h1 className="text-center text-2xl font-semibold text-ink-100">Password Updated</h1>
+              <p className="mt-3 text-center text-sm text-ink-300">
+                Your password has been reset. You can now sign in with your new password.
               </p>
               <Link
                 to="/login"
@@ -68,27 +95,48 @@ function ForgotPassword() {
             </>
           ) : (
             <>
-              <h1 className="text-center text-2xl font-semibold text-ink-100">Reset Your Access</h1>
+              <h1 className="text-center text-2xl font-semibold text-ink-100">Set a New Password</h1>
               <p className="mt-2 text-center text-sm text-ink-300">
-                Enter your user identifier to receive a secure recovery token.
+                Choose a new password for your account.
               </p>
 
               <form onSubmit={handleSubmit} className="mt-8">
                 <label
-                  htmlFor="email"
+                  htmlFor="password"
                   className="text-xs font-semibold tracking-widest text-ink-300"
                 >
-                  USER IDENTIFIER
+                  NEW PASSWORD
                 </label>
                 <div className="mt-2 flex items-center gap-2 rounded-md border border-ink-600 bg-ink-950 px-3 py-2.5 focus-within:border-cyan-accent">
-                  <Mail className="h-4 w-4 text-ink-400" />
+                  <Lock className="h-4 w-4 text-ink-400" />
                   <input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="name@company.com"
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="At least 8 characters"
                     required
+                    minLength={8}
+                    className="w-full bg-transparent text-ink-100 placeholder-ink-500 outline-none"
+                  />
+                </div>
+
+                <label
+                  htmlFor="confirmPassword"
+                  className="mt-4 block text-xs font-semibold tracking-widest text-ink-300"
+                >
+                  CONFIRM PASSWORD
+                </label>
+                <div className="mt-2 flex items-center gap-2 rounded-md border border-ink-600 bg-ink-950 px-3 py-2.5 focus-within:border-cyan-accent">
+                  <Lock className="h-4 w-4 text-ink-400" />
+                  <input
+                    id="confirmPassword"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Re-enter your new password"
+                    required
+                    minLength={8}
                     className="w-full bg-transparent text-ink-100 placeholder-ink-500 outline-none"
                   />
                 </div>
@@ -98,7 +146,7 @@ function ForgotPassword() {
                   disabled={submitting}
                   className="mt-6 w-full rounded-md bg-cyan-accent py-3 text-sm font-semibold tracking-widest text-ink-950 transition hover:bg-cyan-accent-dark disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                  {submitting ? 'SENDING…' : 'SEND RECOVERY TOKEN'}
+                  {submitting ? 'UPDATING…' : 'UPDATE PASSWORD'}
                 </button>
 
                 {error && <p className="mt-4 text-center text-sm text-red-400">{error}</p>}
@@ -144,4 +192,4 @@ function ForgotPassword() {
   )
 }
 
-export default ForgotPassword
+export default ResetPassword

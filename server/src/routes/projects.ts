@@ -9,7 +9,7 @@ const router = Router();
 const STATUSES = ["QUOTED", "APPROVED", "IN_PROGRESS", "ON_HOLD", "COMPLETED", "CLOSED", "CANCELLED"] as const;
 type Status = (typeof STATUSES)[number];
 
-const ALLOWED_TRANSITIONS: Record<Status, Status[]> = {
+export const ALLOWED_TRANSITIONS: Record<Status, Status[]> = {
   QUOTED: ["APPROVED", "CANCELLED"],
   APPROVED: ["IN_PROGRESS", "ON_HOLD", "CANCELLED"],
   IN_PROGRESS: ["ON_HOLD", "COMPLETED", "CANCELLED"],

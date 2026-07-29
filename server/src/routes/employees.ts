@@ -43,7 +43,7 @@ function optionalEnum<T extends readonly string[]>(value: unknown, allowed: T): 
  * Projects and Operations depend on it. Personal and payroll data is HR-only, so
  * it is stripped for anyone who is not an admin or manager.
  */
-const SENSITIVE_FIELDS = [
+export const SENSITIVE_FIELDS = [
   "nationalId",
   "dateOfBirth",
   "gender",
@@ -62,7 +62,7 @@ function canSeeSensitiveData(req: { user?: { role: string } }): boolean {
   return req.user?.role === "ADMIN" || req.user?.role === "MANAGER";
 }
 
-function redact<T extends Record<string, unknown>>(employee: T): T {
+export function redact<T extends Record<string, unknown>>(employee: T): T {
   const copy = { ...employee };
   for (const field of SENSITIVE_FIELDS) {
     if (field in copy) copy[field as keyof T] = null as T[keyof T];

@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import Login from './Login'
 import ForgotPassword from './ForgotPassword'
+import ResetPassword from './ResetPassword'
 import Dashboard from './Dashboard'
 import DashboardHome from './DashboardHome'
 import ErpLayout from './erp/ErpLayout'
@@ -56,6 +57,7 @@ function App() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route element={<ProtectedRoute />}>
         <Route path="/dashboard" element={<Dashboard />}>
           <Route index element={<DashboardHome />} />
