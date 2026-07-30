@@ -29,11 +29,11 @@ describe("requireAuth", () => {
   });
 
   it("attaches req.user and calls next for a valid token", () => {
-    const token = signAuthToken({ sub: "user-1", role: "MANAGER" });
+    const token = signAuthToken({ sub: "user-1", role: "OPERATIONS_MANAGER" });
     const { req, res, next } = mockReqRes({ token });
     requireAuth(req, res, next);
     expect(next).toHaveBeenCalledOnce();
-    expect(req.user).toMatchObject({ sub: "user-1", role: "MANAGER" });
+    expect(req.user).toMatchObject({ sub: "user-1", role: "OPERATIONS_MANAGER" });
     expect(res.status).not.toHaveBeenCalled();
   });
 });
@@ -49,7 +49,7 @@ describe("requireRole", () => {
   it("rejects a role that isn't in the allowed list", () => {
     const { req, res, next } = mockReqRes();
     req.user = { sub: "user-1", role: "EMPLOYEE" };
-    requireRole("ADMIN", "MANAGER")(req, res, next);
+    requireRole("ADMIN", "OPERATIONS_MANAGER")(req, res, next);
     expect(res.status).toHaveBeenCalledWith(403);
     expect(next).not.toHaveBeenCalled();
   });
@@ -57,7 +57,7 @@ describe("requireRole", () => {
   it("calls next for an allowed role", () => {
     const { req, res, next } = mockReqRes();
     req.user = { sub: "user-1", role: "ADMIN" };
-    requireRole("ADMIN", "MANAGER")(req, res, next);
+    requireRole("ADMIN", "OPERATIONS_MANAGER")(req, res, next);
     expect(next).toHaveBeenCalledOnce();
     expect(res.status).not.toHaveBeenCalled();
   });

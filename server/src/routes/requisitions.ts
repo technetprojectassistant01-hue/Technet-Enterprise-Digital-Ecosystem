@@ -3,6 +3,7 @@ import { Prisma } from "../generated/prisma/client";
 import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { isForeignKeyConstraintError, isNotFoundError, isUniqueConstraintError } from "../lib/prismaErrors";
+import { PROCUREMENT_ROLES } from "../lib/roles";
 
 const router = Router();
 
@@ -148,7 +149,7 @@ async function transitionStatus(
   return { requisition: updated };
 }
 
-router.post("/:id/approve", requireRole("ADMIN", "MANAGER"), async (req, res) => {
+router.post("/:id/approve", requireRole(...PROCUREMENT_ROLES), async (req, res) => {
   const id = req.params.id as string;
   const { note } = req.body ?? {};
 
@@ -160,7 +161,7 @@ router.post("/:id/approve", requireRole("ADMIN", "MANAGER"), async (req, res) =>
   res.json({ requisition: result.requisition });
 });
 
-router.post("/:id/reject", requireRole("ADMIN", "MANAGER"), async (req, res) => {
+router.post("/:id/reject", requireRole(...PROCUREMENT_ROLES), async (req, res) => {
   const id = req.params.id as string;
   const { note } = req.body ?? {};
 
@@ -176,7 +177,7 @@ router.post("/:id/reject", requireRole("ADMIN", "MANAGER"), async (req, res) => 
   res.json({ requisition: result.requisition });
 });
 
-router.post("/:id/convert", requireRole("ADMIN", "MANAGER"), async (req, res) => {
+router.post("/:id/convert", requireRole(...PROCUREMENT_ROLES), async (req, res) => {
   const id = req.params.id as string;
   const { supplierId, poNumber, expectedDate, items } = req.body ?? {};
 
@@ -255,7 +256,7 @@ router.post("/:id/convert", requireRole("ADMIN", "MANAGER"), async (req, res) =>
   }
 });
 
-router.delete("/:id", requireRole("ADMIN", "MANAGER"), async (req, res) => {
+router.delete("/:id", requireRole(...PROCUREMENT_ROLES), async (req, res) => {
   const id = req.params.id as string;
   try {
     await prisma.purchaseRequisition.delete({ where: { id } });

@@ -3,11 +3,12 @@ import { Prisma } from "../generated/prisma/client";
 import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { isUniqueConstraintError, isForeignKeyConstraintError, isNotFoundError } from "../lib/prismaErrors";
+import { HR_ROLES } from "../lib/roles";
 
 const router = Router();
 
-// Leave data is HR-only: every route requires an admin or manager.
-router.use(requireAuth, requireRole("ADMIN", "MANAGER"));
+// Leave data is HR-only: every route requires an admin or HR officer.
+router.use(requireAuth, requireRole(...HR_ROLES));
 
 const REQUEST_STATUSES = ["PENDING", "APPROVED", "REJECTED", "CANCELLED"] as const;
 type RequestStatus = (typeof REQUEST_STATUSES)[number];

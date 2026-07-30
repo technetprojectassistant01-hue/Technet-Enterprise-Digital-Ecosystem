@@ -3,6 +3,7 @@ import { Prisma } from "../generated/prisma/client";
 import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { isUniqueConstraintError, isForeignKeyConstraintError, isNotFoundError } from "../lib/prismaErrors";
+import { OPS_MANAGE_ROLES } from "../lib/roles";
 
 const router = Router();
 
@@ -66,7 +67,7 @@ router.get("/:id", async (req, res) => {
   res.json({ project });
 });
 
-router.post("/", requireRole("ADMIN", "MANAGER"), async (req, res) => {
+router.post("/", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
   const { name, customerId, contractId, description, serviceCategory, budget, startDate, endDate, managerId } =
     req.body ?? {};
 
@@ -100,7 +101,7 @@ router.post("/", requireRole("ADMIN", "MANAGER"), async (req, res) => {
   }
 });
 
-router.patch("/:id", requireRole("ADMIN", "MANAGER"), async (req, res) => {
+router.patch("/:id", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
   const id = req.params.id as string;
   const { name, customerId, contractId, description, serviceCategory, budget, startDate, endDate, managerId } =
     req.body ?? {};
@@ -132,7 +133,7 @@ router.patch("/:id", requireRole("ADMIN", "MANAGER"), async (req, res) => {
   }
 });
 
-router.post("/:id/status", requireRole("ADMIN", "MANAGER"), async (req, res) => {
+router.post("/:id/status", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
   const id = req.params.id as string;
   const { status, note } = req.body ?? {};
 
@@ -166,7 +167,7 @@ router.post("/:id/status", requireRole("ADMIN", "MANAGER"), async (req, res) => 
   res.json({ project: updated });
 });
 
-router.post("/:id/assignments", requireRole("ADMIN", "MANAGER"), async (req, res) => {
+router.post("/:id/assignments", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
   const id = req.params.id as string;
   const { employeeId, roleOnProject } = req.body ?? {};
 
@@ -191,7 +192,7 @@ router.post("/:id/assignments", requireRole("ADMIN", "MANAGER"), async (req, res
   }
 });
 
-router.delete("/:id/assignments/:employeeId", requireRole("ADMIN", "MANAGER"), async (req, res) => {
+router.delete("/:id/assignments/:employeeId", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
   const { id, employeeId } = req.params as { id: string; employeeId: string };
   try {
     await prisma.projectAssignment.delete({

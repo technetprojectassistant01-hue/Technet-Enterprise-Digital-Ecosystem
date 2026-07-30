@@ -3,6 +3,7 @@ import { Prisma } from "../generated/prisma/client";
 import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { isForeignKeyConstraintError, isNotFoundError } from "../lib/prismaErrors";
+import { HR_ROLES } from "../lib/roles";
 
 /** A certification inside this window is treated as due for renewal. */
 const EXPIRING_SOON_DAYS = 60;
@@ -42,7 +43,7 @@ const employeeSelect = {
  * ================================================================== */
 
 const router = Router();
-router.use(requireAuth, requireRole("ADMIN", "MANAGER"));
+router.use(requireAuth, requireRole(...HR_ROLES));
 
 router.get("/", async (req, res) => {
   const { employeeId, search, status } = req.query;
@@ -187,7 +188,7 @@ router.delete("/:id", async (req, res) => {
  * ================================================================== */
 
 export const trainingRouter = Router();
-trainingRouter.use(requireAuth, requireRole("ADMIN", "MANAGER"));
+trainingRouter.use(requireAuth, requireRole(...HR_ROLES));
 
 trainingRouter.get("/", async (req, res) => {
   const { employeeId, search } = req.query;

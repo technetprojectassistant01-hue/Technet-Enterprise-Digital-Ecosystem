@@ -3,6 +3,7 @@ import { Prisma } from "../generated/prisma/client";
 import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { isForeignKeyConstraintError, isNotFoundError } from "../lib/prismaErrors";
+import { SALES_ROLES } from "../lib/roles";
 
 const router = Router();
 
@@ -42,7 +43,7 @@ router.get("/:id", async (req, res) => {
   res.json({ customer });
 });
 
-router.post("/", requireRole("ADMIN", "MANAGER"), async (req, res) => {
+router.post("/", requireRole(...SALES_ROLES), async (req, res) => {
   const { name, email, phone, company, address, vatNumber, taxNumber } = req.body ?? {};
 
   if (typeof name !== "string" || !name.trim()) {
@@ -63,7 +64,7 @@ router.post("/", requireRole("ADMIN", "MANAGER"), async (req, res) => {
   res.status(201).json({ customer });
 });
 
-router.patch("/:id", requireRole("ADMIN", "MANAGER"), async (req, res) => {
+router.patch("/:id", requireRole(...SALES_ROLES), async (req, res) => {
   const id = req.params.id as string;
   const { name, email, phone, company, address, vatNumber, taxNumber } = req.body ?? {};
 
@@ -85,7 +86,7 @@ router.patch("/:id", requireRole("ADMIN", "MANAGER"), async (req, res) => {
   }
 });
 
-router.delete("/:id", requireRole("ADMIN", "MANAGER"), async (req, res) => {
+router.delete("/:id", requireRole(...SALES_ROLES), async (req, res) => {
   const id = req.params.id as string;
   try {
     await prisma.customer.delete({ where: { id } });
