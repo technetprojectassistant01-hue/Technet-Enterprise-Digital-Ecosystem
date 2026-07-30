@@ -1,6 +1,14 @@
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 
-export type Role = 'ADMIN' | 'MANAGER' | 'EMPLOYEE'
+export type Role =
+  | 'ADMIN'
+  | 'SALES_OFFICER'
+  | 'FINANCE_OFFICER'
+  | 'STOREKEEPER'
+  | 'HR_OFFICER'
+  | 'OPERATIONS_MANAGER'
+  | 'FIELD_TECHNICIAN'
+  | 'EMPLOYEE'
 
 export interface CurrentUser {
   id: string

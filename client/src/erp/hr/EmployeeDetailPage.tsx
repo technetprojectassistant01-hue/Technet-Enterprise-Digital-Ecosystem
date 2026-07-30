@@ -71,7 +71,7 @@ function EmployeeDetailPage() {
   const { id } = useParams<{ id: string }>()
   const toast = useToast()
   const { user } = useAuth()
-  const canSeeSensitive = user?.role === 'ADMIN' || user?.role === 'MANAGER'
+  const canSeeSensitive = user?.role === 'ADMIN' || user?.role === 'HR_OFFICER'
 
   const [employee, setEmployee] = useState<EmployeeDetail | null>(null)
   const [balances, setBalances] = useState<LeaveBalance[]>([])
