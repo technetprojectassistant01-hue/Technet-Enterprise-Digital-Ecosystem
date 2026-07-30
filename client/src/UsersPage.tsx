@@ -7,7 +7,16 @@ import { Panel, EmptyState, TableSkeleton } from './dashboard/ui'
 import { useToast } from './dashboard/ToastContext'
 import { useConfirm } from './dashboard/ConfirmContext'
 
-const ROLES: Role[] = ['ADMIN', 'MANAGER', 'EMPLOYEE']
+const ROLES: Role[] = [
+  'ADMIN',
+  'SALES_OFFICER',
+  'FINANCE_OFFICER',
+  'STOREKEEPER',
+  'HR_OFFICER',
+  'OPERATIONS_MANAGER',
+  'FIELD_TECHNICIAN',
+  'EMPLOYEE',
+]
 
 const inputClass =
   'rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
