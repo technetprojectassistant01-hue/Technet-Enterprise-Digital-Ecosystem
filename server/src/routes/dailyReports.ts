@@ -3,6 +3,7 @@ import { Prisma } from "../generated/prisma/client";
 import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { isForeignKeyConstraintError, isNotFoundError } from "../lib/prismaErrors";
+import { OPS_MANAGE_ROLES, OPS_SUBMIT_ROLES } from "../lib/roles";
 
 const router = Router();
 
@@ -43,7 +44,7 @@ router.get("/:id", async (req, res) => {
   res.json({ dailyWorkReport });
 });
 
-router.post("/", requireRole("ADMIN", "MANAGER"), async (req, res) => {
+router.post("/", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
   const { date, summary, hours, technicianIds, workOrderIds } = req.body ?? {};
 
   if (!date || Number.isNaN(new Date(date).getTime())) {
@@ -93,7 +94,7 @@ async function review(id: string, reviewerId: string, toStatus: "APPROVED" | "RE
   return { dailyWorkReport };
 }
 
-router.post("/:id/approve", requireRole("ADMIN"), async (req, res) => {
+router.post("/:id/approve", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
   const id = req.params.id as string;
   const { note } = req.body ?? {};
   const result = await review(id, req.user!.sub, "APPROVED", typeof note === "string" ? note : undefined);
@@ -104,7 +105,7 @@ router.post("/:id/approve", requireRole("ADMIN"), async (req, res) => {
   res.json({ dailyWorkReport: result.dailyWorkReport });
 });
 
-router.post("/:id/reject", requireRole("ADMIN"), async (req, res) => {
+router.post("/:id/reject", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
   const id = req.params.id as string;
   const { note } = req.body ?? {};
   const result = await review(id, req.user!.sub, "REJECTED", typeof note === "string" ? note : undefined);
@@ -115,7 +116,7 @@ router.post("/:id/reject", requireRole("ADMIN"), async (req, res) => {
   res.json({ dailyWorkReport: result.dailyWorkReport });
 });
 
-router.delete("/:id", requireRole("ADMIN", "MANAGER"), async (req, res) => {
+router.delete("/:id", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
   const id = req.params.id as string;
   try {
     await prisma.dailyWorkReport.delete({ where: { id } });

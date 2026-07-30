@@ -3,11 +3,12 @@ import { Prisma } from "../generated/prisma/client";
 import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { isForeignKeyConstraintError, isNotFoundError } from "../lib/prismaErrors";
+import { HR_ROLES } from "../lib/roles";
 
 const router = Router();
 
 // Attendance feeds payroll, so it stays HR-only like leave.
-router.use(requireAuth, requireRole("ADMIN", "MANAGER"));
+router.use(requireAuth, requireRole(...HR_ROLES));
 
 const ATTENDANCE_STATUSES = [
   "PRESENT",

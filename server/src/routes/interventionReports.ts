@@ -4,6 +4,7 @@ import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { isForeignKeyConstraintError, isNotFoundError } from "../lib/prismaErrors";
 import { formatInterventionNumber } from "../lib/interventionNumber";
+import { OPS_MANAGE_ROLES, OPS_SUBMIT_ROLES } from "../lib/roles";
 
 const router = Router();
 
@@ -189,7 +190,7 @@ router.get("/:id/photos/:photoId", async (req, res) => {
   res.send(Buffer.from(photo.data));
 });
 
-router.post("/:id/photos", requireRole("ADMIN", "MANAGER"), async (req, res) => {
+router.post("/:id/photos", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
   const id = req.params.id as string;
   const { kind, fileData, fileName } = req.body ?? {};
 
@@ -226,14 +227,14 @@ router.post("/:id/photos", requireRole("ADMIN", "MANAGER"), async (req, res) => 
   }
 });
 
-router.delete("/:id/photos/:photoId", requireRole("ADMIN", "MANAGER"), async (req, res) => {
+router.delete("/:id/photos/:photoId", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
   const { id, photoId } = req.params as { id: string; photoId: string };
   const result = await prisma.interventionReportPhoto.deleteMany({ where: { id: photoId, interventionReportId: id } });
   if (result.count === 0) return res.status(404).json({ error: "Photo not found" });
   res.status(204).end();
 });
 
-router.post("/", requireRole("ADMIN", "MANAGER"), async (req, res) => {
+router.post("/", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
   const {
     customerId,
     workOrderId,
@@ -359,7 +360,7 @@ router.post("/", requireRole("ADMIN", "MANAGER"), async (req, res) => {
   }
 });
 
-router.patch("/:id", requireRole("ADMIN", "MANAGER"), async (req, res) => {
+router.patch("/:id", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
   const id = req.params.id as string;
   const { workOrderId } = req.body ?? {};
 
@@ -379,7 +380,7 @@ router.patch("/:id", requireRole("ADMIN", "MANAGER"), async (req, res) => {
   }
 });
 
-router.post("/:id/reminder", requireRole("ADMIN", "MANAGER"), async (req, res) => {
+router.post("/:id/reminder", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
   const id = req.params.id as string;
   const { interval } = req.body ?? {};
 
@@ -419,7 +420,7 @@ async function review(id: string, reviewerId: string, toStatus: "APPROVED" | "RE
   return { interventionReport: withInterventionNumber(interventionReport!) };
 }
 
-router.post("/:id/approve", requireRole("ADMIN"), async (req, res) => {
+router.post("/:id/approve", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
   const id = req.params.id as string;
   const { note } = req.body ?? {};
   const result = await review(id, req.user!.sub, "APPROVED", typeof note === "string" ? note : undefined);
@@ -430,7 +431,7 @@ router.post("/:id/approve", requireRole("ADMIN"), async (req, res) => {
   res.json({ interventionReport: result.interventionReport });
 });
 
-router.post("/:id/reject", requireRole("ADMIN"), async (req, res) => {
+router.post("/:id/reject", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
   const id = req.params.id as string;
   const { note } = req.body ?? {};
   const result = await review(id, req.user!.sub, "REJECTED", typeof note === "string" ? note : undefined);
@@ -441,7 +442,7 @@ router.post("/:id/reject", requireRole("ADMIN"), async (req, res) => {
   res.json({ interventionReport: result.interventionReport });
 });
 
-router.delete("/:id", requireRole("ADMIN", "MANAGER"), async (req, res) => {
+router.delete("/:id", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
   const id = req.params.id as string;
   try {
     await prisma.interventionReport.delete({ where: { id } });

@@ -4,10 +4,9 @@ import { Prisma } from "../generated/prisma/client";
 import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { isUniqueConstraintError, isForeignKeyConstraintError, isNotFoundError } from "../lib/prismaErrors";
+import { ALL_ROLES, type Role } from "../lib/roles";
 
 const router = Router();
-const ROLES = ["ADMIN", "MANAGER", "EMPLOYEE"] as const;
-type Role = (typeof ROLES)[number];
 
 router.use(requireAuth, requireRole("ADMIN"));
 
@@ -36,7 +35,7 @@ router.post("/", async (req, res) => {
   if (password.length < 8) {
     return res.status(400).json({ error: "Password must be at least 8 characters" });
   }
-  if (role !== undefined && !ROLES.includes(role)) {
+  if (role !== undefined && !ALL_ROLES.includes(role)) {
     return res.status(400).json({ error: "Invalid role" });
   }
 
@@ -63,7 +62,7 @@ router.patch("/:id", async (req, res) => {
   const { id } = req.params;
   const { name, role, password } = req.body ?? {};
 
-  if (role !== undefined && !ROLES.includes(role)) {
+  if (role !== undefined && !ALL_ROLES.includes(role)) {
     return res.status(400).json({ error: "Invalid role" });
   }
   if (id === req.user!.sub && role !== undefined && role !== "ADMIN") {

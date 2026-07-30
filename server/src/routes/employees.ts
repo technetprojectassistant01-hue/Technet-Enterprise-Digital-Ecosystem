@@ -2,6 +2,7 @@ import { Router } from "express";
 import { Prisma } from "../generated/prisma/client";
 import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
+import { HR_ROLES } from "../lib/roles";
 import { isUniqueConstraintError, isForeignKeyConstraintError, isNotFoundError } from "../lib/prismaErrors";
 
 const router = Router();
@@ -59,7 +60,7 @@ export const SENSITIVE_FIELDS = [
 ] as const;
 
 function canSeeSensitiveData(req: { user?: { role: string } }): boolean {
-  return req.user?.role === "ADMIN" || req.user?.role === "MANAGER";
+  return req.user?.role === "ADMIN" || req.user?.role === "HR_OFFICER";
 }
 
 export function redact<T extends Record<string, unknown>>(employee: T): T {
@@ -130,7 +131,7 @@ router.get("/:id", async (req, res) => {
   res.json({ employee: canSeeSensitiveData(req) ? employee : redact(employee) });
 });
 
-router.post("/", requireRole("ADMIN", "MANAGER"), async (req, res) => {
+router.post("/", requireRole(...HR_ROLES), async (req, res) => {
   const body = req.body ?? {};
   const { employeeCode, firstName, lastName } = body;
 
@@ -186,7 +187,7 @@ router.post("/", requireRole("ADMIN", "MANAGER"), async (req, res) => {
   }
 });
 
-router.patch("/:id", requireRole("ADMIN", "MANAGER"), async (req, res) => {
+router.patch("/:id", requireRole(...HR_ROLES), async (req, res) => {
   const id = req.params.id as string;
   const body = req.body ?? {};
 
@@ -244,7 +245,7 @@ router.patch("/:id", requireRole("ADMIN", "MANAGER"), async (req, res) => {
   }
 });
 
-router.delete("/:id", requireRole("ADMIN", "MANAGER"), async (req, res) => {
+router.delete("/:id", requireRole(...HR_ROLES), async (req, res) => {
   const id = req.params.id as string;
   try {
     await prisma.employee.delete({ where: { id } });
