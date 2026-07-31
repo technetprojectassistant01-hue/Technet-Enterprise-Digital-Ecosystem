@@ -8,6 +8,8 @@ import { useCustomers } from './useCustomers'
 import { useProjects } from './useProjects'
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
+import { useAuth } from '../context/AuthContext'
+import { hasRole, FINANCE_ROLES } from '../lib/permissions'
 import { invoiceStatusTone as statusTone } from './statusTones'
 import { formatMoney } from '../lib/format'
 import SalesLineItemsEditor, { EMPTY_SALES_LINE_ITEM, type SalesLineItemRow } from './SalesLineItemsEditor'
@@ -21,6 +23,8 @@ const STATUSES: InvoiceStatus[] = ['DRAFT', 'SENT', 'PAID', 'OVERDUE', 'CANCELLE
 function InvoicesPage() {
   const toast = useToast()
   const confirm = useConfirm()
+  const { user } = useAuth()
+  const canWrite = hasRole(user?.role, FINANCE_ROLES)
   const customers = useCustomers()
   const projects = useProjects()
   const [invoices, setInvoices] = useState<Invoice[]>([])
@@ -143,19 +147,21 @@ function InvoicesPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={openCreate}
-          disabled={customers.length === 0}
-          className="flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <Plus className="h-4 w-4" />
-          New Invoice
-        </button>
-      </div>
+      {canWrite && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={openCreate}
+            disabled={customers.length === 0}
+            className="flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Plus className="h-4 w-4" />
+            New Invoice
+          </button>
+        </div>
+      )}
 
-      {customers.length === 0 && (
+      {canWrite && customers.length === 0 && (
         <p className="text-sm text-ink-400">Add a customer first before creating invoices.</p>
       )}
 
@@ -182,7 +188,7 @@ function InvoicesPage() {
                   <th className="px-3 py-3 font-semibold">TOTAL</th>
                   <th className="px-3 py-3 font-semibold">STATUS</th>
                   <th className="px-3 py-3 font-semibold">DUE</th>
-                  <th className="px-3 py-3" />
+                  {canWrite && <th className="px-3 py-3" />}
                 </tr>
               </thead>
               <tbody>
@@ -205,18 +211,20 @@ function InvoicesPage() {
                       <Badge tone={statusTone[inv.status]}>{inv.status}</Badge>
                     </td>
                     <td className="px-3 py-3 text-ink-400">{inv.dueDate ? inv.dueDate.slice(0, 10) : '—'}</td>
-                    <td className="px-3 py-3">
-                      <div className="flex items-center justify-end gap-3 text-ink-400">
-                        {inv.status !== 'PAID' && (
-                          <button type="button" onClick={() => markPaid(inv)} aria-label="Mark paid" className="hover:text-cyan-accent">
-                            <CheckCircle2 className="h-4 w-4" />
+                    {canWrite && (
+                      <td className="px-3 py-3">
+                        <div className="flex items-center justify-end gap-3 text-ink-400">
+                          {inv.status !== 'PAID' && (
+                            <button type="button" onClick={() => markPaid(inv)} aria-label="Mark paid" className="hover:text-cyan-accent">
+                              <CheckCircle2 className="h-4 w-4" />
+                            </button>
+                          )}
+                          <button type="button" onClick={() => handleDelete(inv)} aria-label="Delete invoice" className="hover:text-red-400">
+                            <Trash2 className="h-4 w-4" />
                           </button>
-                        )}
-                        <button type="button" onClick={() => handleDelete(inv)} aria-label="Delete invoice" className="hover:text-red-400">
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
