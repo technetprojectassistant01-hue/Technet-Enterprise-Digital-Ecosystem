@@ -7,12 +7,17 @@ import { JOB_CATEGORY_LABELS } from '../lib/api'
 import { Panel, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
+import { useAuth } from '../context/AuthContext'
+import { hasRole, OPS_MANAGE_ROLES, OPS_SUBMIT_ROLES } from '../lib/permissions'
 import { workOrderStatusTone, reportStatusTone } from '../erp/statusTones'
 
 function WorkOrderDetailPage() {
   const { id } = useParams<{ id: string }>()
   const toast = useToast()
   const confirm = useConfirm()
+  const { user } = useAuth()
+  const canSubmit = hasRole(user?.role, OPS_SUBMIT_ROLES)
+  const canManage = hasRole(user?.role, OPS_MANAGE_ROLES)
 
   const [workOrder, setWorkOrder] = useState<WorkOrderDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -90,7 +95,7 @@ function WorkOrderDetailPage() {
         </div>
 
         <div className="flex gap-3">
-          {workOrder.status === 'SCHEDULED' && (
+          {canSubmit && workOrder.status === 'SCHEDULED' && (
             <button
               type="button"
               onClick={() => setStatus('IN_PROGRESS')}
@@ -100,7 +105,7 @@ function WorkOrderDetailPage() {
               Start Work
             </button>
           )}
-          {workOrder.status === 'IN_PROGRESS' && (
+          {canSubmit && workOrder.status === 'IN_PROGRESS' && (
             <button
               type="button"
               onClick={() => setStatus('COMPLETED')}
@@ -110,7 +115,7 @@ function WorkOrderDetailPage() {
               Mark Completed
             </button>
           )}
-          {(workOrder.status === 'SCHEDULED' || workOrder.status === 'IN_PROGRESS') && (
+          {canSubmit && (workOrder.status === 'SCHEDULED' || workOrder.status === 'IN_PROGRESS') && (
             <button
               type="button"
               onClick={() => setStatus('CANCELLED')}
@@ -120,14 +125,16 @@ function WorkOrderDetailPage() {
               Cancel
             </button>
           )}
-          <button
-            type="button"
-            onClick={handleDelete}
-            className="flex items-center gap-2 rounded-md border border-ink-700 px-4 py-2 text-sm text-ink-300 hover:bg-ink-800"
-          >
-            <Trash2 className="h-4 w-4" />
-            Delete
-          </button>
+          {canManage && (
+            <button
+              type="button"
+              onClick={handleDelete}
+              className="flex items-center gap-2 rounded-md border border-ink-700 px-4 py-2 text-sm text-ink-300 hover:bg-ink-800"
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete
+            </button>
+          )}
         </div>
       </div>
 
@@ -149,13 +156,15 @@ function WorkOrderDetailPage() {
       <Panel
         title="Intervention Reports"
         action={
-          <Link
-            to={`/dashboard/operations/intervention-reports/new?workOrderId=${workOrder.id}`}
-            className="flex items-center gap-1.5 text-xs font-semibold text-cyan-accent hover:underline"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            File Report
-          </Link>
+          canSubmit && (
+            <Link
+              to={`/dashboard/operations/intervention-reports/new?workOrderId=${workOrder.id}`}
+              className="flex items-center gap-1.5 text-xs font-semibold text-cyan-accent hover:underline"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              File Report
+            </Link>
+          )
         }
       >
         {workOrder.interventionReports.length === 0 ? (
