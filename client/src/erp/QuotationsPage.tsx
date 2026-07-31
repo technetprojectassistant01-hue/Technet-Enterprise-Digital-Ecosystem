@@ -7,6 +7,8 @@ import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton } from '../das
 import { useCustomers } from './useCustomers'
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
+import { useAuth } from '../context/AuthContext'
+import { hasRole, SALES_ROLES } from '../lib/permissions'
 import { quotationStatusTone as statusTone } from './statusTones'
 import { formatMoney } from '../lib/format'
 import SalesLineItemsEditor, { EMPTY_SALES_LINE_ITEM, type SalesLineItemRow } from './SalesLineItemsEditor'
@@ -18,6 +20,8 @@ const labelClass = 'text-xs font-semibold tracking-widest text-ink-400'
 function QuotationsPage() {
   const toast = useToast()
   const confirm = useConfirm()
+  const { user } = useAuth()
+  const canWrite = hasRole(user?.role, SALES_ROLES)
   const customers = useCustomers()
   const [quotations, setQuotations] = useState<Quotation[]>([])
   const [loading, setLoading] = useState(true)
@@ -125,19 +129,21 @@ function QuotationsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={openCreate}
-          disabled={customers.length === 0}
-          className="flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <Plus className="h-4 w-4" />
-          New Quotation
-        </button>
-      </div>
+      {canWrite && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={openCreate}
+            disabled={customers.length === 0}
+            className="flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Plus className="h-4 w-4" />
+            New Quotation
+          </button>
+        </div>
+      )}
 
-      {customers.length === 0 && (
+      {canWrite && customers.length === 0 && (
         <p className="text-sm text-ink-400">Add a customer first before creating quotations.</p>
       )}
 
@@ -163,7 +169,7 @@ function QuotationsPage() {
                   <th className="px-3 py-3 font-semibold">CUSTOMER</th>
                   <th className="px-3 py-3 font-semibold">TOTAL</th>
                   <th className="px-3 py-3 font-semibold">STATUS</th>
-                  <th className="px-3 py-3" />
+                  {canWrite && <th className="px-3 py-3" />}
                 </tr>
               </thead>
               <tbody>
@@ -183,13 +189,15 @@ function QuotationsPage() {
                     <td className="px-3 py-3">
                       <Badge tone={statusTone[q.status]}>{q.status}</Badge>
                     </td>
-                    <td className="px-3 py-3">
-                      <div className="flex items-center justify-end gap-3 text-ink-400">
-                        <button type="button" onClick={() => handleDelete(q)} aria-label="Delete quotation" className="hover:text-red-400">
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
+                    {canWrite && (
+                      <td className="px-3 py-3">
+                        <div className="flex items-center justify-end gap-3 text-ink-400">
+                          <button type="button" onClick={() => handleDelete(q)} aria-label="Delete quotation" className="hover:text-red-400">
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
