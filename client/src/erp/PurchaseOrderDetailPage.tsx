@@ -6,6 +6,8 @@ import type { PurchaseOrderDetail } from '../lib/api'
 import { Panel, Badge, Modal, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
+import { useAuth } from '../context/AuthContext'
+import { hasRole, PROCUREMENT_ROLES } from '../lib/permissions'
 import { purchaseOrderStatusTone } from './statusTones'
 import { formatMoney } from '../lib/format'
 
@@ -21,6 +23,8 @@ function PurchaseOrderDetailPage() {
   const { id } = useParams<{ id: string }>()
   const toast = useToast()
   const confirm = useConfirm()
+  const { user } = useAuth()
+  const canWrite = hasRole(user?.role, PROCUREMENT_ROLES)
 
   const [po, setPo] = useState<PurchaseOrderDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -168,7 +172,7 @@ function PurchaseOrderDetailPage() {
         </div>
 
         <div className="flex gap-3">
-          {po.status === 'DRAFT' && (
+          {canWrite && po.status === 'DRAFT' && (
             <button
               type="button"
               onClick={handleSend}
@@ -178,7 +182,7 @@ function PurchaseOrderDetailPage() {
               Send to Supplier
             </button>
           )}
-          {canReceive && (
+          {canWrite && canReceive && (
             <button
               type="button"
               onClick={openReceive}
@@ -188,7 +192,7 @@ function PurchaseOrderDetailPage() {
               Record Receipt
             </button>
           )}
-          {po.status === 'FULLY_RECEIVED' && (
+          {canWrite && po.status === 'FULLY_RECEIVED' && (
             <button
               type="button"
               onClick={handleClose}
@@ -198,7 +202,7 @@ function PurchaseOrderDetailPage() {
               Close Order
             </button>
           )}
-          {(po.status === 'DRAFT' || po.status === 'SENT') && (
+          {canWrite && (po.status === 'DRAFT' || po.status === 'SENT') && (
             <button
               type="button"
               onClick={handleCancel}

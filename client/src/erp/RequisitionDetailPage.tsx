@@ -6,6 +6,8 @@ import type { RequisitionDetail } from '../lib/api'
 import { Panel, Badge, Modal, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
+import { useAuth } from '../context/AuthContext'
+import { hasRole, PROCUREMENT_ROLES } from '../lib/permissions'
 import { useSuppliers } from './useSuppliers'
 import { requisitionStatusTone } from './statusTones'
 
@@ -17,6 +19,8 @@ function RequisitionDetailPage() {
   const { id } = useParams<{ id: string }>()
   const toast = useToast()
   const confirm = useConfirm()
+  const { user } = useAuth()
+  const canManage = hasRole(user?.role, PROCUREMENT_ROLES)
   const suppliers = useSuppliers()
 
   const [requisition, setRequisition] = useState<RequisitionDetail | null>(null)
@@ -156,7 +160,7 @@ function RequisitionDetailPage() {
         </div>
 
         <div className="flex gap-3">
-          {requisition.status === 'SUBMITTED' && (
+          {canManage && requisition.status === 'SUBMITTED' && (
             <>
               <button
                 type="button"
@@ -176,7 +180,7 @@ function RequisitionDetailPage() {
               </button>
             </>
           )}
-          {requisition.status === 'APPROVED' && (
+          {canManage && requisition.status === 'APPROVED' && (
             <button
               type="button"
               onClick={openConvert}

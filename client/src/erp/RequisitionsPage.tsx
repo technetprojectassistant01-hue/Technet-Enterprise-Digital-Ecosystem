@@ -6,6 +6,8 @@ import type { Requisition } from '../lib/api'
 import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
+import { useAuth } from '../context/AuthContext'
+import { hasRole, PROCUREMENT_ROLES } from '../lib/permissions'
 import { useProjects } from './useProjects'
 import { useInventoryItems } from './useInventoryItems'
 import LineItemsEditor, { EMPTY_LINE_ITEM, type LineItemRow } from './LineItemsEditor'
@@ -18,6 +20,8 @@ const labelClass = 'text-xs font-semibold tracking-widest text-ink-400'
 function RequisitionsPage() {
   const toast = useToast()
   const confirm = useConfirm()
+  const { user } = useAuth()
+  const canManage = hasRole(user?.role, PROCUREMENT_ROLES)
   const projects = useProjects()
   const inventoryItems = useInventoryItems()
   const [requisitions, setRequisitions] = useState<Requisition[]>([])
@@ -157,7 +161,7 @@ function RequisitionsPage() {
                   <th className="px-3 py-3 font-semibold">ITEMS</th>
                   <th className="px-3 py-3 font-semibold">NEEDED BY</th>
                   <th className="px-3 py-3 font-semibold">STATUS</th>
-                  <th className="px-3 py-3" />
+                  {canManage && <th className="px-3 py-3" />}
                 </tr>
               </thead>
               <tbody>
@@ -178,16 +182,18 @@ function RequisitionsPage() {
                     <td className="px-3 py-3">
                       <Badge tone={requisitionStatusTone[r.status]}>{r.status}</Badge>
                     </td>
-                    <td className="px-3 py-3">
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(r)}
-                        aria-label="Delete requisition"
-                        className="text-ink-400 hover:text-red-400"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </td>
+                    {canManage && (
+                      <td className="px-3 py-3">
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(r)}
+                          aria-label="Delete requisition"
+                          className="text-ink-400 hover:text-red-400"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
