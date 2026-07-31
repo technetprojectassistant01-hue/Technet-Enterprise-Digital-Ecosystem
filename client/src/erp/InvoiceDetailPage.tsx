@@ -6,6 +6,8 @@ import type { Invoice, InvoiceStatus } from '../lib/api'
 import { Panel, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
+import { useAuth } from '../context/AuthContext'
+import { hasRole, FINANCE_ROLES } from '../lib/permissions'
 import { invoiceStatusTone } from './statusTones'
 import { formatMoney } from '../lib/format'
 
@@ -18,6 +20,8 @@ function InvoiceDetailPage() {
   const { id } = useParams<{ id: string }>()
   const toast = useToast()
   const confirm = useConfirm()
+  const { user } = useAuth()
+  const canWrite = hasRole(user?.role, FINANCE_ROLES)
 
   const [invoice, setInvoice] = useState<Invoice | null>(null)
   const [loading, setLoading] = useState(true)
@@ -109,7 +113,7 @@ function InvoiceDetailPage() {
         </div>
 
         <div className="flex gap-3">
-          {invoice.status !== 'PAID' && (
+          {canWrite && invoice.status !== 'PAID' && (
             <button
               type="button"
               onClick={markPaid}
@@ -128,14 +132,16 @@ function InvoiceDetailPage() {
             <Download className="h-4 w-4" />
             Download PDF
           </a>
-          <button
-            type="button"
-            onClick={handleDelete}
-            className="flex items-center gap-2 rounded-md border border-red-400/50 px-4 py-2 text-sm text-red-400 hover:bg-red-400/10"
-          >
-            <Trash2 className="h-4 w-4" />
-            Delete
-          </button>
+          {canWrite && (
+            <button
+              type="button"
+              onClick={handleDelete}
+              className="flex items-center gap-2 rounded-md border border-red-400/50 px-4 py-2 text-sm text-red-400 hover:bg-red-400/10"
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete
+            </button>
+          )}
         </div>
       </div>
 
@@ -178,25 +184,27 @@ function InvoiceDetailPage() {
         </div>
       </Panel>
 
-      <Panel title="Status">
-        <div className="flex items-center gap-3">
-          <select value={nextStatus} onChange={(e) => setNextStatus(e.target.value as InvoiceStatus)} className={inputClass}>
-            {STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            onClick={handleUpdateStatus}
-            disabled={updating || nextStatus === invoice.status}
-            className="rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {updating ? 'Updating…' : 'Update Status'}
-          </button>
-        </div>
-      </Panel>
+      {canWrite && (
+        <Panel title="Status">
+          <div className="flex items-center gap-3">
+            <select value={nextStatus} onChange={(e) => setNextStatus(e.target.value as InvoiceStatus)} className={inputClass}>
+              {STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={handleUpdateStatus}
+              disabled={updating || nextStatus === invoice.status}
+              className="rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {updating ? 'Updating…' : 'Update Status'}
+            </button>
+          </div>
+        </Panel>
+      )}
     </div>
   )
 }

@@ -5,6 +5,8 @@ import type { Expense } from '../lib/api'
 import { Panel, StatCard, Modal, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
+import { useAuth } from '../context/AuthContext'
+import { hasRole, FINANCE_ROLES } from '../lib/permissions'
 import { useProjects } from './useProjects'
 import { useSuppliers } from './useSuppliers'
 import { formatMoney } from '../lib/format'
@@ -27,6 +29,8 @@ const EMPTY_FORM: FormState = { category: '', description: '', amount: '', date:
 function ExpensesPage() {
   const toast = useToast()
   const confirm = useConfirm()
+  const { user } = useAuth()
+  const canWrite = hasRole(user?.role, FINANCE_ROLES)
   const projects = useProjects()
   const suppliers = useSuppliers()
   const [expenses, setExpenses] = useState<Expense[]>([])
@@ -136,16 +140,18 @@ function ExpensesPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={openCreate}
-          className="flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark"
-        >
-          <Plus className="h-4 w-4" />
-          Add Expense
-        </button>
-      </div>
+      {canWrite && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={openCreate}
+            className="flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark"
+          >
+            <Plus className="h-4 w-4" />
+            Add Expense
+          </button>
+        </div>
+      )}
 
       <StatCard label="TOTAL EXPENSES" value={formatMoney(totalExpenses)} />
 
@@ -167,7 +173,7 @@ function ExpensesPage() {
                   <th className="px-3 py-3 font-semibold">PROJECT</th>
                   <th className="px-3 py-3 font-semibold">AMOUNT</th>
                   <th className="px-3 py-3 font-semibold">DATE</th>
-                  <th className="px-3 py-3" />
+                  {canWrite && <th className="px-3 py-3" />}
                 </tr>
               </thead>
               <tbody>
@@ -181,16 +187,18 @@ function ExpensesPage() {
                     </td>
                     <td className="px-3 py-3 text-ink-100">{formatMoney(exp.amount)}</td>
                     <td className="px-3 py-3 text-ink-400">{exp.date.slice(0, 10)}</td>
-                    <td className="px-3 py-3">
-                      <div className="flex items-center justify-end gap-3 text-ink-400">
-                        <button type="button" onClick={() => openEdit(exp)} aria-label="Edit expense" className="hover:text-ink-100">
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                        <button type="button" onClick={() => handleDelete(exp)} aria-label="Delete expense" className="hover:text-red-400">
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
+                    {canWrite && (
+                      <td className="px-3 py-3">
+                        <div className="flex items-center justify-end gap-3 text-ink-400">
+                          <button type="button" onClick={() => openEdit(exp)} aria-label="Edit expense" className="hover:text-ink-100">
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button type="button" onClick={() => handleDelete(exp)} aria-label="Delete expense" className="hover:text-red-400">
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
