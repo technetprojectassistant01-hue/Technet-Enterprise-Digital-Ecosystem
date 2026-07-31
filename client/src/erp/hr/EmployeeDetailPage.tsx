@@ -193,14 +193,16 @@ function EmployeeDetailPage() {
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={openEdit}
-            className="flex items-center gap-2 rounded-md border border-ink-600 px-4 py-2 text-sm font-medium text-ink-100 hover:border-ink-500"
-          >
-            <Pencil className="h-4 w-4" />
-            Edit
-          </button>
+          {canSeeSensitive && (
+            <button
+              type="button"
+              onClick={openEdit}
+              className="flex items-center gap-2 rounded-md border border-ink-600 px-4 py-2 text-sm font-medium text-ink-100 hover:border-ink-500"
+            >
+              <Pencil className="h-4 w-4" />
+              Edit
+            </button>
+          )}
         </div>
 
         {alerts.length > 0 && (

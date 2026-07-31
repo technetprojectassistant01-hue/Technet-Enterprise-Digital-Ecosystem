@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, Pencil, Trash2, Search, BadgeCheck, GraduationCap } from 'lucide-react'
+import { Plus, Pencil, Trash2, Search, BadgeCheck, GraduationCap, Lock } from 'lucide-react'
 import * as api from '../../lib/api'
 import type { Certification, TrainingRecord } from '../../lib/api'
 import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton } from '../../dashboard/ui'
 import { useToast } from '../../dashboard/ToastContext'
 import { useConfirm } from '../../dashboard/ConfirmContext'
+import { useAuth } from '../../context/AuthContext'
+import { hasRole, HR_ROLES } from '../../lib/permissions'
 import { useEmployees } from '../useEmployees'
 import { formatMoney } from '../../lib/format'
 import { inputClass, labelClass, primaryButtonClass } from './formStyles'
@@ -75,6 +77,8 @@ const EMPTY_TRAINING: TrainingFormState = {
 function CertificationsPage() {
   const toast = useToast()
   const confirm = useConfirm()
+  const { user } = useAuth()
+  const canAccess = hasRole(user?.role, HR_ROLES)
   const employees = useEmployees()
 
   const [view, setView] = useState<View>('certifications')
@@ -101,6 +105,7 @@ function CertificationsPage() {
 
   const load = useCallback(
     (overrides: { search?: string; status?: typeof status; employeeId?: string } = {}) => {
+      if (!canAccess) return
       const params = {
         search: overrides.search ?? search,
         status: overrides.status ?? status,
@@ -127,7 +132,7 @@ function CertificationsPage() {
         .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load records'))
         .finally(() => setLoading(false))
     },
-    [search, status, employeeId],
+    [search, status, employeeId, canAccess],
   )
 
   useEffect(() => {
@@ -270,6 +275,10 @@ function CertificationsPage() {
 
   const expiredCount = certifications.filter((c) => certificationState(c) === 'EXPIRED').length
   const expiringCount = certifications.filter((c) => certificationState(c) === 'EXPIRING').length
+
+  if (!canAccess) {
+    return <EmptyState icon={Lock} message="This section is restricted to HR staff." />
+  }
 
   return (
     <div className="flex flex-col gap-6">
