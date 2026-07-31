@@ -5,6 +5,8 @@ import * as api from '../lib/api'
 import type { Project, ProjectStatus, ServiceCategory } from '../lib/api'
 import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { useToast } from '../dashboard/ToastContext'
+import { useAuth } from '../context/AuthContext'
+import { hasRole, OPS_MANAGE_ROLES } from '../lib/permissions'
 import { useCustomers } from './useCustomers'
 import { useEmployees } from './useEmployees'
 import { projectStatusTone } from './statusTones'
@@ -40,6 +42,8 @@ const EMPTY_FORM: FormState = {
 
 function ProjectsPage() {
   const toast = useToast()
+  const { user } = useAuth()
+  const canWrite = hasRole(user?.role, OPS_MANAGE_ROLES)
   const customers = useCustomers()
   const employees = useEmployees()
   const [projects, setProjects] = useState<Project[]>([])
@@ -111,16 +115,18 @@ function ProjectsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={openCreate}
-          className="flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark"
-        >
-          <Plus className="h-4 w-4" />
-          New Project
-        </button>
-      </div>
+      {canWrite && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={openCreate}
+            className="flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark"
+          >
+            <Plus className="h-4 w-4" />
+            New Project
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
         <StatCard label="TOTAL PROJECTS" value={projects.length} />

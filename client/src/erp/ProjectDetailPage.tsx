@@ -6,6 +6,8 @@ import type { ProjectDetail, ProjectStatus } from '../lib/api'
 import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
+import { useAuth } from '../context/AuthContext'
+import { hasRole, OPS_MANAGE_ROLES } from '../lib/permissions'
 import { useEmployees } from './useEmployees'
 import { projectStatusTone, projectStatusTransitions, invoiceStatusTone } from './statusTones'
 import { formatMoney } from '../lib/format'
@@ -18,6 +20,8 @@ function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>()
   const toast = useToast()
   const confirm = useConfirm()
+  const { user } = useAuth()
+  const canWrite = hasRole(user?.role, OPS_MANAGE_ROLES)
   const employees = useEmployees()
 
   const [project, setProject] = useState<ProjectDetail | null>(null)
@@ -146,7 +150,7 @@ function ProjectDetailPage() {
           {project.description && <p className="mt-2 max-w-2xl text-sm text-ink-400">{project.description}</p>}
         </div>
 
-        {nextStatuses.length > 0 && (
+        {canWrite && nextStatuses.length > 0 && (
           <select
             value=""
             disabled={changingStatus}
@@ -177,14 +181,16 @@ function ProjectDetailPage() {
       <Panel
         title="Team"
         action={
-          <button
-            type="button"
-            onClick={openAssign}
-            className="flex items-center gap-1.5 text-xs font-semibold text-cyan-accent hover:underline"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            Assign
-          </button>
+          canWrite && (
+            <button
+              type="button"
+              onClick={openAssign}
+              className="flex items-center gap-1.5 text-xs font-semibold text-cyan-accent hover:underline"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Assign
+            </button>
+          )
         }
       >
         {project.assignments.length === 0 ? (
@@ -199,14 +205,16 @@ function ProjectDetailPage() {
                   </span>
                   <span className="ml-2 text-xs text-ink-400">{a.roleOnProject || a.employee.position || ''}</span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleUnassign(a.employeeId, `${a.employee.firstName} ${a.employee.lastName}`)}
-                  aria-label="Remove from project"
-                  className="text-ink-400 hover:text-red-400"
-                >
-                  <X className="h-4 w-4" />
-                </button>
+                {canWrite && (
+                  <button
+                    type="button"
+                    onClick={() => handleUnassign(a.employeeId, `${a.employee.firstName} ${a.employee.lastName}`)}
+                    aria-label="Remove from project"
+                    className="text-ink-400 hover:text-red-400"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
               </div>
             ))}
           </div>
