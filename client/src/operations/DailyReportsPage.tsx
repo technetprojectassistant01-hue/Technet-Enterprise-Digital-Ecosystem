@@ -7,6 +7,7 @@ import { useEmployees } from '../erp/useEmployees'
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
+import { hasRole, OPS_MANAGE_ROLES, OPS_SUBMIT_ROLES } from '../lib/permissions'
 import { reportStatusTone } from '../erp/statusTones'
 import { useWorkOrders } from './useWorkOrders'
 
@@ -117,21 +118,24 @@ function DailyReportsPage() {
     }
   }
 
-  const isAdmin = user?.role === 'ADMIN'
+  const canManage = hasRole(user?.role, OPS_MANAGE_ROLES)
+  const canSubmit = hasRole(user?.role, OPS_SUBMIT_ROLES)
   const pendingCount = reports.filter((r) => r.status === 'SUBMITTED').length
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={openCreate}
-          className="flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark"
-        >
-          <Plus className="h-4 w-4" />
-          New Daily Report
-        </button>
-      </div>
+      {canSubmit && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={openCreate}
+            className="flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark"
+          >
+            <Plus className="h-4 w-4" />
+            New Daily Report
+          </button>
+        </div>
+      )}
 
       <StatCard label="PENDING REVIEW" value={pendingCount} deltaTone="warning" />
 
@@ -172,7 +176,7 @@ function DailyReportsPage() {
                       <Badge tone={reportStatusTone[r.status]}>{r.status}</Badge>
                     </td>
                     <td className="px-3 py-3">
-                      {isAdmin && r.status === 'SUBMITTED' && (
+                      {canManage && r.status === 'SUBMITTED' && (
                         <div className="flex items-center justify-end gap-3">
                           <button type="button" onClick={() => handleApprove(r)} aria-label="Approve" className="text-ink-400 hover:text-cyan-accent">
                             <Check className="h-4 w-4" />

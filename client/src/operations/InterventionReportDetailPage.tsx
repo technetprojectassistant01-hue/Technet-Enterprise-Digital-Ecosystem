@@ -8,6 +8,7 @@ import { Panel, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
+import { hasRole, OPS_MANAGE_ROLES } from '../lib/permissions'
 import { reportStatusTone } from '../erp/statusTones'
 import { useWorkOrders } from './useWorkOrders'
 
@@ -146,7 +147,7 @@ function InterventionReportDetailPage() {
   if (loading) return <TableSkeleton rows={6} cols={4} />
   if (error || !report) return <EmptyState icon={X} message={error || 'Intervention report not found'} />
 
-  const isAdmin = user?.role === 'ADMIN'
+  const canManage = hasRole(user?.role, OPS_MANAGE_ROLES)
   const reminderDue = !!report.nextReminderAt && new Date(report.nextReminderAt) <= new Date()
 
   return (
@@ -179,7 +180,7 @@ function InterventionReportDetailPage() {
           </p>
         </div>
 
-        {isAdmin && report.status === 'SUBMITTED' && (
+        {canManage && report.status === 'SUBMITTED' && (
           <div className="flex gap-3">
             <button
               type="button"
@@ -211,7 +212,7 @@ function InterventionReportDetailPage() {
         </Panel>
       )}
 
-      {!report.workOrder && (
+      {canManage && !report.workOrder && (
         <Panel title="Work Order">
           <div className="flex items-end gap-3">
             <div className="flex-1">
@@ -310,40 +311,42 @@ function InterventionReportDetailPage() {
         </div>
       </Panel>
 
-      <Panel title="Follow-up Reminder">
-        <div className="flex items-end gap-3">
-          <div className="flex-1 max-w-xs">
-            <label className={fieldLabelClass}>REMIND ME</label>
-            <select
-              value={reminderChoice}
-              onChange={(e) => setReminderChoice(e.target.value as ReminderInterval | '')}
-              className={`mt-2 w-full ${inputClass}`}
+      {canManage && (
+        <Panel title="Follow-up Reminder">
+          <div className="flex items-end gap-3">
+            <div className="flex-1 max-w-xs">
+              <label className={fieldLabelClass}>REMIND ME</label>
+              <select
+                value={reminderChoice}
+                onChange={(e) => setReminderChoice(e.target.value as ReminderInterval | '')}
+                className={`mt-2 w-full ${inputClass}`}
+              >
+                <option value="">No reminder</option>
+                {REMINDER_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {REMINDER_INTERVAL_LABELS[opt]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button
+              type="button"
+              onClick={handleSetReminder}
+              disabled={actioning || reminderChoice === (report.reminderInterval || '')}
+              className="flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <option value="">No reminder</option>
-              {REMINDER_OPTIONS.map((opt) => (
-                <option key={opt} value={opt}>
-                  {REMINDER_INTERVAL_LABELS[opt]}
-                </option>
-              ))}
-            </select>
+              <BellRing className="h-4 w-4" />
+              Save
+            </button>
+            {report.nextReminderAt && (
+              <span className="pb-2.5 text-xs text-ink-400">Next: {report.nextReminderAt.slice(0, 10)}</span>
+            )}
           </div>
-          <button
-            type="button"
-            onClick={handleSetReminder}
-            disabled={actioning || reminderChoice === (report.reminderInterval || '')}
-            className="flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <BellRing className="h-4 w-4" />
-            Save
-          </button>
-          {report.nextReminderAt && (
-            <span className="pb-2.5 text-xs text-ink-400">Next: {report.nextReminderAt.slice(0, 10)}</span>
-          )}
-        </div>
-        <p className="mt-2 text-xs text-ink-500">
-          This surfaces the report under "Reminders Due" in the list once the date passes — no email or SMS is sent.
-        </p>
-      </Panel>
+          <p className="mt-2 text-xs text-ink-500">
+            This surfaces the report under "Reminders Due" in the list once the date passes — no email or SMS is sent.
+          </p>
+        </Panel>
+      )}
 
       <Panel title="Sign-off & Attachment">
         <div className="flex flex-col gap-4">

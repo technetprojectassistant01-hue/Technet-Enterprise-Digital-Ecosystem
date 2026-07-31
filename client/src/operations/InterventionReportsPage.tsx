@@ -5,12 +5,16 @@ import * as api from '../lib/api'
 import type { InterventionReport, ReportStatus } from '../lib/api'
 import { WORK_TYPE_LABELS } from '../lib/api'
 import { Panel, StatCard, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
+import { useAuth } from '../context/AuthContext'
+import { hasRole, OPS_SUBMIT_ROLES } from '../lib/permissions'
 import { reportStatusTone } from '../erp/statusTones'
 import { useCustomers } from '../erp/useCustomers'
 
 const STATUS_FILTERS: ReportStatus[] = ['SUBMITTED', 'APPROVED', 'REJECTED']
 
 function InterventionReportsPage() {
+  const { user } = useAuth()
+  const canSubmit = hasRole(user?.role, OPS_SUBMIT_ROLES)
   const customers = useCustomers()
   const [reports, setReports] = useState<InterventionReport[]>([])
   const [loading, setLoading] = useState(true)
@@ -101,15 +105,17 @@ function InterventionReportsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex justify-end">
-        <Link
-          to="/dashboard/operations/intervention-reports/new"
-          className="flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark"
-        >
-          <Plus className="h-4 w-4" />
-          File Intervention Report
-        </Link>
-      </div>
+      {canSubmit && (
+        <div className="flex justify-end">
+          <Link
+            to="/dashboard/operations/intervention-reports/new"
+            className="flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark"
+          >
+            <Plus className="h-4 w-4" />
+            File Intervention Report
+          </Link>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
         <button type="button" onClick={jumpToPendingReview} className="text-left">

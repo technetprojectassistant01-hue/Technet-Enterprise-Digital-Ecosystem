@@ -1,12 +1,14 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Paperclip, X as XIcon, ImagePlus } from 'lucide-react'
+import { ArrowLeft, Paperclip, X as XIcon, ImagePlus, Lock } from 'lucide-react'
 import * as api from '../lib/api'
 import type { JobCategory, WarrantyStatus } from '../lib/api'
 import { JOB_CATEGORY_LABELS, WORK_TYPE_LABELS } from '../lib/api'
 import type { ServiceCategory } from '../lib/api'
-import { Panel } from '../dashboard/ui'
+import { EmptyState, Panel } from '../dashboard/ui'
 import { useToast } from '../dashboard/ToastContext'
+import { useAuth } from '../context/AuthContext'
+import { hasRole, OPS_SUBMIT_ROLES } from '../lib/permissions'
 import { useEmployees } from '../erp/useEmployees'
 import { useCustomers } from '../erp/useCustomers'
 import { useWorkOrders } from './useWorkOrders'
@@ -127,6 +129,8 @@ function PhotoPicker({
 function InterventionReportFormPage() {
   const toast = useToast()
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const canSubmit = hasRole(user?.role, OPS_SUBMIT_ROLES)
   const [searchParams] = useSearchParams()
   const preselectedWorkOrderId = searchParams.get('workOrderId') || ''
 
@@ -372,6 +376,10 @@ function InterventionReportFormPage() {
     } finally {
       setSubmitting(false)
     }
+  }
+
+  if (!canSubmit) {
+    return <EmptyState icon={Lock} message="You don't have permission to file intervention reports." />
   }
 
   return (
