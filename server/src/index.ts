@@ -30,6 +30,11 @@ import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 const app = express();
 const PORT = process.env.PORT || 4000;
 
+// Railway (and most PaaS hosts) sit behind a reverse proxy, so req.ip is the
+// proxy's address unless this is set - needed for rate limiting to key on
+// the real client IP instead of limiting everyone together.
+app.set("trust proxy", 1);
+
 app.use(helmet());
 app.use(
   cors({
