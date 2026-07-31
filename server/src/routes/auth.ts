@@ -1,5 +1,6 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
+import rateLimit from "express-rate-limit";
 import { prisma } from "../lib/prisma";
 import { signAuthToken } from "../lib/jwt";
 import { requireAuth } from "../middleware/auth";
@@ -7,6 +8,15 @@ import { generateResetToken, hashResetToken } from "../lib/passwordReset";
 import { sendPasswordResetEmail } from "../lib/email";
 
 const router = Router();
+
+/** A handful of attempts per IP is plenty for a real user who mistyped or lost an email. */
+const forgotPasswordLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many reset requests. Please try again later." },
+});
 
 const COOKIE_NAME = "token";
 const isProduction = process.env.NODE_ENV === "production";
@@ -100,7 +110,7 @@ router.post("/change-password", requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
-router.post("/forgot-password", async (req, res) => {
+router.post("/forgot-password", forgotPasswordLimiter, async (req, res) => {
   const { email } = req.body ?? {};
 
   if (typeof email !== "string" || !email.trim()) {
