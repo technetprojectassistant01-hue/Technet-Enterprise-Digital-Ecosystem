@@ -5,6 +5,8 @@ import type { Supplier } from '../lib/api'
 import { Panel, StatCard, Modal, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
+import { useAuth } from '../context/AuthContext'
+import { hasRole, PROCUREMENT_ROLES } from '../lib/permissions'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -35,6 +37,8 @@ function toFormState(s: Supplier): FormState {
 function SuppliersPage() {
   const toast = useToast()
   const confirm = useConfirm()
+  const { user } = useAuth()
+  const canWrite = hasRole(user?.role, PROCUREMENT_ROLES)
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -132,16 +136,18 @@ function SuppliersPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={openCreate}
-          className="flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark"
-        >
-          <Plus className="h-4 w-4" />
-          Add Supplier
-        </button>
-      </div>
+      {canWrite && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={openCreate}
+            className="flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark"
+          >
+            <Plus className="h-4 w-4" />
+            Add Supplier
+          </button>
+        </div>
+      )}
 
       <StatCard label="TOTAL SUPPLIERS" value={suppliers.length} />
 
@@ -173,7 +179,7 @@ function SuppliersPage() {
                   <th className="px-3 py-3 font-semibold">CONTACT</th>
                   <th className="px-3 py-3 font-semibold">EMAIL</th>
                   <th className="px-3 py-3 font-semibold">PAYMENT TERMS</th>
-                  <th className="px-3 py-3" />
+                  {canWrite && <th className="px-3 py-3" />}
                 </tr>
               </thead>
               <tbody>
@@ -183,16 +189,18 @@ function SuppliersPage() {
                     <td className="px-3 py-3 text-ink-300">{s.contactName || '—'}</td>
                     <td className="px-3 py-3 text-ink-300">{s.email || '—'}</td>
                     <td className="px-3 py-3 text-ink-300">{s.paymentTerms || '—'}</td>
-                    <td className="px-3 py-3">
-                      <div className="flex items-center justify-end gap-3 text-ink-400">
-                        <button type="button" onClick={() => openEdit(s)} aria-label="Edit supplier" className="hover:text-ink-100">
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                        <button type="button" onClick={() => handleDelete(s)} aria-label="Delete supplier" className="hover:text-red-400">
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
+                    {canWrite && (
+                      <td className="px-3 py-3">
+                        <div className="flex items-center justify-end gap-3 text-ink-400">
+                          <button type="button" onClick={() => openEdit(s)} aria-label="Edit supplier" className="hover:text-ink-100">
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button type="button" onClick={() => handleDelete(s)} aria-label="Delete supplier" className="hover:text-red-400">
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

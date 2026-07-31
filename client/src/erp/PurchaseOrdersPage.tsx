@@ -6,6 +6,8 @@ import type { PurchaseOrder } from '../lib/api'
 import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
+import { useAuth } from '../context/AuthContext'
+import { hasRole, PROCUREMENT_ROLES } from '../lib/permissions'
 import { useSuppliers } from './useSuppliers'
 import { useInventoryItems } from './useInventoryItems'
 import LineItemsEditor, { EMPTY_LINE_ITEM, type LineItemRow } from './LineItemsEditor'
@@ -19,6 +21,8 @@ const labelClass = 'text-xs font-semibold tracking-widest text-ink-400'
 function PurchaseOrdersPage() {
   const toast = useToast()
   const confirm = useConfirm()
+  const { user } = useAuth()
+  const canWrite = hasRole(user?.role, PROCUREMENT_ROLES)
   const suppliers = useSuppliers()
   const inventoryItems = useInventoryItems()
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([])
@@ -117,19 +121,21 @@ function PurchaseOrdersPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={openCreate}
-          disabled={suppliers.length === 0}
-          className="flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <Plus className="h-4 w-4" />
-          New Purchase Order
-        </button>
-      </div>
+      {canWrite && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={openCreate}
+            disabled={suppliers.length === 0}
+            className="flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Plus className="h-4 w-4" />
+            New Purchase Order
+          </button>
+        </div>
+      )}
 
-      {suppliers.length === 0 && (
+      {canWrite && suppliers.length === 0 && (
         <p className="text-sm text-ink-400">Add a supplier first before creating purchase orders.</p>
       )}
 
@@ -167,7 +173,7 @@ function PurchaseOrdersPage() {
                   <th className="px-3 py-3 font-semibold">ITEMS</th>
                   <th className="px-3 py-3 font-semibold">TOTAL</th>
                   <th className="px-3 py-3 font-semibold">STATUS</th>
-                  <th className="px-3 py-3" />
+                  {canWrite && <th className="px-3 py-3" />}
                 </tr>
               </thead>
               <tbody>
@@ -187,16 +193,18 @@ function PurchaseOrdersPage() {
                     <td className="px-3 py-3">
                       <Badge tone={purchaseOrderStatusTone[po.status]}>{po.status.replace('_', ' ')}</Badge>
                     </td>
-                    <td className="px-3 py-3">
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(po)}
-                        aria-label="Delete purchase order"
-                        className="text-ink-400 hover:text-red-400"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </td>
+                    {canWrite && (
+                      <td className="px-3 py-3">
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(po)}
+                          aria-label="Delete purchase order"
+                          className="text-ink-400 hover:text-red-400"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

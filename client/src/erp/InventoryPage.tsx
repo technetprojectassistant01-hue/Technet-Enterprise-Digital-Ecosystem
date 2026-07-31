@@ -5,6 +5,8 @@ import type { InventoryItem, MovementType } from '../lib/api'
 import { Panel, StatCard, Modal, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
+import { useAuth } from '../context/AuthContext'
+import { hasRole, PROCUREMENT_ROLES } from '../lib/permissions'
 import { formatMoney } from '../lib/format'
 
 const inputClass =
@@ -49,6 +51,8 @@ function toFormState(item: InventoryItem): ItemFormState {
 function InventoryPage() {
   const toast = useToast()
   const confirm = useConfirm()
+  const { user } = useAuth()
+  const canWrite = hasRole(user?.role, PROCUREMENT_ROLES)
   const [items, setItems] = useState<InventoryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -210,14 +214,16 @@ function InventoryPage() {
           <h1 className="text-2xl font-bold text-ink-100">Inventory</h1>
           <p className="mt-1 text-sm text-ink-300">Stock items, levels, and adjustments.</p>
         </div>
-        <button
-          type="button"
-          onClick={openCreate}
-          className="flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark"
-        >
-          <Plus className="h-4 w-4" />
-          Add Item
-        </button>
+        {canWrite && (
+          <button
+            type="button"
+            onClick={openCreate}
+            className="flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark"
+          >
+            <Plus className="h-4 w-4" />
+            Add Item
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
@@ -269,7 +275,7 @@ function InventoryPage() {
                   <th className="px-3 py-3 font-semibold">MIN</th>
                   <th className="px-3 py-3 font-semibold">UNIT COST</th>
                   <th className="px-3 py-3 font-semibold">LOCATION</th>
-                  <th className="px-3 py-3" />
+                  {canWrite && <th className="px-3 py-3" />}
                 </tr>
               </thead>
               <tbody>
@@ -288,34 +294,36 @@ function InventoryPage() {
                         {item.unitCost ? formatMoney(item.unitCost) : '—'}
                       </td>
                       <td className="px-3 py-3 text-ink-300">{item.location || '—'}</td>
-                      <td className="px-3 py-3">
-                        <div className="flex items-center justify-end gap-3 text-ink-400">
-                          <button
-                            type="button"
-                            onClick={() => openAdjust(item)}
-                            aria-label="Adjust stock"
-                            className="hover:text-cyan-accent"
-                          >
-                            <ArrowUpDown className="h-4 w-4" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => openEdit(item)}
-                            aria-label="Edit item"
-                            className="hover:text-ink-100"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(item)}
-                            aria-label="Delete item"
-                            className="hover:text-red-400"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
+                      {canWrite && (
+                        <td className="px-3 py-3">
+                          <div className="flex items-center justify-end gap-3 text-ink-400">
+                            <button
+                              type="button"
+                              onClick={() => openAdjust(item)}
+                              aria-label="Adjust stock"
+                              className="hover:text-cyan-accent"
+                            >
+                              <ArrowUpDown className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => openEdit(item)}
+                              aria-label="Edit item"
+                              className="hover:text-ink-100"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(item)}
+                              aria-label="Delete item"
+                              className="hover:text-red-400"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   )
                 })}
