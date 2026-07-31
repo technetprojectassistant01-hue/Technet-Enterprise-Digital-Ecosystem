@@ -6,6 +6,8 @@ import { DOCUMENT_CATEGORY_LABELS } from '../lib/api'
 import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
+import { useAuth } from '../context/AuthContext'
+import { hasRole, DOCUMENT_ROLES } from '../lib/permissions'
 import { useCustomers } from './useCustomers'
 import { useProjects } from './useProjects'
 
@@ -42,6 +44,8 @@ function readFileAsDataUrl(file: File): Promise<string> {
 function DocumentsPage() {
   const toast = useToast()
   const confirm = useConfirm()
+  const { user } = useAuth()
+  const canWrite = hasRole(user?.role, DOCUMENT_ROLES)
   const customers = useCustomers()
   const projects = useProjects()
   const [documents, setDocuments] = useState<Document[]>([])
@@ -154,16 +158,18 @@ function DocumentsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={openUpload}
-          className="flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark"
-        >
-          <Upload className="h-4 w-4" />
-          Upload Document
-        </button>
-      </div>
+      {canWrite && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={openUpload}
+            className="flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark"
+          >
+            <Upload className="h-4 w-4" />
+            Upload Document
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
         <StatCard label="TOTAL DOCUMENTS" value={documents.length} />
@@ -246,9 +252,11 @@ function DocumentsPage() {
                         >
                           <Download className="h-4 w-4" />
                         </a>
-                        <button type="button" onClick={() => handleDelete(doc)} aria-label="Delete document" className="hover:text-red-400">
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        {canWrite && (
+                          <button type="button" onClick={() => handleDelete(doc)} aria-label="Delete document" className="hover:text-red-400">
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
