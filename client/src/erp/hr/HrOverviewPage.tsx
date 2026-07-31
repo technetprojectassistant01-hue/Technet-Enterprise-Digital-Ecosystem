@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Users, CalendarDays, BadgeCheck, ClipboardCheck, ArrowRight } from 'lucide-react'
+import { Users, CalendarDays, BadgeCheck, ClipboardCheck, ArrowRight, Lock } from 'lucide-react'
 import * as api from '../../lib/api'
 import type { Certification, Employee, LeaveRequest } from '../../lib/api'
-import { Panel, StatCard, Badge, TableSkeleton } from '../../dashboard/ui'
+import { Panel, StatCard, Badge, EmptyState, TableSkeleton } from '../../dashboard/ui'
+import { useAuth } from '../../context/AuthContext'
+import { hasRole, HR_ROLES } from '../../lib/permissions'
 import { leaveRequestStatusTone } from '../statusTones'
 import { certificationState, certificationStateLabel, certificationStateTone } from './certificationStatus'
 
@@ -17,6 +19,9 @@ function today(): string {
 }
 
 function HrOverviewPage() {
+  const { user } = useAuth()
+  const canAccess = hasRole(user?.role, HR_ROLES)
+
   const [employees, setEmployees] = useState<Employee[]>([])
   const [pending, setPending] = useState<LeaveRequest[]>([])
   const [onLeaveToday, setOnLeaveToday] = useState<LeaveRequest[]>([])
@@ -26,6 +31,10 @@ function HrOverviewPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!canAccess) {
+      setLoading(false)
+      return
+    }
     // Bring ON_LEAVE flags in line with today's approved leave before reading counts.
     api
       .syncLeaveStatuses()
@@ -51,9 +60,10 @@ function HrOverviewPage() {
       })
       .catch(() => undefined)
       .finally(() => setLoading(false))
-  }, [])
+  }, [canAccess])
 
   if (loading) return <TableSkeleton rows={6} cols={4} />
+  if (!canAccess) return <EmptyState icon={Lock} message="This section is restricted to HR staff." />
 
   const active = employees.filter((e) => e.employmentStatus !== 'TERMINATED').length
   const renewals = [...expired, ...expiring]

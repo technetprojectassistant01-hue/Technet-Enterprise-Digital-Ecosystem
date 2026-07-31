@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
+import { Lock } from 'lucide-react'
 import * as api from '../../lib/api'
 import type { LeaveType } from '../../lib/api'
-import { TableSkeleton } from '../../dashboard/ui'
+import { EmptyState, TableSkeleton } from '../../dashboard/ui'
+import { useAuth } from '../../context/AuthContext'
+import { hasRole, HR_ROLES } from '../../lib/permissions'
 import LeaveRequestsTab from './LeaveRequestsTab'
 import LeaveBalancesTab from './LeaveBalancesTab'
 import LeaveTypesTab from './LeaveTypesTab'
@@ -15,20 +18,28 @@ const VIEWS: { key: View; label: string }[] = [
 ]
 
 function LeavePage() {
+  const { user } = useAuth()
+  const canAccess = hasRole(user?.role, HR_ROLES)
+
   const [view, setView] = useState<View>('requests')
   const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([])
   const [loading, setLoading] = useState(true)
 
   const loadTypes = useCallback(() => {
+    if (!canAccess) return
     // Inactive types are included so the settings view can reactivate them.
     api
       .listLeaveTypes(true)
       .then(({ leaveTypes }) => setLeaveTypes(leaveTypes))
       .catch(() => setLeaveTypes([]))
       .finally(() => setLoading(false))
-  }, [])
+  }, [canAccess])
 
   useEffect(loadTypes, [loadTypes])
+
+  if (!canAccess) {
+    return <EmptyState icon={Lock} message="This section is restricted to HR staff." />
+  }
 
   return (
     <div className="flex flex-col gap-6">
