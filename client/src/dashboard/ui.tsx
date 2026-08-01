@@ -4,12 +4,14 @@ import { X, type LucideIcon } from 'lucide-react'
 export function Panel({
   title,
   icon: Icon,
+  badge,
   action,
   className = '',
   children,
 }: {
   title?: string
   icon?: LucideIcon
+  badge?: ReactNode
   action?: ReactNode
   className?: string
   children: ReactNode
@@ -23,6 +25,7 @@ export function Panel({
           <h2 className="flex items-center gap-2 text-sm font-semibold text-ink-100">
             {Icon && <Icon className="h-4 w-4 text-ink-300" />}
             {title}
+            {badge}
           </h2>
           {action}
         </div>
@@ -35,21 +38,33 @@ export function Panel({
 export function StatCard({
   label,
   value,
+  icon: Icon,
   delta,
   deltaTone = 'positive',
   sub,
+  progress,
 }: {
   label: string
   value: ReactNode
+  icon?: LucideIcon
   delta?: string
   deltaTone?: 'positive' | 'warning'
   sub?: string
+  /** 0-100. Renders a thin progress bar under the value, matching the design mockups. */
+  progress?: number
 }) {
   return (
     <div className="animate-fade-in-up rounded-xl border border-ink-700 bg-ink-900 p-5 transition-all duration-150 hover:-translate-y-0.5 hover:border-ink-600 hover:shadow-lg hover:shadow-black/20">
-      <span className="text-xs font-semibold tracking-widest text-ink-400">{label}</span>
+      <div className="flex items-start justify-between">
+        <span className="text-xs font-semibold tracking-widest text-ink-400">{label}</span>
+        {Icon && (
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-ink-800 text-cyan-accent">
+            <Icon className="h-3.5 w-3.5" />
+          </span>
+        )}
+      </div>
       <div className="mt-2 flex items-baseline justify-between">
-        <span className="text-2xl font-semibold text-ink-100">{value}</span>
+        <span className="font-mono text-2xl font-semibold text-ink-100">{value}</span>
         {delta && (
           <span
             className={`text-xs font-medium ${
@@ -61,6 +76,14 @@ export function StatCard({
         )}
       </div>
       {sub && <div className="mt-1 text-xs text-ink-400">{sub}</div>}
+      {progress !== undefined && (
+        <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-ink-800">
+          <div
+            className="h-full rounded-full bg-cyan-accent transition-[width] duration-500"
+            style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
+          />
+        </div>
+      )}
     </div>
   )
 }
