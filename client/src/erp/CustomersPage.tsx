@@ -1,8 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Search, Plus, Pencil, Trash2, Users } from 'lucide-react'
+import { Search, Plus, Pencil, Trash2, Users, Download } from 'lucide-react'
 import * as api from '../lib/api'
 import type { Customer } from '../lib/api'
 import { Panel, StatCard, Modal, EmptyState, TableSkeleton } from '../dashboard/ui'
+import { primaryButtonClass, secondaryButtonClass } from '../dashboard/buttonStyles'
+import { downloadCsv } from '../lib/csv'
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
@@ -145,24 +147,45 @@ function CustomersPage() {
     }
   }
 
+  function exportCsv() {
+    downloadCsv(
+      'customers',
+      [
+        { header: 'Name', accessor: (c: Customer) => c.name },
+        { header: 'Company', accessor: (c: Customer) => c.company },
+        { header: 'Email', accessor: (c: Customer) => c.email },
+        { header: 'Phone', accessor: (c: Customer) => c.phone },
+        { header: 'VAT Number', accessor: (c: Customer) => c.vatNumber },
+        { header: 'BRN', accessor: (c: Customer) => c.taxNumber },
+      ],
+      customers,
+    )
+  }
+
   return (
     <div className="flex flex-col gap-6">
-      {canWrite && (
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={openCreate}
-            className="flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark"
-          >
-            <Plus className="h-4 w-4" />
-            Add Customer
-          </button>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-ink-100">Customer Directory</h1>
+          <p className="mt-1 text-sm text-ink-300">Manage strategic partnerships and client engineering accounts.</p>
         </div>
-      )}
+        <div className="flex items-center gap-3">
+          <button type="button" onClick={exportCsv} className={secondaryButtonClass}>
+            <Download className="h-4 w-4" />
+            Export CSV
+          </button>
+          {canWrite && (
+            <button type="button" onClick={openCreate} className={primaryButtonClass}>
+              <Plus className="h-4 w-4" />
+              Add Customer
+            </button>
+          )}
+        </div>
+      </div>
 
-      <StatCard label="TOTAL CUSTOMERS" value={customers.length} />
+      <StatCard label="Total Customers" value={customers.length} icon={Users} />
 
-      <Panel>
+      <Panel title="Customer Directory">
         <div className="mb-4 flex flex-1 max-w-sm items-center gap-2 rounded-md border border-ink-700 bg-ink-950 px-3 py-2">
           <Search className="h-4 w-4 text-ink-400" />
           <input
@@ -286,11 +309,7 @@ function CustomersPage() {
 
             {formError && <p className="text-sm text-red-400">{formError}</p>}
 
-            <button
-              type="submit"
-              disabled={submitting}
-              className="rounded-md bg-cyan-accent py-2.5 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark disabled:cursor-not-allowed disabled:opacity-70"
-            >
+            <button type="submit" disabled={submitting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
               {submitting ? 'Saving…' : editing ? 'Save Changes' : 'Create Customer'}
             </button>
           </form>
