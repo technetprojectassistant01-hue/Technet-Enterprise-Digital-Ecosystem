@@ -16,9 +16,9 @@ function NavNode({ item, depth }: { item: NavItem; depth: number }) {
           end={item.end}
           style={{ paddingLeft: 12 + depth * 16 }}
           className={({ isActive }: { isActive: boolean }) =>
-            `flex flex-1 items-center gap-3 rounded-md py-2 pr-3 text-sm transition-colors duration-150 ${
+            `relative flex flex-1 items-center gap-3 rounded-md py-2 pr-3 text-sm transition-colors duration-150 ${
               isActive
-                ? 'bg-cyan-accent/10 text-cyan-accent'
+                ? 'bg-cyan-accent/10 font-medium text-cyan-accent before:absolute before:left-0 before:top-1/2 before:h-4 before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-cyan-accent'
                 : 'text-ink-300 hover:bg-ink-800 hover:text-ink-100'
             }`
           }

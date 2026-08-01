@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { Bell, Search, Settings } from 'lucide-react'
+import { Bell, HelpCircle, Plus, Search, Settings } from 'lucide-react'
 import { useAuth } from './context/AuthContext'
 import Logo from './components/Logo'
 import { MAIN_NAV, SYSTEM_NAV, ADMIN_NAV } from './dashboard/nav'
@@ -54,7 +54,24 @@ function Dashboard() {
           </div>
         </nav>
 
-        <div className="flex items-center gap-3 border-t border-ink-800 px-2 pt-4">
+        <div className="mt-6 flex flex-col gap-3">
+          <NavLink
+            to="/dashboard/erp/projects"
+            className="flex items-center justify-center gap-2 rounded-md bg-cyan-accent px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-ink-950 transition hover:bg-cyan-accent-dark"
+          >
+            <Plus className="h-4 w-4" />
+            New Project
+          </NavLink>
+          <a
+            href="#"
+            className="flex items-center gap-3 rounded-md px-3 py-1.5 text-sm text-ink-300 hover:text-ink-100"
+          >
+            <HelpCircle className="h-4 w-4 shrink-0" />
+            Support
+          </a>
+        </div>
+
+        <div className="mt-4 flex items-center gap-3 border-t border-ink-800 px-2 pt-4">
           <Avatar name={displayName} />
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-medium text-ink-100">{displayName}</div>
