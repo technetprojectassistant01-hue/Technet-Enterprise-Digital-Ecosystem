@@ -105,12 +105,13 @@ function TimesheetTab() {
       ) : (
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
-            <StatCard label="DAYS RECORDED" value={timesheet.records.length} />
-            <StatCard label="HOURS WORKED" value={timesheet.totals.hours.toFixed(2)} />
-            <StatCard label="OVERTIME HOURS" value={timesheet.totals.overtime.toFixed(2)} />
+            <StatCard label="DAYS RECORDED" value={timesheet.records.length} icon={CalendarRange} />
+            <StatCard label="HOURS WORKED" value={timesheet.totals.hours.toFixed(2)} icon={CalendarRange} />
+            <StatCard label="OVERTIME HOURS" value={timesheet.totals.overtime.toFixed(2)} icon={CalendarRange} />
             <StatCard
               label="DAYS PRESENT"
               value={(timesheet.totals.byStatus.PRESENT ?? 0) + (timesheet.totals.byStatus.LATE ?? 0)}
+              icon={CalendarRange}
             />
           </div>
 

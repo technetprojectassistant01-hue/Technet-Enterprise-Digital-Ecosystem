@@ -10,6 +10,7 @@ import type {
   TrainingRecord,
 } from '../../lib/api'
 import { Panel, Modal, Badge, EmptyState, TableSkeleton, Avatar } from '../../dashboard/ui'
+import { secondaryButtonClass } from '../../dashboard/buttonStyles'
 import { useToast } from '../../dashboard/ToastContext'
 import { useAuth } from '../../context/AuthContext'
 import { employmentStatusTone, projectStatusTone, leaveRequestStatusTone } from '../statusTones'
@@ -185,7 +186,7 @@ function EmployeeDetailPage() {
                 <Badge tone={employmentStatusTone[employee.employmentStatus]}>
                   {employee.employmentStatus.replace('_', ' ')}
                 </Badge>
-                <span className="text-xs text-ink-400">{employee.employeeCode}</span>
+                <span className="font-mono text-xs text-ink-400">{employee.employeeCode}</span>
                 {employee.contractType && (
                   <span className="text-xs text-ink-400">· {employee.contractType.replace('_', ' ')}</span>
                 )}
@@ -194,11 +195,7 @@ function EmployeeDetailPage() {
           </div>
 
           {canSeeSensitive && (
-            <button
-              type="button"
-              onClick={openEdit}
-              className="flex items-center gap-2 rounded-md border border-ink-600 px-4 py-2 text-sm font-medium text-ink-100 hover:border-ink-500"
-            >
+            <button type="button" onClick={openEdit} className={secondaryButtonClass}>
               <Pencil className="h-4 w-4" />
               Edit
             </button>

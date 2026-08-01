@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { Search, Plus, Pencil, Trash2, UserCog } from 'lucide-react'
+import { Search, Plus, Pencil, Trash2, UserCog, Download } from 'lucide-react'
 import * as api from '../../lib/api'
 import type { Employee, EmploymentStatus } from '../../lib/api'
 import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton } from '../../dashboard/ui'
+import { primaryButtonClass, secondaryButtonClass } from '../../dashboard/buttonStyles'
+import { downloadCsv } from '../../lib/csv'
 import { useToast } from '../../dashboard/ToastContext'
 import { useConfirm } from '../../dashboard/ConfirmContext'
 import { useAuth } from '../../context/AuthContext'
@@ -145,28 +147,50 @@ function EmployeesPage() {
   const activeCount = employees.filter((e) => e.employmentStatus === 'ACTIVE').length
   const onLeaveCount = employees.filter((e) => e.employmentStatus === 'ON_LEAVE').length
 
+  function exportCsv() {
+    downloadCsv(
+      'employees',
+      [
+        { header: 'Code', accessor: (e: Employee) => e.employeeCode },
+        { header: 'First Name', accessor: (e: Employee) => e.firstName },
+        { header: 'Last Name', accessor: (e: Employee) => e.lastName },
+        { header: 'Position', accessor: (e: Employee) => e.position },
+        { header: 'Department', accessor: (e: Employee) => e.department },
+        { header: 'Contract', accessor: (e: Employee) => e.contractType },
+        { header: 'Status', accessor: (e: Employee) => e.employmentStatus },
+      ],
+      employees,
+    )
+  }
+
   return (
     <div className="flex flex-col gap-6">
-      {canWrite && (
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={openCreate}
-            className="flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark"
-          >
-            <Plus className="h-4 w-4" />
-            Add Employee
-          </button>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-ink-100">Employee Directory</h1>
+          <p className="mt-1 text-sm text-ink-300">Manage staff records, contracts, and employment status.</p>
         </div>
-      )}
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard label="EMPLOYEES SHOWN" value={employees.length} />
-        <StatCard label="ACTIVE" value={activeCount} />
-        <StatCard label="ON LEAVE" value={onLeaveCount} />
+        <div className="flex items-center gap-3">
+          <button type="button" onClick={exportCsv} className={secondaryButtonClass}>
+            <Download className="h-4 w-4" />
+            Export CSV
+          </button>
+          {canWrite && (
+            <button type="button" onClick={openCreate} className={primaryButtonClass}>
+              <Plus className="h-4 w-4" />
+              Add Employee
+            </button>
+          )}
+        </div>
       </div>
 
-      <Panel>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <StatCard label="EMPLOYEES SHOWN" value={employees.length} icon={UserCog} />
+        <StatCard label="ACTIVE" value={activeCount} icon={UserCog} />
+        <StatCard label="ON LEAVE" value={onLeaveCount} icon={UserCog} />
+      </div>
+
+      <Panel title="Staff Directory">
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <div className="flex min-w-[16rem] flex-1 items-center gap-2 rounded-md border border-ink-700 bg-ink-950 px-3 py-2">
             <Search className="h-4 w-4 text-ink-400" />
@@ -236,7 +260,7 @@ function EmployeesPage() {
               <tbody>
                 {employees.map((e) => (
                   <tr key={e.id} className="border-b border-ink-800 last:border-0">
-                    <td className="px-3 py-3 text-ink-300">{e.employeeCode}</td>
+                    <td className="px-3 py-3 font-mono text-ink-300">{e.employeeCode}</td>
                     <td className="px-3 py-3 font-medium">
                       <Link to={`/dashboard/erp/hr/employees/${e.id}`} className="text-ink-100 hover:text-cyan-accent">
                         {e.firstName} {e.lastName}

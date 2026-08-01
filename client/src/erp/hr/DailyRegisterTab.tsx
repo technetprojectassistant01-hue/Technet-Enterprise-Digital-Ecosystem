@@ -4,7 +4,7 @@ import * as api from '../../lib/api'
 import type { AttendanceRecordInput, AttendanceRosterRow, AttendanceStatus } from '../../lib/api'
 import { Panel, StatCard, EmptyState, TableSkeleton } from '../../dashboard/ui'
 import { useToast } from '../../dashboard/ToastContext'
-import { inputClass } from './formStyles'
+import { inputClass, primaryButtonClass } from './formStyles'
 
 const STATUSES: AttendanceStatus[] = [
   'PRESENT',
@@ -112,13 +112,13 @@ function DailyRegisterTab() {
   return (
     <div className="flex flex-col gap-6">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
-        <StatCard label="HEADCOUNT" value={roster.length} />
-        <StatCard label="PRESENT" value={presentCount} />
-        <StatCard label="ON LEAVE" value={onLeaveCount} />
-        <StatCard label="ABSENT" value={absentCount} />
+        <StatCard label="HEADCOUNT" value={roster.length} icon={ClipboardCheck} />
+        <StatCard label="PRESENT" value={presentCount} icon={ClipboardCheck} />
+        <StatCard label="ON LEAVE" value={onLeaveCount} icon={ClipboardCheck} />
+        <StatCard label="ABSENT" value={absentCount} icon={ClipboardCheck} />
       </div>
 
-      <Panel>
+      <Panel title="Daily Register">
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <button
             type="button"
@@ -157,7 +157,7 @@ function DailyRegisterTab() {
             type="button"
             onClick={handleSave}
             disabled={saving || roster.length === 0}
-            className="ml-auto flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark disabled:cursor-not-allowed disabled:opacity-50"
+            className={`ml-auto ${primaryButtonClass}`}
           >
             <Save className="h-4 w-4" />
             {saving ? 'Saving…' : 'Save Register'}
@@ -193,7 +193,7 @@ function DailyRegisterTab() {
                         <div className="font-medium text-ink-100">
                           {entry.employee.firstName} {entry.employee.lastName}
                         </div>
-                        <div className="text-xs text-ink-400">
+                        <div className="font-mono text-xs text-ink-400">
                           {entry.employee.employeeCode}
                           {entry.onLeaveType && (
                             <span className="ml-2 text-cyan-accent">{entry.onLeaveType}</span>

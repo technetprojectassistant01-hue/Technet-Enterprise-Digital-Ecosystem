@@ -418,7 +418,7 @@ function EmployeeForm({
 
       {error && <p className="text-sm text-red-400">{error}</p>}
 
-      <button type="submit" disabled={submitting} className={primaryButtonClass}>
+      <button type="submit" disabled={submitting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
         {submitting ? 'Saving…' : submitLabel}
       </button>
     </form>

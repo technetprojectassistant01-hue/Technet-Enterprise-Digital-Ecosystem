@@ -71,18 +71,20 @@ function HrOverviewPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="ACTIVE HEADCOUNT" value={active} sub={`${employees.length} records total`} />
-        <StatCard label="ON LEAVE TODAY" value={onLeaveToday.length} />
+        <StatCard label="ACTIVE HEADCOUNT" value={active} sub={`${employees.length} records total`} icon={Users} />
+        <StatCard label="ON LEAVE TODAY" value={onLeaveToday.length} icon={CalendarDays} />
         <StatCard
           label="LEAVE AWAITING APPROVAL"
           value={pending.length}
           deltaTone="warning"
           delta={pending.length > 0 ? 'Action needed' : undefined}
+          icon={CalendarDays}
         />
         <StatCard
           label="CERTIFICATION RENEWALS"
           value={renewals.length}
           sub={expired.length > 0 ? `${expired.length} already expired` : 'None expired'}
+          icon={BadgeCheck}
         />
       </div>
 

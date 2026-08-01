@@ -306,7 +306,7 @@ function CertificationsPage() {
         <button
           type="button"
           onClick={view === 'certifications' ? openCertCreate : openTrainingCreate}
-          className="ml-auto flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark"
+          className={`ml-auto ${primaryButtonClass}`}
         >
           <Plus className="h-4 w-4" />
           {view === 'certifications' ? 'Add Certification' : 'Record Training'}
@@ -315,13 +315,13 @@ function CertificationsPage() {
 
       {view === 'certifications' && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <StatCard label="CERTIFICATIONS" value={certifications.length} />
-          <StatCard label="RENEW SOON" value={expiringCount} deltaTone="warning" />
-          <StatCard label="EXPIRED" value={expiredCount} />
+          <StatCard label="CERTIFICATIONS" value={certifications.length} icon={BadgeCheck} />
+          <StatCard label="RENEW SOON" value={expiringCount} deltaTone="warning" icon={BadgeCheck} />
+          <StatCard label="EXPIRED" value={expiredCount} icon={BadgeCheck} />
         </div>
       )}
 
-      <Panel>
+      <Panel title={view === 'certifications' ? 'Certifications' : 'Training Records'}>
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <div className="flex min-w-[14rem] flex-1 items-center gap-2 rounded-md border border-ink-700 bg-ink-950 px-3 py-2">
             <Search className="h-4 w-4 text-ink-400" />
@@ -409,7 +409,7 @@ function CertificationsPage() {
                           >
                             {c.employee.firstName} {c.employee.lastName}
                           </Link>
-                          <div className="text-xs text-ink-400">{c.employee.employeeCode}</div>
+                          <div className="font-mono text-xs text-ink-400">{c.employee.employeeCode}</div>
                         </td>
                         <td className="px-3 py-3">
                           <div className="text-ink-100">{c.name}</div>
@@ -613,7 +613,7 @@ function CertificationsPage() {
 
             {formError && <p className="text-sm text-red-400">{formError}</p>}
 
-            <button type="submit" disabled={submitting} className={primaryButtonClass}>
+            <button type="submit" disabled={submitting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
               {submitting ? 'Saving…' : editingCert ? 'Save Changes' : 'Add Certification'}
             </button>
           </form>
@@ -711,7 +711,7 @@ function CertificationsPage() {
 
             {formError && <p className="text-sm text-red-400">{formError}</p>}
 
-            <button type="submit" disabled={submitting} className={primaryButtonClass}>
+            <button type="submit" disabled={submitting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
               {submitting ? 'Saving…' : editingTraining ? 'Save Changes' : 'Record Training'}
             </button>
           </form>
