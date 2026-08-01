@@ -1,9 +1,11 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, Trash2, FileSignature } from 'lucide-react'
+import { Plus, Trash2, FileSignature, Download } from 'lucide-react'
 import * as api from '../lib/api'
 import type { Quotation, QuotationStatus } from '../lib/api'
 import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
+import { primaryButtonClass, secondaryButtonClass } from '../dashboard/buttonStyles'
+import { downloadCsv } from '../lib/csv'
 import { useCustomers } from './useCustomers'
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
@@ -127,32 +129,56 @@ function QuotationsPage() {
   const activeCount = quotations.filter((q) => q.status === 'DRAFT' || q.status === 'SENT').length
   const acceptedCount = quotations.filter((q) => q.status === 'ACCEPTED').length
 
+  function exportCsv() {
+    downloadCsv(
+      'quotations',
+      [
+        { header: 'Quotation #', accessor: (q: Quotation) => q.quotationNumber },
+        { header: 'Title', accessor: (q: Quotation) => q.title },
+        { header: 'Customer', accessor: (q: Quotation) => q.customer.company || q.customer.name },
+        { header: 'Total', accessor: (q: Quotation) => q.total },
+        { header: 'Status', accessor: (q: Quotation) => q.status },
+      ],
+      quotations,
+    )
+  }
+
   return (
     <div className="flex flex-col gap-6">
-      {canWrite && (
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={openCreate}
-            disabled={customers.length === 0}
-            className="flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <Plus className="h-4 w-4" />
-            New Quotation
-          </button>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-ink-100">Quotations</h1>
+          <p className="mt-1 text-sm text-ink-300">Draft, send, and track the sales pipeline.</p>
         </div>
-      )}
+        <div className="flex items-center gap-3">
+          <button type="button" onClick={exportCsv} className={secondaryButtonClass}>
+            <Download className="h-4 w-4" />
+            Export CSV
+          </button>
+          {canWrite && (
+            <button
+              type="button"
+              onClick={openCreate}
+              disabled={customers.length === 0}
+              className={primaryButtonClass}
+            >
+              <Plus className="h-4 w-4" />
+              New Quotation
+            </button>
+          )}
+        </div>
+      </div>
 
       {canWrite && customers.length === 0 && (
         <p className="text-sm text-ink-400">Add a customer first before creating quotations.</p>
       )}
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-        <StatCard label="ACTIVE QUOTATIONS" value={activeCount} />
-        <StatCard label="ACCEPTED" value={acceptedCount} />
+        <StatCard label="Active Quotations" value={activeCount} icon={FileSignature} />
+        <StatCard label="Accepted" value={acceptedCount} icon={FileSignature} />
       </div>
 
-      <Panel>
+      <Panel title="Quotation Registry">
         {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
 
         {loading ? (
@@ -178,7 +204,7 @@ function QuotationsPage() {
                     <td className="px-3 py-3">
                       <Link
                         to={`/dashboard/erp/finance/quotations/${q.id}`}
-                        className="font-medium text-ink-100 hover:text-cyan-accent hover:underline"
+                        className="font-mono font-medium text-ink-100 hover:text-cyan-accent hover:underline"
                       >
                         {q.quotationNumber}
                       </Link>
@@ -291,11 +317,7 @@ function QuotationsPage() {
 
             {formError && <p className="text-sm text-red-400">{formError}</p>}
 
-            <button
-              type="submit"
-              disabled={submitting}
-              className="rounded-md bg-cyan-accent py-2.5 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark disabled:cursor-not-allowed disabled:opacity-70"
-            >
+            <button type="submit" disabled={submitting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
               {submitting ? 'Creating…' : 'Create Quotation'}
             </button>
           </form>
