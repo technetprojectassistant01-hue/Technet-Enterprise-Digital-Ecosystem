@@ -5,6 +5,7 @@ import * as api from '../lib/api'
 import type { InterventionReport, ReminderInterval } from '../lib/api'
 import { JOB_CATEGORY_LABELS, WORK_TYPE_LABELS, REMINDER_INTERVAL_LABELS } from '../lib/api'
 import { Panel, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
+import { primaryButtonClass, dangerButtonClass } from '../dashboard/buttonStyles'
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
@@ -163,7 +164,7 @@ function InterventionReportDetailPage() {
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-ink-100">{report.interventionNumber}</h1>
+            <h1 className="font-mono text-2xl font-bold text-ink-100">{report.interventionNumber}</h1>
             <Badge tone={reportStatusTone[report.status]}>{report.status}</Badge>
             {reminderDue && <Badge tone="warning">REMINDER DUE</Badge>}
           </div>
@@ -172,7 +173,7 @@ function InterventionReportDetailPage() {
             {report.workOrder && (
               <>
                 {' · '}
-                <Link to={`/dashboard/operations/work-orders/${report.workOrder.id}`} className="text-cyan-accent hover:underline">
+                <Link to={`/dashboard/operations/work-orders/${report.workOrder.id}`} className="font-mono text-cyan-accent hover:underline">
                   {report.workOrder.workOrderNumber}
                 </Link>
               </>
@@ -182,21 +183,11 @@ function InterventionReportDetailPage() {
 
         {canManage && report.status === 'SUBMITTED' && (
           <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={handleApprove}
-              disabled={actioning}
-              className="flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark disabled:opacity-70"
-            >
+            <button type="button" onClick={handleApprove} disabled={actioning} className={primaryButtonClass}>
               <Check className="h-4 w-4" />
               Approve
             </button>
-            <button
-              type="button"
-              onClick={handleReject}
-              disabled={actioning}
-              className="flex items-center gap-2 rounded-md border border-red-400/50 px-4 py-2 text-sm text-red-400 hover:bg-red-400/10 disabled:opacity-70"
-            >
+            <button type="button" onClick={handleReject} disabled={actioning} className={dangerButtonClass}>
               <X className="h-4 w-4" />
               Reject
             </button>
@@ -226,12 +217,7 @@ function InterventionReportDetailPage() {
                 ))}
               </select>
             </div>
-            <button
-              type="button"
-              onClick={handleLinkWorkOrder}
-              disabled={!linkWorkOrderId || actioning}
-              className="flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark disabled:cursor-not-allowed disabled:opacity-50"
-            >
+            <button type="button" onClick={handleLinkWorkOrder} disabled={!linkWorkOrderId || actioning} className={primaryButtonClass}>
               <Link2 className="h-4 w-4" />
               Link
             </button>
@@ -333,7 +319,7 @@ function InterventionReportDetailPage() {
               type="button"
               onClick={handleSetReminder}
               disabled={actioning || reminderChoice === (report.reminderInterval || '')}
-              className="flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark disabled:cursor-not-allowed disabled:opacity-50"
+              className={primaryButtonClass}
             >
               <BellRing className="h-4 w-4" />
               Save

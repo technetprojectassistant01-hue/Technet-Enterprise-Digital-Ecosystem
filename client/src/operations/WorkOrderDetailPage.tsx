@@ -5,6 +5,7 @@ import * as api from '../lib/api'
 import type { WorkOrderDetail, WorkOrderStatus } from '../lib/api'
 import { JOB_CATEGORY_LABELS } from '../lib/api'
 import { Panel, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
+import { primaryButtonClass, secondaryButtonClass, dangerButtonClass } from '../dashboard/buttonStyles'
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
@@ -84,7 +85,7 @@ function WorkOrderDetailPage() {
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-ink-100">{workOrder.workOrderNumber}</h1>
+            <h1 className="font-mono text-2xl font-bold text-ink-100">{workOrder.workOrderNumber}</h1>
             <Badge tone={workOrderStatusTone[workOrder.status]}>{workOrder.status.replace('_', ' ')}</Badge>
           </div>
           <p className="mt-1 text-sm text-ink-300">
@@ -96,41 +97,22 @@ function WorkOrderDetailPage() {
 
         <div className="flex gap-3">
           {canSubmit && workOrder.status === 'SCHEDULED' && (
-            <button
-              type="button"
-              onClick={() => setStatus('IN_PROGRESS')}
-              disabled={actioning}
-              className="rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark disabled:opacity-70"
-            >
+            <button type="button" onClick={() => setStatus('IN_PROGRESS')} disabled={actioning} className={primaryButtonClass}>
               Start Work
             </button>
           )}
           {canSubmit && workOrder.status === 'IN_PROGRESS' && (
-            <button
-              type="button"
-              onClick={() => setStatus('COMPLETED')}
-              disabled={actioning}
-              className="rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark disabled:opacity-70"
-            >
+            <button type="button" onClick={() => setStatus('COMPLETED')} disabled={actioning} className={primaryButtonClass}>
               Mark Completed
             </button>
           )}
           {canSubmit && (workOrder.status === 'SCHEDULED' || workOrder.status === 'IN_PROGRESS') && (
-            <button
-              type="button"
-              onClick={() => setStatus('CANCELLED')}
-              disabled={actioning}
-              className="rounded-md border border-red-400/50 px-4 py-2 text-sm text-red-400 hover:bg-red-400/10 disabled:opacity-70"
-            >
+            <button type="button" onClick={() => setStatus('CANCELLED')} disabled={actioning} className={dangerButtonClass}>
               Cancel
             </button>
           )}
           {canManage && (
-            <button
-              type="button"
-              onClick={handleDelete}
-              className="flex items-center gap-2 rounded-md border border-ink-700 px-4 py-2 text-sm text-ink-300 hover:bg-ink-800"
-            >
+            <button type="button" onClick={handleDelete} className={secondaryButtonClass}>
               <Trash2 className="h-4 w-4" />
               Delete
             </button>
@@ -177,7 +159,7 @@ function WorkOrderDetailPage() {
                 to={`/dashboard/operations/intervention-reports/${r.id}`}
                 className="flex items-center justify-between rounded-lg bg-ink-800 px-4 py-2.5 hover:bg-ink-700"
               >
-                <span className="text-sm text-ink-100">{r.interventionNumber}</span>
+                <span className="font-mono text-sm text-ink-100">{r.interventionNumber}</span>
                 <div className="flex items-center gap-3">
                   <span className="text-xs text-ink-400">{r.workCompleted ? 'Work completed' : 'Incomplete'}</span>
                   <Badge tone={reportStatusTone[r.status]}>{r.status}</Badge>

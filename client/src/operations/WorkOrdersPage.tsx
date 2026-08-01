@@ -1,10 +1,12 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, Trash2, Wrench } from 'lucide-react'
+import { Plus, Trash2, Wrench, Download } from 'lucide-react'
 import * as api from '../lib/api'
 import type { WorkOrder, JobCategory } from '../lib/api'
 import { JOB_CATEGORY_LABELS } from '../lib/api'
 import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
+import { primaryButtonClass, secondaryButtonClass } from '../dashboard/buttonStyles'
+import { downloadCsv } from '../lib/csv'
 import { useCustomers } from '../erp/useCustomers'
 import { useProjects } from '../erp/useProjects'
 import { useEmployees } from '../erp/useEmployees'
@@ -135,32 +137,56 @@ function WorkOrdersPage() {
   const scheduledCount = workOrders.filter((w) => w.status === 'SCHEDULED').length
   const inProgressCount = workOrders.filter((w) => w.status === 'IN_PROGRESS').length
 
+  function exportCsv() {
+    downloadCsv(
+      'work-orders',
+      [
+        { header: 'Work Order #', accessor: (w: WorkOrder) => w.workOrderNumber },
+        { header: 'Title', accessor: (w: WorkOrder) => w.title },
+        { header: 'Customer', accessor: (w: WorkOrder) => w.customer.company || w.customer.name },
+        { header: 'Category', accessor: (w: WorkOrder) => JOB_CATEGORY_LABELS[w.jobCategory] },
+        { header: 'Scheduled', accessor: (w: WorkOrder) => w.scheduledDate.slice(0, 10) },
+        {
+          header: 'Technicians',
+          accessor: (w: WorkOrder) => w.technicians.map((t) => `${t.employee.firstName} ${t.employee.lastName}`).join('; '),
+        },
+        { header: 'Status', accessor: (w: WorkOrder) => w.status },
+      ],
+      workOrders,
+    )
+  }
+
   return (
     <div className="flex flex-col gap-6">
-      {canWrite && (
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={openCreate}
-            disabled={customers.length === 0}
-            className="flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <Plus className="h-4 w-4" />
-            New Work Order
-          </button>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-ink-100">Work Order Registry</h1>
+          <p className="mt-1 text-sm text-ink-300">Dispatch and track field service work across active sites.</p>
         </div>
-      )}
+        <div className="flex items-center gap-3">
+          <button type="button" onClick={exportCsv} className={secondaryButtonClass}>
+            <Download className="h-4 w-4" />
+            Export CSV
+          </button>
+          {canWrite && (
+            <button type="button" onClick={openCreate} disabled={customers.length === 0} className={primaryButtonClass}>
+              <Plus className="h-4 w-4" />
+              Create New Work Order
+            </button>
+          )}
+        </div>
+      </div>
 
       {canWrite && customers.length === 0 && (
         <p className="text-sm text-ink-400">Add a customer first before creating work orders.</p>
       )}
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-        <StatCard label="SCHEDULED" value={scheduledCount} />
-        <StatCard label="IN PROGRESS" value={inProgressCount} deltaTone="warning" />
+        <StatCard label="SCHEDULED" value={scheduledCount} icon={Wrench} />
+        <StatCard label="IN PROGRESS" value={inProgressCount} deltaTone="warning" icon={Wrench} />
       </div>
 
-      <Panel>
+      <Panel title="Work Order Ledger">
         {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
 
         {loading ? (
@@ -187,7 +213,7 @@ function WorkOrdersPage() {
                     <td className="px-3 py-3">
                       <Link
                         to={`/dashboard/operations/work-orders/${wo.id}`}
-                        className="font-medium text-ink-100 hover:text-cyan-accent hover:underline"
+                        className="font-mono font-medium text-ink-100 hover:text-cyan-accent hover:underline"
                       >
                         {wo.workOrderNumber}
                       </Link>
@@ -321,11 +347,7 @@ function WorkOrdersPage() {
 
             {formError && <p className="text-sm text-red-400">{formError}</p>}
 
-            <button
-              type="submit"
-              disabled={submitting}
-              className="rounded-md bg-cyan-accent py-2.5 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark disabled:cursor-not-allowed disabled:opacity-70"
-            >
+            <button type="submit" disabled={submitting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
               {submitting ? 'Creating…' : 'Create Work Order'}
             </button>
           </form>

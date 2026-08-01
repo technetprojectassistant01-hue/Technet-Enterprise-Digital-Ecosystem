@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, FileText } from 'lucide-react'
+import { Plus, FileText, Download } from 'lucide-react'
 import * as api from '../lib/api'
 import type { InterventionReport, ReportStatus } from '../lib/api'
 import { WORK_TYPE_LABELS } from '../lib/api'
 import { Panel, StatCard, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
+import { primaryButtonClass, secondaryButtonClass } from '../dashboard/buttonStyles'
+import { downloadCsv } from '../lib/csv'
 import { useAuth } from '../context/AuthContext'
 import { hasRole, OPS_SUBMIT_ROLES } from '../lib/permissions'
 import { reportStatusTone } from '../erp/statusTones'
@@ -103,30 +105,53 @@ function InterventionReportsPage() {
     load(customerFilter, '', true)
   }
 
+  function exportCsv() {
+    downloadCsv(
+      'intervention-reports',
+      [
+        { header: 'Intervention #', accessor: (r: InterventionReport) => r.interventionNumber },
+        { header: 'Customer', accessor: (r: InterventionReport) => r.customer.company || r.customer.name },
+        { header: 'Work Type', accessor: (r: InterventionReport) => WORK_TYPE_LABELS[r.workType] },
+        { header: 'Work Order', accessor: (r: InterventionReport) => r.workOrder?.workOrderNumber },
+        { header: 'Date', accessor: (r: InterventionReport) => r.date.slice(0, 10) },
+        { header: 'Completed', accessor: (r: InterventionReport) => (r.workCompleted ? 'Yes' : 'No') },
+        { header: 'Status', accessor: (r: InterventionReport) => r.status },
+      ],
+      reports,
+    )
+  }
+
   return (
     <div className="flex flex-col gap-6">
-      {canSubmit && (
-        <div className="flex justify-end">
-          <Link
-            to="/dashboard/operations/intervention-reports/new"
-            className="flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark"
-          >
-            <Plus className="h-4 w-4" />
-            File Intervention Report
-          </Link>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-ink-100">Intervention Reports</h1>
+          <p className="mt-1 text-sm text-ink-300">Incident response, resolution, and follow-up tracking.</p>
         </div>
-      )}
+        <div className="flex items-center gap-3">
+          <button type="button" onClick={exportCsv} className={secondaryButtonClass}>
+            <Download className="h-4 w-4" />
+            Export CSV
+          </button>
+          {canSubmit && (
+            <Link to="/dashboard/operations/intervention-reports/new" className={primaryButtonClass}>
+              <Plus className="h-4 w-4" />
+              Log New Intervention
+            </Link>
+          )}
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
         <button type="button" onClick={jumpToPendingReview} className="text-left">
-          <StatCard label="PENDING REVIEW" value={stats.pending} deltaTone="warning" />
+          <StatCard label="PENDING REVIEW" value={stats.pending} deltaTone="warning" icon={FileText} />
         </button>
         <button type="button" onClick={jumpToRemindersDue} className="text-left">
-          <StatCard label="REMINDERS DUE" value={stats.due} deltaTone={stats.due > 0 ? 'warning' : undefined} />
+          <StatCard label="REMINDERS DUE" value={stats.due} deltaTone={stats.due > 0 ? 'warning' : undefined} icon={FileText} />
         </button>
       </div>
 
-      <Panel>
+      <Panel title="Intervention Registry">
         <div className="mb-4 flex flex-wrap items-end gap-4">
           <div className="flex max-w-xs flex-1 flex-col gap-1">
             <label className="text-xs font-semibold tracking-widest text-ink-400">FILTER BY CUSTOMER</label>
@@ -206,7 +231,7 @@ function InterventionReportsPage() {
                       <td className="px-3 py-3">
                         <Link
                           to={`/dashboard/operations/intervention-reports/${r.id}`}
-                          className="font-medium text-ink-100 hover:text-cyan-accent hover:underline"
+                          className="font-mono font-medium text-ink-100 hover:text-cyan-accent hover:underline"
                         >
                           {r.interventionNumber}
                         </Link>
