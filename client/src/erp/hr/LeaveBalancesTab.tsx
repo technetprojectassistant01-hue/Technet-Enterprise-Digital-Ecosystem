@@ -5,7 +5,7 @@ import type { LeaveBalance, LeaveType } from '../../lib/api'
 import { Panel, Modal, EmptyState, TableSkeleton } from '../../dashboard/ui'
 import { useToast } from '../../dashboard/ToastContext'
 import { useEmployees } from '../useEmployees'
-import { inputClass, labelClass, primaryButtonClass } from './formStyles'
+import { inputClass, labelClass, primaryButtonClass, secondaryButtonClass } from './formStyles'
 
 function remainingOf(balance: LeaveBalance): number {
   return Number(balance.entitledDays) + Number(balance.carriedOverDays) - Number(balance.usedDays)
@@ -111,7 +111,7 @@ function LeaveBalancesTab({ leaveTypes }: { leaveTypes: LeaveType[] }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <Panel>
+      <Panel title="Leave Balances">
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <select
             value={year}
@@ -149,7 +149,7 @@ function LeaveBalancesTab({ leaveTypes }: { leaveTypes: LeaveType[] }) {
             type="button"
             onClick={handleInitialize}
             disabled={initializing || leaveTypes.length === 0}
-            className="ml-auto flex items-center gap-2 rounded-md border border-ink-600 px-4 py-2 text-sm font-medium text-ink-100 hover:border-ink-500 disabled:cursor-not-allowed disabled:opacity-50"
+            className={`ml-auto ${secondaryButtonClass}`}
           >
             <RefreshCw className={`h-4 w-4 ${initializing ? 'animate-spin' : ''}`} />
             Generate {year} balances
@@ -265,7 +265,7 @@ function LeaveBalancesTab({ leaveTypes }: { leaveTypes: LeaveType[] }) {
 
             {formError && <p className="text-sm text-red-400">{formError}</p>}
 
-            <button type="submit" disabled={submitting} className={primaryButtonClass}>
+            <button type="submit" disabled={submitting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
               {submitting ? 'Saving…' : 'Save Balance'}
             </button>
           </form>

@@ -5,7 +5,7 @@ import type { LeaveType } from '../../lib/api'
 import { Panel, Modal, Badge, EmptyState } from '../../dashboard/ui'
 import { useToast } from '../../dashboard/ToastContext'
 import { useConfirm } from '../../dashboard/ConfirmContext'
-import { inputClass, labelClass, primaryButtonClass } from './formStyles'
+import { inputClass, labelClass, primaryButtonClass, secondaryButtonClass } from './formStyles'
 
 interface FormState {
   code: string
@@ -127,27 +127,18 @@ function LeaveTypesTab({ leaveTypes, onChanged }: { leaveTypes: LeaveType[]; onC
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap justify-end gap-3">
         {leaveTypes.length === 0 && (
-          <button
-            type="button"
-            onClick={handleSeed}
-            disabled={seeding}
-            className="flex items-center gap-2 rounded-md border border-ink-600 px-4 py-2 text-sm font-medium text-ink-100 hover:border-ink-500 disabled:opacity-50"
-          >
+          <button type="button" onClick={handleSeed} disabled={seeding} className={secondaryButtonClass}>
             <Sparkles className="h-4 w-4" />
             Use Mauritius defaults
           </button>
         )}
-        <button
-          type="button"
-          onClick={openCreate}
-          className="flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark"
-        >
+        <button type="button" onClick={openCreate} className={primaryButtonClass}>
           <Plus className="h-4 w-4" />
           Add Leave Type
         </button>
       </div>
 
-      <Panel>
+      <Panel title="Leave Types">
         {leaveTypes.length === 0 ? (
           <EmptyState
             icon={Layers}
@@ -170,7 +161,7 @@ function LeaveTypesTab({ leaveTypes, onChanged }: { leaveTypes: LeaveType[]; onC
               <tbody>
                 {leaveTypes.map((t) => (
                   <tr key={t.id} className="border-b border-ink-800 last:border-0">
-                    <td className="px-3 py-3 text-ink-300">{t.code}</td>
+                    <td className="px-3 py-3 font-mono text-ink-300">{t.code}</td>
                     <td className="px-3 py-3 font-medium text-ink-100">{t.name}</td>
                     <td className="px-3 py-3 text-ink-300">{t.daysPerYear}</td>
                     <td className="px-3 py-3 text-ink-300">{t.paid ? 'Yes' : 'No'}</td>
@@ -285,7 +276,7 @@ function LeaveTypesTab({ leaveTypes, onChanged }: { leaveTypes: LeaveType[]; onC
 
             {formError && <p className="text-sm text-red-400">{formError}</p>}
 
-            <button type="submit" disabled={submitting} className={primaryButtonClass}>
+            <button type="submit" disabled={submitting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
               {submitting ? 'Saving…' : editing ? 'Save Changes' : 'Add Leave Type'}
             </button>
           </form>

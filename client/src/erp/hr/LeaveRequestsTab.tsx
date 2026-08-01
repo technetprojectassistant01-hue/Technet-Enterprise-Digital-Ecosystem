@@ -248,7 +248,7 @@ function LeaveRequestsTab({ leaveTypes }: { leaveTypes: LeaveType[] }) {
           type="button"
           onClick={openCreate}
           disabled={activeLeaveTypes.length === 0}
-          className="flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark disabled:cursor-not-allowed disabled:opacity-50"
+          className={primaryButtonClass}
         >
           <Plus className="h-4 w-4" />
           Record Leave
@@ -256,12 +256,12 @@ function LeaveRequestsTab({ leaveTypes }: { leaveTypes: LeaveType[] }) {
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard label="REQUESTS SHOWN" value={requests.length} />
-        <StatCard label="AWAITING APPROVAL" value={pendingCount} />
-        <StatCard label="APPROVED DAYS" value={approvedDays.toFixed(1)} />
+        <StatCard label="REQUESTS SHOWN" value={requests.length} icon={CalendarDays} />
+        <StatCard label="AWAITING APPROVAL" value={pendingCount} icon={CalendarDays} />
+        <StatCard label="APPROVED DAYS" value={approvedDays.toFixed(1)} icon={CalendarDays} />
       </div>
 
-      <Panel>
+      <Panel title="Leave Requests">
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <select
             value={status}
@@ -329,7 +329,7 @@ function LeaveRequestsTab({ leaveTypes }: { leaveTypes: LeaveType[] }) {
                       <div className="font-medium text-ink-100">
                         {r.employee.firstName} {r.employee.lastName}
                       </div>
-                      <div className="text-xs text-ink-400">{r.employee.employeeCode}</div>
+                      <div className="font-mono text-xs text-ink-400">{r.employee.employeeCode}</div>
                     </td>
                     <td className="px-3 py-3 text-ink-300">
                       {r.leaveType.name}
@@ -513,7 +513,7 @@ function LeaveRequestsTab({ leaveTypes }: { leaveTypes: LeaveType[] }) {
 
             {formError && <p className="text-sm text-red-400">{formError}</p>}
 
-            <button type="submit" disabled={submitting} className={primaryButtonClass}>
+            <button type="submit" disabled={submitting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
               {submitting ? 'Saving…' : editing ? 'Save Changes' : 'Record Leave'}
             </button>
           </form>
