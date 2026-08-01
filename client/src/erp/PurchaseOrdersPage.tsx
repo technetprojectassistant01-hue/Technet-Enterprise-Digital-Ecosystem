@@ -1,9 +1,11 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { Search, Plus, ShoppingCart, Trash2 } from 'lucide-react'
+import { Search, Plus, ShoppingCart, Trash2, Download } from 'lucide-react'
 import * as api from '../lib/api'
 import type { PurchaseOrder } from '../lib/api'
 import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
+import { primaryButtonClass, secondaryButtonClass } from '../dashboard/buttonStyles'
+import { downloadCsv } from '../lib/csv'
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
@@ -119,32 +121,51 @@ function PurchaseOrdersPage() {
   const openCount = purchaseOrders.filter((po) => po.status === 'SENT' || po.status === 'PARTIALLY_RECEIVED').length
   const totalValue = purchaseOrders.reduce((sum, po) => sum + Number(po.totalAmount), 0)
 
+  function exportCsv() {
+    downloadCsv(
+      'purchase-orders',
+      [
+        { header: 'PO Number', accessor: (po: PurchaseOrder) => po.poNumber },
+        { header: 'Supplier', accessor: (po: PurchaseOrder) => po.supplier.name },
+        { header: 'Items', accessor: (po: PurchaseOrder) => po.items.length },
+        { header: 'Total', accessor: (po: PurchaseOrder) => po.totalAmount },
+        { header: 'Status', accessor: (po: PurchaseOrder) => po.status },
+      ],
+      purchaseOrders,
+    )
+  }
+
   return (
     <div className="flex flex-col gap-6">
-      {canWrite && (
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={openCreate}
-            disabled={suppliers.length === 0}
-            className="flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <Plus className="h-4 w-4" />
-            New Purchase Order
-          </button>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-ink-100">Purchase Orders</h1>
+          <p className="mt-1 text-sm text-ink-300">Manage outbound orders placed with approved suppliers.</p>
         </div>
-      )}
+        <div className="flex items-center gap-3">
+          <button type="button" onClick={exportCsv} className={secondaryButtonClass}>
+            <Download className="h-4 w-4" />
+            Export Registry
+          </button>
+          {canWrite && (
+            <button type="button" onClick={openCreate} disabled={suppliers.length === 0} className={primaryButtonClass}>
+              <Plus className="h-4 w-4" />
+              New Purchase Order
+            </button>
+          )}
+        </div>
+      </div>
 
       {canWrite && suppliers.length === 0 && (
         <p className="text-sm text-ink-400">Add a supplier first before creating purchase orders.</p>
       )}
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-        <StatCard label="OPEN ORDERS" value={openCount} />
-        <StatCard label="TOTAL VALUE" value={formatMoney(totalValue)} />
+        <StatCard label="OPEN ORDERS" value={openCount} icon={ShoppingCart} />
+        <StatCard label="TOTAL VALUE" value={formatMoney(totalValue)} icon={ShoppingCart} />
       </div>
 
-      <Panel>
+      <Panel title="Order Registry">
         <div className="mb-4 flex flex-1 max-w-sm items-center gap-2 rounded-md border border-ink-700 bg-ink-950 px-3 py-2">
           <Search className="h-4 w-4 text-ink-400" />
           <input
@@ -182,7 +203,7 @@ function PurchaseOrdersPage() {
                     <td className="px-3 py-3">
                       <Link
                         to={`/dashboard/erp/procurement/purchase-orders/${po.id}`}
-                        className="font-medium text-ink-100 hover:text-cyan-accent hover:underline"
+                        className="font-mono font-medium text-ink-100 hover:text-cyan-accent hover:underline"
                       >
                         {po.poNumber}
                       </Link>
@@ -252,11 +273,7 @@ function PurchaseOrdersPage() {
 
             {formError && <p className="text-sm text-red-400">{formError}</p>}
 
-            <button
-              type="submit"
-              disabled={submitting}
-              className="rounded-md bg-cyan-accent py-2.5 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark disabled:cursor-not-allowed disabled:opacity-70"
-            >
+            <button type="submit" disabled={submitting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
               {submitting ? 'Creating…' : 'Create Purchase Order'}
             </button>
           </form>

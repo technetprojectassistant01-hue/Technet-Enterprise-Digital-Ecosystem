@@ -1,9 +1,11 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { Search, Plus, ClipboardList, Trash2 } from 'lucide-react'
+import { Search, Plus, ClipboardList, Trash2, Download } from 'lucide-react'
 import * as api from '../lib/api'
 import type { Requisition } from '../lib/api'
 import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
+import { primaryButtonClass, secondaryButtonClass } from '../dashboard/buttonStyles'
+import { downloadCsv } from '../lib/csv'
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
@@ -113,25 +115,46 @@ function RequisitionsPage() {
 
   const submittedCount = requisitions.filter((r) => r.status === 'SUBMITTED').length
 
+  function exportCsv() {
+    downloadCsv(
+      'requisitions',
+      [
+        { header: 'Number', accessor: (r: Requisition) => r.requisitionNumber },
+        { header: 'Project', accessor: (r: Requisition) => r.project?.name },
+        { header: 'Requested By', accessor: (r: Requisition) => r.requestedBy.name || r.requestedBy.email },
+        { header: 'Items', accessor: (r: Requisition) => r.items.length },
+        { header: 'Needed By', accessor: (r: Requisition) => r.neededByDate?.slice(0, 10) },
+        { header: 'Status', accessor: (r: Requisition) => r.status },
+      ],
+      requisitions,
+    )
+  }
+
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={openCreate}
-          className="flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark"
-        >
-          <Plus className="h-4 w-4" />
-          New Requisition
-        </button>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-ink-100">Requisitions</h1>
+          <p className="mt-1 text-sm text-ink-300">Track material requests from submission through approval.</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <button type="button" onClick={exportCsv} className={secondaryButtonClass}>
+            <Download className="h-4 w-4" />
+            Export Ledger
+          </button>
+          <button type="button" onClick={openCreate} className={primaryButtonClass}>
+            <Plus className="h-4 w-4" />
+            New Requisition
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-        <StatCard label="TOTAL REQUISITIONS" value={requisitions.length} />
-        <StatCard label="AWAITING APPROVAL" value={submittedCount} deltaTone="warning" />
+        <StatCard label="TOTAL REQUISITIONS" value={requisitions.length} icon={ClipboardList} />
+        <StatCard label="AWAITING APPROVAL" value={submittedCount} deltaTone="warning" icon={ClipboardList} />
       </div>
 
-      <Panel>
+      <Panel title="Requisition Ledger">
         <div className="mb-4 flex flex-1 max-w-sm items-center gap-2 rounded-md border border-ink-700 bg-ink-950 px-3 py-2">
           <Search className="h-4 w-4 text-ink-400" />
           <input
@@ -170,7 +193,7 @@ function RequisitionsPage() {
                     <td className="px-3 py-3">
                       <Link
                         to={`/dashboard/erp/procurement/requisitions/${r.id}`}
-                        className="font-medium text-ink-100 hover:text-cyan-accent hover:underline"
+                        className="font-mono font-medium text-ink-100 hover:text-cyan-accent hover:underline"
                       >
                         {r.requisitionNumber}
                       </Link>
@@ -245,11 +268,7 @@ function RequisitionsPage() {
 
             {formError && <p className="text-sm text-red-400">{formError}</p>}
 
-            <button
-              type="submit"
-              disabled={submitting}
-              className="rounded-md bg-cyan-accent py-2.5 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark disabled:cursor-not-allowed disabled:opacity-70"
-            >
+            <button type="submit" disabled={submitting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
               {submitting ? 'Submitting…' : 'Submit Requisition'}
             </button>
           </form>
