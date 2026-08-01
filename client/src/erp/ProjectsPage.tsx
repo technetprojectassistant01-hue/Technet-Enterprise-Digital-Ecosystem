@@ -1,9 +1,11 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { Search, Plus, FolderKanban } from 'lucide-react'
+import { Search, Plus, FolderKanban, Download } from 'lucide-react'
 import * as api from '../lib/api'
 import type { Project, ProjectStatus, ServiceCategory } from '../lib/api'
 import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
+import { primaryButtonClass, secondaryButtonClass } from '../dashboard/buttonStyles'
+import { downloadCsv } from '../lib/csv'
 import { useToast } from '../dashboard/ToastContext'
 import { useAuth } from '../context/AuthContext'
 import { hasRole, OPS_MANAGE_ROLES } from '../lib/permissions'
@@ -113,27 +115,47 @@ function ProjectsPage() {
 
   const activeCount = projects.filter((p) => p.status !== 'CLOSED' && p.status !== 'CANCELLED').length
 
+  function exportCsv() {
+    downloadCsv(
+      'projects',
+      [
+        { header: 'Name', accessor: (p: Project) => p.name },
+        { header: 'Customer', accessor: (p: Project) => p.customer?.company || p.customer?.name },
+        { header: 'Manager', accessor: (p: Project) => (p.manager ? `${p.manager.firstName} ${p.manager.lastName}` : '') },
+        { header: 'Budget', accessor: (p: Project) => p.budget },
+        { header: 'Status', accessor: (p: Project) => p.status },
+      ],
+      projects,
+    )
+  }
+
   return (
     <div className="flex flex-col gap-6">
-      {canWrite && (
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={openCreate}
-            className="flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark"
-          >
-            <Plus className="h-4 w-4" />
-            New Project
-          </button>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-ink-100">Projects</h1>
+          <p className="mt-1 text-sm text-ink-300">Track engineering projects from kickoff to closeout.</p>
         </div>
-      )}
-
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-        <StatCard label="TOTAL PROJECTS" value={projects.length} />
-        <StatCard label="ACTIVE" value={activeCount} />
+        <div className="flex items-center gap-3">
+          <button type="button" onClick={exportCsv} className={secondaryButtonClass}>
+            <Download className="h-4 w-4" />
+            Export CSV
+          </button>
+          {canWrite && (
+            <button type="button" onClick={openCreate} className={primaryButtonClass}>
+              <Plus className="h-4 w-4" />
+              New Project
+            </button>
+          )}
+        </div>
       </div>
 
-      <Panel>
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+        <StatCard label="TOTAL PROJECTS" value={projects.length} icon={FolderKanban} />
+        <StatCard label="ACTIVE" value={activeCount} icon={FolderKanban} />
+      </div>
+
+      <Panel title="Project Registry">
         <div className="mb-4 flex flex-1 max-w-sm items-center gap-2 rounded-md border border-ink-700 bg-ink-950 px-3 py-2">
           <Search className="h-4 w-4 text-ink-400" />
           <input
@@ -295,11 +317,7 @@ function ProjectsPage() {
 
             {formError && <p className="text-sm text-red-400">{formError}</p>}
 
-            <button
-              type="submit"
-              disabled={submitting}
-              className="rounded-md bg-cyan-accent py-2.5 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark disabled:cursor-not-allowed disabled:opacity-70"
-            >
+            <button type="submit" disabled={submitting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
               {submitting ? 'Creating…' : 'Create Project'}
             </button>
           </form>
