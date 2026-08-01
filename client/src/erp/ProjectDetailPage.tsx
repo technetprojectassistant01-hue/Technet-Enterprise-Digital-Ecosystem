@@ -1,9 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, Plus, X, Receipt, CreditCard } from 'lucide-react'
+import { ArrowLeft, Plus, X, Receipt, CreditCard, Wallet } from 'lucide-react'
 import * as api from '../lib/api'
 import type { ProjectDetail, ProjectStatus } from '../lib/api'
 import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
+import { primaryButtonClass } from '../dashboard/buttonStyles'
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
@@ -168,13 +169,14 @@ function ProjectDetailPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="BUDGET" value={budget !== null ? formatMoney(budget) : '—'} />
-        <StatCard label="INVOICED" value={formatMoney(invoiced)} />
-        <StatCard label="EXPENSED" value={formatMoney(expensed)} />
+        <StatCard label="BUDGET" value={budget !== null ? formatMoney(budget) : '—'} icon={Wallet} />
+        <StatCard label="INVOICED" value={formatMoney(invoiced)} icon={Receipt} />
+        <StatCard label="EXPENSED" value={formatMoney(expensed)} icon={CreditCard} />
         <StatCard
           label="VARIANCE"
           value={variance !== null ? formatMoney(variance) : '—'}
           deltaTone={variance !== null && variance < 0 ? 'warning' : 'positive'}
+          icon={Wallet}
         />
       </div>
 
@@ -237,7 +239,7 @@ function ProjectDetailPage() {
             <div className="flex flex-col gap-2">
               {project.invoices.map((inv) => (
                 <div key={inv.id} className="flex items-center justify-between rounded-lg bg-ink-800 px-4 py-2.5">
-                  <span className="text-sm text-ink-100">{inv.invoiceNumber}</span>
+                  <span className="font-mono text-sm text-ink-100">{inv.invoiceNumber}</span>
                   <div className="flex items-center gap-3">
                     <span className="text-sm text-ink-300">{formatMoney(inv.total)}</span>
                     <Badge tone={invoiceStatusTone[inv.status]}>{inv.status}</Badge>
@@ -301,11 +303,7 @@ function ProjectDetailPage() {
 
             {assignError && <p className="text-sm text-red-400">{assignError}</p>}
 
-            <button
-              type="submit"
-              disabled={assigning}
-              className="rounded-md bg-cyan-accent py-2.5 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark disabled:cursor-not-allowed disabled:opacity-70"
-            >
+            <button type="submit" disabled={assigning} className={`justify-center py-2.5 ${primaryButtonClass}`}>
               {assigning ? 'Assigning…' : 'Assign'}
             </button>
           </form>
