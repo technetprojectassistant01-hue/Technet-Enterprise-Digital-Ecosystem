@@ -4,6 +4,7 @@ import { ArrowLeft, Download, X, Trash2, CheckCircle2 } from 'lucide-react'
 import * as api from '../lib/api'
 import type { Invoice, InvoiceStatus } from '../lib/api'
 import { Panel, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
+import { primaryButtonClass, secondaryButtonClass, dangerButtonClass } from '../dashboard/buttonStyles'
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
@@ -103,7 +104,7 @@ function InvoiceDetailPage() {
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-ink-100">{invoice.invoiceNumber}</h1>
+            <h1 className="font-mono text-2xl font-bold text-ink-100">{invoice.invoiceNumber}</h1>
             <Badge tone={invoiceStatusTone[invoice.status]}>{invoice.status}</Badge>
           </div>
           <p className="mt-1 text-sm text-ink-300">
@@ -114,30 +115,17 @@ function InvoiceDetailPage() {
 
         <div className="flex gap-3">
           {canWrite && invoice.status !== 'PAID' && (
-            <button
-              type="button"
-              onClick={markPaid}
-              className="flex items-center gap-2 rounded-md border border-ink-700 px-4 py-2 text-sm text-ink-200 hover:bg-ink-800"
-            >
+            <button type="button" onClick={markPaid} className={secondaryButtonClass}>
               <CheckCircle2 className="h-4 w-4" />
               Mark Paid
             </button>
           )}
-          <a
-            href={api.invoicePdfUrl(invoice.id)}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark"
-          >
+          <a href={api.invoicePdfUrl(invoice.id)} target="_blank" rel="noreferrer" className={primaryButtonClass}>
             <Download className="h-4 w-4" />
             Download PDF
           </a>
           {canWrite && (
-            <button
-              type="button"
-              onClick={handleDelete}
-              className="flex items-center gap-2 rounded-md border border-red-400/50 px-4 py-2 text-sm text-red-400 hover:bg-red-400/10"
-            >
+            <button type="button" onClick={handleDelete} className={dangerButtonClass}>
               <Trash2 className="h-4 w-4" />
               Delete
             </button>
@@ -198,7 +186,7 @@ function InvoiceDetailPage() {
               type="button"
               onClick={handleUpdateStatus}
               disabled={updating || nextStatus === invoice.status}
-              className="rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark disabled:cursor-not-allowed disabled:opacity-50"
+              className={primaryButtonClass}
             >
               {updating ? 'Updating…' : 'Update Status'}
             </button>

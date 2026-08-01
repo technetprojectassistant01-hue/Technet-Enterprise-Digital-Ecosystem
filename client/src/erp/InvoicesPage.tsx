@@ -1,9 +1,11 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, Trash2, CheckCircle2, Receipt } from 'lucide-react'
+import { Plus, Trash2, CheckCircle2, Receipt, Download } from 'lucide-react'
 import * as api from '../lib/api'
 import type { Invoice, InvoiceStatus } from '../lib/api'
 import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
+import { primaryButtonClass, secondaryButtonClass } from '../dashboard/buttonStyles'
+import { downloadCsv } from '../lib/csv'
 import { useCustomers } from './useCustomers'
 import { useProjects } from './useProjects'
 import { useToast } from '../dashboard/ToastContext'
@@ -145,32 +147,56 @@ function InvoicesPage() {
     .reduce((sum, i) => sum + Number(i.total), 0)
   const totalPaid = invoices.filter((i) => i.status === 'PAID').reduce((sum, i) => sum + Number(i.total), 0)
 
+  function exportCsv() {
+    downloadCsv(
+      'invoices',
+      [
+        { header: 'Invoice #', accessor: (i: Invoice) => i.invoiceNumber },
+        { header: 'Customer', accessor: (i: Invoice) => i.customer.company || i.customer.name },
+        { header: 'Total', accessor: (i: Invoice) => i.total },
+        { header: 'Status', accessor: (i: Invoice) => i.status },
+        { header: 'Due Date', accessor: (i: Invoice) => i.dueDate?.slice(0, 10) },
+      ],
+      invoices,
+    )
+  }
+
   return (
     <div className="flex flex-col gap-6">
-      {canWrite && (
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={openCreate}
-            disabled={customers.length === 0}
-            className="flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <Plus className="h-4 w-4" />
-            New Invoice
-          </button>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-ink-100">Invoices</h1>
+          <p className="mt-1 text-sm text-ink-300">Manage billing and technical service invoices.</p>
         </div>
-      )}
+        <div className="flex items-center gap-3">
+          <button type="button" onClick={exportCsv} className={secondaryButtonClass}>
+            <Download className="h-4 w-4" />
+            Export CSV
+          </button>
+          {canWrite && (
+            <button
+              type="button"
+              onClick={openCreate}
+              disabled={customers.length === 0}
+              className={primaryButtonClass}
+            >
+              <Plus className="h-4 w-4" />
+              New Invoice
+            </button>
+          )}
+        </div>
+      </div>
 
       {canWrite && customers.length === 0 && (
         <p className="text-sm text-ink-400">Add a customer first before creating invoices.</p>
       )}
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-        <StatCard label="TOTAL PAID" value={formatMoney(totalPaid)} />
-        <StatCard label="OUTSTANDING" value={formatMoney(totalOutstanding)} deltaTone="warning" />
+        <StatCard label="Total Paid" value={formatMoney(totalPaid)} icon={CheckCircle2} />
+        <StatCard label="Outstanding" value={formatMoney(totalOutstanding)} deltaTone="warning" icon={Receipt} />
       </div>
 
-      <Panel>
+      <Panel title="Active Invoices">
         {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
 
         {loading ? (
@@ -197,7 +223,7 @@ function InvoicesPage() {
                     <td className="px-3 py-3">
                       <Link
                         to={`/dashboard/erp/finance/invoices/${inv.id}`}
-                        className="font-medium text-ink-100 hover:text-cyan-accent hover:underline"
+                        className="font-mono font-medium text-ink-100 hover:text-cyan-accent hover:underline"
                       >
                         {inv.invoiceNumber}
                       </Link>
@@ -330,11 +356,7 @@ function InvoicesPage() {
 
             {formError && <p className="text-sm text-red-400">{formError}</p>}
 
-            <button
-              type="submit"
-              disabled={submitting}
-              className="rounded-md bg-cyan-accent py-2.5 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark disabled:cursor-not-allowed disabled:opacity-70"
-            >
+            <button type="submit" disabled={submitting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
               {submitting ? 'Creating…' : 'Create Invoice'}
             </button>
           </form>

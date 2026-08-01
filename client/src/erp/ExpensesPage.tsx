@@ -1,8 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Plus, Pencil, Trash2, CreditCard } from 'lucide-react'
+import { Plus, Pencil, Trash2, CreditCard, Download } from 'lucide-react'
 import * as api from '../lib/api'
 import type { Expense } from '../lib/api'
 import { Panel, StatCard, Modal, EmptyState, TableSkeleton } from '../dashboard/ui'
+import { primaryButtonClass, secondaryButtonClass } from '../dashboard/buttonStyles'
+import { downloadCsv } from '../lib/csv'
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
@@ -138,24 +140,44 @@ function ExpensesPage() {
 
   const totalExpenses = expenses.reduce((sum, e) => sum + Number(e.amount), 0)
 
+  function exportCsv() {
+    downloadCsv(
+      'expenses',
+      [
+        { header: 'Category', accessor: (e: Expense) => e.category },
+        { header: 'Description', accessor: (e: Expense) => e.description },
+        { header: 'Supplier', accessor: (e: Expense) => e.supplier?.name },
+        { header: 'Amount', accessor: (e: Expense) => e.amount },
+        { header: 'Date', accessor: (e: Expense) => e.date.slice(0, 10) },
+      ],
+      expenses,
+    )
+  }
+
   return (
     <div className="flex flex-col gap-6">
-      {canWrite && (
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={openCreate}
-            className="flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark"
-          >
-            <Plus className="h-4 w-4" />
-            Add Expense
-          </button>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-ink-100">Expenses Ledger</h1>
+          <p className="mt-1 text-sm text-ink-300">Real-time expenditure monitoring for active engineering projects.</p>
         </div>
-      )}
+        <div className="flex items-center gap-3">
+          <button type="button" onClick={exportCsv} className={secondaryButtonClass}>
+            <Download className="h-4 w-4" />
+            Export Report
+          </button>
+          {canWrite && (
+            <button type="button" onClick={openCreate} className={primaryButtonClass}>
+              <Plus className="h-4 w-4" />
+              Add Expense
+            </button>
+          )}
+        </div>
+      </div>
 
-      <StatCard label="TOTAL EXPENSES" value={formatMoney(totalExpenses)} />
+      <StatCard label="Total Expenses" value={formatMoney(totalExpenses)} icon={CreditCard} />
 
-      <Panel>
+      <Panel title="Active Ledger View">
         {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
 
         {loading ? (
@@ -285,11 +307,7 @@ function ExpensesPage() {
 
             {formError && <p className="text-sm text-red-400">{formError}</p>}
 
-            <button
-              type="submit"
-              disabled={submitting}
-              className="rounded-md bg-cyan-accent py-2.5 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark disabled:cursor-not-allowed disabled:opacity-70"
-            >
+            <button type="submit" disabled={submitting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
               {submitting ? 'Saving…' : editing ? 'Save Changes' : 'Add Expense'}
             </button>
           </form>
