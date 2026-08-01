@@ -1,8 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Plus, Check, X as XIcon, ClipboardList } from 'lucide-react'
+import { Plus, Check, X as XIcon, ClipboardList, Download } from 'lucide-react'
 import * as api from '../lib/api'
 import type { DailyWorkReport } from '../lib/api'
 import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
+import { primaryButtonClass, secondaryButtonClass } from '../dashboard/buttonStyles'
+import { downloadCsv } from '../lib/csv'
 import { useEmployees } from '../erp/useEmployees'
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
@@ -122,24 +124,47 @@ function DailyReportsPage() {
   const canSubmit = hasRole(user?.role, OPS_SUBMIT_ROLES)
   const pendingCount = reports.filter((r) => r.status === 'SUBMITTED').length
 
+  function exportCsv() {
+    downloadCsv(
+      'daily-reports',
+      [
+        { header: 'Date', accessor: (r: DailyWorkReport) => r.date.slice(0, 10) },
+        { header: 'Summary', accessor: (r: DailyWorkReport) => r.summary },
+        {
+          header: 'Technicians',
+          accessor: (r: DailyWorkReport) => r.technicians.map((t) => `${t.employee.firstName} ${t.employee.lastName}`).join('; '),
+        },
+        { header: 'Hours', accessor: (r: DailyWorkReport) => r.hours },
+        { header: 'Status', accessor: (r: DailyWorkReport) => r.status },
+      ],
+      reports,
+    )
+  }
+
   return (
     <div className="flex flex-col gap-6">
-      {canSubmit && (
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={openCreate}
-            className="flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark"
-          >
-            <Plus className="h-4 w-4" />
-            New Daily Report
-          </button>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-ink-100">Daily Reports</h1>
+          <p className="mt-1 text-sm text-ink-300">Field technician logs, reviewed and approved daily.</p>
         </div>
-      )}
+        <div className="flex items-center gap-3">
+          <button type="button" onClick={exportCsv} className={secondaryButtonClass}>
+            <Download className="h-4 w-4" />
+            Export
+          </button>
+          {canSubmit && (
+            <button type="button" onClick={openCreate} className={primaryButtonClass}>
+              <Plus className="h-4 w-4" />
+              File Daily Report
+            </button>
+          )}
+        </div>
+      </div>
 
-      <StatCard label="PENDING REVIEW" value={pendingCount} deltaTone="warning" />
+      <StatCard label="PENDING REVIEW" value={pendingCount} deltaTone="warning" icon={ClipboardList} />
 
-      <Panel>
+      <Panel title="Operations Log Registry">
         {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
 
         {loading ? (
@@ -272,11 +297,7 @@ function DailyReportsPage() {
 
             {formError && <p className="text-sm text-red-400">{formError}</p>}
 
-            <button
-              type="submit"
-              disabled={submitting}
-              className="rounded-md bg-cyan-accent py-2.5 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark disabled:cursor-not-allowed disabled:opacity-70"
-            >
+            <button type="submit" disabled={submitting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
               {submitting ? 'Submitting…' : 'Submit Report'}
             </button>
           </form>

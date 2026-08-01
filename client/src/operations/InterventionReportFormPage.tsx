@@ -6,6 +6,7 @@ import type { JobCategory, WarrantyStatus } from '../lib/api'
 import { JOB_CATEGORY_LABELS, WORK_TYPE_LABELS } from '../lib/api'
 import type { ServiceCategory } from '../lib/api'
 import { EmptyState, Panel } from '../dashboard/ui'
+import { primaryButtonClass, secondaryButtonClass } from '../dashboard/buttonStyles'
 import { useToast } from '../dashboard/ToastContext'
 import { useAuth } from '../context/AuthContext'
 import { hasRole, OPS_SUBMIT_ROLES } from '../lib/permissions'
@@ -406,11 +407,7 @@ function InterventionReportFormPage() {
             We restored your unsaved draft from last time. Photos, the attached file, and the signature couldn't be
             restored — you'll need to re-add those.
           </p>
-          <button
-            type="button"
-            onClick={discardDraft}
-            className="shrink-0 rounded-md border border-ink-600 px-3 py-1.5 text-xs font-semibold text-ink-300 hover:bg-ink-800"
-          >
+          <button type="button" onClick={discardDraft} className={`shrink-0 ${secondaryButtonClass}`}>
             Discard draft
           </button>
         </div>
@@ -730,11 +727,7 @@ function InterventionReportFormPage() {
 
         {formError && <p className="text-sm text-red-400">{formError}</p>}
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="self-start rounded-md bg-cyan-accent px-6 py-2.5 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark disabled:cursor-not-allowed disabled:opacity-70"
-        >
+        <button type="submit" disabled={submitting} className={`self-start px-6 py-2.5 ${primaryButtonClass}`}>
           {submitting ? 'Submitting…' : 'Submit Report'}
         </button>
       </form>
