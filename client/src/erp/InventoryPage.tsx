@@ -1,8 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Search, Plus, Pencil, Trash2, ArrowUpDown, PackageSearch } from 'lucide-react'
+import { Search, Plus, Pencil, Trash2, ArrowUpDown, PackageSearch, Download } from 'lucide-react'
 import * as api from '../lib/api'
 import type { InventoryItem, MovementType } from '../lib/api'
 import { Panel, StatCard, Modal, EmptyState, TableSkeleton } from '../dashboard/ui'
+import { primaryButtonClass, secondaryButtonClass } from '../dashboard/buttonStyles'
+import { downloadCsv } from '../lib/csv'
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
@@ -207,6 +209,22 @@ function InventoryPage() {
   const lowStockCount = items.filter((i) => i.quantity <= i.minStockLevel).length
   const totalValue = items.reduce((sum, i) => sum + i.quantity * Number(i.unitCost || 0), 0)
 
+  function exportCsv() {
+    downloadCsv(
+      'inventory',
+      [
+        { header: 'SKU', accessor: (i: InventoryItem) => i.sku },
+        { header: 'Name', accessor: (i: InventoryItem) => i.name },
+        { header: 'Category', accessor: (i: InventoryItem) => i.category },
+        { header: 'Quantity', accessor: (i: InventoryItem) => i.quantity },
+        { header: 'Min Stock', accessor: (i: InventoryItem) => i.minStockLevel },
+        { header: 'Unit Cost', accessor: (i: InventoryItem) => i.unitCost },
+        { header: 'Location', accessor: (i: InventoryItem) => i.location },
+      ],
+      items,
+    )
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
@@ -214,30 +232,33 @@ function InventoryPage() {
           <h1 className="text-2xl font-bold text-ink-100">Inventory</h1>
           <p className="mt-1 text-sm text-ink-300">Stock items, levels, and adjustments.</p>
         </div>
-        {canWrite && (
-          <button
-            type="button"
-            onClick={openCreate}
-            className="flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark"
-          >
-            <Plus className="h-4 w-4" />
-            Add Item
+        <div className="flex items-center gap-3">
+          <button type="button" onClick={exportCsv} className={secondaryButtonClass}>
+            <Download className="h-4 w-4" />
+            Export CSV
           </button>
-        )}
+          {canWrite && (
+            <button type="button" onClick={openCreate} className={primaryButtonClass}>
+              <Plus className="h-4 w-4" />
+              Add Item
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
-        <StatCard label="TOTAL ITEMS" value={items.length} />
+        <StatCard label="TOTAL ITEMS" value={items.length} icon={PackageSearch} />
         <StatCard
           label="LOW STOCK"
           value={lowStockCount}
           delta={lowStockCount > 0 ? 'Needs attention' : undefined}
           deltaTone="warning"
+          icon={PackageSearch}
         />
-        <StatCard label="STOCK VALUE" value={formatMoney(totalValue)} />
+        <StatCard label="STOCK VALUE" value={formatMoney(totalValue)} icon={PackageSearch} />
       </div>
 
-      <Panel>
+      <Panel title="Stock Ledger">
         <form onSubmit={handleSearchSubmit} className="mb-4 flex items-center gap-2">
           <div className="flex flex-1 max-w-sm items-center gap-2 rounded-md border border-ink-700 bg-ink-950 px-3 py-2">
             <Search className="h-4 w-4 text-ink-400" />
@@ -249,10 +270,7 @@ function InventoryPage() {
               className="w-full bg-transparent text-sm text-ink-100 placeholder-ink-500 outline-none"
             />
           </div>
-          <button
-            type="submit"
-            className="rounded-md border border-ink-700 px-3 py-2 text-sm text-ink-200 hover:bg-ink-800"
-          >
+          <button type="submit" className={secondaryButtonClass}>
             Search
           </button>
         </form>
@@ -283,7 +301,7 @@ function InventoryPage() {
                   const low = item.quantity <= item.minStockLevel
                   return (
                     <tr key={item.id} className="border-b border-ink-800 last:border-0">
-                      <td className="px-3 py-3 text-ink-300">{item.sku}</td>
+                      <td className="px-3 py-3 font-mono text-ink-300">{item.sku}</td>
                       <td className="px-3 py-3 font-medium text-ink-100">{item.name}</td>
                       <td className="px-3 py-3 text-ink-300">{item.category || '—'}</td>
                       <td className={`px-3 py-3 font-semibold ${low ? 'text-red-400' : 'text-ink-100'}`}>
@@ -422,11 +440,7 @@ function InventoryPage() {
 
             {formError && <p className="text-sm text-red-400">{formError}</p>}
 
-            <button
-              type="submit"
-              disabled={submitting}
-              className="rounded-md bg-cyan-accent py-2.5 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark disabled:cursor-not-allowed disabled:opacity-70"
-            >
+            <button type="submit" disabled={submitting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
               {submitting ? 'Saving…' : editingItem ? 'Save Changes' : 'Create Item'}
             </button>
           </form>
@@ -477,11 +491,7 @@ function InventoryPage() {
 
             {adjustError && <p className="text-sm text-red-400">{adjustError}</p>}
 
-            <button
-              type="submit"
-              disabled={adjusting}
-              className="rounded-md bg-cyan-accent py-2.5 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark disabled:cursor-not-allowed disabled:opacity-70"
-            >
+            <button type="submit" disabled={adjusting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
               {adjusting ? 'Saving…' : 'Apply Adjustment'}
             </button>
           </form>

@@ -4,6 +4,7 @@ import { ArrowLeft, Check, X } from 'lucide-react'
 import * as api from '../lib/api'
 import type { RequisitionDetail } from '../lib/api'
 import { Panel, Badge, Modal, EmptyState, TableSkeleton } from '../dashboard/ui'
+import { primaryButtonClass, dangerButtonClass } from '../dashboard/buttonStyles'
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
@@ -148,7 +149,7 @@ function RequisitionDetailPage() {
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-ink-100">{requisition.requisitionNumber}</h1>
+            <h1 className="font-mono text-2xl font-bold text-ink-100">{requisition.requisitionNumber}</h1>
             <Badge tone={requisitionStatusTone[requisition.status]}>{requisition.status}</Badge>
           </div>
           <p className="mt-1 text-sm text-ink-300">
@@ -162,30 +163,18 @@ function RequisitionDetailPage() {
         <div className="flex gap-3">
           {canManage && requisition.status === 'SUBMITTED' && (
             <>
-              <button
-                type="button"
-                onClick={handleApprove}
-                className="flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark"
-              >
+              <button type="button" onClick={handleApprove} className={primaryButtonClass}>
                 <Check className="h-4 w-4" />
                 Approve
               </button>
-              <button
-                type="button"
-                onClick={() => setShowReject(true)}
-                className="flex items-center gap-2 rounded-md border border-red-400/50 px-4 py-2 text-sm text-red-400 hover:bg-red-400/10"
-              >
+              <button type="button" onClick={() => setShowReject(true)} className={dangerButtonClass}>
                 <X className="h-4 w-4" />
                 Reject
               </button>
             </>
           )}
           {canManage && requisition.status === 'APPROVED' && (
-            <button
-              type="button"
-              onClick={openConvert}
-              className="rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark"
-            >
+            <button type="button" onClick={openConvert} className={primaryButtonClass}>
               Convert to Purchase Order
             </button>
           )}
@@ -224,7 +213,7 @@ function RequisitionDetailPage() {
                 to={`/dashboard/erp/procurement/purchase-orders/${po.id}`}
                 className="flex items-center justify-between rounded-lg bg-ink-800 px-4 py-2.5 hover:bg-ink-700"
               >
-                <span className="text-sm text-ink-100">{po.poNumber}</span>
+                <span className="font-mono text-sm text-ink-100">{po.poNumber}</span>
                 <span className="text-xs text-ink-400">{po.status.replace('_', ' ')}</span>
               </Link>
             ))}
@@ -265,11 +254,7 @@ function RequisitionDetailPage() {
               />
             </div>
             {rejectError && <p className="text-sm text-red-400">{rejectError}</p>}
-            <button
-              type="submit"
-              disabled={rejecting}
-              className="rounded-md bg-red-400 py-2.5 text-sm font-semibold text-ink-950 hover:bg-red-300 disabled:cursor-not-allowed disabled:opacity-70"
-            >
+            <button type="submit" disabled={rejecting} className={`justify-center py-2.5 ${dangerButtonClass}`}>
               {rejecting ? 'Rejecting…' : 'Reject Requisition'}
             </button>
           </form>
@@ -329,11 +314,7 @@ function RequisitionDetailPage() {
 
             {convertError && <p className="text-sm text-red-400">{convertError}</p>}
 
-            <button
-              type="submit"
-              disabled={converting}
-              className="rounded-md bg-cyan-accent py-2.5 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark disabled:cursor-not-allowed disabled:opacity-70"
-            >
+            <button type="submit" disabled={converting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
               {converting ? 'Converting…' : 'Create Purchase Order'}
             </button>
           </form>

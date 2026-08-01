@@ -4,6 +4,7 @@ import { ArrowLeft, X, PackageCheck } from 'lucide-react'
 import * as api from '../lib/api'
 import type { PurchaseOrderDetail } from '../lib/api'
 import { Panel, Badge, Modal, EmptyState, TableSkeleton } from '../dashboard/ui'
+import { primaryButtonClass, secondaryButtonClass, dangerButtonClass } from '../dashboard/buttonStyles'
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
@@ -151,7 +152,7 @@ function PurchaseOrderDetailPage() {
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-ink-100">{po.poNumber}</h1>
+            <h1 className="font-mono text-2xl font-bold text-ink-100">{po.poNumber}</h1>
             <Badge tone={purchaseOrderStatusTone[po.status]}>{po.status.replace('_', ' ')}</Badge>
           </div>
           <p className="mt-1 text-sm text-ink-300">
@@ -161,7 +162,7 @@ function PurchaseOrderDetailPage() {
                 {' · from '}
                 <Link
                   to={`/dashboard/erp/procurement/requisitions/${po.requisition.id}`}
-                  className="text-cyan-accent hover:underline"
+                  className="font-mono text-cyan-accent hover:underline"
                 >
                   {po.requisition.requisitionNumber}
                 </Link>
@@ -173,42 +174,23 @@ function PurchaseOrderDetailPage() {
 
         <div className="flex gap-3">
           {canWrite && po.status === 'DRAFT' && (
-            <button
-              type="button"
-              onClick={handleSend}
-              disabled={actioning}
-              className="rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark disabled:opacity-70"
-            >
+            <button type="button" onClick={handleSend} disabled={actioning} className={primaryButtonClass}>
               Send to Supplier
             </button>
           )}
           {canWrite && canReceive && (
-            <button
-              type="button"
-              onClick={openReceive}
-              className="flex items-center gap-2 rounded-md bg-cyan-accent px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark"
-            >
+            <button type="button" onClick={openReceive} className={primaryButtonClass}>
               <PackageCheck className="h-4 w-4" />
               Record Receipt
             </button>
           )}
           {canWrite && po.status === 'FULLY_RECEIVED' && (
-            <button
-              type="button"
-              onClick={handleClose}
-              disabled={actioning}
-              className="rounded-md border border-ink-700 px-4 py-2 text-sm text-ink-200 hover:bg-ink-800 disabled:opacity-70"
-            >
+            <button type="button" onClick={handleClose} disabled={actioning} className={secondaryButtonClass}>
               Close Order
             </button>
           )}
           {canWrite && (po.status === 'DRAFT' || po.status === 'SENT') && (
-            <button
-              type="button"
-              onClick={handleCancel}
-              disabled={actioning}
-              className="rounded-md border border-red-400/50 px-4 py-2 text-sm text-red-400 hover:bg-red-400/10 disabled:opacity-70"
-            >
+            <button type="button" onClick={handleCancel} disabled={actioning} className={dangerButtonClass}>
               Cancel
             </button>
           )}
@@ -306,11 +288,7 @@ function PurchaseOrderDetailPage() {
 
             {receiveError && <p className="text-sm text-red-400">{receiveError}</p>}
 
-            <button
-              type="submit"
-              disabled={receiving}
-              className="rounded-md bg-cyan-accent py-2.5 text-sm font-semibold text-ink-950 hover:bg-cyan-accent-dark disabled:cursor-not-allowed disabled:opacity-70"
-            >
+            <button type="submit" disabled={receiving} className={`justify-center py-2.5 ${primaryButtonClass}`}>
               {receiving ? 'Recording…' : 'Record Receipt'}
             </button>
           </form>
