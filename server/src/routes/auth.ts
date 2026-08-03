@@ -44,7 +44,10 @@ router.post("/login", async (req, res) => {
     return res.status(400).json({ error: "Email and password are required" });
   }
 
-  const user = await prisma.user.findUnique({ where: { email } });
+  const user = await prisma.user.findUnique({
+    where: { email },
+    include: { employee: { select: { id: true } } },
+  });
   if (!user) {
     return res.status(401).json({ error: "Invalid email or password" });
   }
@@ -62,7 +65,13 @@ router.post("/login", async (req, res) => {
   });
 
   res.json({
-    user: { id: user.id, email: user.email, name: user.name, role: user.role },
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      employeeId: user.employee?.id ?? null,
+    },
   });
 });
 
@@ -74,14 +83,15 @@ router.post("/logout", (_req, res) => {
 router.get("/me", requireAuth, async (req, res) => {
   const user = await prisma.user.findUnique({
     where: { id: req.user!.sub },
-    select: { id: true, email: true, name: true, role: true },
+    select: { id: true, email: true, name: true, role: true, employee: { select: { id: true } } },
   });
 
   if (!user) {
     return res.status(401).json({ error: "Not authenticated" });
   }
 
-  res.json({ user });
+  const { employee, ...rest } = user;
+  res.json({ user: { ...rest, employeeId: employee?.id ?? null } });
 });
 
 router.post("/change-password", requireAuth, async (req, res) => {
