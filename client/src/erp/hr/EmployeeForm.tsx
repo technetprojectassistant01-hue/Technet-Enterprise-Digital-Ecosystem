@@ -1,10 +1,12 @@
-import { useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import * as api from '../../lib/api'
 import type {
   ContractType,
   Employee,
   EmployeeInput,
   EmploymentStatus,
   Gender,
+  LinkableUser,
 } from '../../lib/api'
 import { inputClass, labelClass, primaryButtonClass } from './formStyles'
 
@@ -16,6 +18,7 @@ export interface EmployeeFormState {
   employeeCode: string
   firstName: string
   lastName: string
+  userId: string
   email: string
   phone: string
   position: string
@@ -50,6 +53,7 @@ export const EMPTY_EMPLOYEE_FORM: EmployeeFormState = {
   employeeCode: '',
   firstName: '',
   lastName: '',
+  userId: '',
   email: '',
   phone: '',
   position: '',
@@ -84,6 +88,7 @@ export function toEmployeeFormState(e: Employee): EmployeeFormState {
     employeeCode: e.employeeCode,
     firstName: e.firstName,
     lastName: e.lastName,
+    userId: e.userId || '',
     email: e.email || '',
     phone: e.phone || '',
     position: e.position || '',
@@ -157,10 +162,36 @@ function EmployeeForm({
   submitLabel: string
 }) {
   const [showPayroll, setShowPayroll] = useState(false)
+  const [linkableUsers, setLinkableUsers] = useState<LinkableUser[]>([])
   const set = (patch: Partial<EmployeeFormState>) => setForm({ ...form, ...patch })
+
+  useEffect(() => {
+    api
+      .listLinkableUsers()
+      .then(({ users }) => setLinkableUsers(users))
+      .catch(() => setLinkableUsers([]))
+  }, [])
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-5">
+      <Section title="ACCOUNT ACCESS">
+        <Field label="LINKED LOGIN" full>
+          <select value={form.userId} onChange={(e) => set({ userId: e.target.value })} className={inputClass}>
+            <option value="">Not linked</option>
+            {linkableUsers.map((u) => (
+              <option
+                key={u.id}
+                value={u.id}
+                disabled={u.linkedEmployeeId !== null && u.id !== form.userId}
+              >
+                {u.email} ({u.role})
+                {u.linkedEmployeeId !== null && u.id !== form.userId ? ' — already linked' : ''}
+              </option>
+            ))}
+          </select>
+        </Field>
+      </Section>
+
       <Section title="IDENTITY & CONTACT">
         <Field label="EMPLOYEE CODE">
           <input
