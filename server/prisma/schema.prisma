@@ -319,6 +319,8 @@ model Employee {
   maintenanceScheduleAssignments MaintenanceScheduleTechnician[]
 
   payrollLines PayrollLine[]
+
+  siteAttendance SiteAttendance[]
 }
 
 model Certification {
@@ -787,6 +789,7 @@ model WorkOrder {
   technicians          WorkOrderTechnician[]
   interventionReports  InterventionReport[]
   dailyWorkReportLinks DailyWorkReportWorkOrder[]
+  siteAttendance       SiteAttendance[]
 }
 
 model WorkOrderTechnician {
@@ -797,6 +800,23 @@ model WorkOrderTechnician {
   employee    Employee  @relation(fields: [employeeId], references: [id])
 
   @@unique([workOrderId, employeeId])
+}
+
+model SiteAttendance {
+  id          String    @id @default(uuid())
+  workOrderId String
+  workOrder   WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  employeeId  String
+  employee    Employee  @relation(fields: [employeeId], references: [id])
+  checkInAt   DateTime  @default(now())
+  checkInLat  Decimal   @db.Decimal(9, 6)
+  checkInLng  Decimal   @db.Decimal(9, 6)
+  checkOutAt  DateTime?
+  checkOutLat Decimal?  @db.Decimal(9, 6)
+  checkOutLng Decimal?  @db.Decimal(9, 6)
+
+  @@index([workOrderId])
+  @@index([employeeId])
 }
 
 model DailyWorkReport {
