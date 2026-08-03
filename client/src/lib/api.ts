@@ -15,6 +15,7 @@ export interface CurrentUser {
   email: string
   name: string | null
   role: Role
+  employeeId: string | null
 }
 
 export interface ManagedUser extends CurrentUser {
@@ -1480,6 +1481,19 @@ export interface WorkOrder {
   updatedAt: string
 }
 
+export interface SiteAttendance {
+  id: string
+  workOrderId: string
+  employeeId: string
+  employee: EmployeeSummary
+  checkInAt: string
+  checkInLat: string
+  checkInLng: string
+  checkOutAt: string | null
+  checkOutLat: string | null
+  checkOutLng: string | null
+}
+
 export interface WorkOrderDetail extends WorkOrder {
   project: { id: string; name: string } | null
   interventionReports: {
@@ -1489,6 +1503,7 @@ export interface WorkOrderDetail extends WorkOrder {
     workCompleted: boolean
     createdAt: string
   }[]
+  siteAttendance: SiteAttendance[]
 }
 
 export interface WorkOrderInput {
@@ -1539,6 +1554,20 @@ export function updateWorkOrder(id: string, input: WorkOrderUpdateInput) {
 
 export function deleteWorkOrder(id: string) {
   return request<null>(`/api/work-orders/${id}`, { method: 'DELETE' })
+}
+
+export function checkInWorkOrder(id: string, coords: { lat: number; lng: number }) {
+  return request<{ siteAttendance: SiteAttendance }>(`/api/work-orders/${id}/check-in`, {
+    method: 'POST',
+    body: JSON.stringify(coords),
+  })
+}
+
+export function checkOutWorkOrder(id: string, coords: { lat: number; lng: number }) {
+  return request<{ siteAttendance: SiteAttendance }>(`/api/work-orders/${id}/check-out`, {
+    method: 'POST',
+    body: JSON.stringify(coords),
+  })
 }
 
 export interface DailyWorkReport {
