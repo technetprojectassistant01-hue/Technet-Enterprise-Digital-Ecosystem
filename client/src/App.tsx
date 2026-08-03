@@ -1,6 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import {
-  Wrench,
   Share2,
   Users,
   Megaphone,
@@ -46,6 +45,13 @@ import DailyReportsPage from './operations/DailyReportsPage'
 import InterventionReportsPage from './operations/InterventionReportsPage'
 import InterventionReportFormPage from './operations/InterventionReportFormPage'
 import InterventionReportDetailPage from './operations/InterventionReportDetailPage'
+import MaintenanceLayout from './maintenance/MaintenanceLayout'
+import AssetsPage from './maintenance/AssetsPage'
+import AssetDetailPage from './maintenance/AssetDetailPage'
+import MaintenanceContractsPage from './maintenance/ContractsPage'
+import RequestsPage from './maintenance/RequestsPage'
+import SchedulePage from './maintenance/SchedulePage'
+import ScheduleDetailPage from './maintenance/ScheduleDetailPage'
 import ModuleStub from './dashboard/ModuleStub'
 import UsersPage from './UsersPage'
 import SettingsPage from './SettingsPage'
@@ -94,10 +100,15 @@ function App() {
             <Route path="projects/:id" element={<ProjectDetailPage />} />
             <Route path="documents" element={<DocumentsPage />} />
           </Route>
-          <Route
-            path="maintenance"
-            element={<ModuleStub title="Technet Maintenance" icon={Wrench} />}
-          />
+          <Route path="maintenance" element={<MaintenanceLayout />}>
+            <Route index element={<Navigate to="assets" replace />} />
+            <Route path="assets" element={<AssetsPage />} />
+            <Route path="assets/:id" element={<AssetDetailPage />} />
+            <Route path="contracts" element={<MaintenanceContractsPage />} />
+            <Route path="requests" element={<RequestsPage />} />
+            <Route path="schedule" element={<SchedulePage />} />
+            <Route path="schedule/:id" element={<ScheduleDetailPage />} />
+          </Route>
           <Route
             path="connect"
             element={<ModuleStub title="Technet Connect" icon={Share2} />}

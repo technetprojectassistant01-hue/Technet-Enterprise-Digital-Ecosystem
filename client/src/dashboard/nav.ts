@@ -25,6 +25,8 @@ import {
   ClipboardCheck,
   CalendarDays,
   BadgeCheck,
+  Box,
+  AlertTriangle,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -84,7 +86,17 @@ export const MAIN_NAV: NavItem[] = [
       { label: 'Documents', to: '/dashboard/erp/documents', icon: FileText },
     ],
   },
-  { label: 'Technet Maintenance', to: '/dashboard/maintenance', icon: Wrench },
+  {
+    label: 'Technet Maintenance',
+    to: '/dashboard/maintenance',
+    icon: Wrench,
+    children: [
+      { label: 'Assets', to: '/dashboard/maintenance/assets', icon: Box },
+      { label: 'Contracts', to: '/dashboard/maintenance/contracts', icon: ScrollText },
+      { label: 'Requests', to: '/dashboard/maintenance/requests', icon: AlertTriangle },
+      { label: 'Schedule', to: '/dashboard/maintenance/schedule', icon: CalendarClock },
+    ],
+  },
   { label: 'Technet Connect', to: '/dashboard/connect', icon: Share2 },
   {
     label: 'Technet Operations',
