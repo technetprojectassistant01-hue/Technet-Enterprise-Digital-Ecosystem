@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, X, Trash2, FileText, Plus } from 'lucide-react'
+import { ArrowLeft, X, Trash2, FileText, Plus, LogIn, LogOut, MapPin } from 'lucide-react'
 import * as api from '../lib/api'
 import type { WorkOrderDetail, WorkOrderStatus } from '../lib/api'
 import { JOB_CATEGORY_LABELS } from '../lib/api'
@@ -11,6 +11,24 @@ import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
 import { hasRole, OPS_MANAGE_ROLES, OPS_SUBMIT_ROLES } from '../lib/permissions'
 import { workOrderStatusTone, reportStatusTone } from '../erp/statusTones'
+
+function getPosition(): Promise<GeolocationPosition> {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error('Geolocation is not supported by this browser'))
+      return
+    }
+    navigator.geolocation.getCurrentPosition(
+      resolve,
+      (err) => reject(new Error(err.message || 'Unable to determine your location')),
+      { enableHighAccuracy: true, timeout: 10000 },
+    )
+  })
+}
+
+function mapLink(lat: string, lng: string) {
+  return `https://www.google.com/maps?q=${lat},${lng}`
+}
 
 function WorkOrderDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -51,6 +69,36 @@ function WorkOrderDetailPage() {
     }
   }
 
+  async function handleCheckIn() {
+    if (!workOrder) return
+    setActioning(true)
+    try {
+      const pos = await getPosition()
+      await api.checkInWorkOrder(workOrder.id, { lat: pos.coords.latitude, lng: pos.coords.longitude })
+      toast.success('Checked in')
+      load()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to check in')
+    } finally {
+      setActioning(false)
+    }
+  }
+
+  async function handleCheckOut() {
+    if (!workOrder) return
+    setActioning(true)
+    try {
+      const pos = await getPosition()
+      await api.checkOutWorkOrder(workOrder.id, { lat: pos.coords.latitude, lng: pos.coords.longitude })
+      toast.success('Checked out')
+      load()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to check out')
+    } finally {
+      setActioning(false)
+    }
+  }
+
   async function handleDelete() {
     if (!workOrder) return
     const ok = await confirm({
@@ -71,6 +119,13 @@ function WorkOrderDetailPage() {
 
   if (loading) return <TableSkeleton rows={6} cols={4} />
   if (error || !workOrder) return <EmptyState icon={X} message={error || 'Work order not found'} />
+
+  const myEmployeeId = user?.employeeId ?? null
+  const isAssignedTechnician =
+    myEmployeeId !== null && workOrder.technicians.some((t) => t.employee.id === myEmployeeId)
+  const myOpenVisit = myEmployeeId
+    ? workOrder.siteAttendance.find((v) => v.employee.id === myEmployeeId && !v.checkOutAt)
+    : undefined
 
   return (
     <div className="flex flex-col gap-6">
@@ -96,6 +151,18 @@ function WorkOrderDetailPage() {
         </div>
 
         <div className="flex gap-3">
+          {isAssignedTechnician && !myOpenVisit && (
+            <button type="button" onClick={handleCheckIn} disabled={actioning} className={primaryButtonClass}>
+              <LogIn className="h-4 w-4" />
+              Check In
+            </button>
+          )}
+          {isAssignedTechnician && myOpenVisit && (
+            <button type="button" onClick={handleCheckOut} disabled={actioning} className={secondaryButtonClass}>
+              <LogOut className="h-4 w-4" />
+              Check Out
+            </button>
+          )}
           {canSubmit && workOrder.status === 'SCHEDULED' && (
             <button type="button" onClick={() => setStatus('IN_PROGRESS')} disabled={actioning} className={primaryButtonClass}>
               Start Work
@@ -131,6 +198,59 @@ function WorkOrderDetailPage() {
                 {t.employee.position && <span className="text-ink-500"> · {t.employee.position}</span>}
               </span>
             ))}
+          </div>
+        )}
+      </Panel>
+
+      <Panel title="Site Attendance">
+        {workOrder.siteAttendance.length === 0 ? (
+          <p className="text-sm text-ink-400">No site check-ins recorded yet.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
+                  <th className="px-3 py-3 font-semibold">TECHNICIAN</th>
+                  <th className="px-3 py-3 font-semibold">CHECK-IN</th>
+                  <th className="px-3 py-3 font-semibold">CHECK-OUT</th>
+                </tr>
+              </thead>
+              <tbody>
+                {workOrder.siteAttendance.map((v) => (
+                  <tr key={v.id} className="border-b border-ink-800 last:border-0">
+                    <td className="px-3 py-3 text-ink-100">
+                      {v.employee.firstName} {v.employee.lastName}
+                    </td>
+                    <td className="px-3 py-3 text-ink-300">
+                      <a
+                        href={mapLink(v.checkInLat, v.checkInLng)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-1.5 text-cyan-accent hover:underline"
+                      >
+                        <MapPin className="h-3.5 w-3.5" />
+                        {new Date(v.checkInAt).toLocaleString()}
+                      </a>
+                    </td>
+                    <td className="px-3 py-3 text-ink-300">
+                      {v.checkOutAt && v.checkOutLat && v.checkOutLng ? (
+                        <a
+                          href={mapLink(v.checkOutLat, v.checkOutLng)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-1.5 text-cyan-accent hover:underline"
+                        >
+                          <MapPin className="h-3.5 w-3.5" />
+                          {new Date(v.checkOutAt).toLocaleString()}
+                        </a>
+                      ) : (
+                        <span className="text-ink-500">Still on site</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </Panel>
