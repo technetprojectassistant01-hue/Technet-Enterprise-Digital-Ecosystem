@@ -549,12 +549,12 @@ export interface Employee extends EmployeeSummary {
 
 export interface EmployeeDetail extends Employee {
   user: { id: string; email: string; role: Role } | null
-  managedProjects: { id: string; projectNumber: string; name: string; status: ProjectStatus }[]
+  managedProjects: { id: string; name: string; status: ProjectStatus }[]
   projectAssignments: {
     id: string
     role: string | null
     assignedAt: string
-    project: { id: string; projectNumber: string; name: string; status: ProjectStatus }
+    project: { id: string; name: string; status: ProjectStatus }
   }[]
 }
 
@@ -562,6 +562,7 @@ export interface EmployeeInput {
   employeeCode: string
   firstName: string
   lastName: string
+  userId?: string
   email?: string
   phone?: string
   position?: string
@@ -609,6 +610,18 @@ export function getEmployee(id: string) {
 
 export function listDepartments() {
   return request<{ departments: string[] }>('/api/employees/departments')
+}
+
+export interface LinkableUser {
+  id: string
+  email: string
+  name: string | null
+  role: Role
+  linkedEmployeeId: string | null
+}
+
+export function listLinkableUsers() {
+  return request<{ users: LinkableUser[] }>('/api/employees/linkable-users')
 }
 
 /* ---------------------------------------------------------------- *
