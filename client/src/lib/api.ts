@@ -2203,3 +2203,60 @@ export function rejectMaintenanceReport(scheduleId: string, note?: string) {
     body: JSON.stringify({ note }),
   })
 }
+
+// ---------- Payroll ----------
+
+export interface PayrollRun {
+  id: string
+  year: number
+  month: number
+  createdBy: { id: string; name: string | null; email: string }
+  createdAt: string
+  employeeCount: number
+  totalNetPay: number
+}
+
+export interface PayrollEmployeeRef extends EmployeeSummary {
+  employeeCode: string
+}
+
+export interface PayrollLine {
+  id: string
+  payrollRunId: string
+  employeeId: string
+  employee: PayrollEmployeeRef
+  basicSalary: string
+  hoursWorked: string
+  overtimeHours: string
+  unpaidLeaveDays: string
+  deduction: string
+  netPay: string
+}
+
+export interface PayrollRunDetail {
+  id: string
+  year: number
+  month: number
+  createdBy: { id: string; name: string | null; email: string }
+  createdAt: string
+  lines: PayrollLine[]
+}
+
+export function listPayrollRuns() {
+  return request<{ runs: PayrollRun[] }>('/api/payroll')
+}
+
+export function getPayrollRun(id: string) {
+  return request<{ run: PayrollRunDetail }>(`/api/payroll/${id}`)
+}
+
+export function processPayroll(year: number, month: number) {
+  return request<{ run: PayrollRunDetail }>('/api/payroll/process', {
+    method: 'POST',
+    body: JSON.stringify({ year, month }),
+  })
+}
+
+export function deletePayrollRun(id: string) {
+  return request<null>(`/api/payroll/${id}`, { method: 'DELETE' })
+}
