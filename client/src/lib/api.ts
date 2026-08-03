@@ -1853,3 +1853,353 @@ export function deleteDocument(id: string) {
 export function documentDownloadUrl(id: string) {
   return `${API_URL}/api/documents/${id}/download`
 }
+
+// ---------- Maintenance ----------
+
+export type AssetStatus = 'ACTIVE' | 'DECOMMISSIONED'
+export type MaintenanceFrequency = 'MONTHLY' | 'QUARTERLY' | 'SEMI_ANNUAL' | 'ANNUAL'
+export type MaintenanceContractStatus = 'ACTIVE' | 'EXPIRED' | 'CANCELLED'
+export type MaintenanceRequestPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
+export type MaintenanceRequestStatus = 'SUBMITTED' | 'SCHEDULED' | 'COMPLETED' | 'CANCELLED'
+export type MaintenanceScheduleStatus = 'SCHEDULED' | 'COMPLETED' | 'CANCELLED'
+
+export interface AssetCustomer extends CustomerSummary {
+  address: string | null
+}
+
+export interface Asset {
+  id: string
+  sequenceNumber: number
+  assetNumber: string
+  name: string
+  category: string | null
+  serialNumber: string | null
+  location: string | null
+  customerId: string
+  customer: AssetCustomer
+  status: AssetStatus
+  notes: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface AssetInput {
+  name: string
+  category?: string
+  serialNumber?: string
+  location?: string
+  customerId: string
+  notes?: string
+}
+
+export interface AssetUpdateInput {
+  name?: string
+  category?: string | null
+  serialNumber?: string | null
+  location?: string | null
+  status?: AssetStatus
+  notes?: string | null
+}
+
+/** The trimmed asset reference embedded in a standalone contract/request/schedule. */
+export interface MaintenanceAssetRef {
+  id: string
+  sequenceNumber: number
+  assetNumber: string
+  name: string
+  customer: CustomerSummary
+}
+
+/** A contract row as it appears nested under Asset.contracts (no asset back-reference). */
+export interface AssetHistoryContract {
+  id: string
+  sequenceNumber: number
+  contractNumber: string
+  assetId: string
+  frequency: MaintenanceFrequency
+  startDate: string
+  expiryDate: string
+  status: MaintenanceContractStatus
+  notes: string | null
+  createdById: string
+  createdAt: string
+  updatedAt: string
+}
+
+/** A request row as it appears nested under Asset.requests (no asset back-reference). */
+export interface AssetHistoryRequest {
+  id: string
+  sequenceNumber: number
+  requestNumber: string
+  assetId: string
+  contractId: string | null
+  description: string
+  priority: MaintenanceRequestPriority
+  status: MaintenanceRequestStatus
+  requestedById: string
+  createdAt: string
+}
+
+export interface MaintenanceContract extends AssetHistoryContract {
+  asset: MaintenanceAssetRef
+}
+
+export interface MaintenanceContractInput {
+  assetId: string
+  frequency: MaintenanceFrequency
+  startDate: string
+  expiryDate: string
+  notes?: string
+}
+
+export interface MaintenanceContractUpdateInput {
+  frequency?: MaintenanceFrequency
+  startDate?: string
+  expiryDate?: string
+  status?: MaintenanceContractStatus
+  notes?: string | null
+}
+
+export interface MaintenanceContractDetail extends MaintenanceContract {
+  schedules: MaintenanceSchedule[]
+}
+
+export interface MaintenanceRequest extends AssetHistoryRequest {
+  asset: MaintenanceAssetRef
+  requestedBy: { id: string; name: string | null; email: string }
+}
+
+export interface MaintenanceRequestDetail extends MaintenanceRequest {
+  schedule: MaintenanceSchedule | null
+}
+
+export interface MaintenanceRequestInput {
+  assetId: string
+  contractId?: string
+  description: string
+  priority?: MaintenanceRequestPriority
+}
+
+/** Bare report fields, without the reviewer/submitter expansion — used inside Asset history. */
+export interface AssetHistoryReport {
+  id: string
+  scheduleId: string
+  remarks: string
+  workCompleted: boolean
+  recommendations: string | null
+  status: ReportStatus
+  submittedById: string
+  reviewedById: string | null
+  reviewedAt: string | null
+  reviewNote: string | null
+  createdAt: string
+}
+
+export interface MaintenanceReport extends AssetHistoryReport {
+  submittedBy: { id: string; name: string | null; email: string }
+  reviewedBy: { id: string; name: string | null; email: string } | null
+}
+
+export interface MaintenanceReportInput {
+  remarks: string
+  workCompleted: boolean
+  recommendations?: string
+}
+
+export interface MaintenanceSchedule {
+  id: string
+  contractId: string | null
+  contract: { id: string; sequenceNumber: number; contractNumber: string; asset: MaintenanceAssetRef } | null
+  requestId: string | null
+  request:
+    | { id: string; sequenceNumber: number; requestNumber: string; description: string; priority: MaintenanceRequestPriority; asset: MaintenanceAssetRef }
+    | null
+  scheduledDate: string
+  status: MaintenanceScheduleStatus
+  createdById: string
+  createdAt: string
+  updatedAt: string
+  technicians: { id: string; employee: EmployeeSummary }[]
+  report: MaintenanceReport | null
+}
+
+export interface MaintenanceScheduleInput {
+  contractId: string
+  scheduledDate: string
+  technicianIds: string[]
+}
+
+export interface MaintenanceScheduleUpdateInput {
+  scheduledDate?: string
+  technicianIds?: string[]
+}
+
+/** A schedule row as it appears nested under Asset.schedules — trimmed contract/request refs, bare report. */
+export interface AssetHistorySchedule {
+  id: string
+  contractId: string | null
+  contract: { id: string; sequenceNumber: number; contractNumber: string } | null
+  requestId: string | null
+  request: { id: string; sequenceNumber: number; requestNumber: string } | null
+  scheduledDate: string
+  status: MaintenanceScheduleStatus
+  createdById: string
+  createdAt: string
+  updatedAt: string
+  technicians: { id: string; employee: EmployeeSummary }[]
+  report: AssetHistoryReport | null
+}
+
+export interface AssetDetail extends Asset {
+  contracts: AssetHistoryContract[]
+  requests: AssetHistoryRequest[]
+  schedules: AssetHistorySchedule[]
+}
+
+export function listAssets(params: { search?: string; customerId?: string; status?: AssetStatus } = {}) {
+  const query = new URLSearchParams()
+  if (params.search) query.set('search', params.search)
+  if (params.customerId) query.set('customerId', params.customerId)
+  if (params.status) query.set('status', params.status)
+  const qs = query.toString()
+  return request<{ assets: Asset[] }>(`/api/maintenance-assets${qs ? `?${qs}` : ''}`)
+}
+
+export function getAsset(id: string) {
+  return request<{ asset: AssetDetail }>(`/api/maintenance-assets/${id}`)
+}
+
+export function createAsset(input: AssetInput) {
+  return request<{ asset: Asset }>('/api/maintenance-assets', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function updateAsset(id: string, input: AssetUpdateInput) {
+  return request<{ asset: Asset }>(`/api/maintenance-assets/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
+}
+
+export function deleteAsset(id: string) {
+  return request<null>(`/api/maintenance-assets/${id}`, { method: 'DELETE' })
+}
+
+export function listMaintenanceContracts(params: { assetId?: string; status?: MaintenanceContractStatus; expiringSoon?: boolean } = {}) {
+  const query = new URLSearchParams()
+  if (params.assetId) query.set('assetId', params.assetId)
+  if (params.status) query.set('status', params.status)
+  if (params.expiringSoon) query.set('expiringSoon', 'true')
+  const qs = query.toString()
+  return request<{ contracts: MaintenanceContract[] }>(`/api/maintenance-contracts${qs ? `?${qs}` : ''}`)
+}
+
+export function getMaintenanceContract(id: string) {
+  return request<{ contract: MaintenanceContractDetail }>(`/api/maintenance-contracts/${id}`)
+}
+
+export function createMaintenanceContract(input: MaintenanceContractInput) {
+  return request<{ contract: MaintenanceContract }>('/api/maintenance-contracts', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function updateMaintenanceContract(id: string, input: MaintenanceContractUpdateInput) {
+  return request<{ contract: MaintenanceContract }>(`/api/maintenance-contracts/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
+}
+
+export function deleteMaintenanceContract(id: string) {
+  return request<null>(`/api/maintenance-contracts/${id}`, { method: 'DELETE' })
+}
+
+export function listMaintenanceRequests(params: { status?: MaintenanceRequestStatus; assetId?: string } = {}) {
+  const query = new URLSearchParams()
+  if (params.status) query.set('status', params.status)
+  if (params.assetId) query.set('assetId', params.assetId)
+  const qs = query.toString()
+  return request<{ requests: MaintenanceRequest[] }>(`/api/maintenance-requests${qs ? `?${qs}` : ''}`)
+}
+
+export function getMaintenanceRequest(id: string) {
+  return request<{ request: MaintenanceRequestDetail }>(`/api/maintenance-requests/${id}`)
+}
+
+export function createMaintenanceRequest(input: MaintenanceRequestInput) {
+  return request<{ request: MaintenanceRequest }>('/api/maintenance-requests', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function scheduleMaintenanceRequest(id: string, input: { scheduledDate: string; technicianIds: string[] }) {
+  return request<{ request: MaintenanceRequestDetail }>(`/api/maintenance-requests/${id}/schedule`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function cancelMaintenanceRequest(id: string) {
+  return request<{ request: MaintenanceRequest }>(`/api/maintenance-requests/${id}/cancel`, { method: 'POST' })
+}
+
+export function deleteMaintenanceRequest(id: string) {
+  return request<null>(`/api/maintenance-requests/${id}`, { method: 'DELETE' })
+}
+
+export function listMaintenanceSchedules(params: { status?: MaintenanceScheduleStatus; technicianId?: string; contractId?: string } = {}) {
+  const query = new URLSearchParams()
+  if (params.status) query.set('status', params.status)
+  if (params.technicianId) query.set('technicianId', params.technicianId)
+  if (params.contractId) query.set('contractId', params.contractId)
+  const qs = query.toString()
+  return request<{ schedules: MaintenanceSchedule[] }>(`/api/maintenance-schedules${qs ? `?${qs}` : ''}`)
+}
+
+export function getMaintenanceSchedule(id: string) {
+  return request<{ schedule: MaintenanceSchedule }>(`/api/maintenance-schedules/${id}`)
+}
+
+export function createMaintenanceSchedule(input: MaintenanceScheduleInput) {
+  return request<{ schedule: MaintenanceSchedule }>('/api/maintenance-schedules', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function updateMaintenanceSchedule(id: string, input: MaintenanceScheduleUpdateInput) {
+  return request<{ schedule: MaintenanceSchedule }>(`/api/maintenance-schedules/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
+}
+
+export function deleteMaintenanceSchedule(id: string) {
+  return request<null>(`/api/maintenance-schedules/${id}`, { method: 'DELETE' })
+}
+
+export function submitMaintenanceReport(scheduleId: string, input: MaintenanceReportInput) {
+  return request<{ schedule: MaintenanceSchedule }>(`/api/maintenance-schedules/${scheduleId}/report`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function approveMaintenanceReport(scheduleId: string, note?: string) {
+  return request<{ schedule: MaintenanceSchedule }>(`/api/maintenance-schedules/${scheduleId}/report/approve`, {
+    method: 'POST',
+    body: JSON.stringify({ note }),
+  })
+}
+
+export function rejectMaintenanceReport(scheduleId: string, note?: string) {
+  return request<{ schedule: MaintenanceSchedule }>(`/api/maintenance-schedules/${scheduleId}/report/reject`, {
+    method: 'POST',
+    body: JSON.stringify({ note }),
+  })
+}
