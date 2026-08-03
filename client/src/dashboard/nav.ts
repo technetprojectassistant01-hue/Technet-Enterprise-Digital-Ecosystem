@@ -27,6 +27,7 @@ import {
   BadgeCheck,
   Box,
   AlertTriangle,
+  Banknote,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -108,7 +109,12 @@ export const MAIN_NAV: NavItem[] = [
       { label: 'Intervention Reports', to: '/dashboard/operations/intervention-reports', icon: ClipboardCheck },
     ],
   },
-  { label: 'Technet Workforce', to: '/dashboard/workforce', icon: Users },
+  {
+    label: 'Technet Workforce',
+    to: '/dashboard/workforce',
+    icon: Users,
+    children: [{ label: 'Payroll', to: '/dashboard/workforce/payroll', icon: Banknote }],
+  },
   { label: 'Technet Digital Marketing', to: '/dashboard/marketing', icon: Megaphone },
   { label: 'Technet Insight', to: '/dashboard/insight', icon: LineChart },
 ]
