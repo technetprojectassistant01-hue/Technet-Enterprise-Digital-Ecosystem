@@ -24,6 +24,10 @@ import workOrdersRouter from "./routes/workOrders";
 import dailyReportsRouter from "./routes/dailyReports";
 import interventionReportsRouter from "./routes/interventionReports";
 import documentsRouter from "./routes/documents";
+import assetsRouter from "./routes/assets";
+import maintenanceContractsRouter from "./routes/maintenanceContracts";
+import maintenanceRequestsRouter from "./routes/maintenanceRequests";
+import maintenanceSchedulesRouter from "./routes/maintenanceSchedules";
 import { requireAuth, requireRole } from "./middleware/auth";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 
@@ -71,6 +75,10 @@ app.use("/api/work-orders", workOrdersRouter);
 app.use("/api/daily-reports", dailyReportsRouter);
 app.use("/api/intervention-reports", interventionReportsRouter);
 app.use("/api/documents", documentsRouter);
+app.use("/api/maintenance-assets", assetsRouter);
+app.use("/api/maintenance-contracts", maintenanceContractsRouter);
+app.use("/api/maintenance-requests", maintenanceRequestsRouter);
+app.use("/api/maintenance-schedules", maintenanceSchedulesRouter);
 
 app.get("/api/admin/ping", requireAuth, requireRole("ADMIN"), (_req, res) => {
   res.json({ ok: true, message: "You have admin access" });

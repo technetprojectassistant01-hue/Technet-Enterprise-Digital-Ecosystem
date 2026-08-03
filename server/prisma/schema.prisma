@@ -173,6 +173,44 @@ enum PhotoKind {
   WORK_DONE
 }
 
+enum AssetStatus {
+  ACTIVE
+  DECOMMISSIONED
+}
+
+enum MaintenanceFrequency {
+  MONTHLY
+  QUARTERLY
+  SEMI_ANNUAL
+  ANNUAL
+}
+
+enum MaintenanceContractStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+enum MaintenanceRequestPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum MaintenanceRequestStatus {
+  SUBMITTED
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+enum MaintenanceScheduleStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
@@ -201,6 +239,12 @@ model User {
   attendanceRecorded AttendanceRecord[] @relation("AttendanceRecorder")
 
   passwordResetTokens PasswordResetToken[]
+
+  maintenanceContractsCreated MaintenanceContract[] @relation("MaintenanceContractCreator")
+  maintenanceRequestsMade     MaintenanceRequest[]  @relation("MaintenanceRequestRequester")
+  maintenanceSchedulesCreated MaintenanceSchedule[] @relation("MaintenanceScheduleCreator")
+  maintenanceReportsSubmitted MaintenanceReport[]   @relation("MaintenanceReportSubmitter")
+  maintenanceReportsReviewed  MaintenanceReport[]   @relation("MaintenanceReportReviewer")
 }
 
 model PasswordResetToken {
@@ -269,6 +313,8 @@ model Employee {
   attendanceRecords AttendanceRecord[]
   certifications    Certification[]
   trainingRecords   TrainingRecord[]
+
+  maintenanceScheduleAssignments MaintenanceScheduleTechnician[]
 }
 
 model Certification {
@@ -353,17 +399,17 @@ model LeaveType {
 }
 
 model LeaveBalance {
-  id              String   @id @default(uuid())
+  id              String    @id @default(uuid())
   employeeId      String
-  employee        Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employee        Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   leaveTypeId     String
   leaveType       LeaveType @relation(fields: [leaveTypeId], references: [id], onDelete: Cascade)
   year            Int
-  entitledDays    Decimal  @default(0) @db.Decimal(5, 2)
-  carriedOverDays Decimal  @default(0) @db.Decimal(5, 2)
-  usedDays        Decimal  @default(0) @db.Decimal(5, 2)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  entitledDays    Decimal   @default(0) @db.Decimal(5, 2)
+  carriedOverDays Decimal   @default(0) @db.Decimal(5, 2)
+  usedDays        Decimal   @default(0) @db.Decimal(5, 2)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   @@unique([employeeId, leaveTypeId, year])
   @@index([year])
@@ -388,7 +434,7 @@ model LeaveRequest {
   reviewNote   String?
 
   createdById String?
-  createdBy   User?    @relation("LeaveCreator", fields: [createdById], references: [id])
+  createdBy   User?   @relation("LeaveCreator", fields: [createdById], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -416,6 +462,7 @@ model Customer {
   documents           Document[]
   workOrders          WorkOrder[]
   interventionReports InterventionReport[]
+  assets              Asset[]
 }
 
 model Contract {
@@ -856,4 +903,102 @@ model InterventionReportPhoto {
   fileName             String
   mimeType             String
   createdAt            DateTime           @default(now())
+}
+
+model Asset {
+  id             String      @id @default(uuid())
+  sequenceNumber Int         @unique @default(autoincrement())
+  name           String
+  category       String?
+  serialNumber   String?     @unique
+  location       String?
+  customerId     String
+  customer       Customer    @relation(fields: [customerId], references: [id])
+  status         AssetStatus @default(ACTIVE)
+  notes          String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  contracts MaintenanceContract[]
+  requests  MaintenanceRequest[]
+}
+
+model MaintenanceContract {
+  id             String                    @id @default(uuid())
+  sequenceNumber Int                       @unique @default(autoincrement())
+  assetId        String
+  asset          Asset                     @relation(fields: [assetId], references: [id])
+  frequency      MaintenanceFrequency
+  startDate      DateTime
+  expiryDate     DateTime
+  status         MaintenanceContractStatus @default(ACTIVE)
+  notes          String?
+  createdById    String
+  createdBy      User                      @relation("MaintenanceContractCreator", fields: [createdById], references: [id])
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+
+  requests  MaintenanceRequest[]
+  schedules MaintenanceSchedule[]
+}
+
+model MaintenanceRequest {
+  id             String                     @id @default(uuid())
+  sequenceNumber Int                        @unique @default(autoincrement())
+  assetId        String
+  asset          Asset                      @relation(fields: [assetId], references: [id])
+  contractId     String?
+  contract       MaintenanceContract?       @relation(fields: [contractId], references: [id])
+  description    String
+  priority       MaintenanceRequestPriority @default(MEDIUM)
+  status         MaintenanceRequestStatus   @default(SUBMITTED)
+  requestedById  String
+  requestedBy    User                       @relation("MaintenanceRequestRequester", fields: [requestedById], references: [id])
+  createdAt      DateTime                   @default(now())
+
+  schedule MaintenanceSchedule?
+}
+
+model MaintenanceSchedule {
+  id            String                    @id @default(uuid())
+  contractId    String?
+  contract      MaintenanceContract?      @relation(fields: [contractId], references: [id])
+  requestId     String?                   @unique
+  request       MaintenanceRequest?       @relation(fields: [requestId], references: [id])
+  scheduledDate DateTime
+  status        MaintenanceScheduleStatus @default(SCHEDULED)
+  createdById   String
+  createdBy     User                      @relation("MaintenanceScheduleCreator", fields: [createdById], references: [id])
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @updatedAt
+
+  technicians MaintenanceScheduleTechnician[]
+  report      MaintenanceReport?
+}
+
+model MaintenanceScheduleTechnician {
+  id         String              @id @default(uuid())
+  scheduleId String
+  schedule   MaintenanceSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  employeeId String
+  employee   Employee            @relation(fields: [employeeId], references: [id])
+
+  @@unique([scheduleId, employeeId])
+}
+
+model MaintenanceReport {
+  id              String              @id @default(uuid())
+  scheduleId      String              @unique
+  schedule        MaintenanceSchedule @relation(fields: [scheduleId], references: [id])
+  remarks         String
+  workCompleted   Boolean             @default(true)
+  recommendations String?
+  status          ReportStatus        @default(SUBMITTED)
+  submittedById   String
+  submittedBy     User                @relation("MaintenanceReportSubmitter", fields: [submittedById], references: [id])
+  reviewedById    String?
+  reviewedBy      User?               @relation("MaintenanceReportReviewer", fields: [reviewedById], references: [id])
+  reviewedAt      DateTime?
+  reviewNote      String?
+  createdAt       DateTime            @default(now())
 }
