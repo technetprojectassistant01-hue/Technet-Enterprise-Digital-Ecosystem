@@ -1,7 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import {
   Share2,
-  Users,
   Megaphone,
   LineChart,
   ShieldCheck,
@@ -52,6 +51,9 @@ import MaintenanceContractsPage from './maintenance/ContractsPage'
 import RequestsPage from './maintenance/RequestsPage'
 import SchedulePage from './maintenance/SchedulePage'
 import ScheduleDetailPage from './maintenance/ScheduleDetailPage'
+import WorkforceLayout from './workforce/WorkforceLayout'
+import PayrollPage from './workforce/PayrollPage'
+import PayrollDetailPage from './workforce/PayrollDetailPage'
 import ModuleStub from './dashboard/ModuleStub'
 import UsersPage from './UsersPage'
 import SettingsPage from './SettingsPage'
@@ -122,10 +124,11 @@ function App() {
             <Route path="intervention-reports/new" element={<InterventionReportFormPage />} />
             <Route path="intervention-reports/:id" element={<InterventionReportDetailPage />} />
           </Route>
-          <Route
-            path="workforce"
-            element={<ModuleStub title="Technet Workforce" icon={Users} />}
-          />
+          <Route path="workforce" element={<WorkforceLayout />}>
+            <Route index element={<Navigate to="payroll" replace />} />
+            <Route path="payroll" element={<PayrollPage />} />
+            <Route path="payroll/:id" element={<PayrollDetailPage />} />
+          </Route>
           <Route
             path="marketing"
             element={<ModuleStub title="Technet Digital Marketing" icon={Megaphone} />}
