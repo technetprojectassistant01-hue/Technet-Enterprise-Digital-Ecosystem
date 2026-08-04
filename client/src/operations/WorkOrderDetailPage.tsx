@@ -25,6 +25,7 @@ function WorkOrderDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [actioning, setActioning] = useState(false)
+  const [note, setNote] = useState('')
 
   function load() {
     if (!id) return
@@ -57,8 +58,9 @@ function WorkOrderDetailPage() {
     setActioning(true)
     try {
       const pos = await getPosition()
-      await api.checkInWorkOrder(workOrder.id, { lat: pos.coords.latitude, lng: pos.coords.longitude })
+      await api.checkInWorkOrder(workOrder.id, { lat: pos.coords.latitude, lng: pos.coords.longitude, note: note || undefined })
       toast.success('Checked in')
+      setNote('')
       load()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to check in')
@@ -72,8 +74,9 @@ function WorkOrderDetailPage() {
     setActioning(true)
     try {
       const pos = await getPosition()
-      await api.checkOutWorkOrder(workOrder.id, { lat: pos.coords.latitude, lng: pos.coords.longitude })
+      await api.checkOutWorkOrder(workOrder.id, { lat: pos.coords.latitude, lng: pos.coords.longitude, note: note || undefined })
       toast.success('Checked out')
+      setNote('')
       load()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to check out')
@@ -133,7 +136,16 @@ function WorkOrderDetailPage() {
           {workOrder.description && <p className="mt-2 text-sm text-ink-400">{workOrder.description}</p>}
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          {isAssignedTechnician && (
+            <input
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Note (optional)"
+              maxLength={200}
+              className="rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent"
+            />
+          )}
           {isAssignedTechnician && !myOpenVisit && (
             <button type="button" onClick={handleCheckIn} disabled={actioning} className={primaryButtonClass}>
               <LogIn className="h-4 w-4" />
@@ -213,6 +225,7 @@ function WorkOrderDetailPage() {
                       >
                         <MapPin className="h-3.5 w-3.5" />
                         {new Date(v.checkInAt).toLocaleString()}
+                        {v.checkInNote && <span> · {v.checkInNote}</span>}
                       </a>
                     </td>
                     <td className="px-3 py-3 text-ink-300">
@@ -225,6 +238,7 @@ function WorkOrderDetailPage() {
                         >
                           <MapPin className="h-3.5 w-3.5" />
                           {new Date(v.checkOutAt).toLocaleString()}
+                          {v.checkOutNote && <span> · {v.checkOutNote}</span>}
                         </a>
                       ) : (
                         <span className="text-ink-500">Still on site</span>
