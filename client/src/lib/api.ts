@@ -1502,9 +1502,11 @@ export interface SiteAttendance {
   checkInAt: string
   checkInLat: string
   checkInLng: string
+  checkInNote: string | null
   checkOutAt: string | null
   checkOutLat: string | null
   checkOutLng: string | null
+  checkOutNote: string | null
 }
 
 /** Endpoints that return a whole team's/work order's visits always include the technician. */
@@ -1574,14 +1576,14 @@ export function deleteWorkOrder(id: string) {
   return request<null>(`/api/work-orders/${id}`, { method: 'DELETE' })
 }
 
-export function checkInWorkOrder(id: string, coords: { lat: number; lng: number }) {
+export function checkInWorkOrder(id: string, coords: { lat: number; lng: number; note?: string }) {
   return request<{ siteAttendance: SiteAttendanceWithEmployee }>(`/api/work-orders/${id}/check-in`, {
     method: 'POST',
     body: JSON.stringify(coords),
   })
 }
 
-export function checkOutWorkOrder(id: string, coords: { lat: number; lng: number }) {
+export function checkOutWorkOrder(id: string, coords: { lat: number; lng: number; note?: string }) {
   return request<{ siteAttendance: SiteAttendanceWithEmployee }>(`/api/work-orders/${id}/check-out`, {
     method: 'POST',
     body: JSON.stringify(coords),
@@ -1598,14 +1600,14 @@ export function listTeamAttendance() {
   )
 }
 
-export function checkInAttendance(coords: { lat: number; lng: number }) {
+export function checkInAttendance(coords: { lat: number; lng: number; note?: string }) {
   return request<{ siteAttendance: SiteAttendance }>('/api/site-attendance/check-in', {
     method: 'POST',
     body: JSON.stringify(coords),
   })
 }
 
-export function checkOutAttendance(coords: { lat: number; lng: number }) {
+export function checkOutAttendance(coords: { lat: number; lng: number; note?: string }) {
   return request<{ siteAttendance: SiteAttendance }>('/api/site-attendance/check-out', {
     method: 'POST',
     body: JSON.stringify(coords),
