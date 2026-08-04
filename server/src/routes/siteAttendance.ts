@@ -16,6 +16,11 @@ function parseCoords(body: unknown): { lat: number; lng: number } | null {
   return { lat, lng };
 }
 
+function parseNote(body: unknown): string | null {
+  const note = (body as { note?: unknown } | null)?.note;
+  return typeof note === "string" && note.trim() ? note.trim().slice(0, 200) : null;
+}
+
 /** Team-wide view for managers: who's checked in right now, plus recent history. */
 router.get("/", requireRole(...OPS_MANAGE_ROLES), async (_req, res) => {
   const [current, history] = await Promise.all([
@@ -66,7 +71,12 @@ router.post("/check-in", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
   if (openVisit) return res.status(400).json({ error: "You are already checked in" });
 
   const siteAttendance = await prisma.siteAttendance.create({
-    data: { employeeId: employee.id, checkInLat: coords.lat, checkInLng: coords.lng },
+    data: {
+      employeeId: employee.id,
+      checkInLat: coords.lat,
+      checkInLng: coords.lng,
+      checkInNote: parseNote(req.body),
+    },
   });
   res.status(201).json({ siteAttendance });
 });
@@ -85,7 +95,12 @@ router.post("/check-out", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => 
 
   const siteAttendance = await prisma.siteAttendance.update({
     where: { id: openVisit.id },
-    data: { checkOutAt: new Date(), checkOutLat: coords.lat, checkOutLng: coords.lng },
+    data: {
+      checkOutAt: new Date(),
+      checkOutLat: coords.lat,
+      checkOutLng: coords.lng,
+      checkOutNote: parseNote(req.body),
+    },
   });
   res.json({ siteAttendance });
 });
