@@ -1,11 +1,13 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
-import { OPS_SUBMIT_ROLES } from "../lib/roles";
+import { OPS_MANAGE_ROLES, OPS_SUBMIT_ROLES } from "../lib/roles";
 
 const router = Router();
 
-router.use(requireAuth, requireRole(...OPS_SUBMIT_ROLES));
+router.use(requireAuth);
+
+const EMPLOYEE_SELECT = { id: true, firstName: true, lastName: true, position: true };
 
 function parseCoords(body: unknown): { lat: number; lng: number } | null {
   const { lat, lng } = (body as { lat?: unknown; lng?: unknown }) ?? {};
@@ -14,7 +16,26 @@ function parseCoords(body: unknown): { lat: number; lng: number } | null {
   return { lat, lng };
 }
 
-router.get("/me", async (req, res) => {
+/** Team-wide view for managers: who's checked in right now, plus recent history. */
+router.get("/", requireRole(...OPS_MANAGE_ROLES), async (_req, res) => {
+  const [current, history] = await Promise.all([
+    prisma.siteAttendance.findMany({
+      where: { workOrderId: null, checkOutAt: null },
+      include: { employee: { select: EMPLOYEE_SELECT } },
+      orderBy: { checkInAt: "desc" },
+    }),
+    prisma.siteAttendance.findMany({
+      where: { workOrderId: null },
+      include: { employee: { select: EMPLOYEE_SELECT } },
+      orderBy: { checkInAt: "desc" },
+      take: 100,
+    }),
+  ]);
+
+  res.json({ current, history });
+});
+
+router.get("/me", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
   const employee = await prisma.employee.findUnique({ where: { userId: req.user!.sub } });
   if (!employee) return res.status(403).json({ error: "No employee record is linked to your account" });
 
@@ -32,7 +53,7 @@ router.get("/me", async (req, res) => {
   res.json({ current, history });
 });
 
-router.post("/check-in", async (req, res) => {
+router.post("/check-in", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
   const coords = parseCoords(req.body);
   if (!coords) return res.status(400).json({ error: "A valid lat and lng are required" });
 
@@ -50,7 +71,7 @@ router.post("/check-in", async (req, res) => {
   res.status(201).json({ siteAttendance });
 });
 
-router.post("/check-out", async (req, res) => {
+router.post("/check-out", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
   const coords = parseCoords(req.body);
   if (!coords) return res.status(400).json({ error: "A valid lat and lng are required" });
 
