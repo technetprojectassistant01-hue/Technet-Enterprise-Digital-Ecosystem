@@ -180,6 +180,11 @@ function parseCoords(body: unknown): { lat: number; lng: number } | null {
   return { lat, lng };
 }
 
+function parseNote(body: unknown): string | null {
+  const note = (body as { note?: unknown } | null)?.note;
+  return typeof note === "string" && note.trim() ? note.trim().slice(0, 200) : null;
+}
+
 router.post("/:id/check-in", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
   const workOrderId = req.params.id as string;
   const coords = parseCoords(req.body);
@@ -204,6 +209,7 @@ router.post("/:id/check-in", requireRole(...OPS_SUBMIT_ROLES), async (req, res) 
       employeeId: employee.id,
       checkInLat: coords.lat,
       checkInLng: coords.lng,
+      checkInNote: parseNote(req.body),
     },
     include: { employee: { select: EMPLOYEE_SELECT } },
   });
@@ -225,7 +231,12 @@ router.post("/:id/check-out", requireRole(...OPS_SUBMIT_ROLES), async (req, res)
 
   const siteAttendance = await prisma.siteAttendance.update({
     where: { id: openVisit.id },
-    data: { checkOutAt: new Date(), checkOutLat: coords.lat, checkOutLng: coords.lng },
+    data: {
+      checkOutAt: new Date(),
+      checkOutLat: coords.lat,
+      checkOutLng: coords.lng,
+      checkOutNote: parseNote(req.body),
+    },
     include: { employee: { select: EMPLOYEE_SELECT } },
   });
   res.json({ siteAttendance });
