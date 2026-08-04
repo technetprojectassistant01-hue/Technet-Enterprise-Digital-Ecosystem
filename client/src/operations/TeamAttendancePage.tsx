@@ -61,6 +61,7 @@ function TeamAttendancePage() {
                   </div>
                   <div className="text-xs text-ink-400">
                     Since {new Date(v.checkInAt).toLocaleString()}
+                    {v.checkInNote && <span> · {v.checkInNote}</span>}
                   </div>
                 </div>
                 <a
@@ -106,6 +107,7 @@ function TeamAttendancePage() {
                       >
                         <MapPin className="h-3.5 w-3.5" />
                         {new Date(v.checkInAt).toLocaleString()}
+                        {v.checkInNote && <span> · {v.checkInNote}</span>}
                       </a>
                     </td>
                     <td className="px-3 py-3 text-ink-300">
@@ -118,6 +120,7 @@ function TeamAttendancePage() {
                         >
                           <MapPin className="h-3.5 w-3.5" />
                           {new Date(v.checkOutAt).toLocaleString()}
+                          {v.checkOutNote && <span> · {v.checkOutNote}</span>}
                         </a>
                       ) : (
                         <span className="text-ink-500">Still checked in</span>
