@@ -1496,15 +1496,20 @@ export interface WorkOrder {
 
 export interface SiteAttendance {
   id: string
-  workOrderId: string
+  workOrderId: string | null
   employeeId: string
-  employee: EmployeeSummary
+  employee?: EmployeeSummary
   checkInAt: string
   checkInLat: string
   checkInLng: string
   checkOutAt: string | null
   checkOutLat: string | null
   checkOutLng: string | null
+}
+
+/** The work-order-scoped check-in/out endpoints always include the technician. */
+export interface WorkOrderSiteAttendance extends SiteAttendance {
+  employee: EmployeeSummary
 }
 
 export interface WorkOrderDetail extends WorkOrder {
@@ -1516,7 +1521,7 @@ export interface WorkOrderDetail extends WorkOrder {
     workCompleted: boolean
     createdAt: string
   }[]
-  siteAttendance: SiteAttendance[]
+  siteAttendance: WorkOrderSiteAttendance[]
 }
 
 export interface WorkOrderInput {
@@ -1570,14 +1575,32 @@ export function deleteWorkOrder(id: string) {
 }
 
 export function checkInWorkOrder(id: string, coords: { lat: number; lng: number }) {
-  return request<{ siteAttendance: SiteAttendance }>(`/api/work-orders/${id}/check-in`, {
+  return request<{ siteAttendance: WorkOrderSiteAttendance }>(`/api/work-orders/${id}/check-in`, {
     method: 'POST',
     body: JSON.stringify(coords),
   })
 }
 
 export function checkOutWorkOrder(id: string, coords: { lat: number; lng: number }) {
-  return request<{ siteAttendance: SiteAttendance }>(`/api/work-orders/${id}/check-out`, {
+  return request<{ siteAttendance: WorkOrderSiteAttendance }>(`/api/work-orders/${id}/check-out`, {
+    method: 'POST',
+    body: JSON.stringify(coords),
+  })
+}
+
+export function getMyAttendance() {
+  return request<{ current: SiteAttendance | null; history: SiteAttendance[] }>('/api/site-attendance/me')
+}
+
+export function checkInAttendance(coords: { lat: number; lng: number }) {
+  return request<{ siteAttendance: SiteAttendance }>('/api/site-attendance/check-in', {
+    method: 'POST',
+    body: JSON.stringify(coords),
+  })
+}
+
+export function checkOutAttendance(coords: { lat: number; lng: number }) {
+  return request<{ siteAttendance: SiteAttendance }>('/api/site-attendance/check-out', {
     method: 'POST',
     body: JSON.stringify(coords),
   })
