@@ -803,17 +803,17 @@ model WorkOrderTechnician {
 }
 
 model SiteAttendance {
-  id          String    @id @default(uuid())
-  workOrderId String
-  workOrder   WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  id          String     @id @default(uuid())
+  workOrderId String?
+  workOrder   WorkOrder? @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
   employeeId  String
-  employee    Employee  @relation(fields: [employeeId], references: [id])
-  checkInAt   DateTime  @default(now())
-  checkInLat  Decimal   @db.Decimal(9, 6)
-  checkInLng  Decimal   @db.Decimal(9, 6)
+  employee    Employee   @relation(fields: [employeeId], references: [id])
+  checkInAt   DateTime   @default(now())
+  checkInLat  Decimal    @db.Decimal(9, 6)
+  checkInLng  Decimal    @db.Decimal(9, 6)
   checkOutAt  DateTime?
-  checkOutLat Decimal?  @db.Decimal(9, 6)
-  checkOutLng Decimal?  @db.Decimal(9, 6)
+  checkOutLat Decimal?   @db.Decimal(9, 6)
+  checkOutLng Decimal?   @db.Decimal(9, 6)
 
   @@index([workOrderId])
   @@index([employeeId])
