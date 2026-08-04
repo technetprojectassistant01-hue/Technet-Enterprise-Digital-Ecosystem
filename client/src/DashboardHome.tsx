@@ -1,6 +1,7 @@
 import { AlertTriangle } from 'lucide-react'
 import { useAuth } from './context/AuthContext'
 import { Panel, BarChart } from './dashboard/ui'
+import AttendanceWidget from './dashboard/AttendanceWidget'
 
 const TRAFFIC_DATA = [
   { label: '00:00', value: 2100 },
@@ -102,6 +103,8 @@ function DashboardHome() {
           </div>
         </div>
       </Panel>
+
+      {user?.employeeId && <AttendanceWidget />}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Panel
