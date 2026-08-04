@@ -7,12 +7,16 @@ import { Panel } from './ui'
 import { primaryButtonClass, secondaryButtonClass } from './buttonStyles'
 import { useToast } from './ToastContext'
 
+const noteInputClass =
+  'rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
+
 function AttendanceWidget() {
   const toast = useToast()
   const [current, setCurrent] = useState<SiteAttendance | null>(null)
   const [history, setHistory] = useState<SiteAttendance[]>([])
   const [loading, setLoading] = useState(true)
   const [actioning, setActioning] = useState(false)
+  const [note, setNote] = useState('')
 
   function load() {
     setLoading(true)
@@ -35,8 +39,9 @@ function AttendanceWidget() {
     setActioning(true)
     try {
       const pos = await getPosition()
-      await api.checkInAttendance({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+      await api.checkInAttendance({ lat: pos.coords.latitude, lng: pos.coords.longitude, note: note || undefined })
       toast.success('Checked in')
+      setNote('')
       load()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to check in')
@@ -49,8 +54,9 @@ function AttendanceWidget() {
     setActioning(true)
     try {
       const pos = await getPosition()
-      await api.checkOutAttendance({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+      await api.checkOutAttendance({ lat: pos.coords.latitude, lng: pos.coords.longitude, note: note || undefined })
       toast.success('Checked out')
+      setNote('')
       load()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to check out')
@@ -69,22 +75,32 @@ function AttendanceWidget() {
             {current ? (
               <p className="text-sm text-ink-100">
                 Checked in since {new Date(current.checkInAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                {current.checkInNote && <span className="text-ink-400"> · {current.checkInNote}</span>}
               </p>
             ) : (
               <p className="text-sm text-ink-400">Not checked in</p>
             )}
           </div>
-          {current ? (
-            <button type="button" onClick={handleCheckOut} disabled={actioning} className={secondaryButtonClass}>
-              <LogOut className="h-4 w-4" />
-              Check Out
-            </button>
-          ) : (
-            <button type="button" onClick={handleCheckIn} disabled={actioning} className={primaryButtonClass}>
-              <LogIn className="h-4 w-4" />
-              Check In
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            <input
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Office, client site... (optional)"
+              maxLength={200}
+              className={noteInputClass}
+            />
+            {current ? (
+              <button type="button" onClick={handleCheckOut} disabled={actioning} className={secondaryButtonClass}>
+                <LogOut className="h-4 w-4" />
+                Check Out
+              </button>
+            ) : (
+              <button type="button" onClick={handleCheckIn} disabled={actioning} className={primaryButtonClass}>
+                <LogIn className="h-4 w-4" />
+                Check In
+              </button>
+            )}
+          </div>
         </div>
 
         {history.length > 0 && (
@@ -99,6 +115,7 @@ function AttendanceWidget() {
                 >
                   <MapPin className="h-3 w-3" />
                   {new Date(v.checkInAt).toLocaleString()}
+                  {v.checkInNote && <span> · {v.checkInNote}</span>}
                 </a>
                 <span>
                   {v.checkOutAt ? (
@@ -109,6 +126,7 @@ function AttendanceWidget() {
                       className="hover:text-cyan-accent hover:underline"
                     >
                       → {new Date(v.checkOutAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {v.checkOutNote && <span> · {v.checkOutNote}</span>}
                     </a>
                   ) : (
                     'Still checked in'
