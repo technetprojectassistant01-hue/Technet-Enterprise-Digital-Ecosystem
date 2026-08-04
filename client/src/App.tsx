@@ -44,6 +44,7 @@ import DailyReportsPage from './operations/DailyReportsPage'
 import InterventionReportsPage from './operations/InterventionReportsPage'
 import InterventionReportFormPage from './operations/InterventionReportFormPage'
 import InterventionReportDetailPage from './operations/InterventionReportDetailPage'
+import TeamAttendancePage from './operations/TeamAttendancePage'
 import MaintenanceLayout from './maintenance/MaintenanceLayout'
 import AssetsPage from './maintenance/AssetsPage'
 import AssetDetailPage from './maintenance/AssetDetailPage'
@@ -123,6 +124,7 @@ function App() {
             <Route path="intervention-reports" element={<InterventionReportsPage />} />
             <Route path="intervention-reports/new" element={<InterventionReportFormPage />} />
             <Route path="intervention-reports/:id" element={<InterventionReportDetailPage />} />
+            <Route path="team-attendance" element={<TeamAttendancePage />} />
           </Route>
           <Route path="workforce" element={<WorkforceLayout />}>
             <Route index element={<Navigate to="payroll" replace />} />
