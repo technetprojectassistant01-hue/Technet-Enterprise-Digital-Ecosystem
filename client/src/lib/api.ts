@@ -1507,8 +1507,8 @@ export interface SiteAttendance {
   checkOutLng: string | null
 }
 
-/** The work-order-scoped check-in/out endpoints always include the technician. */
-export interface WorkOrderSiteAttendance extends SiteAttendance {
+/** Endpoints that return a whole team's/work order's visits always include the technician. */
+export interface SiteAttendanceWithEmployee extends SiteAttendance {
   employee: EmployeeSummary
 }
 
@@ -1521,7 +1521,7 @@ export interface WorkOrderDetail extends WorkOrder {
     workCompleted: boolean
     createdAt: string
   }[]
-  siteAttendance: WorkOrderSiteAttendance[]
+  siteAttendance: SiteAttendanceWithEmployee[]
 }
 
 export interface WorkOrderInput {
@@ -1575,14 +1575,14 @@ export function deleteWorkOrder(id: string) {
 }
 
 export function checkInWorkOrder(id: string, coords: { lat: number; lng: number }) {
-  return request<{ siteAttendance: WorkOrderSiteAttendance }>(`/api/work-orders/${id}/check-in`, {
+  return request<{ siteAttendance: SiteAttendanceWithEmployee }>(`/api/work-orders/${id}/check-in`, {
     method: 'POST',
     body: JSON.stringify(coords),
   })
 }
 
 export function checkOutWorkOrder(id: string, coords: { lat: number; lng: number }) {
-  return request<{ siteAttendance: WorkOrderSiteAttendance }>(`/api/work-orders/${id}/check-out`, {
+  return request<{ siteAttendance: SiteAttendanceWithEmployee }>(`/api/work-orders/${id}/check-out`, {
     method: 'POST',
     body: JSON.stringify(coords),
   })
@@ -1590,6 +1590,12 @@ export function checkOutWorkOrder(id: string, coords: { lat: number; lng: number
 
 export function getMyAttendance() {
   return request<{ current: SiteAttendance | null; history: SiteAttendance[] }>('/api/site-attendance/me')
+}
+
+export function listTeamAttendance() {
+  return request<{ current: SiteAttendanceWithEmployee[]; history: SiteAttendanceWithEmployee[] }>(
+    '/api/site-attendance',
+  )
 }
 
 export function checkInAttendance(coords: { lat: number; lng: number }) {
