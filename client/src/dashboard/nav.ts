@@ -28,6 +28,7 @@ import {
   Box,
   AlertTriangle,
   Banknote,
+  MapPinned,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -107,6 +108,7 @@ export const MAIN_NAV: NavItem[] = [
       { label: 'Work Orders', to: '/dashboard/operations/work-orders', icon: CalendarClock },
       { label: 'Daily Reports', to: '/dashboard/operations/daily-reports', icon: ClipboardList },
       { label: 'Intervention Reports', to: '/dashboard/operations/intervention-reports', icon: ClipboardCheck },
+      { label: 'Team Attendance', to: '/dashboard/operations/team-attendance', icon: MapPinned },
     ],
   },
   {
