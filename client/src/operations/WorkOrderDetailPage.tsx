@@ -10,25 +10,8 @@ import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
 import { hasRole, OPS_MANAGE_ROLES, OPS_SUBMIT_ROLES } from '../lib/permissions'
+import { getPosition, mapLink } from '../lib/geolocation'
 import { workOrderStatusTone, reportStatusTone } from '../erp/statusTones'
-
-function getPosition(): Promise<GeolocationPosition> {
-  return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) {
-      reject(new Error('Geolocation is not supported by this browser'))
-      return
-    }
-    navigator.geolocation.getCurrentPosition(
-      resolve,
-      (err) => reject(new Error(err.message || 'Unable to determine your location')),
-      { enableHighAccuracy: true, timeout: 10000 },
-    )
-  })
-}
-
-function mapLink(lat: string, lng: string) {
-  return `https://www.google.com/maps?q=${lat},${lng}`
-}
 
 function WorkOrderDetailPage() {
   const { id } = useParams<{ id: string }>()
