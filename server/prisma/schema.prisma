@@ -811,9 +811,11 @@ model SiteAttendance {
   checkInAt   DateTime   @default(now())
   checkInLat  Decimal    @db.Decimal(9, 6)
   checkInLng  Decimal    @db.Decimal(9, 6)
-  checkOutAt  DateTime?
-  checkOutLat Decimal?   @db.Decimal(9, 6)
-  checkOutLng Decimal?   @db.Decimal(9, 6)
+  checkInNote String?
+  checkOutAt   DateTime?
+  checkOutLat  Decimal?  @db.Decimal(9, 6)
+  checkOutLng  Decimal?  @db.Decimal(9, 6)
+  checkOutNote String?
 
   @@index([workOrderId])
   @@index([employeeId])
