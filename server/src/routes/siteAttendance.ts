@@ -28,8 +28,21 @@ function todayRange(): { start: Date; end: Date } {
   return { start, end };
 }
 
-/** Team-wide view for managers: who's checked in right now, plus recent history. */
-router.get("/", requireRole(...OPS_MANAGE_ROLES), async (_req, res) => {
+/** [start, end) bounds for a "YYYY-MM" month string, falling back to the current UTC month. */
+function monthRange(value: unknown): { start: Date; end: Date } {
+  const match = typeof value === "string" ? /^(\d{4})-(\d{2})$/.exec(value) : null;
+  const now = new Date();
+  const year = match ? Number(match[1]) : now.getUTCFullYear();
+  const month = match ? Number(match[2]) - 1 : now.getUTCMonth();
+  const start = new Date(Date.UTC(year, month, 1));
+  const end = new Date(Date.UTC(year, month + 1, 1));
+  return { start, end };
+}
+
+/** Team-wide view for managers: who's checked in right now, plus the given month's history (defaults to this month). */
+router.get("/", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
+  const { start, end } = monthRange(req.query.month);
+
   const [current, history] = await Promise.all([
     prisma.siteAttendance.findMany({
       where: { workOrderId: null, checkOutAt: null },
@@ -37,10 +50,9 @@ router.get("/", requireRole(...OPS_MANAGE_ROLES), async (_req, res) => {
       orderBy: { checkInAt: "desc" },
     }),
     prisma.siteAttendance.findMany({
-      where: { workOrderId: null },
+      where: { workOrderId: null, checkInAt: { gte: start, lt: end } },
       include: { employee: { select: EMPLOYEE_SELECT } },
       orderBy: { checkInAt: "desc" },
-      take: 100,
     }),
   ]);
 
