@@ -1594,9 +1594,12 @@ export function getMyAttendance() {
   return request<{ current: SiteAttendance | null; history: SiteAttendance[] }>('/api/site-attendance/me')
 }
 
-export function listTeamAttendance() {
+export function listTeamAttendance(params: { month?: string } = {}) {
+  const query = new URLSearchParams()
+  if (params.month) query.set('month', params.month)
+  const qs = query.toString()
   return request<{ current: SiteAttendanceWithEmployee[]; history: SiteAttendanceWithEmployee[] }>(
-    '/api/site-attendance',
+    `/api/site-attendance${qs ? `?${qs}` : ''}`,
   )
 }
 
