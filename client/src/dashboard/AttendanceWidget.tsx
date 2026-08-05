@@ -36,10 +36,14 @@ function AttendanceWidget() {
   useEffect(load, [])
 
   async function handleCheckIn() {
+    if (!note.trim()) {
+      toast.error('A location note is required to check in')
+      return
+    }
     setActioning(true)
     try {
       const pos = await getPosition()
-      await api.checkInAttendance({ lat: pos.coords.latitude, lng: pos.coords.longitude, note: note || undefined })
+      await api.checkInAttendance({ lat: pos.coords.latitude, lng: pos.coords.longitude, note })
       toast.success('Checked in')
       setNote('')
       load()
@@ -85,7 +89,7 @@ function AttendanceWidget() {
             <input
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="Office, client site... (optional)"
+              placeholder={current ? 'Note (optional)' : 'Office, client site... (required)'}
               maxLength={200}
               className={noteInputClass}
             />
