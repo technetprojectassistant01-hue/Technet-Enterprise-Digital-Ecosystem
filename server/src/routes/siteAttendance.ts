@@ -21,6 +21,13 @@ function parseNote(body: unknown): string | null {
   return typeof note === "string" && note.trim() ? note.trim().slice(0, 200) : null;
 }
 
+/** [start, end) bounds for "today", matching the UTC-calendar-day convention used in attendance.ts. */
+function todayRange(): { start: Date; end: Date } {
+  const start = new Date(`${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`);
+  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+  return { start, end };
+}
+
 /** Team-wide view for managers: who's checked in right now, plus recent history. */
 router.get("/", requireRole(...OPS_MANAGE_ROLES), async (_req, res) => {
   const [current, history] = await Promise.all([
@@ -69,6 +76,14 @@ router.post("/check-in", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
     where: { employeeId: employee.id, workOrderId: null, checkOutAt: null },
   });
   if (openVisit) return res.status(400).json({ error: "You are already checked in" });
+
+  const { start, end } = todayRange();
+  const alreadyToday = await prisma.siteAttendance.findFirst({
+    where: { employeeId: employee.id, workOrderId: null, checkInAt: { gte: start, lt: end } },
+  });
+  if (alreadyToday) {
+    return res.status(400).json({ error: "You have already checked in today. Come back tomorrow." });
+  }
 
   const siteAttendance = await prisma.siteAttendance.create({
     data: {
