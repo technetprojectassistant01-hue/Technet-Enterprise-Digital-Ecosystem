@@ -68,6 +68,8 @@ router.get("/me", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
 router.post("/check-in", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
   const coords = parseCoords(req.body);
   if (!coords) return res.status(400).json({ error: "A valid lat and lng are required" });
+  const note = parseNote(req.body);
+  if (!note) return res.status(400).json({ error: "A location note is required to check in" });
 
   const employee = await prisma.employee.findUnique({ where: { userId: req.user!.sub } });
   if (!employee) return res.status(403).json({ error: "No employee record is linked to your account" });
@@ -90,7 +92,7 @@ router.post("/check-in", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
       employeeId: employee.id,
       checkInLat: coords.lat,
       checkInLng: coords.lng,
-      checkInNote: parseNote(req.body),
+      checkInNote: note,
     },
   });
   res.status(201).json({ siteAttendance });
