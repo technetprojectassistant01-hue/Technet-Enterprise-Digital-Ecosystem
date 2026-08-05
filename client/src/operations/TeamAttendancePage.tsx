@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Lock, MapPin } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { ChevronLeft, ChevronRight, Lock, MapPin } from 'lucide-react'
 import * as api from '../lib/api'
 import type { SiteAttendanceWithEmployee } from '../lib/api'
 import { Panel, EmptyState, TableSkeleton } from '../dashboard/ui'
@@ -7,10 +7,43 @@ import { useAuth } from '../context/AuthContext'
 import { hasRole, OPS_MANAGE_ROLES } from '../lib/permissions'
 import { mapLink } from '../lib/geolocation'
 
+function currentMonth(): string {
+  return new Date().toISOString().slice(0, 7)
+}
+
+function shiftMonth(month: string, delta: number): string {
+  const [year, mon] = month.split('-').map(Number)
+  const next = new Date(Date.UTC(year!, mon! - 1 + delta, 1))
+  return next.toISOString().slice(0, 7)
+}
+
+function formatDay(day: string): string {
+  return new Date(`${day}T00:00:00.000Z`).toLocaleDateString(undefined, {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  })
+}
+
+function formatMonth(month: string): string {
+  return new Date(`${month}-01T00:00:00.000Z`).toLocaleDateString(undefined, {
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  })
+}
+
+function formatTime(value: string): string {
+  return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}
+
 function TeamAttendancePage() {
   const { user } = useAuth()
   const canAccess = hasRole(user?.role, OPS_MANAGE_ROLES)
 
+  const [month, setMonth] = useState(currentMonth())
   const [current, setCurrent] = useState<SiteAttendanceWithEmployee[]>([])
   const [history, setHistory] = useState<SiteAttendanceWithEmployee[]>([])
   const [loading, setLoading] = useState(true)
@@ -18,21 +51,31 @@ function TeamAttendancePage() {
 
   useEffect(() => {
     if (!canAccess) return
+    setLoading(true)
     api
-      .listTeamAttendance()
+      .listTeamAttendance({ month })
       .then(({ current, history }) => {
         setCurrent(current)
         setHistory(history)
       })
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load attendance'))
       .finally(() => setLoading(false))
-  }, [canAccess])
+  }, [canAccess, month])
+
+  const groupedByDay = useMemo(() => {
+    const map = new Map<string, SiteAttendanceWithEmployee[]>()
+    for (const v of history) {
+      const day = v.checkInAt.slice(0, 10)
+      if (!map.has(day)) map.set(day, [])
+      map.get(day)!.push(v)
+    }
+    return Array.from(map.entries())
+  }, [history])
 
   if (!canAccess) {
     return <EmptyState icon={Lock} message="This section is restricted to Operations management." />
   }
 
-  if (loading) return <TableSkeleton rows={6} cols={3} />
   if (error) return <EmptyState icon={MapPin} message={error} />
 
   return (
@@ -45,7 +88,9 @@ function TeamAttendancePage() {
       </div>
 
       <Panel title="Currently Checked In">
-        {current.length === 0 ? (
+        {loading ? (
+          <TableSkeleton rows={3} cols={2} />
+        ) : current.length === 0 ? (
           <p className="text-sm text-ink-400">Nobody is currently checked in.</p>
         ) : (
           <div className="flex flex-col gap-2">
@@ -79,57 +124,97 @@ function TeamAttendancePage() {
         )}
       </Panel>
 
-      <Panel title="Recent Check-Ins">
-        {history.length === 0 ? (
-          <p className="text-sm text-ink-400">No check-ins recorded yet.</p>
+      <Panel title="Attendance Register">
+        <div className="mb-5 flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setMonth((m) => shiftMonth(m, -1))}
+            aria-label="Previous month"
+            className="rounded-md border border-ink-600 p-2 text-ink-300 hover:text-ink-100"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <span className="min-w-[9rem] text-sm font-medium text-ink-100">{formatMonth(month)}</span>
+          <button
+            type="button"
+            onClick={() => setMonth((m) => shiftMonth(m, 1))}
+            aria-label="Next month"
+            className="rounded-md border border-ink-600 p-2 text-ink-300 hover:text-ink-100"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+          {month !== currentMonth() && (
+            <button
+              type="button"
+              onClick={() => setMonth(currentMonth())}
+              className="text-sm text-ink-300 hover:text-ink-100"
+            >
+              This Month
+            </button>
+          )}
+        </div>
+
+        {loading ? (
+          <TableSkeleton rows={6} cols={3} />
+        ) : groupedByDay.length === 0 ? (
+          <p className="text-sm text-ink-400">No check-ins recorded for {formatMonth(month)}.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
-                  <th className="px-3 py-3 font-semibold">TECHNICIAN</th>
-                  <th className="px-3 py-3 font-semibold">CHECK-IN</th>
-                  <th className="px-3 py-3 font-semibold">CHECK-OUT</th>
-                </tr>
-              </thead>
-              <tbody>
-                {history.map((v) => (
-                  <tr key={v.id} className="border-b border-ink-800 last:border-0">
-                    <td className="px-3 py-3 text-ink-100">
-                      {v.employee?.firstName} {v.employee?.lastName}
-                    </td>
-                    <td className="px-3 py-3 text-ink-300">
-                      <a
-                        href={mapLink(v.checkInLat, v.checkInLng)}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex items-center gap-1.5 text-cyan-accent hover:underline"
-                      >
-                        <MapPin className="h-3.5 w-3.5" />
-                        {new Date(v.checkInAt).toLocaleString()}
-                        {v.checkInNote && <span> · {v.checkInNote}</span>}
-                      </a>
-                    </td>
-                    <td className="px-3 py-3 text-ink-300">
-                      {v.checkOutAt && v.checkOutLat && v.checkOutLng ? (
-                        <a
-                          href={mapLink(v.checkOutLat, v.checkOutLng)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="flex items-center gap-1.5 text-cyan-accent hover:underline"
-                        >
-                          <MapPin className="h-3.5 w-3.5" />
-                          {new Date(v.checkOutAt).toLocaleString()}
-                          {v.checkOutNote && <span> · {v.checkOutNote}</span>}
-                        </a>
-                      ) : (
-                        <span className="text-ink-500">Still checked in</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="flex flex-col gap-6">
+            {groupedByDay.map(([day, entries]) => (
+              <div key={day}>
+                <h3 className="mb-2 text-xs font-semibold tracking-widest text-ink-400">
+                  {formatDay(day)} · {entries.length} check-in{entries.length === 1 ? '' : 's'}
+                </h3>
+                <div className="overflow-x-auto rounded-lg border border-ink-800">
+                  <table className="w-full text-left text-sm">
+                    <thead>
+                      <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
+                        <th className="px-3 py-2 font-semibold">TECHNICIAN</th>
+                        <th className="px-3 py-2 font-semibold">CHECK-IN</th>
+                        <th className="px-3 py-2 font-semibold">CHECK-OUT</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {entries.map((v) => (
+                        <tr key={v.id} className="border-b border-ink-800 last:border-0">
+                          <td className="px-3 py-2 text-ink-100">
+                            {v.employee?.firstName} {v.employee?.lastName}
+                          </td>
+                          <td className="px-3 py-2 text-ink-300">
+                            <a
+                              href={mapLink(v.checkInLat, v.checkInLng)}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="flex items-center gap-1.5 text-cyan-accent hover:underline"
+                            >
+                              <MapPin className="h-3.5 w-3.5" />
+                              {formatTime(v.checkInAt)}
+                              {v.checkInNote && <span> · {v.checkInNote}</span>}
+                            </a>
+                          </td>
+                          <td className="px-3 py-2 text-ink-300">
+                            {v.checkOutAt && v.checkOutLat && v.checkOutLng ? (
+                              <a
+                                href={mapLink(v.checkOutLat, v.checkOutLng)}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex items-center gap-1.5 text-cyan-accent hover:underline"
+                              >
+                                <MapPin className="h-3.5 w-3.5" />
+                                {formatTime(v.checkOutAt)}
+                                {v.checkOutNote && <span> · {v.checkOutNote}</span>}
+                              </a>
+                            ) : (
+                              <span className="text-ink-500">Still checked in</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </Panel>
