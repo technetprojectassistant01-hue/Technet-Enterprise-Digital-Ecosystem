@@ -55,10 +55,14 @@ function WorkOrderDetailPage() {
 
   async function handleCheckIn() {
     if (!workOrder) return
+    if (!note.trim()) {
+      toast.error('A location note is required to check in')
+      return
+    }
     setActioning(true)
     try {
       const pos = await getPosition()
-      await api.checkInWorkOrder(workOrder.id, { lat: pos.coords.latitude, lng: pos.coords.longitude, note: note || undefined })
+      await api.checkInWorkOrder(workOrder.id, { lat: pos.coords.latitude, lng: pos.coords.longitude, note })
       toast.success('Checked in')
       setNote('')
       load()
@@ -141,7 +145,7 @@ function WorkOrderDetailPage() {
             <input
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="Note (optional)"
+              placeholder={myOpenVisit ? 'Note (optional)' : 'Location note (required)'}
               maxLength={200}
               className="rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent"
             />
