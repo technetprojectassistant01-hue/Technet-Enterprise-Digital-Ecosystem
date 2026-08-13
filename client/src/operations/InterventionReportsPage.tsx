@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Plus, FileText, Download } from 'lucide-react'
 import * as api from '../lib/api'
-import type { InterventionReport, ReportStatus } from '../lib/api'
-import { WORK_TYPE_LABELS } from '../lib/api'
+import type { InterventionReport, ReportStatus, JobCategory, ServiceCategory } from '../lib/api'
+import { WORK_TYPE_LABELS, JOB_CATEGORY_LABELS } from '../lib/api'
 import { Panel, StatCard, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { primaryButtonClass, secondaryButtonClass } from '../dashboard/buttonStyles'
 import { downloadCsv } from '../lib/csv'
@@ -13,6 +13,31 @@ import { reportStatusTone } from '../erp/statusTones'
 import { useCustomers } from '../erp/useCustomers'
 
 const STATUS_FILTERS: ReportStatus[] = ['SUBMITTED', 'APPROVED', 'REJECTED']
+const JOB_CATEGORIES = Object.keys(JOB_CATEGORY_LABELS) as JobCategory[]
+const WORK_TYPES = Object.keys(WORK_TYPE_LABELS) as ServiceCategory[]
+
+const inputClass =
+  'rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
+
+interface Filters {
+  customerId: string
+  status: ReportStatus | ''
+  dueRemindersOnly: boolean
+  jobCategory: JobCategory | ''
+  workType: ServiceCategory | ''
+  from: string
+  to: string
+}
+
+const EMPTY_FILTERS: Filters = {
+  customerId: '',
+  status: '',
+  dueRemindersOnly: false,
+  jobCategory: '',
+  workType: '',
+  from: '',
+  to: '',
+}
 
 function InterventionReportsPage() {
   const { user } = useAuth()
@@ -21,13 +46,11 @@ function InterventionReportsPage() {
   const [reports, setReports] = useState<InterventionReport[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [customerFilter, setCustomerFilter] = useState('')
-  const [statusFilter, setStatusFilter] = useState<ReportStatus | ''>('')
-  const [dueRemindersOnly, setDueRemindersOnly] = useState(false)
+  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS)
   const [stats, setStats] = useState({ pending: 0, due: 0 })
   const requestId = useRef(0)
 
-  function loadStats(customerId = customerFilter) {
+  function loadStats(customerId = filters.customerId) {
     Promise.all([
       api.listInterventionReports({ customerId: customerId || undefined, status: 'SUBMITTED' }),
       api.listInterventionReports({ customerId: customerId || undefined, dueRemindersOnly: true }),
@@ -38,18 +61,18 @@ function InterventionReportsPage() {
       .catch(() => {})
   }
 
-  function load(
-    customerId = customerFilter,
-    status = statusFilter,
-    dueOnly = dueRemindersOnly,
-  ) {
+  function load(f = filters) {
     const thisRequest = ++requestId.current
     setLoading(true)
     api
       .listInterventionReports({
-        customerId: customerId || undefined,
-        status: status || undefined,
-        dueRemindersOnly: dueOnly || undefined,
+        customerId: f.customerId || undefined,
+        status: f.status || undefined,
+        dueRemindersOnly: f.dueRemindersOnly || undefined,
+        jobCategory: f.jobCategory || undefined,
+        workType: f.workType || undefined,
+        from: f.from || undefined,
+        to: f.to || undefined,
       })
       .then(({ interventionReports }) => {
         if (thisRequest !== requestId.current) return
@@ -70,39 +93,28 @@ function InterventionReportsPage() {
     loadStats()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  function changeCustomerFilter(id: string) {
-    setCustomerFilter(id)
-    load(id, statusFilter, dueRemindersOnly)
-    loadStats(id)
-  }
-
-  function changeStatusFilter(status: ReportStatus | '') {
-    setStatusFilter(status)
-    load(customerFilter, status, dueRemindersOnly)
+  function updateFilters(patch: Partial<Filters>) {
+    const next = { ...filters, ...patch }
+    setFilters(next)
+    load(next)
+    if (patch.customerId !== undefined) loadStats(patch.customerId)
   }
 
   function clearAllFilters() {
-    setStatusFilter('')
-    setDueRemindersOnly(false)
-    load(customerFilter, '', false)
-  }
-
-  function toggleDueReminders() {
-    const next = !dueRemindersOnly
-    setDueRemindersOnly(next)
-    load(customerFilter, statusFilter, next)
+    setFilters(EMPTY_FILTERS)
+    load(EMPTY_FILTERS)
   }
 
   function jumpToPendingReview() {
-    setStatusFilter('SUBMITTED')
-    setDueRemindersOnly(false)
-    load(customerFilter, 'SUBMITTED', false)
+    const next = { ...filters, status: 'SUBMITTED' as const, dueRemindersOnly: false }
+    setFilters(next)
+    load(next)
   }
 
   function jumpToRemindersDue() {
-    setStatusFilter('')
-    setDueRemindersOnly(true)
-    load(customerFilter, '', true)
+    const next = { ...filters, status: '' as const, dueRemindersOnly: true }
+    setFilters(next)
+    load(next)
   }
 
   function exportCsv() {
@@ -111,6 +123,7 @@ function InterventionReportsPage() {
       [
         { header: 'Intervention #', accessor: (r: InterventionReport) => r.interventionNumber },
         { header: 'Customer', accessor: (r: InterventionReport) => r.customer.company || r.customer.name },
+        { header: 'Job Category', accessor: (r: InterventionReport) => JOB_CATEGORY_LABELS[r.jobCategory] },
         { header: 'Work Type', accessor: (r: InterventionReport) => WORK_TYPE_LABELS[r.workType] },
         { header: 'Work Order', accessor: (r: InterventionReport) => r.workOrder?.workOrderNumber },
         { header: 'Date', accessor: (r: InterventionReport) => r.date.slice(0, 10) },
@@ -154,11 +167,11 @@ function InterventionReportsPage() {
       <Panel title="Intervention Registry">
         <div className="mb-4 flex flex-wrap items-end gap-4">
           <div className="flex max-w-xs flex-1 flex-col gap-1">
-            <label className="text-xs font-semibold tracking-widest text-ink-400">FILTER BY CUSTOMER</label>
+            <label className="text-xs font-semibold tracking-widest text-ink-400">CUSTOMER</label>
             <select
-              value={customerFilter}
-              onChange={(e) => changeCustomerFilter(e.target.value)}
-              className="rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent"
+              value={filters.customerId}
+              onChange={(e) => updateFilters({ customerId: e.target.value })}
+              className={inputClass}
             >
               <option value="">All customers</option>
               {customers.map((c) => (
@@ -168,6 +181,58 @@ function InterventionReportsPage() {
               ))}
             </select>
           </div>
+
+          <div className="flex max-w-xs flex-1 flex-col gap-1">
+            <label className="text-xs font-semibold tracking-widest text-ink-400">JOB CATEGORY</label>
+            <select
+              value={filters.jobCategory}
+              onChange={(e) => updateFilters({ jobCategory: e.target.value as JobCategory | '' })}
+              className={inputClass}
+            >
+              <option value="">All categories</option>
+              {JOB_CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {JOB_CATEGORY_LABELS[c]}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex max-w-xs flex-1 flex-col gap-1">
+            <label className="text-xs font-semibold tracking-widest text-ink-400">WORK TYPE</label>
+            <select
+              value={filters.workType}
+              onChange={(e) => updateFilters({ workType: e.target.value as ServiceCategory | '' })}
+              className={inputClass}
+            >
+              <option value="">All work types</option>
+              {WORK_TYPES.map((w) => (
+                <option key={w} value={w}>
+                  {WORK_TYPE_LABELS[w]}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-semibold tracking-widest text-ink-400">FROM</label>
+            <input
+              type="date"
+              value={filters.from}
+              onChange={(e) => updateFilters({ from: e.target.value })}
+              className={inputClass}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-semibold tracking-widest text-ink-400">TO</label>
+            <input
+              type="date"
+              value={filters.to}
+              onChange={(e) => updateFilters({ to: e.target.value })}
+              className={inputClass}
+            />
+          </div>
         </div>
 
         <div className="mb-4 flex flex-wrap gap-2">
@@ -175,7 +240,9 @@ function InterventionReportsPage() {
             type="button"
             onClick={clearAllFilters}
             className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
-              statusFilter === '' && !dueRemindersOnly ? 'bg-cyan-accent text-ink-950' : 'bg-ink-800 text-ink-300 hover:bg-ink-700'
+              filters.status === '' && !filters.dueRemindersOnly && !filters.customerId && !filters.jobCategory && !filters.workType && !filters.from && !filters.to
+                ? 'bg-cyan-accent text-ink-950'
+                : 'bg-ink-800 text-ink-300 hover:bg-ink-700'
             }`}
           >
             All
@@ -184,9 +251,9 @@ function InterventionReportsPage() {
             <button
               key={s}
               type="button"
-              onClick={() => changeStatusFilter(s)}
+              onClick={() => updateFilters({ status: s })}
               className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
-                statusFilter === s ? 'bg-cyan-accent text-ink-950' : 'bg-ink-800 text-ink-300 hover:bg-ink-700'
+                filters.status === s ? 'bg-cyan-accent text-ink-950' : 'bg-ink-800 text-ink-300 hover:bg-ink-700'
               }`}
             >
               {s}
@@ -194,9 +261,9 @@ function InterventionReportsPage() {
           ))}
           <button
             type="button"
-            onClick={toggleDueReminders}
+            onClick={() => updateFilters({ dueRemindersOnly: !filters.dueRemindersOnly })}
             className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
-              dueRemindersOnly ? 'bg-amber-400 text-ink-950' : 'bg-ink-800 text-ink-300 hover:bg-ink-700'
+              filters.dueRemindersOnly ? 'bg-amber-400 text-ink-950' : 'bg-ink-800 text-ink-300 hover:bg-ink-700'
             }`}
           >
             Reminders due only
@@ -206,9 +273,9 @@ function InterventionReportsPage() {
         {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
 
         {loading ? (
-          <TableSkeleton cols={7} />
+          <TableSkeleton cols={8} />
         ) : reports.length === 0 ? (
-          <EmptyState icon={FileText} message="No intervention reports filed yet." />
+          <EmptyState icon={FileText} message="No intervention reports match these filters." />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
@@ -216,6 +283,7 @@ function InterventionReportsPage() {
                 <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
                   <th className="px-3 py-3 font-semibold">INTERVENTION #</th>
                   <th className="px-3 py-3 font-semibold">CUSTOMER</th>
+                  <th className="px-3 py-3 font-semibold">JOB CATEGORY</th>
                   <th className="px-3 py-3 font-semibold">WORK TYPE</th>
                   <th className="px-3 py-3 font-semibold">WORK ORDER</th>
                   <th className="px-3 py-3 font-semibold">DATE</th>
@@ -242,6 +310,7 @@ function InterventionReportsPage() {
                         )}
                       </td>
                       <td className="px-3 py-3 text-ink-300">{r.customer.company || r.customer.name}</td>
+                      <td className="px-3 py-3 text-ink-300">{JOB_CATEGORY_LABELS[r.jobCategory]}</td>
                       <td className="px-3 py-3 text-ink-300">{WORK_TYPE_LABELS[r.workType]}</td>
                       <td className="px-3 py-3 text-ink-400">{r.workOrder?.workOrderNumber || '—'}</td>
                       <td className="px-3 py-3 text-ink-400">{r.date.slice(0, 10)}</td>
