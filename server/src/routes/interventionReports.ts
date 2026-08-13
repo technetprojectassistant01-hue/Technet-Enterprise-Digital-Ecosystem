@@ -116,8 +116,16 @@ function withInterventionNumber<T extends { sequenceNumber: number }>(report: T)
 
 router.use(requireAuth);
 
+function parseDateOnly(value: unknown): Date | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value.trim());
+  if (!match) return null;
+  const date = new Date(`${match[1]}-${match[2]}-${match[3]}T00:00:00.000Z`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 router.get("/", async (req, res) => {
-  const { status, workOrderId, customerId, dueRemindersOnly } = req.query;
+  const { status, workOrderId, customerId, dueRemindersOnly, jobCategory, workType, from, to } = req.query;
 
   const where: Prisma.InterventionReportWhereInput = {};
   if (typeof status === "string" && STATUSES.includes(status as Status)) {
@@ -131,6 +139,19 @@ router.get("/", async (req, res) => {
   }
   if (dueRemindersOnly === "true") {
     where.nextReminderAt = { lte: new Date() };
+  }
+  if (typeof jobCategory === "string" && JOB_CATEGORIES.includes(jobCategory as JobCategory)) {
+    where.jobCategory = jobCategory as JobCategory;
+  }
+  if (typeof workType === "string" && WORK_TYPES.includes(workType as WorkType)) {
+    where.workType = workType as WorkType;
+  }
+  const fromDate = parseDateOnly(from);
+  const toDate = parseDateOnly(to);
+  if (fromDate || toDate) {
+    where.date = {};
+    if (fromDate) where.date.gte = fromDate;
+    if (toDate) where.date.lte = new Date(toDate.getTime() + 24 * 60 * 60 * 1000 - 1);
   }
 
   const interventionReports = await prisma.interventionReport.findMany({
