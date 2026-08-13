@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, X, Check, Download, Link2, BellRing } from 'lucide-react'
 import * as api from '../lib/api'
-import type { InterventionReport, ReminderInterval } from '../lib/api'
+import type { InterventionReport, ReminderInterval, PhotoKind } from '../lib/api'
 import { JOB_CATEGORY_LABELS, WORK_TYPE_LABELS, REMINDER_INTERVAL_LABELS } from '../lib/api'
 import { Panel, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { primaryButtonClass, dangerButtonClass } from '../dashboard/buttonStyles'
@@ -28,7 +28,7 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
   )
 }
 
-function PhotoGrid({ reportId, photos, kind, label }: { reportId: string; photos: InterventionReport['photos']; kind: 'EQUIPMENT' | 'WORK_DONE'; label: string }) {
+function PhotoGrid({ reportId, photos, kind, label }: { reportId: string; photos: InterventionReport['photos']; kind: PhotoKind; label: string }) {
   const filtered = photos.filter((p) => p.kind === kind)
   return (
     <div>
@@ -266,6 +266,8 @@ function InterventionReportDetailPage() {
 
       <Panel title="Photos">
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+          <PhotoGrid reportId={report.id} photos={report.photos} kind="BEFORE" label="BEFORE PHOTOS" />
+          <PhotoGrid reportId={report.id} photos={report.photos} kind="AFTER" label="AFTER PHOTOS" />
           <PhotoGrid reportId={report.id} photos={report.photos} kind="EQUIPMENT" label="EQUIPMENT PHOTOS" />
           <PhotoGrid reportId={report.id} photos={report.photos} kind="WORK_DONE" label="PHOTOS OF WORK DONE" />
         </div>
@@ -292,6 +294,7 @@ function InterventionReportDetailPage() {
             value={report.warrantyStatus === 'UNKNOWN' ? 'D.N' : report.warrantyStatus === 'YES' ? 'Yes' : report.warrantyStatus === 'NO' ? 'No' : null}
           />
           <Field label="TECHNICIAN'S REPORT" value={report.technicianReport} />
+          <Field label="MATERIALS USED" value={report.materialsUsed} />
           <Field label="COMMENTS / RECOMMENDATIONS" value={report.comments} />
           <Field label="OTHER IMPORTANT INFORMATION" value={report.additionalInfo} />
         </div>
