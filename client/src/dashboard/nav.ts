@@ -31,6 +31,8 @@ import {
   MapPinned,
   type LucideIcon,
 } from 'lucide-react'
+import { FIELD_ONLY_ROLES } from '../lib/permissions'
+import type { Role } from '../lib/api'
 
 export interface NavItem {
   label: string
@@ -38,6 +40,8 @@ export interface NavItem {
   icon: LucideIcon
   end?: boolean
   children?: NavItem[]
+  /** Roles this item is hidden from, e.g. field-only staff who don't use this module. */
+  hiddenFrom?: readonly Role[]
 }
 
 export const MAIN_NAV: NavItem[] = [
@@ -47,6 +51,7 @@ export const MAIN_NAV: NavItem[] = [
     to: '/dashboard/erp',
     icon: SlidersHorizontal,
     end: true,
+    hiddenFrom: FIELD_ONLY_ROLES,
     children: [
       { label: 'Overview', to: '/dashboard/erp', icon: LayoutGrid, end: true },
       { label: 'Inventory', to: '/dashboard/erp/inventory', icon: SlidersHorizontal },
@@ -99,7 +104,7 @@ export const MAIN_NAV: NavItem[] = [
       { label: 'Schedule', to: '/dashboard/maintenance/schedule', icon: CalendarClock },
     ],
   },
-  { label: 'Technet Connect', to: '/dashboard/connect', icon: Share2 },
+  { label: 'Technet Connect', to: '/dashboard/connect', icon: Share2, hiddenFrom: FIELD_ONLY_ROLES },
   {
     label: 'Technet Operations',
     to: '/dashboard/operations',
@@ -117,8 +122,8 @@ export const MAIN_NAV: NavItem[] = [
     icon: Users,
     children: [{ label: 'Payroll', to: '/dashboard/workforce/payroll', icon: Banknote }],
   },
-  { label: 'Technet Digital Marketing', to: '/dashboard/marketing', icon: Megaphone },
-  { label: 'Technet Insight', to: '/dashboard/insight', icon: LineChart },
+  { label: 'Technet Digital Marketing', to: '/dashboard/marketing', icon: Megaphone, hiddenFrom: FIELD_ONLY_ROLES },
+  { label: 'Technet Insight', to: '/dashboard/insight', icon: LineChart, hiddenFrom: FIELD_ONLY_ROLES },
 ]
 
 export const SYSTEM_NAV: NavItem[] = [
