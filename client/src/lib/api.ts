@@ -1778,13 +1778,26 @@ export interface InterventionReportInput {
 }
 
 export function listInterventionReports(
-  params: { status?: ReportStatus; workOrderId?: string; customerId?: string; dueRemindersOnly?: boolean } = {},
+  params: {
+    status?: ReportStatus
+    workOrderId?: string
+    customerId?: string
+    dueRemindersOnly?: boolean
+    jobCategory?: JobCategory
+    workType?: ServiceCategory
+    from?: string
+    to?: string
+  } = {},
 ) {
   const query = new URLSearchParams()
   if (params.status) query.set('status', params.status)
   if (params.workOrderId) query.set('workOrderId', params.workOrderId)
   if (params.customerId) query.set('customerId', params.customerId)
   if (params.dueRemindersOnly) query.set('dueRemindersOnly', 'true')
+  if (params.jobCategory) query.set('jobCategory', params.jobCategory)
+  if (params.workType) query.set('workType', params.workType)
+  if (params.from) query.set('from', params.from)
+  if (params.to) query.set('to', params.to)
   const qs = query.toString()
   return request<{ interventionReports: InterventionReport[] }>(`/api/intervention-reports${qs ? `?${qs}` : ''}`)
 }
