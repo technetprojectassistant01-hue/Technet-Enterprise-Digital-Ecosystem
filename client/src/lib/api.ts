@@ -1519,9 +1519,18 @@ export interface SiteVerification {
   exitReasonNote: string | null
 }
 
+export interface SiteAttendanceWorkOrderSummary {
+  id: string
+  workOrderNumber: string
+  title: string
+  siteLat: string | null
+  siteLng: string | null
+}
+
 export interface SiteAttendance {
   id: string
   workOrderId: string | null
+  workOrder: SiteAttendanceWorkOrderSummary | null
   employeeId: string
   employee?: EmployeeSummary
   checkInAt: string
@@ -1532,12 +1541,12 @@ export interface SiteAttendance {
   checkOutLat: string | null
   checkOutLng: string | null
   checkOutNote: string | null
+  verifications: SiteVerification[]
 }
 
-/** Endpoints that return a whole team's/work order's visits always include the technician. */
+/** Endpoints that return a whole team's visits always include the technician. */
 export interface SiteAttendanceWithEmployee extends SiteAttendance {
   employee: EmployeeSummary
-  verifications: SiteVerification[]
 }
 
 export interface WorkOrderDetail extends WorkOrder {
@@ -1604,29 +1613,15 @@ export function deleteWorkOrder(id: string) {
   return request<null>(`/api/work-orders/${id}`, { method: 'DELETE' })
 }
 
-export function checkInWorkOrder(id: string, coords: { lat: number; lng: number; note?: string }) {
-  return request<{ siteAttendance: SiteAttendanceWithEmployee }>(`/api/work-orders/${id}/check-in`, {
+export function verifyMyLocation(coords: { lat: number; lng: number }) {
+  return request<{ skipped: true } | { verification: SiteVerification }>('/api/site-attendance/verify-location', {
     method: 'POST',
     body: JSON.stringify(coords),
   })
 }
 
-export function checkOutWorkOrder(id: string, coords: { lat: number; lng: number; note?: string }) {
-  return request<{ siteAttendance: SiteAttendanceWithEmployee }>(`/api/work-orders/${id}/check-out`, {
-    method: 'POST',
-    body: JSON.stringify(coords),
-  })
-}
-
-export function verifyWorkOrderLocation(id: string, coords: { lat: number; lng: number }) {
-  return request<{ skipped: true } | { verification: SiteVerification }>(`/api/work-orders/${id}/verify-location`, {
-    method: 'POST',
-    body: JSON.stringify(coords),
-  })
-}
-
-export function submitSiteExitReason(id: string, input: { reason: SiteExitReason; note?: string }) {
-  return request<{ verification: SiteVerification }>(`/api/work-orders/${id}/site-exit-reason`, {
+export function submitMyExitReason(input: { reason: SiteExitReason; note?: string }) {
+  return request<{ verification: SiteVerification }>('/api/site-attendance/exit-reason', {
     method: 'POST',
     body: JSON.stringify(input),
   })
