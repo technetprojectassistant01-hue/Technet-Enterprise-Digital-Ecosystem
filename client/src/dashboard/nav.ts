@@ -29,6 +29,7 @@ import {
   AlertTriangle,
   Banknote,
   MapPinned,
+  Radar,
   type LucideIcon,
 } from 'lucide-react'
 import { FIELD_ONLY_ROLES } from '../lib/permissions'
@@ -114,6 +115,7 @@ export const MAIN_NAV: NavItem[] = [
       { label: 'Daily Reports', to: '/dashboard/operations/daily-reports', icon: ClipboardList },
       { label: 'Intervention Reports', to: '/dashboard/operations/intervention-reports', icon: ClipboardCheck },
       { label: 'Team Attendance', to: '/dashboard/operations/team-attendance', icon: MapPinned },
+      { label: 'Field Operations', to: '/dashboard/operations/field-tracking', icon: Radar },
     ],
   },
   {
