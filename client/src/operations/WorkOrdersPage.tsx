@@ -42,6 +42,7 @@ function WorkOrdersPage() {
   const [jobCategory, setJobCategory] = useState<JobCategory>('SERVICING')
   const [description, setDescription] = useState('')
   const [scheduledDate, setScheduledDate] = useState('')
+  const [siteCoords, setSiteCoords] = useState('')
   const [technicianIds, setTechnicianIds] = useState<string[]>([])
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -65,6 +66,7 @@ function WorkOrdersPage() {
     setJobCategory('SERVICING')
     setDescription('')
     setScheduledDate('')
+    setSiteCoords('')
     setTechnicianIds([])
     setFormError(null)
     setShowCreate(true)
@@ -106,6 +108,7 @@ function WorkOrdersPage() {
         description: description || undefined,
         scheduledDate,
         technicianIds,
+        siteCoords: siteCoords || undefined,
       })
       toast.success('Work order created')
       setShowCreate(false)
@@ -321,6 +324,20 @@ function WorkOrdersPage() {
                 required
                 className={`mt-2 ${inputClass}`}
               />
+            </div>
+
+            <div>
+              <label className={labelClass}>SITE COORDINATES (OPTIONAL)</label>
+              <input
+                value={siteCoords}
+                onChange={(e) => setSiteCoords(e.target.value)}
+                placeholder="e.g. -20.348404, 57.552152"
+                className={`mt-2 ${inputClass}`}
+              />
+              <p className="mt-1 text-xs text-ink-500">
+                Paste coordinates from Google Maps: right-click the site on the map, then click the numbers to copy
+                them. Setting this lets technicians be verified as on-site when they check in.
+              </p>
             </div>
 
             <div>
