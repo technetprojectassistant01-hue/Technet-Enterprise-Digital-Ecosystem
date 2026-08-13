@@ -1489,9 +1489,34 @@ export interface WorkOrder {
   description: string | null
   status: WorkOrderStatus
   scheduledDate: string
+  siteLat: string | null
+  siteLng: string | null
   technicians: { id: string; employee: EmployeeSummary }[]
   createdAt: string
   updatedAt: string
+}
+
+export type SiteVerificationStatus = 'ON_SITE' | 'OUTSIDE_SITE'
+export type SiteExitReason = 'MATERIALS' | 'ANOTHER_SITE' | 'SUPERVISOR_INSTRUCTION' | 'EMERGENCY' | 'OTHER'
+
+export const SITE_EXIT_REASON_LABELS: Record<SiteExitReason, string> = {
+  MATERIALS: 'Collecting materials',
+  ANOTHER_SITE: 'Travelling to another site',
+  SUPERVISOR_INSTRUCTION: 'Supervisor instruction',
+  EMERGENCY: 'Emergency',
+  OTHER: 'Other',
+}
+
+export interface SiteVerification {
+  id: string
+  siteAttendanceId: string
+  checkedAt: string
+  lat: string
+  lng: string
+  distanceMeters: number
+  status: SiteVerificationStatus
+  exitReason: SiteExitReason | null
+  exitReasonNote: string | null
 }
 
 export interface SiteAttendance {
@@ -1512,6 +1537,7 @@ export interface SiteAttendance {
 /** Endpoints that return a whole team's/work order's visits always include the technician. */
 export interface SiteAttendanceWithEmployee extends SiteAttendance {
   employee: EmployeeSummary
+  verifications: SiteVerification[]
 }
 
 export interface WorkOrderDetail extends WorkOrder {
@@ -1535,6 +1561,7 @@ export interface WorkOrderInput {
   description?: string
   scheduledDate: string
   technicianIds: string[]
+  siteCoords?: string
 }
 
 export function listWorkOrders(params: { status?: WorkOrderStatus; customerId?: string; technicianId?: string } = {}) {
@@ -1563,6 +1590,7 @@ export interface WorkOrderUpdateInput {
   scheduledDate?: string
   status?: WorkOrderStatus
   technicianIds?: string[]
+  siteCoords?: string
 }
 
 export function updateWorkOrder(id: string, input: WorkOrderUpdateInput) {
@@ -1588,6 +1616,37 @@ export function checkOutWorkOrder(id: string, coords: { lat: number; lng: number
     method: 'POST',
     body: JSON.stringify(coords),
   })
+}
+
+export function verifyWorkOrderLocation(id: string, coords: { lat: number; lng: number }) {
+  return request<{ skipped: true } | { verification: SiteVerification }>(`/api/work-orders/${id}/verify-location`, {
+    method: 'POST',
+    body: JSON.stringify(coords),
+  })
+}
+
+export function submitSiteExitReason(id: string, input: { reason: SiteExitReason; note?: string }) {
+  return request<{ verification: SiteVerification }>(`/api/work-orders/${id}/site-exit-reason`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export interface SiteTrackingEntry extends SiteAttendanceWithEmployee {
+  workOrder: {
+    id: string
+    workOrderNumber: string
+    title: string
+    siteLat: string | null
+    siteLng: string | null
+    customer: WorkOrderCustomer
+  }
+}
+
+export function getSiteTracking() {
+  return request<{ current: SiteTrackingEntry[]; recentlyCompleted: SiteTrackingEntry[] }>(
+    '/api/work-orders/site-tracking',
+  )
 }
 
 export function getMyAttendance() {
@@ -1689,7 +1748,7 @@ export const REMINDER_INTERVAL_LABELS: Record<ReminderInterval, string> = {
   SEMI_ANNUAL: 'Every 6 Months',
 }
 
-export type PhotoKind = 'EQUIPMENT' | 'WORK_DONE'
+export type PhotoKind = 'EQUIPMENT' | 'WORK_DONE' | 'BEFORE' | 'AFTER'
 
 export interface InterventionReportPhoto {
   id: string
@@ -1726,6 +1785,7 @@ export interface InterventionReport {
   timeOut: string | null
   warrantyStatus: WarrantyStatus | null
   technicianReport: string | null
+  materialsUsed: string | null
   comments: string | null
   additionalInfo: string | null
   reminderInterval: ReminderInterval | null
@@ -1768,6 +1828,7 @@ export interface InterventionReportInput {
   timeOut?: string
   warrantyStatus?: WarrantyStatus
   technicianReport?: string
+  materialsUsed?: string
   comments?: string
   additionalInfo?: string
   technicianIds: string[]
