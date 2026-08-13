@@ -3,7 +3,7 @@ import { Prisma } from "../generated/prisma/client";
 import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { isForeignKeyConstraintError, isNotFoundError, isUniqueConstraintError } from "../lib/prismaErrors";
-import { PROCUREMENT_ROLES } from "../lib/roles";
+import { PROCUREMENT_ROLES, NON_FIELD_ROLES } from "../lib/roles";
 
 const router = Router();
 
@@ -16,7 +16,7 @@ interface RequisitionItemInput {
   inventoryItemId?: string;
 }
 
-router.use(requireAuth);
+router.use(requireAuth, requireRole(...NON_FIELD_ROLES));
 
 router.get("/", async (req, res) => {
   const { search, status, projectId } = req.query;
