@@ -6,7 +6,10 @@ export function useProjects() {
   const [projects, setProjects] = useState<Project[]>([])
 
   useEffect(() => {
-    api.listProjects().then(({ projects }) => setProjects(projects))
+    api
+      .listProjects()
+      .then(({ projects }) => setProjects(projects))
+      .catch(() => setProjects([]))
   }, [])
 
   return projects
