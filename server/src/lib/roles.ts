@@ -19,13 +19,23 @@ export const HR_ROLES = ["ADMIN", "HR_OFFICER"] as const;
 /** Create/edit/delete and approve/reject operations-side records. */
 export const OPS_MANAGE_ROLES = ["ADMIN", "OPERATIONS_MANAGER"] as const;
 
-/** Submitting field-generated records: technicians plus anyone who can manage them. */
-export const OPS_SUBMIT_ROLES = ["ADMIN", "OPERATIONS_MANAGER", "FIELD_TECHNICIAN"] as const;
+/** Submitting field-generated records: technicians, generic employees, plus anyone who can manage them. */
+export const OPS_SUBMIT_ROLES = ["ADMIN", "OPERATIONS_MANAGER", "FIELD_TECHNICIAN", "EMPLOYEE"] as const;
 
 export const DOCUMENT_ROLES = [
   "ADMIN",
   "SALES_OFFICER",
   "FINANCE_OFFICER",
+  "HR_OFFICER",
+  "OPERATIONS_MANAGER",
+] as const;
+
+/** Field technicians and generic employees only work within Operations and Maintenance. */
+export const NON_FIELD_ROLES = [
+  "ADMIN",
+  "SALES_OFFICER",
+  "FINANCE_OFFICER",
+  "STOREKEEPER",
   "HR_OFFICER",
   "OPERATIONS_MANAGER",
 ] as const;
