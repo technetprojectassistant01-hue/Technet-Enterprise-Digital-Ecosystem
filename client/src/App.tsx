@@ -60,6 +60,8 @@ import UsersPage from './UsersPage'
 import SettingsPage from './SettingsPage'
 import ProtectedRoute from './ProtectedRoute'
 import AdminRoute from './AdminRoute'
+import RoleRoute from './RoleRoute'
+import { FIELD_ONLY_ROLES } from './lib/permissions'
 
 function App() {
   return (
@@ -70,38 +72,40 @@ function App() {
       <Route element={<ProtectedRoute />}>
         <Route path="/dashboard" element={<Dashboard />}>
           <Route index element={<DashboardHome />} />
-          <Route path="erp" element={<ErpLayout />}>
-            <Route index element={<TechnetErpPage />} />
-            <Route path="inventory" element={<InventoryPage />} />
-            <Route path="finance" element={<FinanceLayout />}>
-              <Route index element={<Navigate to="customers" replace />} />
-              <Route path="customers" element={<CustomersPage />} />
-              <Route path="invoices" element={<InvoicesPage />} />
-              <Route path="invoices/:id" element={<InvoiceDetailPage />} />
-              <Route path="expenses" element={<ExpensesPage />} />
-              <Route path="quotations" element={<QuotationsPage />} />
-              <Route path="quotations/:id" element={<QuotationDetailPage />} />
-              <Route path="contracts" element={<ContractsPage />} />
+          <Route element={<RoleRoute blockedRoles={FIELD_ONLY_ROLES} />}>
+            <Route path="erp" element={<ErpLayout />}>
+              <Route index element={<TechnetErpPage />} />
+              <Route path="inventory" element={<InventoryPage />} />
+              <Route path="finance" element={<FinanceLayout />}>
+                <Route index element={<Navigate to="customers" replace />} />
+                <Route path="customers" element={<CustomersPage />} />
+                <Route path="invoices" element={<InvoicesPage />} />
+                <Route path="invoices/:id" element={<InvoiceDetailPage />} />
+                <Route path="expenses" element={<ExpensesPage />} />
+                <Route path="quotations" element={<QuotationsPage />} />
+                <Route path="quotations/:id" element={<QuotationDetailPage />} />
+                <Route path="contracts" element={<ContractsPage />} />
+              </Route>
+              <Route path="procurement" element={<ProcurementLayout />}>
+                <Route index element={<Navigate to="suppliers" replace />} />
+                <Route path="suppliers" element={<SuppliersPage />} />
+                <Route path="requisitions" element={<RequisitionsPage />} />
+                <Route path="requisitions/:id" element={<RequisitionDetailPage />} />
+                <Route path="purchase-orders" element={<PurchaseOrdersPage />} />
+                <Route path="purchase-orders/:id" element={<PurchaseOrderDetailPage />} />
+              </Route>
+              <Route path="hr" element={<HrLayout />}>
+                <Route index element={<HrOverviewPage />} />
+                <Route path="employees" element={<EmployeesPage />} />
+                <Route path="employees/:id" element={<EmployeeDetailPage />} />
+                <Route path="leave" element={<LeavePage />} />
+                <Route path="attendance" element={<AttendancePage />} />
+                <Route path="certifications" element={<CertificationsPage />} />
+              </Route>
+              <Route path="projects" element={<ProjectsPage />} />
+              <Route path="projects/:id" element={<ProjectDetailPage />} />
+              <Route path="documents" element={<DocumentsPage />} />
             </Route>
-            <Route path="procurement" element={<ProcurementLayout />}>
-              <Route index element={<Navigate to="suppliers" replace />} />
-              <Route path="suppliers" element={<SuppliersPage />} />
-              <Route path="requisitions" element={<RequisitionsPage />} />
-              <Route path="requisitions/:id" element={<RequisitionDetailPage />} />
-              <Route path="purchase-orders" element={<PurchaseOrdersPage />} />
-              <Route path="purchase-orders/:id" element={<PurchaseOrderDetailPage />} />
-            </Route>
-            <Route path="hr" element={<HrLayout />}>
-              <Route index element={<HrOverviewPage />} />
-              <Route path="employees" element={<EmployeesPage />} />
-              <Route path="employees/:id" element={<EmployeeDetailPage />} />
-              <Route path="leave" element={<LeavePage />} />
-              <Route path="attendance" element={<AttendancePage />} />
-              <Route path="certifications" element={<CertificationsPage />} />
-            </Route>
-            <Route path="projects" element={<ProjectsPage />} />
-            <Route path="projects/:id" element={<ProjectDetailPage />} />
-            <Route path="documents" element={<DocumentsPage />} />
           </Route>
           <Route path="maintenance" element={<MaintenanceLayout />}>
             <Route index element={<Navigate to="assets" replace />} />
@@ -112,10 +116,12 @@ function App() {
             <Route path="schedule" element={<SchedulePage />} />
             <Route path="schedule/:id" element={<ScheduleDetailPage />} />
           </Route>
-          <Route
-            path="connect"
-            element={<ModuleStub title="Technet Connect" icon={Share2} />}
-          />
+          <Route element={<RoleRoute blockedRoles={FIELD_ONLY_ROLES} />}>
+            <Route
+              path="connect"
+              element={<ModuleStub title="Technet Connect" icon={Share2} />}
+            />
+          </Route>
           <Route path="operations" element={<OperationsLayout />}>
             <Route index element={<Navigate to="work-orders" replace />} />
             <Route path="work-orders" element={<WorkOrdersPage />} />
@@ -131,14 +137,16 @@ function App() {
             <Route path="payroll" element={<PayrollPage />} />
             <Route path="payroll/:id" element={<PayrollDetailPage />} />
           </Route>
-          <Route
-            path="marketing"
-            element={<ModuleStub title="Technet Digital Marketing" icon={Megaphone} />}
-          />
-          <Route
-            path="insight"
-            element={<ModuleStub title="Technet Insight" icon={LineChart} />}
-          />
+          <Route element={<RoleRoute blockedRoles={FIELD_ONLY_ROLES} />}>
+            <Route
+              path="marketing"
+              element={<ModuleStub title="Technet Digital Marketing" icon={Megaphone} />}
+            />
+            <Route
+              path="insight"
+              element={<ModuleStub title="Technet Insight" icon={LineChart} />}
+            />
+          </Route>
           <Route
             path="security"
             element={<ModuleStub title="Security" icon={ShieldCheck} />}
