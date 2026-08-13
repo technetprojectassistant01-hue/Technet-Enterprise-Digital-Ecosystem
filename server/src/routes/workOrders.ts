@@ -301,7 +301,7 @@ router.post("/:id/check-in", requireRole(...OPS_SUBMIT_ROLES), async (req, res) 
       checkInLng: coords.lng,
       checkInNote: note,
     },
-    include: { employee: { select: EMPLOYEE_SELECT } },
+    include: { employee: { select: EMPLOYEE_SELECT }, verifications: { orderBy: { checkedAt: "desc" } } },
   });
   res.status(201).json({ siteAttendance });
 });
@@ -327,7 +327,7 @@ router.post("/:id/check-out", requireRole(...OPS_SUBMIT_ROLES), async (req, res)
       checkOutLng: coords.lng,
       checkOutNote: parseNote(req.body),
     },
-    include: { employee: { select: EMPLOYEE_SELECT } },
+    include: { employee: { select: EMPLOYEE_SELECT }, verifications: { orderBy: { checkedAt: "desc" } } },
   });
   res.json({ siteAttendance });
 });
