@@ -171,6 +171,8 @@ enum ReminderInterval {
 enum PhotoKind {
   EQUIPMENT
   WORK_DONE
+  BEFORE
+  AFTER
 }
 
 enum AssetStatus {
@@ -781,6 +783,8 @@ model WorkOrder {
   description     String?
   status          WorkOrderStatus @default(SCHEDULED)
   scheduledDate   DateTime
+  siteLat         Decimal?        @db.Decimal(9, 6)
+  siteLng         Decimal?        @db.Decimal(9, 6)
   createdById     String
   createdBy       User            @relation("WorkOrderCreator", fields: [createdById], references: [id])
   createdAt       DateTime        @default(now())
@@ -817,8 +821,30 @@ model SiteAttendance {
   checkOutLng  Decimal?  @db.Decimal(9, 6)
   checkOutNote String?
 
+  verifications SiteVerification[]
+
   @@index([workOrderId])
   @@index([employeeId])
+}
+
+enum SiteVerificationStatus {
+  ON_SITE
+  OUTSIDE_SITE
+}
+
+model SiteVerification {
+  id               String                 @id @default(uuid())
+  siteAttendanceId String
+  siteAttendance   SiteAttendance         @relation(fields: [siteAttendanceId], references: [id], onDelete: Cascade)
+  checkedAt        DateTime               @default(now())
+  lat              Decimal                @db.Decimal(9, 6)
+  lng              Decimal                @db.Decimal(9, 6)
+  distanceMeters   Int
+  status           SiteVerificationStatus
+  exitReason       String?
+  exitReasonNote   String?
+
+  @@index([siteAttendanceId])
 }
 
 model DailyWorkReport {
@@ -886,6 +912,7 @@ model InterventionReport {
   timeOut              String?
   warrantyStatus       WarrantyStatus?
   technicianReport     String?
+  materialsUsed        String?
   comments             String?
   additionalInfo       String?
   reminderInterval     ReminderInterval?
