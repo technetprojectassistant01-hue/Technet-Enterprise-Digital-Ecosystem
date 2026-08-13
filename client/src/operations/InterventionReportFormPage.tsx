@@ -55,6 +55,7 @@ interface DraftFields {
   timeOut: string
   warrantyStatus: WarrantyStatus | ''
   technicianReport: string
+  materialsUsed: string
   comments: string
   additionalInfo: string
   signedByName: string
@@ -167,9 +168,12 @@ function InterventionReportFormPage() {
 
   const [warrantyStatus, setWarrantyStatus] = useState<WarrantyStatus | ''>(draft?.warrantyStatus ?? '')
   const [technicianReport, setTechnicianReport] = useState(draft?.technicianReport ?? '')
+  const [materialsUsed, setMaterialsUsed] = useState(draft?.materialsUsed ?? '')
   const [comments, setComments] = useState(draft?.comments ?? '')
   const [additionalInfo, setAdditionalInfo] = useState(draft?.additionalInfo ?? '')
 
+  const [beforePhotos, setBeforePhotos] = useState<File[]>([])
+  const [afterPhotos, setAfterPhotos] = useState<File[]>([])
   const [equipmentPhotos, setEquipmentPhotos] = useState<File[]>([])
   const [workDonePhotos, setWorkDonePhotos] = useState<File[]>([])
 
@@ -204,6 +208,7 @@ function InterventionReportFormPage() {
       timeOut,
       warrantyStatus,
       technicianReport,
+      materialsUsed,
       comments,
       additionalInfo,
       signedByName,
@@ -239,6 +244,7 @@ function InterventionReportFormPage() {
     timeOut,
     warrantyStatus,
     technicianReport,
+    materialsUsed,
     comments,
     additionalInfo,
     signedByName,
@@ -268,6 +274,7 @@ function InterventionReportFormPage() {
     setTimeOut('')
     setWarrantyStatus('')
     setTechnicianReport('')
+    setMaterialsUsed('')
     setComments('')
     setAdditionalInfo('')
     setSignedByName('')
@@ -351,6 +358,7 @@ function InterventionReportFormPage() {
         timeOut: timeOut || undefined,
         warrantyStatus: warrantyStatus || undefined,
         technicianReport: technicianReport || undefined,
+        materialsUsed: materialsUsed || undefined,
         comments: comments || undefined,
         additionalInfo: additionalInfo || undefined,
         technicianIds,
@@ -361,6 +369,8 @@ function InterventionReportFormPage() {
       })
 
       const photoUploads = [
+        ...beforePhotos.map((f) => ({ file: f, kind: 'BEFORE' as const })),
+        ...afterPhotos.map((f) => ({ file: f, kind: 'AFTER' as const })),
         ...equipmentPhotos.map((f) => ({ file: f, kind: 'EQUIPMENT' as const })),
         ...workDonePhotos.map((f) => ({ file: f, kind: 'WORK_DONE' as const })),
       ]
@@ -544,6 +554,7 @@ function InterventionReportFormPage() {
 
         <Panel title="Fault & Work Done">
           <div className="flex flex-col gap-4">
+            <PhotoPicker label="BEFORE PHOTOS" files={beforePhotos} onChange={setBeforePhotos} />
             <div>
               <label className={labelClass}>
                 NATURE OF INTERVENTION / FAULT REPORTED
@@ -595,6 +606,17 @@ function InterventionReportFormPage() {
               </div>
             )}
             <PhotoPicker label="PHOTOS OF WORK DONE" files={workDonePhotos} onChange={setWorkDonePhotos} />
+            <PhotoPicker label="AFTER PHOTOS" files={afterPhotos} onChange={setAfterPhotos} />
+            <div>
+              <label className={labelClass}>MATERIALS USED (OPTIONAL)</label>
+              <textarea
+                value={materialsUsed}
+                onChange={(e) => setMaterialsUsed(e.target.value)}
+                rows={2}
+                placeholder="e.g. 2x contactor 25A, 5m cable, 1x filter"
+                className={`mt-2 ${inputClass}`}
+              />
+            </div>
           </div>
         </Panel>
 
