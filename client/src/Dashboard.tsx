@@ -11,6 +11,7 @@ function Dashboard() {
   const { pathname } = useLocation()
   const displayName = user?.name || user?.email || ''
   const systemNav = user?.role === 'ADMIN' ? [...SYSTEM_NAV, ADMIN_NAV] : SYSTEM_NAV
+  const mainNav = MAIN_NAV.filter((item) => !user?.role || !item.hiddenFrom?.includes(user.role))
 
   return (
     <div className="flex min-h-screen bg-ink-950 text-ink-100">
@@ -25,7 +26,7 @@ function Dashboard() {
               MAIN MENU
             </span>
             <div className="mt-2">
-              <NavTree items={MAIN_NAV} />
+              <NavTree items={mainNav} />
             </div>
           </div>
 
