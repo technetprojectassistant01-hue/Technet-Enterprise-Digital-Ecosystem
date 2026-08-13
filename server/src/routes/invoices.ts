@@ -4,7 +4,7 @@ import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { isUniqueConstraintError, isForeignKeyConstraintError, isNotFoundError } from "../lib/prismaErrors";
 import { generateInvoicePdf } from "../lib/pdf/invoicePdf";
-import { FINANCE_ROLES } from "../lib/roles";
+import { FINANCE_ROLES, NON_FIELD_ROLES } from "../lib/roles";
 
 const router = Router();
 const STATUSES = ["DRAFT", "SENT", "PAID", "OVERDUE", "CANCELLED"] as const;
@@ -18,7 +18,7 @@ interface InvoiceItemInput {
 
 const CUSTOMER_SELECT = { id: true, name: true, company: true, address: true, email: true, phone: true, vatNumber: true, taxNumber: true };
 
-router.use(requireAuth);
+router.use(requireAuth, requireRole(...NON_FIELD_ROLES));
 
 router.get("/", async (req, res) => {
   const { status, projectId } = req.query;
