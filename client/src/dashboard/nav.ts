@@ -120,6 +120,7 @@ export const MAIN_NAV: NavItem[] = [
     label: 'Technet Workforce',
     to: '/dashboard/workforce',
     icon: Users,
+    hiddenFrom: FIELD_ONLY_ROLES,
     children: [{ label: 'Payroll', to: '/dashboard/workforce/payroll', icon: Banknote }],
   },
   { label: 'Technet Digital Marketing', to: '/dashboard/marketing', icon: Megaphone, hiddenFrom: FIELD_ONLY_ROLES },
