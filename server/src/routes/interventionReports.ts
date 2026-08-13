@@ -33,7 +33,7 @@ const REMINDER_INTERVALS = ["MONTHLY", "QUARTERLY", "SEMI_ANNUAL"] as const;
 type ReminderInterval = (typeof REMINDER_INTERVALS)[number];
 const REMINDER_MONTHS: Record<ReminderInterval, number> = { MONTHLY: 1, QUARTERLY: 3, SEMI_ANNUAL: 6 };
 
-const PHOTO_KINDS = ["EQUIPMENT", "WORK_DONE"] as const;
+const PHOTO_KINDS = ["EQUIPMENT", "WORK_DONE", "BEFORE", "AFTER"] as const;
 type PhotoKind = (typeof PHOTO_KINDS)[number];
 
 const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024;
@@ -74,6 +74,7 @@ const DETAIL_SELECT = {
   timeOut: true,
   warrantyStatus: true,
   technicianReport: true,
+  materialsUsed: true,
   comments: true,
   additionalInfo: true,
   reminderInterval: true,
@@ -279,6 +280,7 @@ router.post("/", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
     timeOut,
     warrantyStatus,
     technicianReport,
+    materialsUsed,
     comments,
     additionalInfo,
     technicianIds,
@@ -352,6 +354,7 @@ router.post("/", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
         timeOut: typeof timeOut === "string" && timeOut ? timeOut : null,
         warrantyStatus: (warrantyStatus as WarrantyStatus) || null,
         technicianReport: typeof technicianReport === "string" && technicianReport ? technicianReport : null,
+        materialsUsed: typeof materialsUsed === "string" && materialsUsed ? materialsUsed : null,
         comments: typeof comments === "string" && comments ? comments : null,
         additionalInfo: typeof additionalInfo === "string" && additionalInfo ? additionalInfo : null,
         signedByName: typeof signedByName === "string" && signedByName ? signedByName : null,
