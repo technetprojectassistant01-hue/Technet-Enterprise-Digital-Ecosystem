@@ -3,7 +3,7 @@ import { Prisma } from "../generated/prisma/client";
 import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { isForeignKeyConstraintError, isNotFoundError } from "../lib/prismaErrors";
-import { DOCUMENT_ROLES } from "../lib/roles";
+import { DOCUMENT_ROLES, NON_FIELD_ROLES } from "../lib/roles";
 
 const router = Router();
 
@@ -46,7 +46,7 @@ function decodeDataUrl(input: unknown): { buffer: Buffer; mimeType: string } | n
   return { buffer: Buffer.from(data, "base64"), mimeType };
 }
 
-router.use(requireAuth);
+router.use(requireAuth, requireRole(...NON_FIELD_ROLES));
 
 router.get("/", async (req, res) => {
   const { category, projectId, customerId, search } = req.query;
