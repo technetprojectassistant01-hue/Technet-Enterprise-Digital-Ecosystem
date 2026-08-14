@@ -149,7 +149,7 @@ function WorkOrderDetailPage() {
                   <input
                     value={siteQueryInput}
                     onChange={(e) => setSiteQueryInput(e.target.value)}
-                    placeholder="e.g. Celero, Ebene"
+                    placeholder="e.g. Ebene, Mauritius (area/street, not a company name)"
                     className={inputClass}
                   />
                   <button type="button" onClick={handleSaveSite} disabled={savingSite} className={primaryButtonClass}>
