@@ -785,6 +785,7 @@ model WorkOrder {
   scheduledDate   DateTime
   siteLat         Decimal?        @db.Decimal(9, 6)
   siteLng         Decimal?        @db.Decimal(9, 6)
+  siteAddress     String?
   createdById     String
   createdBy       User            @relation("WorkOrderCreator", fields: [createdById], references: [id])
   createdAt       DateTime        @default(now())
