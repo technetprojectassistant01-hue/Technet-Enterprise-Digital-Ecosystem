@@ -1575,11 +1575,15 @@ export interface WorkOrderInput {
   siteQuery?: string
 }
 
-export function listWorkOrders(params: { status?: WorkOrderStatus; customerId?: string; technicianId?: string } = {}) {
+export function listWorkOrders(
+  params: { status?: WorkOrderStatus; customerId?: string; technicianId?: string; from?: string; to?: string } = {},
+) {
   const query = new URLSearchParams()
   if (params.status) query.set('status', params.status)
   if (params.customerId) query.set('customerId', params.customerId)
   if (params.technicianId) query.set('technicianId', params.technicianId)
+  if (params.from) query.set('from', params.from)
+  if (params.to) query.set('to', params.to)
   const qs = query.toString()
   return request<{ workOrders: WorkOrder[] }>(`/api/work-orders${qs ? `?${qs}` : ''}`)
 }
@@ -1697,9 +1701,11 @@ export interface DailyWorkReportInput {
   workOrderIds: string[]
 }
 
-export function listDailyReports(params: { status?: ReportStatus } = {}) {
+export function listDailyReports(params: { status?: ReportStatus; from?: string; to?: string } = {}) {
   const query = new URLSearchParams()
   if (params.status) query.set('status', params.status)
+  if (params.from) query.set('from', params.from)
+  if (params.to) query.set('to', params.to)
   const qs = query.toString()
   return request<{ dailyWorkReports: DailyWorkReport[] }>(`/api/daily-reports${qs ? `?${qs}` : ''}`)
 }
