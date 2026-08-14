@@ -117,15 +117,21 @@ router.post("/check-in", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
   });
   if (openVisit) return res.status(400).json({ error: "You are already checked in" });
 
+  // Site location is resolved from a typed address, which is only ever approximate — being far
+  // from it is recorded and shown to managers, never used to block a technician from working.
   const currentWorkOrder = await findCurrentWorkOrder(employee.id);
-  if (currentWorkOrder?.siteLat != null && currentWorkOrder.siteLng != null) {
-    const distance = distanceMeters(coords.lat, coords.lng, Number(currentWorkOrder.siteLat), Number(currentWorkOrder.siteLng));
-    if (distance > SITE_GEOFENCE_RADIUS_METERS) {
-      return res.status(400).json({
-        error: `You're about ${Math.round(distance)}m from the assigned site — check-in requires being within ${SITE_GEOFENCE_RADIUS_METERS}m.`,
-      });
-    }
-  }
+  const initialVerification =
+    currentWorkOrder?.siteLat != null && currentWorkOrder.siteLng != null
+      ? (() => {
+          const distance = distanceMeters(coords.lat, coords.lng, Number(currentWorkOrder.siteLat), Number(currentWorkOrder.siteLng));
+          return {
+            lat: coords.lat,
+            lng: coords.lng,
+            distanceMeters: Math.round(distance),
+            status: distance <= SITE_GEOFENCE_RADIUS_METERS ? ("ON_SITE" as const) : ("OUTSIDE_SITE" as const),
+          };
+        })()
+      : null;
 
   const siteAttendance = await prisma.siteAttendance.create({
     data: {
@@ -134,6 +140,7 @@ router.post("/check-in", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
       checkInLat: coords.lat,
       checkInLng: coords.lng,
       checkInNote: note,
+      verifications: initialVerification ? { create: initialVerification } : undefined,
     },
     include: { workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE },
   });
