@@ -33,6 +33,8 @@ function WorkOrdersPage() {
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [from, setFrom] = useState('')
+  const [to, setTo] = useState('')
 
   const [showCreate, setShowCreate] = useState(false)
   const [customerId, setCustomerId] = useState('')
@@ -50,13 +52,18 @@ function WorkOrdersPage() {
   function load() {
     setLoading(true)
     api
-      .listWorkOrders()
+      .listWorkOrders({ from: from || undefined, to: to || undefined })
       .then(({ workOrders }) => setWorkOrders(workOrders))
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load work orders'))
       .finally(() => setLoading(false))
   }
 
-  useEffect(load, [])
+  useEffect(load, [from, to]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function clearDateFilters() {
+    setFrom('')
+    setTo('')
+  }
 
   function openCreate() {
     setCustomerId(customers[0]?.id || '')
@@ -190,6 +197,22 @@ function WorkOrdersPage() {
       </div>
 
       <Panel title="Work Order Ledger">
+        <div className="mb-4 flex flex-wrap items-end gap-4">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-semibold tracking-widest text-ink-400">FROM</label>
+            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className={inputClass} />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-semibold tracking-widest text-ink-400">TO</label>
+            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className={inputClass} />
+          </div>
+          {(from || to) && (
+            <button type="button" onClick={clearDateFilters} className="text-xs font-semibold text-ink-400 hover:text-ink-100">
+              Clear dates
+            </button>
+          )}
+        </div>
+
         {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
 
         {loading ? (
