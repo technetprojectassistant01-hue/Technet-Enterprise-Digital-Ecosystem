@@ -21,12 +21,27 @@ const INCLUDE = {
 
 router.use(requireAuth);
 
+function parseDateOnly(value: unknown): Date | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value.trim());
+  if (!match) return null;
+  const date = new Date(`${match[0]}T00:00:00.000Z`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 router.get("/", async (req, res) => {
-  const { status } = req.query;
+  const { status, from, to } = req.query;
 
   const where: Prisma.DailyWorkReportWhereInput = {};
   if (typeof status === "string" && STATUSES.includes(status as Status)) {
     where.status = status as Status;
+  }
+  const fromDate = parseDateOnly(from);
+  const toDate = parseDateOnly(to);
+  if (fromDate || toDate) {
+    where.date = {};
+    if (fromDate) where.date.gte = fromDate;
+    if (toDate) where.date.lte = new Date(toDate.getTime() + 24 * 60 * 60 * 1000 - 1);
   }
 
   const dailyWorkReports = await prisma.dailyWorkReport.findMany({
