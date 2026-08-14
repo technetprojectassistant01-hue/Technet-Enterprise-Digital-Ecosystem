@@ -178,7 +178,9 @@ router.post("/", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
   }
   const resolvedSite = await resolveSiteLocation(siteQuery);
   if (!resolvedSite.ok) {
-    return res.status(400).json({ error: "Couldn't find that location. Try a more specific address (e.g. include the town)." });
+    return res.status(400).json({
+      error: "Couldn't find that location. Use an area, street, or town name, not a company name (e.g. \"Ebene, Mauritius\", not \"Celero Ltd\").",
+    });
   }
   const techIds = Array.isArray(technicianIds) ? (technicianIds as string[]).filter((v) => typeof v === "string") : [];
 
@@ -230,7 +232,9 @@ router.patch("/:id", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
   if (siteQuery !== undefined) {
     const resolvedSite = await resolveSiteLocation(siteQuery);
     if (!resolvedSite.ok) {
-      return res.status(400).json({ error: "Couldn't find that location. Try a more specific address (e.g. include the town)." });
+      return res.status(400).json({
+      error: "Couldn't find that location. Use an area, street, or town name, not a company name (e.g. \"Ebene, Mauritius\", not \"Celero Ltd\").",
+    });
     }
     data.siteLat = resolvedSite.value?.lat ?? null;
     data.siteLng = resolvedSite.value?.lng ?? null;
