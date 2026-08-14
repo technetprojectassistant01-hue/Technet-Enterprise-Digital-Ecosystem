@@ -393,11 +393,12 @@ function WorkOrdersPage() {
               <input
                 value={siteQuery}
                 onChange={(e) => setSiteQuery(e.target.value)}
-                placeholder="e.g. Celero, Ebene"
+                placeholder="e.g. Ebene, Mauritius"
                 className={`mt-2 ${inputClass}`}
               />
               <p className="mt-1 text-xs text-ink-500">
-                We'll look up the location automatically — no need for exact coordinates. Setting this lets
+                We'll look up the location automatically — no need for exact coordinates. Use an area, street, or
+                town name, not a company name (e.g. "Ebene, Mauritius", not "Celero Ltd"). Setting this lets
                 technicians be shown as on-site when they check in.
               </p>
             </div>
