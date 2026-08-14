@@ -191,7 +191,7 @@ function AttendanceWidget() {
 
         {needsExitReason && (
           <div className="flex flex-wrap items-end gap-3 border-t border-ink-800 pt-3">
-            <p className="w-full text-xs font-semibold tracking-widest text-amber-400">YOU APPEAR TO HAVE LEFT THE SITE</p>
+            <p className="w-full text-xs font-semibold tracking-widest text-amber-400">YOU'RE NOT AT THE ASSIGNED SITE</p>
             <div className="flex flex-col gap-1">
               <label className="text-xs font-semibold tracking-widest text-ink-400">REASON</label>
               <select
