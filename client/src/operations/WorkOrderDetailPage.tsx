@@ -35,7 +35,7 @@ function WorkOrderDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [actioning, setActioning] = useState(false)
   const [editingSite, setEditingSite] = useState(false)
-  const [siteCoordsInput, setSiteCoordsInput] = useState('')
+  const [siteQueryInput, setSiteQueryInput] = useState('')
   const [savingSite, setSavingSite] = useState(false)
 
   function load() {
@@ -75,7 +75,7 @@ function WorkOrderDetailPage() {
   }
 
   function openSiteEditor() {
-    setSiteCoordsInput(workOrder?.siteLat && workOrder?.siteLng ? `${workOrder.siteLat}, ${workOrder.siteLng}` : '')
+    setSiteQueryInput(workOrder?.siteAddress ?? '')
     setEditingSite(true)
   }
 
@@ -83,7 +83,7 @@ function WorkOrderDetailPage() {
     if (!workOrder) return
     setSavingSite(true)
     try {
-      await api.updateWorkOrder(workOrder.id, { siteCoords: siteCoordsInput })
+      await api.updateWorkOrder(workOrder.id, { siteQuery: siteQueryInput })
       toast.success('Site location updated')
       setEditingSite(false)
       load()
@@ -147,9 +147,9 @@ function WorkOrderDetailPage() {
               {editingSite ? (
                 <div className="flex flex-wrap items-center gap-2">
                   <input
-                    value={siteCoordsInput}
-                    onChange={(e) => setSiteCoordsInput(e.target.value)}
-                    placeholder="e.g. -20.348404, 57.552152"
+                    value={siteQueryInput}
+                    onChange={(e) => setSiteQueryInput(e.target.value)}
+                    placeholder="e.g. Celero, Ebene"
                     className={inputClass}
                   />
                   <button type="button" onClick={handleSaveSite} disabled={savingSite} className={primaryButtonClass}>
@@ -168,7 +168,7 @@ function WorkOrderDetailPage() {
                     className="flex items-center gap-1.5 text-cyan-accent hover:underline"
                   >
                     <MapPin className="h-3.5 w-3.5" />
-                    Site location set
+                    {workOrder.siteAddress ?? 'Site location set'}
                   </a>
                   <button type="button" onClick={openSiteEditor} className="text-ink-400 hover:text-ink-100">
                     <Pencil className="h-3.5 w-3.5" />
