@@ -40,8 +40,16 @@ async function resolveSiteLocation(raw: unknown): Promise<{ ok: true; value: Sit
 
 router.use(requireAuth);
 
+function parseDateOnly(value: unknown): Date | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value.trim());
+  if (!match) return null;
+  const date = new Date(`${match[0]}T00:00:00.000Z`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 router.get("/", async (req, res) => {
-  const { status, customerId, technicianId } = req.query;
+  const { status, customerId, technicianId, from, to } = req.query;
 
   const where: Prisma.WorkOrderWhereInput = {};
   if (typeof status === "string" && STATUSES.includes(status as Status)) {
@@ -52,6 +60,13 @@ router.get("/", async (req, res) => {
   }
   if (typeof technicianId === "string" && technicianId) {
     where.technicians = { some: { employeeId: technicianId } };
+  }
+  const fromDate = parseDateOnly(from);
+  const toDate = parseDateOnly(to);
+  if (fromDate || toDate) {
+    where.scheduledDate = {};
+    if (fromDate) where.scheduledDate.gte = fromDate;
+    if (toDate) where.scheduledDate.lte = new Date(toDate.getTime() + 24 * 60 * 60 * 1000 - 1);
   }
 
   const workOrders = await prisma.workOrder.findMany({
