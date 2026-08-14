@@ -5,6 +5,7 @@ import { requireAuth, requireRole } from "../middleware/auth";
 import { isForeignKeyConstraintError, isNotFoundError, isUniqueConstraintError } from "../lib/prismaErrors";
 import { formatInterventionNumber } from "../lib/interventionNumber";
 import { OPS_MANAGE_ROLES, OPS_SUBMIT_ROLES } from "../lib/roles";
+import { geocodeAddress } from "../lib/geocode";
 
 const router = Router();
 
@@ -27,17 +28,14 @@ type Status = (typeof STATUSES)[number];
 const CUSTOMER_SELECT = { id: true, name: true, company: true, address: true };
 const EMPLOYEE_SELECT = { id: true, firstName: true, lastName: true, position: true };
 
-/** Parses the "lat, lng" string pasted from Google Maps. Empty/missing clears the site location. */
-function parseSiteCoords(raw: unknown): { ok: true; value: { lat: number; lng: number } | null } | { ok: false } {
+type SiteLocation = { lat: number; lng: number; address: string };
+
+/** Resolves a typed address/place name to a location via free geocoding. Empty/missing clears the site. */
+async function resolveSiteLocation(raw: unknown): Promise<{ ok: true; value: SiteLocation | null } | { ok: false }> {
   if (typeof raw !== "string" || !raw.trim()) return { ok: true, value: null };
-  const match = /^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/.exec(raw);
-  if (!match) return { ok: false };
-  const lat = Number(match[1]);
-  const lng = Number(match[2]);
-  if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-    return { ok: false };
-  }
-  return { ok: true, value: { lat, lng } };
+  const result = await geocodeAddress(raw.trim());
+  if (!result) return { ok: false };
+  return { ok: true, value: { lat: result.lat, lng: result.lng, address: result.displayName } };
 }
 
 router.use(requireAuth);
@@ -145,7 +143,7 @@ router.get("/:id", async (req, res) => {
 });
 
 router.post("/", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
-  const { customerId, projectId, workOrderNumber, title, jobCategory, description, scheduledDate, technicianIds, siteCoords } =
+  const { customerId, projectId, workOrderNumber, title, jobCategory, description, scheduledDate, technicianIds, siteQuery } =
     req.body ?? {};
 
   if (typeof customerId !== "string" || !customerId) {
@@ -163,9 +161,9 @@ router.post("/", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
   if (!scheduledDate || Number.isNaN(new Date(scheduledDate).getTime())) {
     return res.status(400).json({ error: "A valid scheduled date is required" });
   }
-  const parsedSite = parseSiteCoords(siteCoords);
-  if (!parsedSite.ok) {
-    return res.status(400).json({ error: "Site coordinates must look like 'lat, lng', e.g. -20.348404, 57.552152" });
+  const resolvedSite = await resolveSiteLocation(siteQuery);
+  if (!resolvedSite.ok) {
+    return res.status(400).json({ error: "Couldn't find that location. Try a more specific address (e.g. include the town)." });
   }
   const techIds = Array.isArray(technicianIds) ? (technicianIds as string[]).filter((v) => typeof v === "string") : [];
 
@@ -179,8 +177,9 @@ router.post("/", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
         jobCategory: jobCategory as JobCategory,
         description: typeof description === "string" && description.trim() ? description.trim() : null,
         scheduledDate: new Date(scheduledDate),
-        siteLat: parsedSite.value?.lat ?? null,
-        siteLng: parsedSite.value?.lng ?? null,
+        siteLat: resolvedSite.value?.lat ?? null,
+        siteLng: resolvedSite.value?.lng ?? null,
+        siteAddress: resolvedSite.value?.address ?? null,
         createdById: req.user!.sub,
         technicians: { create: techIds.map((employeeId) => ({ employeeId })) },
       },
@@ -199,12 +198,12 @@ router.post("/", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
 
 router.patch("/:id", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
   const id = req.params.id as string;
-  const { title, description, scheduledDate, status, technicianIds, siteCoords } = req.body ?? {};
+  const { title, description, scheduledDate, status, technicianIds, siteQuery } = req.body ?? {};
 
   if (status !== undefined && !STATUSES.includes(status)) {
     return res.status(400).json({ error: "Invalid status" });
   }
-  if (siteCoords !== undefined && !(OPS_MANAGE_ROLES as readonly string[]).includes(req.user!.role)) {
+  if (siteQuery !== undefined && !(OPS_MANAGE_ROLES as readonly string[]).includes(req.user!.role)) {
     return res.status(403).json({ error: "Only operations management can set the site location" });
   }
 
@@ -213,13 +212,14 @@ router.patch("/:id", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
   if (description !== undefined) data.description = description || null;
   if (scheduledDate !== undefined) data.scheduledDate = new Date(scheduledDate);
   if (status !== undefined) data.status = status as Status;
-  if (siteCoords !== undefined) {
-    const parsedSite = parseSiteCoords(siteCoords);
-    if (!parsedSite.ok) {
-      return res.status(400).json({ error: "Site coordinates must look like 'lat, lng', e.g. -20.348404, 57.552152" });
+  if (siteQuery !== undefined) {
+    const resolvedSite = await resolveSiteLocation(siteQuery);
+    if (!resolvedSite.ok) {
+      return res.status(400).json({ error: "Couldn't find that location. Try a more specific address (e.g. include the town)." });
     }
-    data.siteLat = parsedSite.value?.lat ?? null;
-    data.siteLng = parsedSite.value?.lng ?? null;
+    data.siteLat = resolvedSite.value?.lat ?? null;
+    data.siteLng = resolvedSite.value?.lng ?? null;
+    data.siteAddress = resolvedSite.value?.address ?? null;
   }
 
   try {
