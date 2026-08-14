@@ -35,6 +35,8 @@ function WorkOrdersPage() {
   const [error, setError] = useState<string | null>(null)
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
+  const [filterCustomerId, setFilterCustomerId] = useState('')
+  const [filterTechnicianId, setFilterTechnicianId] = useState('')
 
   const [showCreate, setShowCreate] = useState(false)
   const [customerId, setCustomerId] = useState('')
@@ -52,17 +54,24 @@ function WorkOrdersPage() {
   function load() {
     setLoading(true)
     api
-      .listWorkOrders({ from: from || undefined, to: to || undefined })
+      .listWorkOrders({
+        from: from || undefined,
+        to: to || undefined,
+        customerId: filterCustomerId || undefined,
+        technicianId: filterTechnicianId || undefined,
+      })
       .then(({ workOrders }) => setWorkOrders(workOrders))
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load work orders'))
       .finally(() => setLoading(false))
   }
 
-  useEffect(load, [from, to]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(load, [from, to, filterCustomerId, filterTechnicianId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  function clearDateFilters() {
+  function clearFilters() {
     setFrom('')
     setTo('')
+    setFilterCustomerId('')
+    setFilterTechnicianId('')
   }
 
   function openCreate() {
@@ -198,6 +207,36 @@ function WorkOrdersPage() {
 
       <Panel title="Work Order Ledger">
         <div className="mb-4 flex flex-wrap items-end gap-4">
+          <div className="flex max-w-xs flex-1 flex-col gap-1">
+            <label className="text-xs font-semibold tracking-widest text-ink-400">CUSTOMER</label>
+            <select
+              value={filterCustomerId}
+              onChange={(e) => setFilterCustomerId(e.target.value)}
+              className={inputClass}
+            >
+              <option value="">All customers</option>
+              {customers.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.company || c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex max-w-xs flex-1 flex-col gap-1">
+            <label className="text-xs font-semibold tracking-widest text-ink-400">TECHNICIAN</label>
+            <select
+              value={filterTechnicianId}
+              onChange={(e) => setFilterTechnicianId(e.target.value)}
+              className={inputClass}
+            >
+              <option value="">All technicians</option>
+              {employees.map((emp) => (
+                <option key={emp.id} value={emp.id}>
+                  {emp.firstName} {emp.lastName}
+                </option>
+              ))}
+            </select>
+          </div>
           <div className="flex flex-col gap-1">
             <label className="text-xs font-semibold tracking-widest text-ink-400">FROM</label>
             <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className={inputClass} />
@@ -206,9 +245,9 @@ function WorkOrdersPage() {
             <label className="text-xs font-semibold tracking-widest text-ink-400">TO</label>
             <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className={inputClass} />
           </div>
-          {(from || to) && (
-            <button type="button" onClick={clearDateFilters} className="text-xs font-semibold text-ink-400 hover:text-ink-100">
-              Clear dates
+          {(from || to || filterCustomerId || filterTechnicianId) && (
+            <button type="button" onClick={clearFilters} className="text-xs font-semibold text-ink-400 hover:text-ink-100">
+              Clear filters
             </button>
           )}
         </div>
