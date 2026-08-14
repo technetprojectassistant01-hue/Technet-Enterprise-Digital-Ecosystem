@@ -1491,6 +1491,7 @@ export interface WorkOrder {
   scheduledDate: string
   siteLat: string | null
   siteLng: string | null
+  siteAddress: string | null
   technicians: { id: string; employee: EmployeeSummary }[]
   createdAt: string
   updatedAt: string
@@ -1525,6 +1526,7 @@ export interface SiteAttendanceWorkOrderSummary {
   title: string
   siteLat: string | null
   siteLng: string | null
+  siteAddress: string | null
 }
 
 export interface SiteAttendance {
@@ -1570,7 +1572,7 @@ export interface WorkOrderInput {
   description?: string
   scheduledDate: string
   technicianIds: string[]
-  siteCoords?: string
+  siteQuery?: string
 }
 
 export function listWorkOrders(params: { status?: WorkOrderStatus; customerId?: string; technicianId?: string } = {}) {
@@ -1599,7 +1601,7 @@ export interface WorkOrderUpdateInput {
   scheduledDate?: string
   status?: WorkOrderStatus
   technicianIds?: string[]
-  siteCoords?: string
+  siteQuery?: string
 }
 
 export function updateWorkOrder(id: string, input: WorkOrderUpdateInput) {
@@ -1634,6 +1636,7 @@ export interface SiteTrackingEntry extends SiteAttendanceWithEmployee {
     title: string
     siteLat: string | null
     siteLng: string | null
+    siteAddress: string | null
     customer: WorkOrderCustomer
   }
 }
