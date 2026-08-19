@@ -1,81 +1,82 @@
-import { AlertTriangle } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { Bell, CalendarClock, Wrench, FolderKanban, ShoppingCart } from 'lucide-react'
 import { useAuth } from './context/AuthContext'
-import { Panel, BarChart } from './dashboard/ui'
+import * as api from './lib/api'
+import type { Notification } from './lib/api'
+import { Panel, StatCard, EmptyState, TableSkeleton } from './dashboard/ui'
+import { hasRole, FIELD_ONLY_ROLES, OPS_SUBMIT_ROLES } from './lib/permissions'
 import AttendanceWidget from './dashboard/AttendanceWidget'
 
-const TRAFFIC_DATA = [
-  { label: '00:00', value: 2100 },
-  { label: '', value: 2900 },
-  { label: '', value: 2500 },
-  { label: '', value: 3400 },
-  { label: '12:00', value: 3100 },
-  { label: '', value: 4200 },
-  { label: '', value: 3800 },
-  { label: '', value: 3300 },
-  { label: '18:00', value: 3700 },
-  { label: 'NOW', value: 4100 },
-]
+const ACTIVE_WORK_ORDER_STATUSES = new Set(['SCHEDULED', 'IN_PROGRESS', 'WAITING_FOR_PARTS', 'REOPENED'])
+const OPEN_MAINTENANCE_REQUEST_STATUSES = new Set(['SUBMITTED', 'SCHEDULED'])
 
-const ALERTS = [
-  { code: 'NODE_SYNC_COMPLETE', detail: 'Region: US-EAST-1 · 2m ago' },
-  { code: 'BACKUP_SCHEDULED', detail: 'System-wide · 15m ago' },
-  { code: 'AUTH_LOG_CLEARED', detail: 'Admin: AS · 1h ago' },
-]
-
-const MODULE_STATS = [
-  {
-    label: 'TECHNET ERP',
-    rows: [
-      { name: 'Inventory Accuracy', value: '99.8%' },
-      { name: 'Active Work Orders', value: '14' },
-    ],
-  },
-  {
-    label: 'TECHNET CONNECT',
-    rows: [
-      { name: 'New Quote Requests', value: '24' },
-      { name: 'Active Channels', value: '12' },
-    ],
-  },
-  {
-    label: 'TECHNET WORKFORCE',
-    rows: [
-      { name: 'Attendance Sync', value: 'Active' },
-      { name: 'Staff Online', value: '142' },
-    ],
-  },
-  {
-    label: 'TECHNET INSIGHT',
-    rows: [{ name: 'Executive KPI', value: 'Optimal' }],
-  },
-]
+interface QuickStats {
+  activeWorkOrders: number
+  openMaintenanceRequests: number | null
+  activeProjects: number | null
+  pendingRequisitions: number | null
+}
 
 function DashboardHome() {
   const { user } = useAuth()
+  const canOps = hasRole(user?.role, OPS_SUBMIT_ROLES)
+  const canNonField = !hasRole(user?.role, FIELD_ONLY_ROLES)
+
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [notificationsLoading, setNotificationsLoading] = useState(true)
+
+  const [stats, setStats] = useState<QuickStats>({
+    activeWorkOrders: 0,
+    openMaintenanceRequests: null,
+    activeProjects: null,
+    pendingRequisitions: null,
+  })
+  const [statsLoading, setStatsLoading] = useState(true)
+
+  useEffect(() => {
+    api
+      .listNotifications()
+      .then(({ notifications }) => setNotifications(notifications.slice(0, 5)))
+      .catch(() => {})
+      .finally(() => setNotificationsLoading(false))
+  }, [])
+
+  useEffect(() => {
+    Promise.all([
+      api.listWorkOrders(),
+      canOps ? api.listMaintenanceRequests() : Promise.resolve(null),
+      canNonField ? api.listProjects({ status: 'IN_PROGRESS' }) : Promise.resolve(null),
+      canNonField ? api.listRequisitions({ status: 'SUBMITTED' }) : Promise.resolve(null),
+    ])
+      .then(([woRes, mrRes, projRes, reqRes]) => {
+        setStats({
+          activeWorkOrders: woRes.workOrders.filter((w) => ACTIVE_WORK_ORDER_STATUSES.has(w.status)).length,
+          openMaintenanceRequests: mrRes
+            ? mrRes.requests.filter((r) => OPEN_MAINTENANCE_REQUEST_STATUSES.has(r.status)).length
+            : null,
+          activeProjects: projRes ? projRes.projects.length : null,
+          pendingRequisitions: reqRes ? reqRes.requisitions.length : null,
+        })
+      })
+      .catch(() => {})
+      .finally(() => setStatsLoading(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canOps, canNonField])
+
+  function handleNotificationClick(notification: Notification) {
+    if (notification.readAt) return
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === notification.id ? { ...n, readAt: new Date().toISOString() } : n)),
+    )
+    api.markNotificationRead(notification.id).catch(() => {})
+  }
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
-        <div>
-          <span className="text-xs font-semibold tracking-widest text-cyan-accent">
-            GLOBAL SYSTEM HEALTH
-          </span>
-          <h1 className="mt-1 text-3xl font-bold text-ink-100">Technet Ecosystem</h1>
-        </div>
-        <div className="flex gap-8 rounded-xl border border-ink-700 bg-ink-900 px-6 py-4">
-          <div>
-            <div className="text-xs font-semibold tracking-widest text-ink-400">NODES</div>
-            <div className="mt-1 text-xl font-semibold text-ink-100">12/12</div>
-          </div>
-          <div>
-            <div className="text-xs font-semibold tracking-widest text-ink-400">LATENCY</div>
-            <div className="mt-1 text-xl font-semibold text-ink-100">14ms</div>
-          </div>
-          <div>
-            <div className="text-xs font-semibold tracking-widest text-ink-400">TRAFFIC</div>
-            <div className="mt-1 text-xl font-semibold text-cyan-accent">94%</div>
-          </div>
-        </div>
+      <div>
+        <span className="text-xs font-semibold tracking-widest text-cyan-accent">OVERVIEW</span>
+        <h1 className="mt-1 text-3xl font-bold text-ink-100">Technet Ecosystem</h1>
       </div>
 
       <Panel>
@@ -106,55 +107,78 @@ function DashboardHome() {
 
       {user?.employeeId && <AttendanceWidget />}
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <Panel
-          className="lg:col-span-2"
-          title="System Load & Request Traffic"
-          action={<span className="text-xs font-semibold text-cyan-accent">REAL-TIME TRAFFIC</span>}
-        >
-          <div className="mb-2 flex justify-between text-[11px] text-ink-400">
-            <span>REQ VOLUME (0 - 5K)</span>
-            <span>PEAK: 4.2K</span>
-          </div>
-          <BarChart data={TRAFFIC_DATA} highlight={(_, i) => i === 5} />
-        </Panel>
-
-        <Panel title="Critical Alerts" icon={AlertTriangle}>
+      <Panel title="Recent Activity" icon={Bell}>
+        {notificationsLoading ? (
+          <TableSkeleton rows={3} cols={1} />
+        ) : notifications.length === 0 ? (
+          <EmptyState icon={Bell} message="No recent activity." />
+        ) : (
           <div className="flex flex-col gap-3">
-            {ALERTS.map((alert, i) => (
-              <div
-                key={alert.code}
-                className={`rounded-lg border-l-2 bg-ink-800 px-4 py-3 ${
-                  i === 0 ? 'border-cyan-accent' : 'border-ink-600'
-                }`}
-              >
-                <div className="text-xs font-semibold tracking-wide text-ink-100">{alert.code}</div>
-                <div className="mt-1 text-xs text-ink-400">{alert.detail}</div>
-              </div>
-            ))}
+            {notifications.map((n) => {
+              const isUnread = !n.readAt
+              const content = (
+                <div
+                  className={`rounded-lg border-l-2 bg-ink-800 px-4 py-3 ${
+                    isUnread ? 'border-cyan-accent' : 'border-ink-700'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <span className={`text-sm ${isUnread ? 'font-semibold text-ink-100' : 'text-ink-300'}`}>
+                      {n.title}
+                    </span>
+                    <span className="shrink-0 text-[11px] text-ink-500">
+                      {new Date(n.createdAt).toLocaleString()}
+                    </span>
+                  </div>
+                  {n.message && <p className="mt-1 text-xs text-ink-400">{n.message}</p>}
+                </div>
+              )
+              return n.link ? (
+                <Link key={n.id} to={n.link} onClick={() => handleNotificationClick(n)}>
+                  {content}
+                </Link>
+              ) : (
+                <button
+                  key={n.id}
+                  type="button"
+                  onClick={() => handleNotificationClick(n)}
+                  className="text-left"
+                >
+                  {content}
+                </button>
+              )
+            })}
           </div>
-        </Panel>
-      </div>
+        )}
+      </Panel>
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        {MODULE_STATS.map((mod) => (
-          <Panel key={mod.label}>
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold tracking-widest text-ink-400">
-                {mod.label}
-              </span>
-              <span className="h-1.5 w-1.5 rounded-full bg-cyan-accent" />
-            </div>
-            <div className="mt-3 flex flex-col gap-2">
-              {mod.rows.map((row) => (
-                <div key={row.name} className="flex items-center justify-between text-sm">
-                  <span className="text-ink-300">{row.name}</span>
-                  <span className="font-semibold text-ink-100">{row.value}</span>
-                </div>
-              ))}
-            </div>
-          </Panel>
-        ))}
+        <StatCard
+          label="Active Work Orders"
+          value={statsLoading ? '—' : stats.activeWorkOrders}
+          icon={CalendarClock}
+        />
+        {canOps && (
+          <StatCard
+            label="Open Maintenance Requests"
+            value={statsLoading ? '—' : (stats.openMaintenanceRequests ?? 0)}
+            icon={Wrench}
+          />
+        )}
+        {canNonField && (
+          <>
+            <StatCard
+              label="Active Projects"
+              value={statsLoading ? '—' : (stats.activeProjects ?? 0)}
+              icon={FolderKanban}
+            />
+            <StatCard
+              label="Pending Requisitions"
+              value={statsLoading ? '—' : (stats.pendingRequisitions ?? 0)}
+              icon={ShoppingCart}
+            />
+          </>
+        )}
       </div>
     </div>
   )
