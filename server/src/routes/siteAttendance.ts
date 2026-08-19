@@ -32,7 +32,7 @@ function parseNote(body: unknown): string | null {
 /** The work order this employee is actively on right now, if any — used to auto-link and geofence daily check-in. */
 async function findCurrentWorkOrder(employeeId: string) {
   const inProgress = await prisma.workOrder.findFirst({
-    where: { status: "IN_PROGRESS", technicians: { some: { employeeId } } },
+    where: { status: { in: ["IN_PROGRESS", "WAITING_FOR_PARTS"] }, technicians: { some: { employeeId } } },
     orderBy: { updatedAt: "desc" },
   });
   if (inProgress) return inProgress;
