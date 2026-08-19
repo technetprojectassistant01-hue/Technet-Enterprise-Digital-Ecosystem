@@ -2414,3 +2414,18 @@ export function processPayroll(year: number, month: number) {
 export function deletePayrollRun(id: string) {
   return request<null>(`/api/payroll/${id}`, { method: 'DELETE' })
 }
+
+export interface InsightSummary {
+  monthlyRevenue: number
+  activeProjects: number
+  activeWorkOrders: number
+  overdueInvoices: { count: number; total: number }
+  openMaintenanceRequests: number
+  lowStockItems: number
+  techniciansOnSite: number
+  generatedAt: string
+}
+
+export function getInsightSummary() {
+  return request<{ summary: InsightSummary }>('/api/insight/summary')
+}
