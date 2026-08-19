@@ -39,3 +39,6 @@ export const NON_FIELD_ROLES = [
   "HR_OFFICER",
   "OPERATIONS_MANAGER",
 ] as const;
+
+/** Executive-level, cross-module reporting (Technet Insight). No dedicated Managing Director role exists yet, so this is admin-only. */
+export const INSIGHT_ROLES = ["ADMIN"] as const;
