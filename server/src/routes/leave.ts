@@ -4,6 +4,7 @@ import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { isUniqueConstraintError, isForeignKeyConstraintError, isNotFoundError } from "../lib/prismaErrors";
 import { HR_ROLES } from "../lib/roles";
+import { notifyEmployee } from "../lib/notifications";
 
 const router = Router();
 
@@ -506,6 +507,9 @@ router.post("/requests/:id/approve", async (req, res) => {
     });
 
     await syncEmploymentStatuses();
+    await notifyEmployee(updated.employeeId, "LEAVE_REQUEST_APPROVED", `Your ${updated.leaveType.name} request was approved`, {
+      link: "/dashboard/erp/hr/leave",
+    });
     res.json({ request: updated });
   } catch (err) {
     if (err instanceof BalanceExceededError) {
@@ -539,6 +543,9 @@ router.post("/requests/:id/reject", async (req, res) => {
     include: requestInclude,
   });
 
+  await notifyEmployee(updated.employeeId, "LEAVE_REQUEST_REJECTED", `Your ${updated.leaveType.name} request was rejected`, {
+    link: "/dashboard/erp/hr/leave",
+  });
   res.json({ request: updated });
 });
 
