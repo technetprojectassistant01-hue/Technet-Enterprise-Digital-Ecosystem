@@ -31,6 +31,7 @@ import maintenanceSchedulesRouter from "./routes/maintenanceSchedules";
 import payrollRouter from "./routes/payroll";
 import siteAttendanceRouter from "./routes/siteAttendance";
 import insightRouter from "./routes/insight";
+import notificationsRouter from "./routes/notifications";
 import { requireAuth, requireRole } from "./middleware/auth";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 
@@ -85,6 +86,7 @@ app.use("/api/maintenance-schedules", maintenanceSchedulesRouter);
 app.use("/api/payroll", payrollRouter);
 app.use("/api/site-attendance", siteAttendanceRouter);
 app.use("/api/insight", insightRouter);
+app.use("/api/notifications", notificationsRouter);
 
 app.get("/api/admin/ping", requireAuth, requireRole("ADMIN"), (_req, res) => {
   res.json({ ok: true, message: "You have admin access" });
