@@ -97,7 +97,9 @@ export const purchaseOrderStatusTone: Record<PurchaseOrderStatus, BadgeTone> = {
 export const workOrderStatusTone: Record<WorkOrderStatus, BadgeTone> = {
   SCHEDULED: 'neutral',
   IN_PROGRESS: 'warning',
+  WAITING_FOR_PARTS: 'warning',
   COMPLETED: 'success',
+  REOPENED: 'danger',
   CANCELLED: 'danger',
 }
 
