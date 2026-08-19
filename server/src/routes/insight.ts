@@ -30,7 +30,7 @@ router.get("/summary", async (_req, res) => {
       where: { status: "PAID", paidAt: { gte: startOfMonth } },
     }),
     prisma.project.count({ where: { status: "IN_PROGRESS" } }),
-    prisma.workOrder.count({ where: { status: { in: ["SCHEDULED", "IN_PROGRESS"] } } }),
+    prisma.workOrder.count({ where: { status: { in: ["SCHEDULED", "IN_PROGRESS", "WAITING_FOR_PARTS", "REOPENED"] } } }),
     prisma.invoice.count({ where: { status: "OVERDUE" } }),
     prisma.invoice.aggregate({ _sum: { total: true }, where: { status: "OVERDUE" } }),
     prisma.maintenanceRequest.count({ where: { status: { in: ["SUBMITTED", "SCHEDULED"] } } }),
