@@ -11,6 +11,10 @@ router.get("/summary", async (_req, res) => {
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
+  // Independent read-only aggregates, no cross-table consistency requirement between them
+  // (this is a best-effort snapshot dashboard, not a ledger) - run in parallel rather than
+  // wrapped in a single $transaction, since Neon's cold-start latency can push a batched
+  // transaction of this many queries past Prisma's transaction timeout.
   const [
     monthlyRevenue,
     activeProjects,
@@ -20,7 +24,7 @@ router.get("/summary", async (_req, res) => {
     openMaintenanceRequests,
     techniciansOnSite,
     inventoryItems,
-  ] = await prisma.$transaction([
+  ] = await Promise.all([
     prisma.invoice.aggregate({
       _sum: { total: true },
       where: { status: "PAID", paidAt: { gte: startOfMonth } },
