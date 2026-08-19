@@ -252,6 +252,8 @@ model User {
 
   payrollRunsCreated PayrollRun[] @relation("PayrollRunCreator")
 
+  quotationsCreated Quotation[] @relation("QuotationCreator")
+
   notifications Notification[]
 }
 
@@ -505,6 +507,8 @@ model Quotation {
   total           Decimal         @db.Decimal(14, 2)
   issuedAt        DateTime        @default(now())
   expiresAt       DateTime?
+  createdById     String?
+  createdBy       User?           @relation("QuotationCreator", fields: [createdById], references: [id])
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 
@@ -1096,6 +1100,18 @@ enum NotificationType {
   REQUISITION_APPROVED
   REQUISITION_REJECTED
   WORK_ORDER_ASSIGNED
+  QUOTATION_ACCEPTED
+  QUOTATION_REJECTED
+  INTERVENTION_REPORT_SUBMITTED
+  INTERVENTION_REPORT_APPROVED
+  INTERVENTION_REPORT_REJECTED
+  MAINTENANCE_REQUEST_SCHEDULED
+  MAINTENANCE_REQUEST_CANCELLED
+  MAINTENANCE_REQUEST_COMPLETED
+  MAINTENANCE_REPORT_SUBMITTED
+  MAINTENANCE_REPORT_APPROVED
+  MAINTENANCE_REPORT_REJECTED
+  PROJECT_ASSIGNED
 }
 
 model Notification {
