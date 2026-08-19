@@ -6,6 +6,7 @@ import { isForeignKeyConstraintError, isNotFoundError, isUniqueConstraintError }
 import { formatInterventionNumber } from "../lib/interventionNumber";
 import { OPS_MANAGE_ROLES, OPS_SUBMIT_ROLES } from "../lib/roles";
 import { geocodeAddress } from "../lib/geocode";
+import { notifyEmployee } from "../lib/notifications";
 
 const router = Router();
 
@@ -214,6 +215,13 @@ router.post("/", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
         technicians: { include: { employee: { select: EMPLOYEE_SELECT } } },
       },
     });
+    await Promise.all(
+      techIds.map((employeeId) =>
+        notifyEmployee(employeeId, "WORK_ORDER_ASSIGNED", `Assigned to work order ${workOrder.workOrderNumber}`, {
+          link: `/dashboard/operations/work-orders/${workOrder.id}`,
+        }),
+      ),
+    );
     res.status(201).json({ workOrder });
   } catch (err) {
     if (isUniqueConstraintError(err)) return res.status(409).json({ error: "A work order with that number already exists" });
@@ -257,9 +265,14 @@ router.patch("/:id", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
     data.siteAddress = resolvedSite.value?.address ?? null;
   }
 
+  let newlyAssignedTechIds: string[] = [];
+
   try {
     if (Array.isArray(technicianIds)) {
       const techIds = (technicianIds as string[]).filter((v) => typeof v === "string");
+      const existing = await prisma.workOrderTechnician.findMany({ where: { workOrderId: id }, select: { employeeId: true } });
+      const existingIds = new Set(existing.map((t) => t.employeeId));
+      newlyAssignedTechIds = techIds.filter((employeeId) => !existingIds.has(employeeId));
       await prisma.workOrderTechnician.deleteMany({ where: { workOrderId: id } });
       data.technicians = { create: techIds.map((employeeId) => ({ employeeId })) };
     }
@@ -272,6 +285,13 @@ router.patch("/:id", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
         technicians: { include: { employee: { select: EMPLOYEE_SELECT } } },
       },
     });
+    await Promise.all(
+      newlyAssignedTechIds.map((employeeId) =>
+        notifyEmployee(employeeId, "WORK_ORDER_ASSIGNED", `Assigned to work order ${workOrder.workOrderNumber}`, {
+          link: `/dashboard/operations/work-orders/${workOrder.id}`,
+        }),
+      ),
+    );
     res.json({ workOrder });
   } catch (err) {
     if (isNotFoundError(err)) return res.status(404).json({ error: "Work order not found" });
