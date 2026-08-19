@@ -5,6 +5,7 @@ import { requireAuth, requireRole } from "../middleware/auth";
 import { isForeignKeyConstraintError, isNotFoundError, isUniqueConstraintError } from "../lib/prismaErrors";
 import { generateQuotationPdf } from "../lib/pdf/quotationPdf";
 import { SALES_ROLES, NON_FIELD_ROLES } from "../lib/roles";
+import { notifyUser } from "../lib/notifications";
 
 const router = Router();
 const STATUSES = ["DRAFT", "SENT", "ACCEPTED", "REJECTED", "EXPIRED"] as const;
@@ -96,6 +97,7 @@ router.post("/", requireRole(...SALES_ROLES), async (req, res) => {
         vatAmount,
         total,
         expiresAt: expiresAt ? new Date(expiresAt) : null,
+        createdById: req.user!.sub,
         items: {
           create: (items as QuotationItemInput[]).map((item) => ({
             description: item.description.trim(),
@@ -133,6 +135,14 @@ router.patch("/:id", requireRole(...SALES_ROLES), async (req, res) => {
       data,
       include: { customer: { select: CUSTOMER_SELECT }, items: true },
     });
+    if (quotation.createdById && (status === "ACCEPTED" || status === "REJECTED")) {
+      await notifyUser(
+        quotation.createdById,
+        status === "ACCEPTED" ? "QUOTATION_ACCEPTED" : "QUOTATION_REJECTED",
+        `Quotation ${quotation.quotationNumber} was ${status === "ACCEPTED" ? "accepted" : "rejected"}`,
+        { link: `/dashboard/erp/finance/quotations/${quotation.id}` },
+      );
+    }
     res.json({ quotation });
   } catch (err) {
     if (isNotFoundError(err)) return res.status(404).json({ error: "Quotation not found" });
