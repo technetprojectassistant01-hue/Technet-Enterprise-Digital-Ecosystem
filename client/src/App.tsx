@@ -2,7 +2,6 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import {
   Share2,
   Megaphone,
-  LineChart,
   ShieldCheck,
 } from 'lucide-react'
 import Login from './Login'
@@ -57,6 +56,7 @@ import WorkforceLayout from './workforce/WorkforceLayout'
 import PayrollPage from './workforce/PayrollPage'
 import PayrollDetailPage from './workforce/PayrollDetailPage'
 import ModuleStub from './dashboard/ModuleStub'
+import InsightDashboardPage from './insight/InsightDashboardPage'
 import UsersPage from './UsersPage'
 import SettingsPage from './SettingsPage'
 import ProtectedRoute from './ProtectedRoute'
@@ -144,10 +144,6 @@ function App() {
               path="marketing"
               element={<ModuleStub title="Technet Digital Marketing" icon={Megaphone} />}
             />
-            <Route
-              path="insight"
-              element={<ModuleStub title="Technet Insight" icon={LineChart} />}
-            />
           </Route>
           <Route
             path="security"
@@ -156,6 +152,7 @@ function App() {
           <Route path="settings" element={<SettingsPage />} />
           <Route element={<AdminRoute />}>
             <Route path="users" element={<UsersPage />} />
+            <Route path="insight" element={<InsightDashboardPage />} />
           </Route>
         </Route>
       </Route>

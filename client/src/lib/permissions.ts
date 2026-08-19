@@ -20,6 +20,17 @@ export const DOCUMENT_ROLES: readonly Role[] = [
 /** Field technicians and generic employees only work within Operations and Maintenance. */
 export const FIELD_ONLY_ROLES: readonly Role[] = ['FIELD_TECHNICIAN', 'EMPLOYEE']
 
+/** Everyone except ADMIN - used to hide admin-only nav items (e.g. Technet Insight). */
+export const NON_ADMIN_ROLES: readonly Role[] = [
+  'SALES_OFFICER',
+  'FINANCE_OFFICER',
+  'STOREKEEPER',
+  'HR_OFFICER',
+  'OPERATIONS_MANAGER',
+  'FIELD_TECHNICIAN',
+  'EMPLOYEE',
+]
+
 export function hasRole(role: Role | undefined, allowed: readonly Role[]): boolean {
   return !!role && allowed.includes(role)
 }

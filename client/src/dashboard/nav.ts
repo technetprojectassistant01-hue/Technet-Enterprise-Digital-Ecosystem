@@ -32,7 +32,7 @@ import {
   Radar,
   type LucideIcon,
 } from 'lucide-react'
-import { FIELD_ONLY_ROLES } from '../lib/permissions'
+import { FIELD_ONLY_ROLES, NON_ADMIN_ROLES } from '../lib/permissions'
 import type { Role } from '../lib/api'
 
 export interface NavItem {
@@ -126,7 +126,7 @@ export const MAIN_NAV: NavItem[] = [
     children: [{ label: 'Payroll', to: '/dashboard/workforce/payroll', icon: Banknote }],
   },
   { label: 'Technet Digital Marketing', to: '/dashboard/marketing', icon: Megaphone, hiddenFrom: FIELD_ONLY_ROLES },
-  { label: 'Technet Insight', to: '/dashboard/insight', icon: LineChart, hiddenFrom: FIELD_ONLY_ROLES },
+  { label: 'Technet Insight', to: '/dashboard/insight', icon: LineChart, hiddenFrom: NON_ADMIN_ROLES },
 ]
 
 export const SYSTEM_NAV: NavItem[] = [
