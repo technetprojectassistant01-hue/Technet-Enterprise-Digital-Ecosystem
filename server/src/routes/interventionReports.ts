@@ -5,6 +5,7 @@ import { requireAuth, requireRole } from "../middleware/auth";
 import { isForeignKeyConstraintError, isNotFoundError } from "../lib/prismaErrors";
 import { formatInterventionNumber } from "../lib/interventionNumber";
 import { OPS_MANAGE_ROLES, OPS_SUBMIT_ROLES } from "../lib/roles";
+import { notifyRoles, notifyUser } from "../lib/notifications";
 
 const router = Router();
 
@@ -377,7 +378,11 @@ router.post("/", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
       where: { id: created.id },
       select: DETAIL_SELECT,
     });
-    res.status(201).json({ interventionReport: withInterventionNumber(interventionReport!) });
+    const withNumber = withInterventionNumber(interventionReport!);
+    await notifyRoles(OPS_MANAGE_ROLES, "INTERVENTION_REPORT_SUBMITTED", `Intervention report ${withNumber.interventionNumber} needs review`, {
+      link: `/dashboard/operations/intervention-reports/${withNumber.id}`,
+    });
+    res.status(201).json({ interventionReport: withNumber });
   } catch (err) {
     if (isForeignKeyConstraintError(err)) return res.status(400).json({ error: "Customer, work order, or technician not found" });
     throw err;
@@ -441,7 +446,14 @@ async function review(id: string, reviewerId: string, toStatus: "APPROVED" | "RE
     data: { status: toStatus, reviewedById: reviewerId, reviewedAt: new Date(), reviewNote: note || null },
   });
   const interventionReport = await prisma.interventionReport.findUnique({ where: { id }, select: DETAIL_SELECT });
-  return { interventionReport: withInterventionNumber(interventionReport!) };
+  const withNumber = withInterventionNumber(interventionReport!);
+  await notifyUser(
+    existing.createdById,
+    toStatus === "APPROVED" ? "INTERVENTION_REPORT_APPROVED" : "INTERVENTION_REPORT_REJECTED",
+    `Intervention report ${withNumber.interventionNumber} was ${toStatus === "APPROVED" ? "approved" : "rejected"}`,
+    { link: `/dashboard/operations/intervention-reports/${withNumber.id}` },
+  );
+  return { interventionReport: withNumber };
 }
 
 router.post("/:id/approve", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
