@@ -251,6 +251,8 @@ model User {
   maintenanceReportsReviewed  MaintenanceReport[]   @relation("MaintenanceReportReviewer")
 
   payrollRunsCreated PayrollRun[] @relation("PayrollRunCreator")
+
+  notifications Notification[]
 }
 
 model PasswordResetToken {
@@ -1086,4 +1088,27 @@ model PayrollLine {
   netPay          Decimal    @db.Decimal(12, 2)
 
   @@unique([payrollRunId, employeeId])
+}
+
+enum NotificationType {
+  LEAVE_REQUEST_APPROVED
+  LEAVE_REQUEST_REJECTED
+  REQUISITION_APPROVED
+  REQUISITION_REJECTED
+  WORK_ORDER_ASSIGNED
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  message   String?
+  link      String?
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  @@index([userId, readAt])
+  @@index([userId, createdAt])
 }
