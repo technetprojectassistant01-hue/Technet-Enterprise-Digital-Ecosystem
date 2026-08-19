@@ -2435,3 +2435,32 @@ export interface InsightSummary {
 export function getInsightSummary() {
   return request<{ summary: InsightSummary }>('/api/insight/summary')
 }
+
+export type NotificationType =
+  | 'LEAVE_REQUEST_APPROVED'
+  | 'LEAVE_REQUEST_REJECTED'
+  | 'REQUISITION_APPROVED'
+  | 'REQUISITION_REJECTED'
+  | 'WORK_ORDER_ASSIGNED'
+
+export interface Notification {
+  id: string
+  type: NotificationType
+  title: string
+  message: string | null
+  link: string | null
+  readAt: string | null
+  createdAt: string
+}
+
+export function listNotifications() {
+  return request<{ notifications: Notification[]; unreadCount: number }>('/api/notifications')
+}
+
+export function markNotificationRead(id: string) {
+  return request<{ ok: true }>(`/api/notifications/${id}/read`, { method: 'POST' })
+}
+
+export function markAllNotificationsRead() {
+  return request<{ ok: true }>('/api/notifications/read-all', { method: 'POST' })
+}
