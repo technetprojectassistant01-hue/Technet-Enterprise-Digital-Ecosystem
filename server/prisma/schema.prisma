@@ -146,7 +146,9 @@ enum JobCategory {
 enum WorkOrderStatus {
   SCHEDULED
   IN_PROGRESS
+  WAITING_FOR_PARTS
   COMPLETED
+  REOPENED
   CANCELLED
 }
 
