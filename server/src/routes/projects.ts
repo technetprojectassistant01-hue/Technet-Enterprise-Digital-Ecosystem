@@ -4,6 +4,7 @@ import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { isUniqueConstraintError, isForeignKeyConstraintError, isNotFoundError } from "../lib/prismaErrors";
 import { OPS_MANAGE_ROLES, NON_FIELD_ROLES } from "../lib/roles";
+import { notifyEmployee } from "../lib/notifications";
 
 const router = Router();
 
@@ -182,7 +183,13 @@ router.post("/:id/assignments", requireRole(...OPS_MANAGE_ROLES), async (req, re
         employeeId,
         roleOnProject: typeof roleOnProject === "string" && roleOnProject ? roleOnProject : null,
       },
-      include: { employee: { select: { id: true, firstName: true, lastName: true, position: true } } },
+      include: {
+        employee: { select: { id: true, firstName: true, lastName: true, position: true } },
+        project: { select: { name: true } },
+      },
+    });
+    await notifyEmployee(employeeId, "PROJECT_ASSIGNED", `Assigned to project ${assignment.project.name}`, {
+      link: `/dashboard/erp/projects/${id}`,
     });
     res.status(201).json({ assignment });
   } catch (err) {
