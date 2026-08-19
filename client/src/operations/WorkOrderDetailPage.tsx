@@ -191,15 +191,44 @@ function WorkOrderDetailPage() {
             </button>
           )}
           {canSubmit && workOrder.status === 'IN_PROGRESS' && (
+            <button
+              type="button"
+              onClick={() => setStatus('WAITING_FOR_PARTS')}
+              disabled={actioning}
+              className={secondaryButtonClass}
+            >
+              Waiting for Parts
+            </button>
+          )}
+          {canSubmit && workOrder.status === 'IN_PROGRESS' && (
             <button type="button" onClick={() => setStatus('COMPLETED')} disabled={actioning} className={primaryButtonClass}>
               Mark Completed
             </button>
           )}
-          {canSubmit && (workOrder.status === 'SCHEDULED' || workOrder.status === 'IN_PROGRESS') && (
-            <button type="button" onClick={() => setStatus('CANCELLED')} disabled={actioning} className={dangerButtonClass}>
-              Cancel
+          {canSubmit && workOrder.status === 'WAITING_FOR_PARTS' && (
+            <button type="button" onClick={() => setStatus('IN_PROGRESS')} disabled={actioning} className={primaryButtonClass}>
+              Resume Work
             </button>
           )}
+          {canManage && workOrder.status === 'COMPLETED' && (
+            <button type="button" onClick={() => setStatus('REOPENED')} disabled={actioning} className={secondaryButtonClass}>
+              Reopen
+            </button>
+          )}
+          {canManage && workOrder.status === 'REOPENED' && (
+            <button type="button" onClick={() => setStatus('IN_PROGRESS')} disabled={actioning} className={primaryButtonClass}>
+              Resume Work
+            </button>
+          )}
+          {canSubmit &&
+            (workOrder.status === 'SCHEDULED' ||
+              workOrder.status === 'IN_PROGRESS' ||
+              workOrder.status === 'WAITING_FOR_PARTS' ||
+              workOrder.status === 'REOPENED') && (
+              <button type="button" onClick={() => setStatus('CANCELLED')} disabled={actioning} className={dangerButtonClass}>
+                Cancel
+              </button>
+            )}
           {canManage && (
             <button type="button" onClick={handleDelete} className={secondaryButtonClass}>
               <Trash2 className="h-4 w-4" />

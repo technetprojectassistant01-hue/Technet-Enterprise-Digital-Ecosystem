@@ -1470,7 +1470,13 @@ export const JOB_CATEGORY_LABELS: Record<JobCategory, string> = {
   OTHERS: 'Others',
 }
 
-export type WorkOrderStatus = 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
+export type WorkOrderStatus =
+  | 'SCHEDULED'
+  | 'IN_PROGRESS'
+  | 'WAITING_FOR_PARTS'
+  | 'COMPLETED'
+  | 'REOPENED'
+  | 'CANCELLED'
 export type WarrantyStatus = 'YES' | 'NO' | 'UNKNOWN'
 export type ReportStatus = 'SUBMITTED' | 'APPROVED' | 'REJECTED'
 
