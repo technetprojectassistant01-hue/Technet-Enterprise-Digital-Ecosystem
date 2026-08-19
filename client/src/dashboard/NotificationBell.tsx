@@ -45,15 +45,17 @@ function NotificationBell() {
       .finally(() => setLoading(false))
   }
 
-  async function handleItemClick(notification: Notification) {
+  function handleItemClick(notification: Notification) {
+    // Close immediately rather than waiting on the network call below - otherwise, under a slow
+    // connection, the modal stays open over whatever page the link just navigated to.
+    if (notification.link) setOpen(false)
     if (!notification.readAt) {
       setNotifications((prev) =>
         prev.map((n) => (n.id === notification.id ? { ...n, readAt: new Date().toISOString() } : n)),
       )
       setUnreadCount((prev) => Math.max(0, prev - 1))
-      await api.markNotificationRead(notification.id).catch(() => {})
+      api.markNotificationRead(notification.id).catch(() => {})
     }
-    if (notification.link) setOpen(false)
   }
 
   async function handleMarkAllRead() {
