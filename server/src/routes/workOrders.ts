@@ -21,8 +21,17 @@ const JOB_CATEGORIES = [
 ] as const;
 type JobCategory = (typeof JOB_CATEGORIES)[number];
 
-const STATUSES = ["SCHEDULED", "IN_PROGRESS", "COMPLETED", "CANCELLED"] as const;
+const STATUSES = ["SCHEDULED", "IN_PROGRESS", "WAITING_FOR_PARTS", "COMPLETED", "REOPENED", "CANCELLED"] as const;
 type Status = (typeof STATUSES)[number];
+
+export const ALLOWED_TRANSITIONS: Record<Status, Status[]> = {
+  SCHEDULED: ["IN_PROGRESS", "CANCELLED"],
+  IN_PROGRESS: ["WAITING_FOR_PARTS", "COMPLETED", "CANCELLED"],
+  WAITING_FOR_PARTS: ["IN_PROGRESS", "CANCELLED"],
+  COMPLETED: ["REOPENED"],
+  REOPENED: ["IN_PROGRESS", "CANCELLED"],
+  CANCELLED: [],
+};
 
 
 const CUSTOMER_SELECT = { id: true, name: true, company: true, address: true };
@@ -219,6 +228,13 @@ router.patch("/:id", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
 
   if (status !== undefined && !STATUSES.includes(status)) {
     return res.status(400).json({ error: "Invalid status" });
+  }
+  if (status !== undefined) {
+    const current = await prisma.workOrder.findUnique({ where: { id }, select: { status: true } });
+    if (!current) return res.status(404).json({ error: "Work order not found" });
+    if (!ALLOWED_TRANSITIONS[current.status].includes(status)) {
+      return res.status(400).json({ error: `Cannot move a work order from ${current.status} to ${status}` });
+    }
   }
   if (siteQuery !== undefined && !(OPS_MANAGE_ROLES as readonly string[]).includes(req.user!.role)) {
     return res.status(403).json({ error: "Only operations management can set the site location" });
