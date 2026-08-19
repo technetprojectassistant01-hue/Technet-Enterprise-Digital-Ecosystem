@@ -5,6 +5,7 @@ import { requireAuth, requireRole } from "../middleware/auth";
 import { isForeignKeyConstraintError, isNotFoundError } from "../lib/prismaErrors";
 import { formatAssetNumber, formatRequestNumber } from "../lib/maintenanceNumbers";
 import { OPS_MANAGE_ROLES, OPS_SUBMIT_ROLES } from "../lib/roles";
+import { notifyUser } from "../lib/notifications";
 
 const router = Router();
 
@@ -142,7 +143,11 @@ router.post("/:id/schedule", requireRole(...OPS_MANAGE_ROLES), async (req, res) 
         schedule: { include: { technicians: { include: { employee: { select: EMPLOYEE_SELECT } } }, report: true } },
       },
     });
-    res.status(201).json({ request: withRequestNumber(request!) });
+    const withNumber = withRequestNumber(request!);
+    await notifyUser(existing.requestedById, "MAINTENANCE_REQUEST_SCHEDULED", `Maintenance request ${withNumber.requestNumber} was scheduled`, {
+      link: "/dashboard/maintenance/requests",
+    });
+    res.status(201).json({ request: withNumber });
   } catch (err) {
     if (isForeignKeyConstraintError(err)) return res.status(400).json({ error: "Technician not found" });
     throw err;
@@ -163,7 +168,11 @@ router.post("/:id/cancel", requireRole(...OPS_MANAGE_ROLES), async (req, res) =>
     data: { status: "CANCELLED" },
     include: { asset: { select: ASSET_SELECT }, requestedBy: { select: REQUESTER_SELECT } },
   });
-  res.json({ request: withRequestNumber(request) });
+  const withNumber = withRequestNumber(request);
+  await notifyUser(existing.requestedById, "MAINTENANCE_REQUEST_CANCELLED", `Maintenance request ${withNumber.requestNumber} was cancelled`, {
+    link: "/dashboard/maintenance/requests",
+  });
+  res.json({ request: withNumber });
 });
 
 router.delete("/:id", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {

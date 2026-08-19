@@ -5,6 +5,7 @@ import { requireAuth, requireRole } from "../middleware/auth";
 import { isForeignKeyConstraintError, isNotFoundError } from "../lib/prismaErrors";
 import { formatAssetNumber, formatContractNumber, formatRequestNumber } from "../lib/maintenanceNumbers";
 import { OPS_MANAGE_ROLES, OPS_SUBMIT_ROLES } from "../lib/roles";
+import { notifyRoles, notifyUser } from "../lib/notifications";
 
 const router = Router();
 
@@ -193,6 +194,17 @@ router.post("/:id/report", requireRole(...OPS_SUBMIT_ROLES), async (req, res) =>
   ]);
 
   const updated = await prisma.maintenanceSchedule.findUnique({ where: { id }, include: DETAIL_INCLUDE });
+  await notifyRoles(OPS_MANAGE_ROLES, "MAINTENANCE_REPORT_SUBMITTED", "A maintenance report needs review", {
+    link: `/dashboard/maintenance/schedule/${id}`,
+  });
+  if (schedule.requestId) {
+    const request = await prisma.maintenanceRequest.findUnique({ where: { id: schedule.requestId }, select: { requestedById: true } });
+    if (request) {
+      await notifyUser(request.requestedById, "MAINTENANCE_REQUEST_COMPLETED", "Your maintenance request is complete", {
+        link: "/dashboard/maintenance/requests",
+      });
+    }
+  }
   res.status(201).json({ schedule: withNumbers(updated!) });
 });
 
@@ -208,6 +220,12 @@ async function reviewReport(scheduleId: string, reviewerId: string, toStatus: "A
     data: { status: toStatus, reviewedById: reviewerId, reviewedAt: new Date(), reviewNote: note || null },
   });
   const updated = await prisma.maintenanceSchedule.findUnique({ where: { id: scheduleId }, include: DETAIL_INCLUDE });
+  await notifyUser(
+    schedule.report.submittedById,
+    toStatus === "APPROVED" ? "MAINTENANCE_REPORT_APPROVED" : "MAINTENANCE_REPORT_REJECTED",
+    `Your maintenance report was ${toStatus === "APPROVED" ? "approved" : "rejected"}`,
+    { link: `/dashboard/maintenance/schedule/${scheduleId}` },
+  );
   return { schedule: withNumbers(updated!) };
 }
 
