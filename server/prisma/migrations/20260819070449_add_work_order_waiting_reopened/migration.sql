@@ -1,0 +1,3 @@
+-- AlterEnum
+ALTER TYPE "WorkOrderStatus" ADD VALUE 'WAITING_FOR_PARTS';
+ALTER TYPE "WorkOrderStatus" ADD VALUE 'REOPENED';
