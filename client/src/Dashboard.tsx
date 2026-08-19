@@ -1,10 +1,11 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { Bell, HelpCircle, Plus, Search, Settings } from 'lucide-react'
+import { HelpCircle, Plus, Search, Settings } from 'lucide-react'
 import { useAuth } from './context/AuthContext'
 import Logo from './components/Logo'
 import { MAIN_NAV, SYSTEM_NAV, ADMIN_NAV } from './dashboard/nav'
 import { Avatar } from './dashboard/ui'
 import NavTree from './dashboard/NavTree'
+import NotificationBell from './dashboard/NotificationBell'
 
 function Dashboard() {
   const { user, logout } = useAuth()
@@ -100,9 +101,7 @@ function Dashboard() {
           </div>
 
           <div className="ml-auto flex items-center gap-5">
-            <button type="button" className="text-ink-300 hover:text-ink-100" aria-label="Notifications">
-              <Bell className="h-5 w-5" />
-            </button>
+            <NotificationBell />
             <NavLink to="/dashboard/settings" className="text-ink-300 hover:text-ink-100" aria-label="Settings">
               <Settings className="h-5 w-5" />
             </NavLink>
