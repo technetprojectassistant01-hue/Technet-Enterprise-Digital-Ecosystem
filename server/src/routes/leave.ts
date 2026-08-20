@@ -5,6 +5,7 @@ import { requireAuth, requireRole } from "../middleware/auth";
 import { isUniqueConstraintError, isForeignKeyConstraintError, isNotFoundError } from "../lib/prismaErrors";
 import { HR_ROLES } from "../lib/roles";
 import { notifyEmployee } from "../lib/notifications";
+import { workingDaysBetween } from "../lib/workingDays";
 
 const router = Router();
 
@@ -26,18 +27,6 @@ function parseDateOnly(value: unknown): Date | null {
 function todayUtc(): Date {
   const now = new Date();
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-}
-
-/** Working days between two dates inclusive, counting Monday to Friday only. */
-function workingDaysBetween(start: Date, end: Date): number {
-  let count = 0;
-  const cursor = new Date(start.getTime());
-  while (cursor <= end) {
-    const day = cursor.getUTCDay();
-    if (day !== 0 && day !== 6) count += 1;
-    cursor.setUTCDate(cursor.getUTCDate() + 1);
-  }
-  return count;
 }
 
 function decimal(value: number | string): Prisma.Decimal {
