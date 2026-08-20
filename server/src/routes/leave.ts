@@ -33,6 +33,15 @@ function decimal(value: number | string): Prisma.Decimal {
   return new Prisma.Decimal(value);
 }
 
+/** The set of public holiday dates (as "YYYY-MM-DD") falling within [start, end], for excluding from working-day counts. */
+async function holidaysBetween(start: Date, end: Date): Promise<Set<string>> {
+  const holidays = await prisma.publicHoliday.findMany({
+    where: { date: { gte: start, lte: end } },
+    select: { date: true },
+  });
+  return new Set(holidays.map((h) => h.date.toISOString().slice(0, 10)));
+}
+
 class BalanceExceededError extends Error {
   constructor(
     readonly available: string,
@@ -286,13 +295,14 @@ router.get("/requests", async (req, res) => {
 });
 
 /** Suggests the working-day count for a range, so the UI can prefill it. */
-router.get("/requests/working-days", (req, res) => {
+router.get("/requests/working-days", async (req, res) => {
   const start = parseDateOnly(req.query.startDate);
   const end = parseDateOnly(req.query.endDate);
   if (!start || !end || end < start) {
     return res.status(400).json({ error: "Provide a valid start and end date" });
   }
-  res.json({ days: workingDaysBetween(start, end) });
+  const holidays = await holidaysBetween(start, end);
+  res.json({ days: workingDaysBetween(start, end, holidays) });
 });
 
 router.get("/requests/:id", async (req, res) => {
@@ -336,7 +346,7 @@ router.post("/requests", async (req, res) => {
       return res.status(400).json({ error: "Days must be greater than zero" });
     }
   } else {
-    days = isHalfDay ? 0.5 : workingDaysBetween(startDate, endDate);
+    days = isHalfDay ? 0.5 : workingDaysBetween(startDate, endDate, await holidaysBetween(startDate, endDate));
   }
 
   if (days <= 0) {
@@ -415,7 +425,7 @@ router.patch("/requests/:id", async (req, res) => {
     }
     data.days = decimal(days);
   } else if (startDate || endDate) {
-    data.days = decimal(workingDaysBetween(nextStart, nextEnd));
+    data.days = decimal(workingDaysBetween(nextStart, nextEnd, await holidaysBetween(nextStart, nextEnd)));
   }
 
   const clash = await prisma.leaveRequest.findFirst({

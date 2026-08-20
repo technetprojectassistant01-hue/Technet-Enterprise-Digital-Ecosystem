@@ -68,6 +68,12 @@ router.post("/process", async (req, res) => {
     return res.status(400).json({ error: "No employees have a basic salary set yet" });
   }
 
+  const holidaysInMonth = await prisma.publicHoliday.findMany({
+    where: { date: { gte: start, lte: end } },
+    select: { date: true },
+  });
+  const holidaySet = new Set(holidaysInMonth.map((h) => h.date.toISOString().slice(0, 10)));
+
   const lines = await Promise.all(
     employees.map(async (employee) => {
       const [records, leaveRequests] = await Promise.all([
@@ -96,7 +102,7 @@ router.post("/process", async (req, res) => {
       const unpaidLeaveDays = leaveRequests.reduce((sum, r) => {
         const overlapStart = r.startDate > start ? r.startDate : start;
         const overlapEnd = r.endDate < end ? r.endDate : end;
-        return sum + workingDaysBetween(overlapStart, overlapEnd);
+        return sum + workingDaysBetween(overlapStart, overlapEnd, holidaySet);
       }, 0);
       const basicSalary = employee.basicSalary!.toNumber();
       const { deduction, netPay } = computeNetPay(basicSalary, unpaidLeaveDays, daysInMonth);
