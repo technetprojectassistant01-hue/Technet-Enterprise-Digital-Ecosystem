@@ -1811,8 +1811,17 @@ export interface InterventionReport {
   reviewNote: string | null
   technicians: { id: string; employee: EmployeeSummary }[]
   photos: InterventionReportPhoto[]
+  units: InterventionReportUnit[]
   createdAt: string
   updatedAt: string
+}
+
+export interface InterventionReportUnit {
+  id: string
+  label: string
+  problem: string
+  action: string | null
+  order: number
 }
 
 export interface InterventionReportInput {
@@ -1842,6 +1851,7 @@ export interface InterventionReportInput {
   comments?: string
   additionalInfo?: string
   technicianIds: string[]
+  units?: { label: string; problem: string; action?: string }[]
   signedByName?: string
   signatureData?: string
   attachmentData?: string
