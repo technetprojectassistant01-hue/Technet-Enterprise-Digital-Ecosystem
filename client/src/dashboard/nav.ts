@@ -30,6 +30,7 @@ import {
   Banknote,
   MapPinned,
   Radar,
+  UserCheck,
   type LucideIcon,
 } from 'lucide-react'
 import { FIELD_ONLY_ROLES, NON_ADMIN_ROLES } from '../lib/permissions'
@@ -86,7 +87,6 @@ export const MAIN_NAV: NavItem[] = [
           { label: 'Overview', to: '/dashboard/erp/hr', icon: LayoutGrid, end: true },
           { label: 'Employees', to: '/dashboard/erp/hr/employees', icon: UserCog },
           { label: 'Leave', to: '/dashboard/erp/hr/leave', icon: CalendarDays },
-          { label: 'Attendance', to: '/dashboard/erp/hr/attendance', icon: ClipboardCheck },
           { label: 'Certifications', to: '/dashboard/erp/hr/certifications', icon: BadgeCheck },
         ],
       },
@@ -123,7 +123,11 @@ export const MAIN_NAV: NavItem[] = [
     to: '/dashboard/workforce',
     icon: Users,
     hiddenFrom: FIELD_ONLY_ROLES,
-    children: [{ label: 'Payroll', to: '/dashboard/workforce/payroll', icon: Banknote }],
+    children: [
+      { label: 'Availability', to: '/dashboard/workforce/availability', icon: UserCheck },
+      { label: 'Attendance', to: '/dashboard/workforce/attendance', icon: ClipboardCheck },
+      { label: 'Payroll', to: '/dashboard/workforce/payroll', icon: Banknote },
+    ],
   },
   { label: 'Technet Digital Marketing', to: '/dashboard/marketing', icon: Megaphone, hiddenFrom: FIELD_ONLY_ROLES },
   { label: 'Technet Insight', to: '/dashboard/insight', icon: LineChart, hiddenFrom: NON_ADMIN_ROLES },

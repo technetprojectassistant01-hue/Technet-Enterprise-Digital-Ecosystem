@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, X, Trash2, Banknote } from 'lucide-react'
+import { ArrowLeft, X, Trash2, Banknote, Lock } from 'lucide-react'
 import * as api from '../lib/api'
 import type { PayrollRunDetail } from '../lib/api'
 import { Panel, StatCard, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { dangerButtonClass } from '../dashboard/buttonStyles'
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
+import { useAuth } from '../context/AuthContext'
+import { hasRole, HR_ROLES } from '../lib/permissions'
 import { formatMoney } from '../lib/format'
 
 const MONTHS = [
@@ -15,6 +17,8 @@ const MONTHS = [
 ]
 
 function PayrollDetailPage() {
+  const { user } = useAuth()
+  const canAccess = hasRole(user?.role, HR_ROLES)
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const toast = useToast()
@@ -24,7 +28,10 @@ function PayrollDetailPage() {
   const [error, setError] = useState<string | null>(null)
 
   function load() {
-    if (!id) return
+    if (!canAccess || !id) {
+      setLoading(false)
+      return
+    }
     setLoading(true)
     api
       .getPayrollRun(id)
@@ -33,7 +40,7 @@ function PayrollDetailPage() {
       .finally(() => setLoading(false))
   }
 
-  useEffect(load, [id])
+  useEffect(load, [canAccess, id])
 
   async function handleDelete() {
     if (!run) return
@@ -54,6 +61,7 @@ function PayrollDetailPage() {
   }
 
   if (loading) return <TableSkeleton rows={6} cols={4} />
+  if (!canAccess) return <EmptyState icon={Lock} message="This section is restricted to HR staff." />
   if (error || !run) return <EmptyState icon={X} message={error || 'Payroll run not found'} />
 
   const totalNetPay = run.lines.reduce((sum, l) => sum + Number(l.netPay), 0)
