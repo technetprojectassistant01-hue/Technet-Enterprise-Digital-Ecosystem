@@ -215,16 +215,32 @@ async function reviewReport(scheduleId: string, reviewerId: string, toStatus: "A
     return { error: "invalid_transition" as const, fromStatus: schedule.report.status };
   }
 
-  await prisma.maintenanceReport.update({
-    where: { scheduleId },
-    data: { status: toStatus, reviewedById: reviewerId, reviewedAt: new Date(), reviewNote: note || null },
-  });
+  if (toStatus === "REJECTED") {
+    // A schedule can only ever hold one report row (1:1), so leaving the rejected report in
+    // place would be a dead end: COMPLETED has no outgoing transition and a second report can
+    // never be filed. Delete the rejected report and reopen the schedule (and its linked request,
+    // if any) so a corrected report can be filed the normal way. The rejection reason isn't kept
+    // on the schedule after this - it's preserved in the notification sent below instead.
+    await prisma.$transaction([
+      prisma.maintenanceReport.delete({ where: { scheduleId } }),
+      prisma.maintenanceSchedule.update({ where: { id: scheduleId }, data: { status: "SCHEDULED" } }),
+      ...(schedule.requestId
+        ? [prisma.maintenanceRequest.update({ where: { id: schedule.requestId }, data: { status: "SCHEDULED" } })]
+        : []),
+    ]);
+  } else {
+    await prisma.maintenanceReport.update({
+      where: { scheduleId },
+      data: { status: toStatus, reviewedById: reviewerId, reviewedAt: new Date(), reviewNote: note || null },
+    });
+  }
+
   const updated = await prisma.maintenanceSchedule.findUnique({ where: { id: scheduleId }, include: DETAIL_INCLUDE });
   await notifyUser(
     schedule.report.submittedById,
     toStatus === "APPROVED" ? "MAINTENANCE_REPORT_APPROVED" : "MAINTENANCE_REPORT_REJECTED",
-    `Your maintenance report was ${toStatus === "APPROVED" ? "approved" : "rejected"}`,
-    { link: `/dashboard/maintenance/schedule/${scheduleId}` },
+    toStatus === "APPROVED" ? "Your maintenance report was approved" : "Your maintenance report was rejected - please file a corrected one",
+    { message: toStatus === "REJECTED" ? note || undefined : undefined, link: `/dashboard/maintenance/schedule/${scheduleId}` },
   );
   return { schedule: withNumbers(updated!) };
 }
