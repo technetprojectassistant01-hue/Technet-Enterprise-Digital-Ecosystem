@@ -127,35 +127,35 @@ router.post("/:id/adjust", requireRole(...PROCUREMENT_ROLES), async (req, res) =
     return res.status(400).json({ error: "Quantity must be a positive number" });
   }
 
-  const item = await prisma.inventoryItem.findUnique({ where: { id } });
-  if (!item) {
-    return res.status(404).json({ error: "Inventory item not found" });
-  }
-
   const delta = type === "OUT" ? -quantity : quantity;
-  const newQuantity = item.quantity + delta;
 
-  if (newQuantity < 0) {
+  // A single WHERE-guarded atomic increment (not a read-then-write of an absolute value) so two
+  // concurrent adjustments on the same item can't silently overwrite each other, and can't both
+  // pass the negative-stock check against the same stale read. Deliberately not wrapped in
+  // $transaction — Neon's connection pool can't sustain concurrent interactive transactions here
+  // (same P2028 issue already worked around in insight.ts); the atomicity comes from this one
+  // statement, not from a transaction boundary.
+  const result = await prisma.inventoryItem.updateMany({
+    where: { id, quantity: { gte: -delta } },
+    data: { quantity: { increment: delta } },
+  });
+  if (result.count === 0) {
+    const exists = await prisma.inventoryItem.findUnique({ where: { id }, select: { id: true } });
+    if (!exists) return res.status(404).json({ error: "Inventory item not found" });
     return res.status(400).json({ error: "Adjustment would drop stock below zero" });
   }
 
-  const [, updated] = await prisma.$transaction([
-    prisma.stockMovement.create({
-      data: {
-        inventoryItemId: item.id,
-        type: type as MovementType,
-        quantity: Math.trunc(quantity),
-        reason: typeof reason === "string" ? reason : null,
-        createdById: req.user!.sub,
-      },
-    }),
-    prisma.inventoryItem.update({
-      where: { id: item.id },
-      data: { quantity: newQuantity },
-    }),
-  ]);
-
-  res.json({ item: updated });
+  await prisma.stockMovement.create({
+    data: {
+      inventoryItemId: id,
+      type: type as MovementType,
+      quantity: Math.trunc(quantity),
+      reason: typeof reason === "string" ? reason : null,
+      createdById: req.user!.sub,
+    },
+  });
+  const item = await prisma.inventoryItem.findUniqueOrThrow({ where: { id } });
+  res.json({ item });
 });
 
 export default router;
