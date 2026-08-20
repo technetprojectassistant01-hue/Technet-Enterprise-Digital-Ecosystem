@@ -6,7 +6,10 @@ export function useCustomers() {
   const [customers, setCustomers] = useState<Customer[]>([])
 
   useEffect(() => {
-    api.listCustomers().then(({ customers }) => setCustomers(customers))
+    api
+      .listCustomers()
+      .then(({ customers }) => setCustomers(customers))
+      .catch(() => setCustomers([]))
   }, [])
 
   return customers

@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Plus, Check, X as XIcon, ClipboardList, Download } from 'lucide-react'
 import * as api from '../lib/api'
-import type { DailyWorkReport } from '../lib/api'
+import type { DailyWorkReport, InterventionReport } from '../lib/api'
 import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { primaryButtonClass, secondaryButtonClass } from '../dashboard/buttonStyles'
 import { downloadCsv } from '../lib/csv'
@@ -30,6 +30,8 @@ function DailyReportsPage() {
   const [reports, setReports] = useState<DailyWorkReport[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [from, setFrom] = useState('')
+  const [to, setTo] = useState('')
 
   const [showCreate, setShowCreate] = useState(false)
   const [date, setDate] = useState(todayISO())
@@ -40,16 +42,55 @@ function DailyReportsPage() {
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
+  const [relatedReports, setRelatedReports] = useState<InterventionReport[]>([])
+  const [loadingRelated, setLoadingRelated] = useState(false)
+
   function load() {
     setLoading(true)
     api
-      .listDailyReports()
+      .listDailyReports({ from: from || undefined, to: to || undefined })
       .then(({ dailyWorkReports }) => setReports(dailyWorkReports))
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load daily reports'))
       .finally(() => setLoading(false))
   }
 
-  useEffect(load, [])
+  useEffect(load, [from, to]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Surfaces same-day intervention reports already filed against the selected work orders, so the
+  // summary can be adapted from what was already written up in detail rather than retyped from scratch.
+  useEffect(() => {
+    if (!showCreate || workOrderIds.length === 0 || !date) {
+      setRelatedReports([])
+      return
+    }
+    setLoadingRelated(true)
+    Promise.all(workOrderIds.map((id) => api.listInterventionReports({ workOrderId: id, from: date, to: date })))
+      .then((results) => {
+        const seen = new Set<string>()
+        const merged: InterventionReport[] = []
+        for (const { interventionReports } of results) {
+          for (const report of interventionReports) {
+            if (!seen.has(report.id)) {
+              seen.add(report.id)
+              merged.push(report)
+            }
+          }
+        }
+        setRelatedReports(merged)
+      })
+      .catch(() => setRelatedReports([]))
+      .finally(() => setLoadingRelated(false))
+  }, [showCreate, workOrderIds, date])
+
+  function insertReportIntoSummary(report: InterventionReport) {
+    const line = `${report.workOrder?.workOrderNumber ?? report.interventionNumber}: ${report.natureOfIntervention} — ${report.actionTaken}`
+    setSummary((prev) => (prev.trim() ? `${prev}\n${line}` : line))
+  }
+
+  function clearDateFilters() {
+    setFrom('')
+    setTo('')
+  }
 
   function openCreate() {
     setDate(todayISO())
@@ -165,6 +206,22 @@ function DailyReportsPage() {
       <StatCard label="PENDING REVIEW" value={pendingCount} deltaTone="warning" icon={ClipboardList} />
 
       <Panel title="Operations Log Registry">
+        <div className="mb-4 flex flex-wrap items-end gap-4">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-semibold tracking-widest text-ink-400">FROM</label>
+            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className={inputClass} />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-semibold tracking-widest text-ink-400">TO</label>
+            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className={inputClass} />
+          </div>
+          {(from || to) && (
+            <button type="button" onClick={clearDateFilters} className="text-xs font-semibold text-ink-400 hover:text-ink-100">
+              Clear dates
+            </button>
+          )}
+        </div>
+
         {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
 
         {loading ? (
@@ -294,6 +351,46 @@ function DailyReportsPage() {
                 )}
               </div>
             </div>
+
+            {workOrderIds.length > 0 && (
+              <div>
+                <label className={labelClass}>RELATED INTERVENTION REPORTS (SAME DATE)</label>
+                {loadingRelated ? (
+                  <p className="mt-2 text-xs text-ink-500">Checking for related intervention reports…</p>
+                ) : relatedReports.length === 0 ? (
+                  <p className="mt-2 text-xs text-ink-500">
+                    No intervention reports filed yet for these work orders on this date.
+                  </p>
+                ) : (
+                  <div className="mt-2 flex flex-col gap-2">
+                    {relatedReports.map((report) => (
+                      <div key={report.id} className="rounded-md border border-ink-700 bg-ink-950 px-3 py-2.5">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="text-xs font-semibold text-ink-200">
+                              {report.interventionNumber}
+                              {report.workOrder && (
+                                <span className="text-ink-500"> · {report.workOrder.workOrderNumber}</span>
+                              )}
+                            </div>
+                            <p className="mt-1 line-clamp-2 text-xs text-ink-400">
+                              {report.natureOfIntervention} — {report.actionTaken}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => insertReportIntoSummary(report)}
+                            className="shrink-0 text-xs font-semibold text-cyan-accent hover:underline"
+                          >
+                            Insert
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {formError && <p className="text-sm text-red-400">{formError}</p>}
 

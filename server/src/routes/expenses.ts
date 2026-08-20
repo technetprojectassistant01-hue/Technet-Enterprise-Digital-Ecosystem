@@ -3,11 +3,11 @@ import { Prisma } from "../generated/prisma/client";
 import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { isForeignKeyConstraintError, isNotFoundError } from "../lib/prismaErrors";
-import { FINANCE_ROLES } from "../lib/roles";
+import { FINANCE_ROLES, NON_FIELD_ROLES } from "../lib/roles";
 
 const router = Router();
 
-router.use(requireAuth);
+router.use(requireAuth, requireRole(...NON_FIELD_ROLES));
 
 router.get("/", async (req, res) => {
   const { category, projectId } = req.query;

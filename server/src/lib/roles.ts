@@ -16,11 +16,14 @@ export const FINANCE_ROLES = ["ADMIN", "FINANCE_OFFICER"] as const;
 export const PROCUREMENT_ROLES = ["ADMIN", "STOREKEEPER"] as const;
 export const HR_ROLES = ["ADMIN", "HR_OFFICER"] as const;
 
+/** Read-only "who's around today" visibility for Operations Managers, alongside HR's full edit rights. */
+export const WORKFORCE_VIEW_ROLES = ["ADMIN", "HR_OFFICER", "OPERATIONS_MANAGER"] as const;
+
 /** Create/edit/delete and approve/reject operations-side records. */
 export const OPS_MANAGE_ROLES = ["ADMIN", "OPERATIONS_MANAGER"] as const;
 
-/** Submitting field-generated records: technicians plus anyone who can manage them. */
-export const OPS_SUBMIT_ROLES = ["ADMIN", "OPERATIONS_MANAGER", "FIELD_TECHNICIAN"] as const;
+/** Submitting field-generated records: technicians, generic employees, plus anyone who can manage them. */
+export const OPS_SUBMIT_ROLES = ["ADMIN", "OPERATIONS_MANAGER", "FIELD_TECHNICIAN", "EMPLOYEE"] as const;
 
 export const DOCUMENT_ROLES = [
   "ADMIN",
@@ -29,3 +32,16 @@ export const DOCUMENT_ROLES = [
   "HR_OFFICER",
   "OPERATIONS_MANAGER",
 ] as const;
+
+/** Field technicians and generic employees only work within Operations and Maintenance. */
+export const NON_FIELD_ROLES = [
+  "ADMIN",
+  "SALES_OFFICER",
+  "FINANCE_OFFICER",
+  "STOREKEEPER",
+  "HR_OFFICER",
+  "OPERATIONS_MANAGER",
+] as const;
+
+/** Executive-level, cross-module reporting (Technet Insight). No dedicated Managing Director role exists yet, so this is admin-only. */
+export const INSIGHT_ROLES = ["ADMIN"] as const;

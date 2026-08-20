@@ -399,7 +399,7 @@ function EmployeeDetailPage() {
                           to={`/dashboard/erp/projects/${p.id}`}
                           className="text-sm text-ink-100 hover:text-cyan-accent"
                         >
-                          {p.projectNumber} — {p.name}
+                          {p.name}
                         </Link>
                         <Badge tone={projectStatusTone[p.status]}>{p.status.replace('_', ' ')}</Badge>
                       </li>
@@ -418,7 +418,7 @@ function EmployeeDetailPage() {
                           to={`/dashboard/erp/projects/${a.project.id}`}
                           className="text-sm text-ink-100 hover:text-cyan-accent"
                         >
-                          {a.project.projectNumber} — {a.project.name}
+                          {a.project.name}
                           {a.role ? <span className="text-ink-400"> · {a.role}</span> : null}
                         </Link>
                         <Badge tone={projectStatusTone[a.project.status]}>

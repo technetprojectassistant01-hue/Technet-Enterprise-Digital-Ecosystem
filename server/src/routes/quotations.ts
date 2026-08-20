@@ -4,11 +4,23 @@ import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { isForeignKeyConstraintError, isNotFoundError, isUniqueConstraintError } from "../lib/prismaErrors";
 import { generateQuotationPdf } from "../lib/pdf/quotationPdf";
-import { SALES_ROLES } from "../lib/roles";
+import { SALES_ROLES, NON_FIELD_ROLES } from "../lib/roles";
+import { notifyUser } from "../lib/notifications";
 
 const router = Router();
 const STATUSES = ["DRAFT", "SENT", "ACCEPTED", "REJECTED", "EXPIRED"] as const;
 type QuotationStatus = (typeof STATUSES)[number];
+
+// ACCEPTED/REJECTED/EXPIRED are terminal — without this, nothing stopped a PATCH from moving a
+// quotation back out of a decided state (e.g. REJECTED -> ACCEPTED), which is a real-record-
+// integrity risk since acceptance re-fires the QUOTATION_ACCEPTED notification each time.
+const ALLOWED_TRANSITIONS: Record<QuotationStatus, QuotationStatus[]> = {
+  DRAFT: ["SENT"],
+  SENT: ["ACCEPTED", "REJECTED", "EXPIRED"],
+  ACCEPTED: [],
+  REJECTED: [],
+  EXPIRED: [],
+};
 
 interface QuotationItemInput {
   description: string;
@@ -18,7 +30,7 @@ interface QuotationItemInput {
 
 const CUSTOMER_SELECT = { id: true, name: true, company: true, address: true, email: true, phone: true, vatNumber: true, taxNumber: true };
 
-router.use(requireAuth);
+router.use(requireAuth, requireRole(...NON_FIELD_ROLES));
 
 router.get("/", async (req, res) => {
   const { status } = req.query;
@@ -96,6 +108,7 @@ router.post("/", requireRole(...SALES_ROLES), async (req, res) => {
         vatAmount,
         total,
         expiresAt: expiresAt ? new Date(expiresAt) : null,
+        createdById: req.user!.sub,
         items: {
           create: (items as QuotationItemInput[]).map((item) => ({
             description: item.description.trim(),
@@ -121,6 +134,13 @@ router.patch("/:id", requireRole(...SALES_ROLES), async (req, res) => {
   if (status !== undefined && !STATUSES.includes(status)) {
     return res.status(400).json({ error: "Invalid status" });
   }
+  if (status !== undefined) {
+    const current = await prisma.quotation.findUnique({ where: { id }, select: { status: true } });
+    if (!current) return res.status(404).json({ error: "Quotation not found" });
+    if (!ALLOWED_TRANSITIONS[current.status].includes(status)) {
+      return res.status(400).json({ error: `Cannot move a quotation from ${current.status} to ${status}` });
+    }
+  }
 
   const data: Prisma.QuotationUpdateInput = {};
   if (typeof title === "string" && title.trim()) data.title = title.trim();
@@ -133,6 +153,14 @@ router.patch("/:id", requireRole(...SALES_ROLES), async (req, res) => {
       data,
       include: { customer: { select: CUSTOMER_SELECT }, items: true },
     });
+    if (quotation.createdById && (status === "ACCEPTED" || status === "REJECTED")) {
+      await notifyUser(
+        quotation.createdById,
+        status === "ACCEPTED" ? "QUOTATION_ACCEPTED" : "QUOTATION_REJECTED",
+        `Quotation ${quotation.quotationNumber} was ${status === "ACCEPTED" ? "accepted" : "rejected"}`,
+        { link: `/dashboard/erp/finance/quotations/${quotation.id}` },
+      );
+    }
     res.json({ quotation });
   } catch (err) {
     if (isNotFoundError(err)) return res.status(404).json({ error: "Quotation not found" });

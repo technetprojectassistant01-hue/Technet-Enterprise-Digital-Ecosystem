@@ -4,6 +4,8 @@ import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { isUniqueConstraintError, isForeignKeyConstraintError, isNotFoundError } from "../lib/prismaErrors";
 import { HR_ROLES } from "../lib/roles";
+import { notifyEmployee } from "../lib/notifications";
+import { workingDaysBetween } from "../lib/workingDays";
 
 const router = Router();
 
@@ -27,20 +29,17 @@ function todayUtc(): Date {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 }
 
-/** Working days between two dates inclusive, counting Monday to Friday only. */
-function workingDaysBetween(start: Date, end: Date): number {
-  let count = 0;
-  const cursor = new Date(start.getTime());
-  while (cursor <= end) {
-    const day = cursor.getUTCDay();
-    if (day !== 0 && day !== 6) count += 1;
-    cursor.setUTCDate(cursor.getUTCDate() + 1);
-  }
-  return count;
-}
-
 function decimal(value: number | string): Prisma.Decimal {
   return new Prisma.Decimal(value);
+}
+
+/** The set of public holiday dates (as "YYYY-MM-DD") falling within [start, end], for excluding from working-day counts. */
+async function holidaysBetween(start: Date, end: Date): Promise<Set<string>> {
+  const holidays = await prisma.publicHoliday.findMany({
+    where: { date: { gte: start, lte: end } },
+    select: { date: true },
+  });
+  return new Set(holidays.map((h) => h.date.toISOString().slice(0, 10)));
 }
 
 class BalanceExceededError extends Error {
@@ -296,13 +295,14 @@ router.get("/requests", async (req, res) => {
 });
 
 /** Suggests the working-day count for a range, so the UI can prefill it. */
-router.get("/requests/working-days", (req, res) => {
+router.get("/requests/working-days", async (req, res) => {
   const start = parseDateOnly(req.query.startDate);
   const end = parseDateOnly(req.query.endDate);
   if (!start || !end || end < start) {
     return res.status(400).json({ error: "Provide a valid start and end date" });
   }
-  res.json({ days: workingDaysBetween(start, end) });
+  const holidays = await holidaysBetween(start, end);
+  res.json({ days: workingDaysBetween(start, end, holidays) });
 });
 
 router.get("/requests/:id", async (req, res) => {
@@ -346,7 +346,7 @@ router.post("/requests", async (req, res) => {
       return res.status(400).json({ error: "Days must be greater than zero" });
     }
   } else {
-    days = isHalfDay ? 0.5 : workingDaysBetween(startDate, endDate);
+    days = isHalfDay ? 0.5 : workingDaysBetween(startDate, endDate, await holidaysBetween(startDate, endDate));
   }
 
   if (days <= 0) {
@@ -425,7 +425,7 @@ router.patch("/requests/:id", async (req, res) => {
     }
     data.days = decimal(days);
   } else if (startDate || endDate) {
-    data.days = decimal(workingDaysBetween(nextStart, nextEnd));
+    data.days = decimal(workingDaysBetween(nextStart, nextEnd, await holidaysBetween(nextStart, nextEnd)));
   }
 
   const clash = await prisma.leaveRequest.findFirst({
@@ -506,6 +506,9 @@ router.post("/requests/:id/approve", async (req, res) => {
     });
 
     await syncEmploymentStatuses();
+    await notifyEmployee(updated.employeeId, "LEAVE_REQUEST_APPROVED", `Your ${updated.leaveType.name} request was approved`, {
+      link: "/dashboard/erp/hr/leave",
+    });
     res.json({ request: updated });
   } catch (err) {
     if (err instanceof BalanceExceededError) {
@@ -539,6 +542,9 @@ router.post("/requests/:id/reject", async (req, res) => {
     include: requestInclude,
   });
 
+  await notifyEmployee(updated.employeeId, "LEAVE_REQUEST_REJECTED", `Your ${updated.leaveType.name} request was rejected`, {
+    link: "/dashboard/erp/hr/leave",
+  });
   res.json({ request: updated });
 });
 

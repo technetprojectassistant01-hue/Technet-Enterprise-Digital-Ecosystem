@@ -3,12 +3,13 @@ import { Prisma } from "../generated/prisma/client";
 import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { isForeignKeyConstraintError, isNotFoundError } from "../lib/prismaErrors";
-import { HR_ROLES } from "../lib/roles";
+import { HR_ROLES, WORKFORCE_VIEW_ROLES } from "../lib/roles";
 
 const router = Router();
 
-// Attendance feeds payroll, so it stays HR-only like leave.
-router.use(requireAuth, requireRole(...HR_ROLES));
+// Editing attendance and the payroll-facing timesheet stay HR-only; the read-only day/summary
+// views are also open to Operations Managers (Technet Workforce's "who's available today" view).
+router.use(requireAuth);
 
 const ATTENDANCE_STATUSES = [
   "PRESENT",
@@ -126,7 +127,7 @@ const recordInclude = {
  * Listing
  * ------------------------------------------------------------------ */
 
-router.get("/", async (req, res) => {
+router.get("/", requireRole(...WORKFORCE_VIEW_ROLES), async (req, res) => {
   const { employeeId, status } = req.query;
   const from = parseDateOnly(req.query.from);
   const to = parseDateOnly(req.query.to);
@@ -157,7 +158,7 @@ router.get("/", async (req, res) => {
  * saved for them or a sensible default. Weekends default to a rest day and
  * anyone on approved leave is pre-marked, so HR only edits the exceptions.
  */
-router.get("/day", async (req, res) => {
+router.get("/day", requireRole(...WORKFORCE_VIEW_ROLES), async (req, res) => {
   const date = parseDateOnly(req.query.date);
   if (!date) return res.status(400).json({ error: "A valid date is required" });
 
@@ -199,7 +200,7 @@ router.get("/day", async (req, res) => {
   res.json({ date: req.query.date, isWeekend, roster });
 });
 
-router.get("/summary", async (req, res) => {
+router.get("/summary", requireRole(...WORKFORCE_VIEW_ROLES), async (req, res) => {
   const date = parseDateOnly(req.query.date) ?? parseDateOnly(new Date().toISOString().slice(0, 10))!;
 
   const [counts, headcount] = await Promise.all([
@@ -218,7 +219,7 @@ router.get("/summary", async (req, res) => {
 /**
  * A month of attendance for one employee, with the totals a payroll run needs.
  */
-router.get("/timesheet", async (req, res) => {
+router.get("/timesheet", requireRole(...HR_ROLES), async (req, res) => {
   const employeeId = typeof req.query.employeeId === "string" ? req.query.employeeId : "";
   if (!employeeId) return res.status(400).json({ error: "An employee is required" });
 
@@ -337,7 +338,7 @@ function buildRecordPayload(input: Record<string, unknown>): RecordPayload | { e
   };
 }
 
-router.post("/", async (req, res) => {
+router.post("/", requireRole(...HR_ROLES), async (req, res) => {
   const date = parseDateOnly(req.body?.date);
   if (!date) return res.status(400).json({ error: "A valid date is required" });
 
@@ -363,7 +364,7 @@ router.post("/", async (req, res) => {
 });
 
 /** Saves a whole day's roster in one transaction. */
-router.post("/bulk", async (req, res) => {
+router.post("/bulk", requireRole(...HR_ROLES), async (req, res) => {
   const date = parseDateOnly(req.body?.date);
   if (!date) return res.status(400).json({ error: "A valid date is required" });
 
@@ -409,7 +410,7 @@ router.post("/bulk", async (req, res) => {
   res.json({ saved: payloads.length, records });
 });
 
-router.patch("/:id", async (req, res) => {
+router.patch("/:id", requireRole(...HR_ROLES), async (req, res) => {
   const id = req.params.id as string;
   const existing = await prisma.attendanceRecord.findUnique({ where: { id } });
   if (!existing) return res.status(404).json({ error: "Attendance record not found" });
@@ -436,7 +437,7 @@ router.patch("/:id", async (req, res) => {
   res.json({ record });
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", requireRole(...HR_ROLES), async (req, res) => {
   try {
     await prisma.attendanceRecord.delete({ where: { id: req.params.id as string } });
     res.status(204).end();

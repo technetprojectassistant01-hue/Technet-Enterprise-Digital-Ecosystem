@@ -3,7 +3,8 @@ import { Prisma } from "../generated/prisma/client";
 import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { isUniqueConstraintError, isForeignKeyConstraintError, isNotFoundError } from "../lib/prismaErrors";
-import { OPS_MANAGE_ROLES } from "../lib/roles";
+import { OPS_MANAGE_ROLES, NON_FIELD_ROLES } from "../lib/roles";
+import { notifyEmployee } from "../lib/notifications";
 
 const router = Router();
 
@@ -22,7 +23,7 @@ export const ALLOWED_TRANSITIONS: Record<Status, Status[]> = {
 
 const CATEGORIES = ["ELECTRICAL", "ELV_SECURITY", "MECHANICAL", "PLUMBING", "SAFETY", "OTHER"] as const;
 
-router.use(requireAuth);
+router.use(requireAuth, requireRole(...NON_FIELD_ROLES));
 
 router.get("/", async (req, res) => {
   const { search, status } = req.query;
@@ -182,7 +183,13 @@ router.post("/:id/assignments", requireRole(...OPS_MANAGE_ROLES), async (req, re
         employeeId,
         roleOnProject: typeof roleOnProject === "string" && roleOnProject ? roleOnProject : null,
       },
-      include: { employee: { select: { id: true, firstName: true, lastName: true, position: true } } },
+      include: {
+        employee: { select: { id: true, firstName: true, lastName: true, position: true } },
+        project: { select: { name: true } },
+      },
+    });
+    await notifyEmployee(employeeId, "PROJECT_ASSIGNED", `Assigned to project ${assignment.project.name}`, {
+      link: `/dashboard/erp/projects/${id}`,
     });
     res.status(201).json({ assignment });
   } catch (err) {

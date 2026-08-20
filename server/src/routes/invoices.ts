@@ -4,11 +4,22 @@ import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { isUniqueConstraintError, isForeignKeyConstraintError, isNotFoundError } from "../lib/prismaErrors";
 import { generateInvoicePdf } from "../lib/pdf/invoicePdf";
-import { FINANCE_ROLES } from "../lib/roles";
+import { FINANCE_ROLES, NON_FIELD_ROLES } from "../lib/roles";
 
 const router = Router();
 const STATUSES = ["DRAFT", "SENT", "PAID", "OVERDUE", "CANCELLED"] as const;
 type InvoiceStatus = (typeof STATUSES)[number];
+
+// PAID/CANCELLED are terminal — without this, nothing stopped a PATCH from moving an invoice back
+// out of PAID and into PAID again, silently overwriting the original paidAt (payment date) with
+// "now" each time. A real record-integrity risk for a finance document.
+const ALLOWED_TRANSITIONS: Record<InvoiceStatus, InvoiceStatus[]> = {
+  DRAFT: ["SENT", "CANCELLED"],
+  SENT: ["PAID", "OVERDUE", "CANCELLED"],
+  OVERDUE: ["PAID", "CANCELLED"],
+  PAID: [],
+  CANCELLED: [],
+};
 
 interface InvoiceItemInput {
   description: string;
@@ -18,7 +29,7 @@ interface InvoiceItemInput {
 
 const CUSTOMER_SELECT = { id: true, name: true, company: true, address: true, email: true, phone: true, vatNumber: true, taxNumber: true };
 
-router.use(requireAuth);
+router.use(requireAuth, requireRole(...NON_FIELD_ROLES));
 
 router.get("/", async (req, res) => {
   const { status, projectId } = req.query;
@@ -124,6 +135,13 @@ router.patch("/:id", requireRole(...FINANCE_ROLES), async (req, res) => {
 
   if (status !== undefined && !STATUSES.includes(status)) {
     return res.status(400).json({ error: "Invalid status" });
+  }
+  if (status !== undefined) {
+    const current = await prisma.invoice.findUnique({ where: { id }, select: { status: true } });
+    if (!current) return res.status(404).json({ error: "Invoice not found" });
+    if (!ALLOWED_TRANSITIONS[current.status].includes(status)) {
+      return res.status(400).json({ error: `Cannot move an invoice from ${current.status} to ${status}` });
+    }
   }
 
   const data: Prisma.InvoiceUpdateInput = {};
