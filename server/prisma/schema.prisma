@@ -400,12 +400,17 @@ model AttendanceRecord {
 /** A single non-working calendar day (public holiday), excluded from working-day counts used by
  * leave requests and payroll. Several Mauritius holidays shift every year (lunar calendar,
  * moon-sighting-dependent, or otherwise re-gazetted annually) so this is a manually maintained
- * list, not a computed rule. */
+ * list, not a computed rule. Not unique on date alone: some years genuinely have two distinct
+ * holidays coincide on the same day (e.g. Abolition of Slavery and Thaipoosam Cavadee both fall
+ * on 1 February 2026 per the official gazette). */
 model PublicHoliday {
   id        String   @id @default(uuid())
-  date      DateTime @unique
+  date      DateTime
   name      String
   createdAt DateTime @default(now())
+
+  @@unique([date, name])
+  @@index([date])
 }
 
 model LeaveType {

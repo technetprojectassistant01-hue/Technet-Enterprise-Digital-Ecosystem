@@ -41,7 +41,7 @@ router.post("/", async (req, res) => {
     const holiday = await prisma.publicHoliday.create({ data: { date, name: name.trim() } });
     res.status(201).json({ holiday });
   } catch (err) {
-    if (isUniqueConstraintError(err)) return res.status(409).json({ error: "A holiday is already recorded on that date" });
+    if (isUniqueConstraintError(err)) return res.status(409).json({ error: "A holiday with that exact name is already recorded on that date" });
     throw err;
   }
 });
@@ -66,7 +66,7 @@ router.patch("/:id", async (req, res) => {
     res.json({ holiday });
   } catch (err) {
     if (isNotFoundError(err)) return res.status(404).json({ error: "Holiday not found" });
-    if (isUniqueConstraintError(err)) return res.status(409).json({ error: "A holiday is already recorded on that date" });
+    if (isUniqueConstraintError(err)) return res.status(409).json({ error: "A holiday with that exact name is already recorded on that date" });
     throw err;
   }
 });
