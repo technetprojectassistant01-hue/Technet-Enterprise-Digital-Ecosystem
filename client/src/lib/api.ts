@@ -1661,6 +1661,10 @@ export function getMyAttendance() {
   return request<{ current: SiteAttendance | null; history: SiteAttendance[] }>('/api/site-attendance/me')
 }
 
+export function requestLocationVerification(siteAttendanceId: string) {
+  return request<{ ok: true }>(`/api/site-attendance/${siteAttendanceId}/request-verification`, { method: 'POST' })
+}
+
 export function listTeamAttendance(params: { month?: string } = {}) {
   const query = new URLSearchParams()
   if (params.month) query.set('month', params.month)
@@ -2464,6 +2468,7 @@ export type NotificationType =
   | 'MAINTENANCE_REPORT_APPROVED'
   | 'MAINTENANCE_REPORT_REJECTED'
   | 'PROJECT_ASSIGNED'
+  | 'LOCATION_CHECK_REQUESTED'
 
 export interface Notification {
   id: string
