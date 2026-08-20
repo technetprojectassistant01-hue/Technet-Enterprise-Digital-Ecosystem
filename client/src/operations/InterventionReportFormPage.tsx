@@ -14,6 +14,7 @@ import { useEmployees } from '../erp/useEmployees'
 import { useCustomers } from '../erp/useCustomers'
 import { useWorkOrders } from './useWorkOrders'
 import SignaturePad from './SignaturePad'
+import UnitBreakdownEditor, { type UnitBreakdownRow } from './UnitBreakdownEditor'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -50,6 +51,7 @@ interface DraftFields {
   actionTaken: string
   workCompleted: boolean
   incompleteDetails: string
+  units: UnitBreakdownRow[]
   technicianIds: string[]
   timeIn: string
   timeOut: string
@@ -161,6 +163,7 @@ function InterventionReportFormPage() {
   const [actionTaken, setActionTaken] = useState(draft?.actionTaken ?? '')
   const [workCompleted, setWorkCompleted] = useState(draft?.workCompleted ?? true)
   const [incompleteDetails, setIncompleteDetails] = useState(draft?.incompleteDetails ?? '')
+  const [units, setUnits] = useState<UnitBreakdownRow[]>(draft?.units ?? [])
 
   const [technicianIds, setTechnicianIds] = useState<string[]>(draft?.technicianIds ?? [])
   const [timeIn, setTimeIn] = useState(draft?.timeIn ?? '')
@@ -203,6 +206,7 @@ function InterventionReportFormPage() {
       actionTaken,
       workCompleted,
       incompleteDetails,
+      units,
       technicianIds,
       timeIn,
       timeOut,
@@ -239,6 +243,7 @@ function InterventionReportFormPage() {
     actionTaken,
     workCompleted,
     incompleteDetails,
+    units,
     technicianIds,
     timeIn,
     timeOut,
@@ -269,6 +274,7 @@ function InterventionReportFormPage() {
     setActionTaken('')
     setWorkCompleted(true)
     setIncompleteDetails('')
+    setUnits([])
     setTechnicianIds([])
     setTimeIn('')
     setTimeOut('')
@@ -329,6 +335,15 @@ function InterventionReportFormPage() {
       setFormError('Enter the name of the person signing')
       return
     }
+    const cleanedUnits = units
+      .filter((u) => u.label.trim() || u.problem.trim() || u.action.trim())
+      .map((u) => ({ label: u.label.trim(), problem: u.problem.trim(), action: u.action.trim() }))
+    for (const u of cleanedUnits) {
+      if (!u.label || !u.problem) {
+        setFormError('Each unit needs a label and a problem')
+        return
+      }
+    }
 
     setSubmitting(true)
     try {
@@ -362,6 +377,7 @@ function InterventionReportFormPage() {
         comments: comments || undefined,
         additionalInfo: additionalInfo || undefined,
         technicianIds,
+        units: cleanedUnits.length > 0 ? cleanedUnits : undefined,
         signedByName,
         signatureData,
         attachmentData,
@@ -605,6 +621,17 @@ function InterventionReportFormPage() {
                 />
               </div>
             )}
+            <div>
+              <label className={labelClass}>
+                PER-UNIT BREAKDOWN (OPTIONAL — for visits covering multiple pieces of equipment)
+              </label>
+              <p className="mt-1 text-xs text-ink-500">
+                e.g. "Unit 1 — leaking" / "Unit 2 — not blowing air". Leave this empty for a single-equipment visit.
+              </p>
+              <div className="mt-2">
+                <UnitBreakdownEditor units={units} onChange={setUnits} />
+              </div>
+            </div>
             <PhotoPicker label="PHOTOS OF WORK DONE" files={workDonePhotos} onChange={setWorkDonePhotos} />
             <PhotoPicker label="AFTER PHOTOS" files={afterPhotos} onChange={setAfterPhotos} />
             <div>
