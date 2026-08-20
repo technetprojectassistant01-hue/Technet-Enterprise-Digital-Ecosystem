@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Lock, MapPin, ChevronDown, ChevronUp } from 'lucide-react'
+import { Lock, MapPin, ChevronDown, ChevronUp, BellRing } from 'lucide-react'
 import * as api from '../lib/api'
 import type { SiteTrackingEntry } from '../lib/api'
 import { SITE_EXIT_REASON_LABELS } from '../lib/api'
@@ -8,6 +8,7 @@ import { Panel, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { useAuth } from '../context/AuthContext'
 import { hasRole, OPS_MANAGE_ROLES } from '../lib/permissions'
 import { mapLink } from '../lib/geolocation'
+import { useToast } from '../dashboard/ToastContext'
 
 function siteStatusTone(status: 'ON_SITE' | 'OUTSIDE_SITE' | 'UNVERIFIED' | 'NO_SITE') {
   if (status === 'ON_SITE') return 'success' as const
@@ -89,9 +90,26 @@ function groupByWorkOrder(entries: SiteTrackingEntry[]): SiteTrackingEntry[][] {
 }
 
 function TechnicianStatus({ entry }: { entry: SiteTrackingEntry }) {
+  const toast = useToast()
   const latest = entry.verifications[0]
   const lat = latest?.lat ?? entry.checkInLat
   const lng = latest?.lng ?? entry.checkInLng
+  const [requesting, setRequesting] = useState(false)
+  const [requested, setRequested] = useState(false)
+
+  async function handleRequestVerification() {
+    setRequesting(true)
+    try {
+      await api.requestLocationVerification(entry.id)
+      setRequested(true)
+      toast.success(`Asked ${entry.employee.firstName} to verify their location`)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to send the request')
+    } finally {
+      setRequesting(false)
+    }
+  }
+
   return (
     <div className="flex flex-col items-end gap-1.5">
       <Badge tone={siteStatusTone(siteStatus(entry))}>{siteStatusLabel(entry)}</Badge>
@@ -104,6 +122,16 @@ function TechnicianStatus({ entry }: { entry: SiteTrackingEntry }) {
         <MapPin className="h-3.5 w-3.5" />
         {latest ? `Verified ${new Date(latest.checkedAt).toLocaleTimeString()}` : 'Check-in location'}
       </a>
+      <button
+        type="button"
+        onClick={handleRequestVerification}
+        disabled={requesting || requested}
+        title="Sends a notification asking them to verify - not an instant live location"
+        className="flex items-center gap-1.5 text-xs text-ink-400 hover:text-cyan-accent disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <BellRing className="h-3.5 w-3.5" />
+        {requested ? 'Requested' : 'Request location check'}
+      </button>
     </div>
   )
 }
