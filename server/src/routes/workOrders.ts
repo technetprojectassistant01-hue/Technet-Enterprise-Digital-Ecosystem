@@ -6,7 +6,7 @@ import { isForeignKeyConstraintError, isNotFoundError, isUniqueConstraintError }
 import { formatInterventionNumber } from "../lib/interventionNumber";
 import { OPS_MANAGE_ROLES, OPS_SUBMIT_ROLES } from "../lib/roles";
 import { geocodeAddress } from "../lib/geocode";
-import { notifyEmployee } from "../lib/notifications";
+import { notifyEmployee, notifyRoles } from "../lib/notifications";
 
 const router = Router();
 
@@ -292,6 +292,15 @@ router.patch("/:id", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
         }),
       ),
     );
+    // Only the statuses a manager actually needs to act on — not IN_PROGRESS, which is routine.
+    if (status === "WAITING_FOR_PARTS" || status === "COMPLETED" || status === "CANCELLED") {
+      await notifyRoles(
+        OPS_MANAGE_ROLES,
+        "WORK_ORDER_STATUS_CHANGED",
+        `Work order ${workOrder.workOrderNumber} is now ${status.replace("_", " ")}`,
+        { link: `/dashboard/operations/work-orders/${workOrder.id}` },
+      );
+    }
     res.json({ workOrder });
   } catch (err) {
     if (isNotFoundError(err)) return res.status(404).json({ error: "Work order not found" });
