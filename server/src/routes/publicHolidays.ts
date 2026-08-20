@@ -46,6 +46,31 @@ router.post("/", async (req, res) => {
   }
 });
 
+router.patch("/:id", async (req, res) => {
+  const id = req.params.id as string;
+  const { name } = req.body ?? {};
+
+  const data: { date?: Date; name?: string } = {};
+  if (req.body?.date !== undefined) {
+    const date = parseDateOnly(req.body.date);
+    if (!date) return res.status(400).json({ error: "A valid date is required" });
+    data.date = date;
+  }
+  if (name !== undefined) {
+    if (typeof name !== "string" || !name.trim()) return res.status(400).json({ error: "Name is required" });
+    data.name = name.trim();
+  }
+
+  try {
+    const holiday = await prisma.publicHoliday.update({ where: { id }, data });
+    res.json({ holiday });
+  } catch (err) {
+    if (isNotFoundError(err)) return res.status(404).json({ error: "Holiday not found" });
+    if (isUniqueConstraintError(err)) return res.status(409).json({ error: "A holiday is already recorded on that date" });
+    throw err;
+  }
+});
+
 router.delete("/:id", async (req, res) => {
   const id = req.params.id as string;
   try {
