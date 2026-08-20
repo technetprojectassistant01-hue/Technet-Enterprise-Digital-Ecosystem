@@ -10,6 +10,17 @@ const router = Router();
 const STATUSES = ["DRAFT", "SENT", "PAID", "OVERDUE", "CANCELLED"] as const;
 type InvoiceStatus = (typeof STATUSES)[number];
 
+// PAID/CANCELLED are terminal — without this, nothing stopped a PATCH from moving an invoice back
+// out of PAID and into PAID again, silently overwriting the original paidAt (payment date) with
+// "now" each time. A real record-integrity risk for a finance document.
+const ALLOWED_TRANSITIONS: Record<InvoiceStatus, InvoiceStatus[]> = {
+  DRAFT: ["SENT", "CANCELLED"],
+  SENT: ["PAID", "OVERDUE", "CANCELLED"],
+  OVERDUE: ["PAID", "CANCELLED"],
+  PAID: [],
+  CANCELLED: [],
+};
+
 interface InvoiceItemInput {
   description: string;
   quantity: number;
@@ -124,6 +135,13 @@ router.patch("/:id", requireRole(...FINANCE_ROLES), async (req, res) => {
 
   if (status !== undefined && !STATUSES.includes(status)) {
     return res.status(400).json({ error: "Invalid status" });
+  }
+  if (status !== undefined) {
+    const current = await prisma.invoice.findUnique({ where: { id }, select: { status: true } });
+    if (!current) return res.status(404).json({ error: "Invoice not found" });
+    if (!ALLOWED_TRANSITIONS[current.status].includes(status)) {
+      return res.status(400).json({ error: `Cannot move an invoice from ${current.status} to ${status}` });
+    }
   }
 
   const data: Prisma.InvoiceUpdateInput = {};

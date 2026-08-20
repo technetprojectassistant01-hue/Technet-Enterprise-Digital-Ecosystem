@@ -11,6 +11,17 @@ const router = Router();
 const STATUSES = ["DRAFT", "SENT", "ACCEPTED", "REJECTED", "EXPIRED"] as const;
 type QuotationStatus = (typeof STATUSES)[number];
 
+// ACCEPTED/REJECTED/EXPIRED are terminal — without this, nothing stopped a PATCH from moving a
+// quotation back out of a decided state (e.g. REJECTED -> ACCEPTED), which is a real-record-
+// integrity risk since acceptance re-fires the QUOTATION_ACCEPTED notification each time.
+const ALLOWED_TRANSITIONS: Record<QuotationStatus, QuotationStatus[]> = {
+  DRAFT: ["SENT"],
+  SENT: ["ACCEPTED", "REJECTED", "EXPIRED"],
+  ACCEPTED: [],
+  REJECTED: [],
+  EXPIRED: [],
+};
+
 interface QuotationItemInput {
   description: string;
   quantity: number;
@@ -122,6 +133,13 @@ router.patch("/:id", requireRole(...SALES_ROLES), async (req, res) => {
 
   if (status !== undefined && !STATUSES.includes(status)) {
     return res.status(400).json({ error: "Invalid status" });
+  }
+  if (status !== undefined) {
+    const current = await prisma.quotation.findUnique({ where: { id }, select: { status: true } });
+    if (!current) return res.status(404).json({ error: "Quotation not found" });
+    if (!ALLOWED_TRANSITIONS[current.status].includes(status)) {
+      return res.status(400).json({ error: `Cannot move a quotation from ${current.status} to ${status}` });
+    }
   }
 
   const data: Prisma.QuotationUpdateInput = {};
