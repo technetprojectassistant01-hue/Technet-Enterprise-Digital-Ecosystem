@@ -4,6 +4,7 @@ import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { isForeignKeyConstraintError, isNotFoundError } from "../lib/prismaErrors";
 import { OPS_MANAGE_ROLES, OPS_SUBMIT_ROLES } from "../lib/roles";
+import { notifyRoles, notifyUser } from "../lib/notifications";
 
 const router = Router();
 
@@ -87,6 +88,10 @@ router.post("/", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
       },
       include: INCLUDE,
     });
+    const reportDate = dailyWorkReport.date.toISOString().slice(0, 10);
+    await notifyRoles(OPS_MANAGE_ROLES, "DAILY_REPORT_SUBMITTED", `Daily report for ${reportDate} needs review`, {
+      link: `/dashboard/operations/daily-reports/${dailyWorkReport.id}`,
+    });
     res.status(201).json({ dailyWorkReport });
   } catch (err) {
     if (isForeignKeyConstraintError(err)) return res.status(400).json({ error: "Technician or work order not found" });
@@ -106,6 +111,13 @@ async function review(id: string, reviewerId: string, toStatus: "APPROVED" | "RE
     data: { status: toStatus, reviewedById: reviewerId, reviewedAt: new Date(), reviewNote: note || null },
     include: INCLUDE,
   });
+  const reportDate = dailyWorkReport.date.toISOString().slice(0, 10);
+  await notifyUser(
+    dailyWorkReport.submittedById,
+    toStatus === "APPROVED" ? "DAILY_REPORT_APPROVED" : "DAILY_REPORT_REJECTED",
+    `Daily report for ${reportDate} was ${toStatus === "APPROVED" ? "approved" : "rejected"}`,
+    { link: `/dashboard/operations/daily-reports/${dailyWorkReport.id}` },
+  );
   return { dailyWorkReport };
 }
 
