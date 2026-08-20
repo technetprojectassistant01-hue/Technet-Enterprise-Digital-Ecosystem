@@ -2469,6 +2469,10 @@ export type NotificationType =
   | 'MAINTENANCE_REPORT_REJECTED'
   | 'PROJECT_ASSIGNED'
   | 'LOCATION_CHECK_REQUESTED'
+  | 'DAILY_REPORT_SUBMITTED'
+  | 'DAILY_REPORT_APPROVED'
+  | 'DAILY_REPORT_REJECTED'
+  | 'WORK_ORDER_STATUS_CHANGED'
 
 export interface Notification {
   id: string
