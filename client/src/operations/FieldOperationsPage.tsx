@@ -77,6 +77,37 @@ function ExitEvents({ entry }: { entry: SiteTrackingEntry }) {
   )
 }
 
+/** Groups entries by work order so several technicians on the same job read as one job block, not scattered rows. */
+function groupByWorkOrder(entries: SiteTrackingEntry[]): SiteTrackingEntry[][] {
+  const map = new Map<string, SiteTrackingEntry[]>()
+  for (const entry of entries) {
+    const group = map.get(entry.workOrder.id)
+    if (group) group.push(entry)
+    else map.set(entry.workOrder.id, [entry])
+  }
+  return Array.from(map.values())
+}
+
+function TechnicianStatus({ entry }: { entry: SiteTrackingEntry }) {
+  const latest = entry.verifications[0]
+  const lat = latest?.lat ?? entry.checkInLat
+  const lng = latest?.lng ?? entry.checkInLng
+  return (
+    <div className="flex flex-col items-end gap-1.5">
+      <Badge tone={siteStatusTone(siteStatus(entry))}>{siteStatusLabel(entry)}</Badge>
+      <a
+        href={mapLink(lat, lng)}
+        target="_blank"
+        rel="noreferrer"
+        className="flex items-center gap-1.5 text-xs text-cyan-accent hover:underline"
+      >
+        <MapPin className="h-3.5 w-3.5" />
+        {latest ? `Verified ${new Date(latest.checkedAt).toLocaleTimeString()}` : 'Check-in location'}
+      </a>
+    </div>
+  )
+}
+
 function FieldOperationsPage() {
   const { user } = useAuth()
   const canAccess = hasRole(user?.role, OPS_MANAGE_ROLES)
@@ -120,47 +151,79 @@ function FieldOperationsPage() {
           <p className="text-sm text-ink-400">Nobody is currently checked in to a work order.</p>
         ) : (
           <div className="flex flex-col gap-3">
-            {current.map((entry) => {
-              const latest = entry.verifications[0]
-              const lat = latest?.lat ?? entry.checkInLat
-              const lng = latest?.lng ?? entry.checkInLng
-              return (
-                <div key={entry.id} className="rounded-lg bg-ink-800 px-4 py-3">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-medium text-ink-100">
-                        {entry.employee.firstName} {entry.employee.lastName}
-                        {entry.employee.position && <span className="text-ink-500"> · {entry.employee.position}</span>}
+            {groupByWorkOrder(current).map((group) => {
+              const [first] = group
+              if (group.length === 1) {
+                return (
+                  <div key={first.id} className="rounded-lg bg-ink-800 px-4 py-3">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-medium text-ink-100">
+                          {first.employee.firstName} {first.employee.lastName}
+                          {first.employee.position && <span className="text-ink-500"> · {first.employee.position}</span>}
+                        </div>
+                        <div className="mt-1 text-xs text-ink-400">
+                          <Link
+                            to={`/dashboard/operations/work-orders/${first.workOrder.id}`}
+                            className="text-cyan-accent hover:underline"
+                          >
+                            {first.workOrder.workOrderNumber}
+                          </Link>
+                          {' — '}
+                          {first.workOrder.title} ·{' '}
+                          {first.workOrder.customer.company || first.workOrder.customer.name}
+                        </div>
+                        <div className="mt-1 text-xs text-ink-500">
+                          On site for {formatDuration(first.checkInAt)}
+                        </div>
                       </div>
-                      <div className="mt-1 text-xs text-ink-400">
-                        <Link
-                          to={`/dashboard/operations/work-orders/${entry.workOrder.id}`}
-                          className="text-cyan-accent hover:underline"
-                        >
-                          {entry.workOrder.workOrderNumber}
-                        </Link>
-                        {' — '}
-                        {entry.workOrder.title} ·{' '}
-                        {entry.workOrder.customer.company || entry.workOrder.customer.name}
-                      </div>
-                      <div className="mt-1 text-xs text-ink-500">
-                        On site for {formatDuration(entry.checkInAt)}
-                      </div>
+                      <TechnicianStatus entry={first} />
                     </div>
-                    <div className="flex flex-col items-end gap-1.5">
-                      <Badge tone={siteStatusTone(siteStatus(entry))}>{siteStatusLabel(entry)}</Badge>
-                      <a
-                        href={mapLink(lat, lng)}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex items-center gap-1.5 text-xs text-cyan-accent hover:underline"
-                      >
-                        <MapPin className="h-3.5 w-3.5" />
-                        {latest ? `Verified ${new Date(latest.checkedAt).toLocaleTimeString()}` : 'Check-in location'}
-                      </a>
-                    </div>
+                    <ExitEvents entry={first} />
                   </div>
-                  <ExitEvents entry={entry} />
+                )
+              }
+
+              // More than one technician on the same job - group under one job header instead of
+              // repeating the work order info in scattered, unrelated-looking rows.
+              return (
+                <div key={first.workOrder.id} className="rounded-lg bg-ink-800 px-4 py-3">
+                  <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2 border-b border-ink-700 pb-2">
+                    <div className="text-xs text-ink-400">
+                      <Link
+                        to={`/dashboard/operations/work-orders/${first.workOrder.id}`}
+                        className="font-semibold text-cyan-accent hover:underline"
+                      >
+                        {first.workOrder.workOrderNumber}
+                      </Link>
+                      {' — '}
+                      {first.workOrder.title} · {first.workOrder.customer.company || first.workOrder.customer.name}
+                    </div>
+                    <span className="text-xs font-semibold tracking-widest text-ink-500">
+                      {group.length} TECHNICIANS
+                    </span>
+                  </div>
+                  <div className="flex flex-col divide-y divide-ink-700">
+                    {group.map((entry, i) => (
+                      <div key={entry.id} className={i > 0 ? 'pt-3' : undefined}>
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <div className="text-sm font-medium text-ink-100">
+                              {entry.employee.firstName} {entry.employee.lastName}
+                              {entry.employee.position && (
+                                <span className="text-ink-500"> · {entry.employee.position}</span>
+                              )}
+                            </div>
+                            <div className="mt-1 text-xs text-ink-500">
+                              On site for {formatDuration(entry.checkInAt)}
+                            </div>
+                          </div>
+                          <TechnicianStatus entry={entry} />
+                        </div>
+                        <ExitEvents entry={entry} />
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )
             })}
