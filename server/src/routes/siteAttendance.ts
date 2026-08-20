@@ -30,20 +30,45 @@ function parseNote(body: unknown): string | null {
   return typeof note === "string" && note.trim() ? note.trim().slice(0, 200) : null;
 }
 
+/**
+ * Among several same-day candidate work orders for one technician, prefers whichever's site is
+ * physically closest to where they're actually checking in — recency alone can pick the wrong job
+ * (e.g. an earlier job left open) and silently geofence against the wrong site all day.
+ */
+function pickClosestBySite<T extends { siteLat: unknown; siteLng: unknown }>(
+  candidates: T[],
+  coords?: { lat: number; lng: number } | null,
+): T | null {
+  if (!coords) return null;
+  let best: T | null = null;
+  let bestDistance = Infinity;
+  for (const candidate of candidates) {
+    if (candidate.siteLat == null || candidate.siteLng == null) continue;
+    const distance = distanceMeters(coords.lat, coords.lng, Number(candidate.siteLat), Number(candidate.siteLng));
+    if (distance < bestDistance) {
+      best = candidate;
+      bestDistance = distance;
+    }
+  }
+  return best;
+}
+
 /** The work order this employee is actively on right now, if any — used to auto-link and geofence daily check-in. */
-async function findCurrentWorkOrder(employeeId: string) {
-  const inProgress = await prisma.workOrder.findFirst({
+async function findCurrentWorkOrder(employeeId: string, coords?: { lat: number; lng: number } | null) {
+  const inProgress = await prisma.workOrder.findMany({
     where: { status: { in: ["IN_PROGRESS", "WAITING_FOR_PARTS"] }, technicians: { some: { employeeId } } },
     orderBy: { updatedAt: "desc" },
   });
-  if (inProgress) return inProgress;
+  if (inProgress.length > 0) {
+    return pickClosestBySite(inProgress, coords) ?? inProgress[0];
+  }
 
   const todayStart = new Date();
   todayStart.setUTCHours(0, 0, 0, 0);
   const todayEnd = new Date(todayStart);
   todayEnd.setUTCDate(todayEnd.getUTCDate() + 1);
 
-  return prisma.workOrder.findFirst({
+  const scheduledToday = await prisma.workOrder.findMany({
     where: {
       status: "SCHEDULED",
       technicians: { some: { employeeId } },
@@ -51,6 +76,8 @@ async function findCurrentWorkOrder(employeeId: string) {
     },
     orderBy: { scheduledDate: "asc" },
   });
+  if (scheduledToday.length === 0) return null;
+  return pickClosestBySite(scheduledToday, coords) ?? scheduledToday[0];
 }
 
 /** [start, end) bounds for a "YYYY-MM" month string, falling back to the current UTC month. */
@@ -136,7 +163,7 @@ router.post("/check-in", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
 
   // Site location is resolved from a typed address, which is only ever approximate — being far
   // from it is recorded and shown to managers, never used to block a technician from working.
-  const currentWorkOrder = await findCurrentWorkOrder(employee.id);
+  const currentWorkOrder = await findCurrentWorkOrder(employee.id, coords);
   const initialVerification =
     currentWorkOrder?.siteLat != null && currentWorkOrder.siteLng != null
       ? (() => {
@@ -239,19 +266,26 @@ router.post("/exit-reason", requireRole(...OPS_SUBMIT_ROLES), async (req, res) =
   });
   if (!openVisit) return res.status(404).json({ error: "You are not currently checked in" });
 
-  const pendingExit = await prisma.siteVerification.findFirst({
-    where: { siteAttendanceId: openVisit.id, status: "OUTSIDE_SITE", exitReason: null },
+  const recentChecks = await prisma.siteVerification.findMany({
+    where: { siteAttendanceId: openVisit.id },
     orderBy: { checkedAt: "desc" },
   });
-  if (!pendingExit) return res.status(404).json({ error: "No unexplained site departure to update" });
+  // One reason covers the whole current excursion: every consecutive unexplained OUTSIDE_SITE
+  // check back to the last ON_SITE check (or the start), not just the single latest row — a
+  // technician away for 30+ minutes can miss several 10-minute periodic checks before explaining.
+  const pendingIds: string[] = [];
+  for (const check of recentChecks) {
+    if (check.status !== "OUTSIDE_SITE" || check.exitReason) break;
+    pendingIds.push(check.id);
+  }
+  if (pendingIds.length === 0) return res.status(404).json({ error: "No unexplained site departure to update" });
 
-  const verification = await prisma.siteVerification.update({
-    where: { id: pendingExit.id },
-    data: {
-      exitReason: reason as ExitReason,
-      exitReasonNote: typeof note === "string" && note.trim() ? note.trim().slice(0, 300) : null,
-    },
+  const exitReasonNote = typeof note === "string" && note.trim() ? note.trim().slice(0, 300) : null;
+  await prisma.siteVerification.updateMany({
+    where: { id: { in: pendingIds } },
+    data: { exitReason: reason as ExitReason, exitReasonNote },
   });
+  const verification = await prisma.siteVerification.findUniqueOrThrow({ where: { id: pendingIds[0] } });
   res.json({ verification });
 });
 
