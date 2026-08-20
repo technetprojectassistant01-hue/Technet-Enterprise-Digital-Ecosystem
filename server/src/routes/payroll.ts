@@ -4,6 +4,7 @@ import { requireAuth, requireRole } from "../middleware/auth";
 import { isNotFoundError, isUniqueConstraintError } from "../lib/prismaErrors";
 import { computeNetPay } from "../lib/payroll";
 import { HR_ROLES } from "../lib/roles";
+import { workingDaysBetween } from "../lib/workingDays";
 
 const router = Router();
 
@@ -82,13 +83,21 @@ router.post("/process", async (req, res) => {
             endDate: { gte: start },
             leaveType: { paid: false },
           },
-          select: { days: true },
+          select: { startDate: true, endDate: true },
         }),
       ]);
 
       const hoursWorked = records.reduce((sum, r) => sum + (r.hoursWorked ? r.hoursWorked.toNumber() : 0), 0);
       const overtimeHours = records.reduce((sum, r) => sum + r.overtimeHours.toNumber(), 0);
-      const unpaidLeaveDays = leaveRequests.reduce((sum, r) => sum + r.days.toNumber(), 0);
+      // A leave request's stored `days` total covers its whole span, which can run past this
+      // month's boundary — summing it directly would double-count the same days in two
+      // consecutive payroll runs. Re-derive just the working days that actually fall in
+      // [start, end] instead of trusting the request's own total.
+      const unpaidLeaveDays = leaveRequests.reduce((sum, r) => {
+        const overlapStart = r.startDate > start ? r.startDate : start;
+        const overlapEnd = r.endDate < end ? r.endDate : end;
+        return sum + workingDaysBetween(overlapStart, overlapEnd);
+      }, 0);
       const basicSalary = employee.basicSalary!.toNumber();
       const { deduction, netPay } = computeNetPay(basicSalary, unpaidLeaveDays, daysInMonth);
 
