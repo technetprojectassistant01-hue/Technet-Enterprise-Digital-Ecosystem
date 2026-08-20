@@ -747,6 +747,13 @@ export function createPublicHoliday(input: { date: string; name: string }) {
   })
 }
 
+export function updatePublicHoliday(id: string, input: Partial<{ date: string; name: string }>) {
+  return request<{ holiday: PublicHoliday }>(`/api/public-holidays/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
+}
+
 export function deletePublicHoliday(id: string) {
   return request<null>(`/api/public-holidays/${id}`, { method: 'DELETE' })
 }

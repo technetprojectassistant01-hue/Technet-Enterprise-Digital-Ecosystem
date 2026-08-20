@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { Plus, Trash2, CalendarDays } from 'lucide-react'
+import { Plus, Pencil, Trash2, CalendarDays } from 'lucide-react'
 import * as api from '../../lib/api'
 import type { PublicHoliday } from '../../lib/api'
 import { Panel, Modal, EmptyState, TableSkeleton } from '../../dashboard/ui'
@@ -29,6 +29,7 @@ function HolidaysTab() {
   const [holidays, setHolidays] = useState<PublicHoliday[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [editing, setEditing] = useState<PublicHoliday | null>(null)
   const [date, setDate] = useState('')
   const [name, setName] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
@@ -46,8 +47,17 @@ function HolidaysTab() {
   useEffect(load, [load])
 
   function openCreate() {
+    setEditing(null)
     setDate('')
     setName('')
+    setFormError(null)
+    setShowForm(true)
+  }
+
+  function openEdit(holiday: PublicHoliday) {
+    setEditing(holiday)
+    setDate(holiday.date.slice(0, 10))
+    setName(holiday.name)
     setFormError(null)
     setShowForm(true)
   }
@@ -60,12 +70,18 @@ function HolidaysTab() {
 
     setSubmitting(true)
     try {
-      await api.createPublicHoliday({ date, name: name.trim() })
-      toast.success('Holiday added')
+      if (editing) {
+        await api.updatePublicHoliday(editing.id, { date, name: name.trim() })
+        toast.success('Holiday updated')
+      } else {
+        await api.createPublicHoliday({ date, name: name.trim() })
+        toast.success('Holiday added')
+      }
       setShowForm(false)
+      setEditing(null)
       load()
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Failed to add holiday')
+      setFormError(err instanceof Error ? err.message : 'Failed to save holiday')
     } finally {
       setSubmitting(false)
     }
@@ -92,9 +108,9 @@ function HolidaysTab() {
     <div className="flex flex-col gap-6">
       <p className="text-sm text-ink-400">
         Dates listed here are excluded from leave and payroll working-day counts. Several Mauritius
-        public holidays (Chinese Spring Festival, Eid-Ul-Fitr, Ganesh Chaturthi, Diwali, and others
-        tied to the lunar calendar) shift every year and are only confirmed by government gazette
-        closer to the date — add each one once it's confirmed rather than guessing ahead.
+        public holidays are tied to the lunar calendar and can shift by a day once officially
+        gazetted — any holiday named "(unconfirmed)" is a best estimate, not a confirmed date.
+        Edit it in place once the real date is announced; no need to delete and re-add.
       </p>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -134,12 +150,20 @@ function HolidaysTab() {
                     <td className="px-3 py-3 text-ink-300">{formatDate(h.date)}</td>
                     <td className="px-3 py-3 font-medium text-ink-100">{h.name}</td>
                     <td className="px-3 py-3">
-                      <div className="flex justify-end">
+                      <div className="flex items-center justify-end gap-3 text-ink-400">
+                        <button
+                          type="button"
+                          onClick={() => openEdit(h)}
+                          aria-label="Edit holiday"
+                          className="hover:text-ink-100"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
                         <button
                           type="button"
                           onClick={() => handleDelete(h)}
                           aria-label="Delete holiday"
-                          className="text-ink-400 hover:text-red-400"
+                          className="hover:text-red-400"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -154,7 +178,13 @@ function HolidaysTab() {
       </Panel>
 
       {showForm && (
-        <Modal title="Add Holiday" onClose={() => setShowForm(false)}>
+        <Modal
+          title={editing ? 'Edit Holiday' : 'Add Holiday'}
+          onClose={() => {
+            setShowForm(false)
+            setEditing(null)
+          }}
+        >
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div>
               <label className={labelClass}>DATE</label>
@@ -180,7 +210,7 @@ function HolidaysTab() {
             {formError && <p className="text-sm text-red-400">{formError}</p>}
 
             <button type="submit" disabled={submitting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
-              {submitting ? 'Saving…' : 'Add Holiday'}
+              {submitting ? 'Saving…' : editing ? 'Save Changes' : 'Add Holiday'}
             </button>
           </form>
         </Modal>
