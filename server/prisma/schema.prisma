@@ -397,6 +397,17 @@ model AttendanceRecord {
   @@index([date])
 }
 
+/** A single non-working calendar day (public holiday), excluded from working-day counts used by
+ * leave requests and payroll. Several Mauritius holidays shift every year (lunar calendar,
+ * moon-sighting-dependent, or otherwise re-gazetted annually) so this is a manually maintained
+ * list, not a computed rule. */
+model PublicHoliday {
+  id        String   @id @default(uuid())
+  date      DateTime @unique
+  name      String
+  createdAt DateTime @default(now())
+}
+
 model LeaveType {
   id           String   @id @default(uuid())
   code         String   @unique
