@@ -729,6 +729,28 @@ export function deleteLeaveType(id: string) {
   return request<null>(`/api/leave/types/${id}`, { method: 'DELETE' })
 }
 
+export interface PublicHoliday {
+  id: string
+  date: string
+  name: string
+}
+
+export function listPublicHolidays(year?: number) {
+  const qs = year ? `?year=${year}` : ''
+  return request<{ holidays: PublicHoliday[] }>(`/api/public-holidays${qs}`)
+}
+
+export function createPublicHoliday(input: { date: string; name: string }) {
+  return request<{ holiday: PublicHoliday }>('/api/public-holidays', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function deletePublicHoliday(id: string) {
+  return request<null>(`/api/public-holidays/${id}`, { method: 'DELETE' })
+}
+
 export function listLeaveBalances(params: { year?: number; employeeId?: string } = {}) {
   const query = new URLSearchParams()
   if (params.year) query.set('year', String(params.year))
