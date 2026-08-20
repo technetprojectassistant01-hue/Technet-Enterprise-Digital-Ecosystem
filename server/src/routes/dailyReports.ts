@@ -4,6 +4,7 @@ import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { isForeignKeyConstraintError, isNotFoundError } from "../lib/prismaErrors";
 import { OPS_MANAGE_ROLES, OPS_SUBMIT_ROLES } from "../lib/roles";
+import { notifyRoles, notifyUser } from "../lib/notifications";
 
 const router = Router();
 
@@ -21,12 +22,27 @@ const INCLUDE = {
 
 router.use(requireAuth);
 
+function parseDateOnly(value: unknown): Date | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value.trim());
+  if (!match) return null;
+  const date = new Date(`${match[0]}T00:00:00.000Z`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 router.get("/", async (req, res) => {
-  const { status } = req.query;
+  const { status, from, to } = req.query;
 
   const where: Prisma.DailyWorkReportWhereInput = {};
   if (typeof status === "string" && STATUSES.includes(status as Status)) {
     where.status = status as Status;
+  }
+  const fromDate = parseDateOnly(from);
+  const toDate = parseDateOnly(to);
+  if (fromDate || toDate) {
+    where.date = {};
+    if (fromDate) where.date.gte = fromDate;
+    if (toDate) where.date.lte = new Date(toDate.getTime() + 24 * 60 * 60 * 1000 - 1);
   }
 
   const dailyWorkReports = await prisma.dailyWorkReport.findMany({
@@ -72,6 +88,10 @@ router.post("/", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
       },
       include: INCLUDE,
     });
+    const reportDate = dailyWorkReport.date.toISOString().slice(0, 10);
+    await notifyRoles(OPS_MANAGE_ROLES, "DAILY_REPORT_SUBMITTED", `Daily report for ${reportDate} needs review`, {
+      link: `/dashboard/operations/daily-reports/${dailyWorkReport.id}`,
+    });
     res.status(201).json({ dailyWorkReport });
   } catch (err) {
     if (isForeignKeyConstraintError(err)) return res.status(400).json({ error: "Technician or work order not found" });
@@ -91,6 +111,13 @@ async function review(id: string, reviewerId: string, toStatus: "APPROVED" | "RE
     data: { status: toStatus, reviewedById: reviewerId, reviewedAt: new Date(), reviewNote: note || null },
     include: INCLUDE,
   });
+  const reportDate = dailyWorkReport.date.toISOString().slice(0, 10);
+  await notifyUser(
+    dailyWorkReport.submittedById,
+    toStatus === "APPROVED" ? "DAILY_REPORT_APPROVED" : "DAILY_REPORT_REJECTED",
+    `Daily report for ${reportDate} was ${toStatus === "APPROVED" ? "approved" : "rejected"}`,
+    { link: `/dashboard/operations/daily-reports/${dailyWorkReport.id}` },
+  );
   return { dailyWorkReport };
 }
 

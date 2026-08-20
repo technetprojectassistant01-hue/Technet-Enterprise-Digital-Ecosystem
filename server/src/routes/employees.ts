@@ -109,6 +109,23 @@ router.get("/departments", async (_req, res) => {
   res.json({ departments: rows.map((r) => r.department).filter((d): d is string => Boolean(d)) });
 });
 
+/** User accounts for the "linked login" picker on the employee form, HR-only. */
+router.get("/linkable-users", requireRole(...HR_ROLES), async (_req, res) => {
+  const users = await prisma.user.findMany({
+    select: { id: true, email: true, name: true, role: true, employee: { select: { id: true } } },
+    orderBy: { email: "asc" },
+  });
+  res.json({
+    users: users.map((u) => ({
+      id: u.id,
+      email: u.email,
+      name: u.name,
+      role: u.role,
+      linkedEmployeeId: u.employee?.id ?? null,
+    })),
+  });
+});
+
 router.get("/:id", async (req, res) => {
   const id = req.params.id as string;
   const employee = await prisma.employee.findUnique({
@@ -119,7 +136,7 @@ router.get("/:id", async (req, res) => {
       projectAssignments: {
         orderBy: { assignedAt: "desc" },
         take: 10,
-        include: { project: { select: { id: true, projectNumber: true, name: true, status: true } } },
+        include: { project: { select: { id: true, name: true, status: true } } },
       },
     },
   });
@@ -142,12 +159,20 @@ router.post("/", requireRole(...HR_ROLES), async (req, res) => {
     return res.status(400).json({ error: "First and last name are required" });
   }
 
+  let linkedUserId: string | null = null;
+  if (typeof body.userId === "string" && body.userId) {
+    const targetUser = await prisma.user.findUnique({ where: { id: body.userId }, select: { id: true } });
+    if (!targetUser) return res.status(400).json({ error: "Selected user account not found" });
+    linkedUserId = targetUser.id;
+  }
+
   try {
     const employee = await prisma.employee.create({
       data: {
         employeeCode: employeeCode.trim(),
         firstName: firstName.trim(),
         lastName: lastName.trim(),
+        user: linkedUserId ? { connect: { id: linkedUserId } } : undefined,
         email: optionalString(body.email),
         phone: optionalString(body.phone),
         position: optionalString(body.position),
@@ -181,7 +206,9 @@ router.post("/", requireRole(...HR_ROLES), async (req, res) => {
     res.status(201).json({ employee });
   } catch (err) {
     if (isUniqueConstraintError(err)) {
-      return res.status(409).json({ error: "An employee with that code or national ID already exists" });
+      return res
+        .status(409)
+        .json({ error: "An employee with that code or national ID already exists, or that user account is already linked to another employee" });
     }
     throw err;
   }
@@ -192,6 +219,18 @@ router.patch("/:id", requireRole(...HR_ROLES), async (req, res) => {
   const body = req.body ?? {};
 
   const data: Prisma.EmployeeUpdateInput = {};
+
+  if (body.userId !== undefined) {
+    if (body.userId === null || body.userId === "") {
+      data.user = { disconnect: true };
+    } else if (typeof body.userId === "string") {
+      const targetUser = await prisma.user.findUnique({ where: { id: body.userId }, select: { id: true } });
+      if (!targetUser) return res.status(400).json({ error: "Selected user account not found" });
+      data.user = { connect: { id: targetUser.id } };
+    } else {
+      return res.status(400).json({ error: "Invalid user id" });
+    }
+  }
 
   // Required fields are only updated when a non-empty value is supplied.
   if (typeof body.employeeCode === "string" && body.employeeCode.trim()) data.employeeCode = body.employeeCode.trim();
@@ -239,7 +278,9 @@ router.patch("/:id", requireRole(...HR_ROLES), async (req, res) => {
   } catch (err) {
     if (isNotFoundError(err)) return res.status(404).json({ error: "Employee not found" });
     if (isUniqueConstraintError(err)) {
-      return res.status(409).json({ error: "An employee with that code or national ID already exists" });
+      return res
+        .status(409)
+        .json({ error: "An employee with that code or national ID already exists, or that user account is already linked to another employee" });
     }
     throw err;
   }

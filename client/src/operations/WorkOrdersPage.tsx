@@ -33,6 +33,10 @@ function WorkOrdersPage() {
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [from, setFrom] = useState('')
+  const [to, setTo] = useState('')
+  const [filterCustomerId, setFilterCustomerId] = useState('')
+  const [filterTechnicianId, setFilterTechnicianId] = useState('')
 
   const [showCreate, setShowCreate] = useState(false)
   const [customerId, setCustomerId] = useState('')
@@ -42,6 +46,7 @@ function WorkOrdersPage() {
   const [jobCategory, setJobCategory] = useState<JobCategory>('SERVICING')
   const [description, setDescription] = useState('')
   const [scheduledDate, setScheduledDate] = useState('')
+  const [siteQuery, setSiteQuery] = useState('')
   const [technicianIds, setTechnicianIds] = useState<string[]>([])
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -49,13 +54,25 @@ function WorkOrdersPage() {
   function load() {
     setLoading(true)
     api
-      .listWorkOrders()
+      .listWorkOrders({
+        from: from || undefined,
+        to: to || undefined,
+        customerId: filterCustomerId || undefined,
+        technicianId: filterTechnicianId || undefined,
+      })
       .then(({ workOrders }) => setWorkOrders(workOrders))
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load work orders'))
       .finally(() => setLoading(false))
   }
 
-  useEffect(load, [])
+  useEffect(load, [from, to, filterCustomerId, filterTechnicianId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function clearFilters() {
+    setFrom('')
+    setTo('')
+    setFilterCustomerId('')
+    setFilterTechnicianId('')
+  }
 
   function openCreate() {
     setCustomerId(customers[0]?.id || '')
@@ -65,6 +82,7 @@ function WorkOrdersPage() {
     setJobCategory('SERVICING')
     setDescription('')
     setScheduledDate('')
+    setSiteQuery('')
     setTechnicianIds([])
     setFormError(null)
     setShowCreate(true)
@@ -106,6 +124,7 @@ function WorkOrdersPage() {
         description: description || undefined,
         scheduledDate,
         technicianIds,
+        siteQuery: siteQuery || undefined,
       })
       toast.success('Work order created')
       setShowCreate(false)
@@ -187,6 +206,52 @@ function WorkOrdersPage() {
       </div>
 
       <Panel title="Work Order Ledger">
+        <div className="mb-4 flex flex-wrap items-end gap-4">
+          <div className="flex max-w-xs flex-1 flex-col gap-1">
+            <label className="text-xs font-semibold tracking-widest text-ink-400">CUSTOMER</label>
+            <select
+              value={filterCustomerId}
+              onChange={(e) => setFilterCustomerId(e.target.value)}
+              className={inputClass}
+            >
+              <option value="">All customers</option>
+              {customers.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.company || c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex max-w-xs flex-1 flex-col gap-1">
+            <label className="text-xs font-semibold tracking-widest text-ink-400">TECHNICIAN</label>
+            <select
+              value={filterTechnicianId}
+              onChange={(e) => setFilterTechnicianId(e.target.value)}
+              className={inputClass}
+            >
+              <option value="">All technicians</option>
+              {employees.map((emp) => (
+                <option key={emp.id} value={emp.id}>
+                  {emp.firstName} {emp.lastName}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-semibold tracking-widest text-ink-400">FROM</label>
+            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className={inputClass} />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-semibold tracking-widest text-ink-400">TO</label>
+            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className={inputClass} />
+          </div>
+          {(from || to || filterCustomerId || filterTechnicianId) && (
+            <button type="button" onClick={clearFilters} className="text-xs font-semibold text-ink-400 hover:text-ink-100">
+              Clear filters
+            </button>
+          )}
+        </div>
+
         {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
 
         {loading ? (
@@ -321,6 +386,21 @@ function WorkOrdersPage() {
                 required
                 className={`mt-2 ${inputClass}`}
               />
+            </div>
+
+            <div>
+              <label className={labelClass}>SITE ADDRESS (OPTIONAL)</label>
+              <input
+                value={siteQuery}
+                onChange={(e) => setSiteQuery(e.target.value)}
+                placeholder="e.g. Ebene, Mauritius"
+                className={`mt-2 ${inputClass}`}
+              />
+              <p className="mt-1 text-xs text-ink-500">
+                We'll look up the location automatically — no need for exact coordinates. Use an area, street, or
+                town name, not a company name (e.g. "Ebene, Mauritius", not "Celero Ltd"). Setting this lets
+                technicians be shown as on-site when they check in.
+              </p>
             </div>
 
             <div>

@@ -1,10 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import {
-  Wrench,
   Share2,
-  Users,
   Megaphone,
-  LineChart,
   ShieldCheck,
 } from 'lucide-react'
 import Login from './Login'
@@ -28,7 +25,6 @@ import HrOverviewPage from './erp/hr/HrOverviewPage'
 import EmployeesPage from './erp/hr/EmployeesPage'
 import EmployeeDetailPage from './erp/hr/EmployeeDetailPage'
 import LeavePage from './erp/hr/LeavePage'
-import AttendancePage from './erp/hr/AttendancePage'
 import CertificationsPage from './erp/hr/CertificationsPage'
 import ProjectsPage from './erp/ProjectsPage'
 import ProjectDetailPage from './erp/ProjectDetailPage'
@@ -46,11 +42,28 @@ import DailyReportsPage from './operations/DailyReportsPage'
 import InterventionReportsPage from './operations/InterventionReportsPage'
 import InterventionReportFormPage from './operations/InterventionReportFormPage'
 import InterventionReportDetailPage from './operations/InterventionReportDetailPage'
+import TeamAttendancePage from './operations/TeamAttendancePage'
+import FieldOperationsPage from './operations/FieldOperationsPage'
+import MaintenanceLayout from './maintenance/MaintenanceLayout'
+import AssetsPage from './maintenance/AssetsPage'
+import AssetDetailPage from './maintenance/AssetDetailPage'
+import MaintenanceContractsPage from './maintenance/ContractsPage'
+import RequestsPage from './maintenance/RequestsPage'
+import SchedulePage from './maintenance/SchedulePage'
+import ScheduleDetailPage from './maintenance/ScheduleDetailPage'
+import WorkforceLayout from './workforce/WorkforceLayout'
+import AvailabilityTab from './workforce/AvailabilityTab'
+import AttendancePage from './workforce/AttendancePage'
+import PayrollPage from './workforce/PayrollPage'
+import PayrollDetailPage from './workforce/PayrollDetailPage'
 import ModuleStub from './dashboard/ModuleStub'
+import InsightDashboardPage from './insight/InsightDashboardPage'
 import UsersPage from './UsersPage'
 import SettingsPage from './SettingsPage'
 import ProtectedRoute from './ProtectedRoute'
 import AdminRoute from './AdminRoute'
+import RoleRoute from './RoleRoute'
+import { FIELD_ONLY_ROLES } from './lib/permissions'
 
 function App() {
   return (
@@ -61,47 +74,55 @@ function App() {
       <Route element={<ProtectedRoute />}>
         <Route path="/dashboard" element={<Dashboard />}>
           <Route index element={<DashboardHome />} />
-          <Route path="erp" element={<ErpLayout />}>
-            <Route index element={<TechnetErpPage />} />
-            <Route path="inventory" element={<InventoryPage />} />
-            <Route path="finance" element={<FinanceLayout />}>
-              <Route index element={<Navigate to="customers" replace />} />
-              <Route path="customers" element={<CustomersPage />} />
-              <Route path="invoices" element={<InvoicesPage />} />
-              <Route path="invoices/:id" element={<InvoiceDetailPage />} />
-              <Route path="expenses" element={<ExpensesPage />} />
-              <Route path="quotations" element={<QuotationsPage />} />
-              <Route path="quotations/:id" element={<QuotationDetailPage />} />
-              <Route path="contracts" element={<ContractsPage />} />
+          <Route element={<RoleRoute blockedRoles={FIELD_ONLY_ROLES} />}>
+            <Route path="erp" element={<ErpLayout />}>
+              <Route index element={<TechnetErpPage />} />
+              <Route path="inventory" element={<InventoryPage />} />
+              <Route path="finance" element={<FinanceLayout />}>
+                <Route index element={<Navigate to="customers" replace />} />
+                <Route path="customers" element={<CustomersPage />} />
+                <Route path="invoices" element={<InvoicesPage />} />
+                <Route path="invoices/:id" element={<InvoiceDetailPage />} />
+                <Route path="expenses" element={<ExpensesPage />} />
+                <Route path="quotations" element={<QuotationsPage />} />
+                <Route path="quotations/:id" element={<QuotationDetailPage />} />
+                <Route path="contracts" element={<ContractsPage />} />
+              </Route>
+              <Route path="procurement" element={<ProcurementLayout />}>
+                <Route index element={<Navigate to="suppliers" replace />} />
+                <Route path="suppliers" element={<SuppliersPage />} />
+                <Route path="requisitions" element={<RequisitionsPage />} />
+                <Route path="requisitions/:id" element={<RequisitionDetailPage />} />
+                <Route path="purchase-orders" element={<PurchaseOrdersPage />} />
+                <Route path="purchase-orders/:id" element={<PurchaseOrderDetailPage />} />
+              </Route>
+              <Route path="hr" element={<HrLayout />}>
+                <Route index element={<HrOverviewPage />} />
+                <Route path="employees" element={<EmployeesPage />} />
+                <Route path="employees/:id" element={<EmployeeDetailPage />} />
+                <Route path="leave" element={<LeavePage />} />
+                <Route path="certifications" element={<CertificationsPage />} />
+              </Route>
+              <Route path="projects" element={<ProjectsPage />} />
+              <Route path="projects/:id" element={<ProjectDetailPage />} />
+              <Route path="documents" element={<DocumentsPage />} />
             </Route>
-            <Route path="procurement" element={<ProcurementLayout />}>
-              <Route index element={<Navigate to="suppliers" replace />} />
-              <Route path="suppliers" element={<SuppliersPage />} />
-              <Route path="requisitions" element={<RequisitionsPage />} />
-              <Route path="requisitions/:id" element={<RequisitionDetailPage />} />
-              <Route path="purchase-orders" element={<PurchaseOrdersPage />} />
-              <Route path="purchase-orders/:id" element={<PurchaseOrderDetailPage />} />
-            </Route>
-            <Route path="hr" element={<HrLayout />}>
-              <Route index element={<HrOverviewPage />} />
-              <Route path="employees" element={<EmployeesPage />} />
-              <Route path="employees/:id" element={<EmployeeDetailPage />} />
-              <Route path="leave" element={<LeavePage />} />
-              <Route path="attendance" element={<AttendancePage />} />
-              <Route path="certifications" element={<CertificationsPage />} />
-            </Route>
-            <Route path="projects" element={<ProjectsPage />} />
-            <Route path="projects/:id" element={<ProjectDetailPage />} />
-            <Route path="documents" element={<DocumentsPage />} />
           </Route>
-          <Route
-            path="maintenance"
-            element={<ModuleStub title="Technet Maintenance" icon={Wrench} />}
-          />
-          <Route
-            path="connect"
-            element={<ModuleStub title="Technet Connect" icon={Share2} />}
-          />
+          <Route path="maintenance" element={<MaintenanceLayout />}>
+            <Route index element={<Navigate to="assets" replace />} />
+            <Route path="assets" element={<AssetsPage />} />
+            <Route path="assets/:id" element={<AssetDetailPage />} />
+            <Route path="contracts" element={<MaintenanceContractsPage />} />
+            <Route path="requests" element={<RequestsPage />} />
+            <Route path="schedule" element={<SchedulePage />} />
+            <Route path="schedule/:id" element={<ScheduleDetailPage />} />
+          </Route>
+          <Route element={<RoleRoute blockedRoles={FIELD_ONLY_ROLES} />}>
+            <Route
+              path="connect"
+              element={<ModuleStub title="Technet Connect" icon={Share2} />}
+            />
+          </Route>
           <Route path="operations" element={<OperationsLayout />}>
             <Route index element={<Navigate to="work-orders" replace />} />
             <Route path="work-orders" element={<WorkOrdersPage />} />
@@ -110,19 +131,22 @@ function App() {
             <Route path="intervention-reports" element={<InterventionReportsPage />} />
             <Route path="intervention-reports/new" element={<InterventionReportFormPage />} />
             <Route path="intervention-reports/:id" element={<InterventionReportDetailPage />} />
+            <Route path="team-attendance" element={<TeamAttendancePage />} />
+            <Route path="field-tracking" element={<FieldOperationsPage />} />
           </Route>
-          <Route
-            path="workforce"
-            element={<ModuleStub title="Technet Workforce" icon={Users} />}
-          />
-          <Route
-            path="marketing"
-            element={<ModuleStub title="Technet Digital Marketing" icon={Megaphone} />}
-          />
-          <Route
-            path="insight"
-            element={<ModuleStub title="Technet Insight" icon={LineChart} />}
-          />
+          <Route path="workforce" element={<WorkforceLayout />}>
+            <Route index element={<Navigate to="availability" replace />} />
+            <Route path="availability" element={<AvailabilityTab />} />
+            <Route path="attendance" element={<AttendancePage />} />
+            <Route path="payroll" element={<PayrollPage />} />
+            <Route path="payroll/:id" element={<PayrollDetailPage />} />
+          </Route>
+          <Route element={<RoleRoute blockedRoles={FIELD_ONLY_ROLES} />}>
+            <Route
+              path="marketing"
+              element={<ModuleStub title="Technet Digital Marketing" icon={Megaphone} />}
+            />
+          </Route>
           <Route
             path="security"
             element={<ModuleStub title="Security" icon={ShieldCheck} />}
@@ -130,6 +154,7 @@ function App() {
           <Route path="settings" element={<SettingsPage />} />
           <Route element={<AdminRoute />}>
             <Route path="users" element={<UsersPage />} />
+            <Route path="insight" element={<InsightDashboardPage />} />
           </Route>
         </Route>
       </Route>

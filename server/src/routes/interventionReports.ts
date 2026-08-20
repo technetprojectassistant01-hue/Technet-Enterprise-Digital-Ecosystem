@@ -5,6 +5,7 @@ import { requireAuth, requireRole } from "../middleware/auth";
 import { isForeignKeyConstraintError, isNotFoundError } from "../lib/prismaErrors";
 import { formatInterventionNumber } from "../lib/interventionNumber";
 import { OPS_MANAGE_ROLES, OPS_SUBMIT_ROLES } from "../lib/roles";
+import { notifyRoles, notifyUser } from "../lib/notifications";
 
 const router = Router();
 
@@ -33,7 +34,7 @@ const REMINDER_INTERVALS = ["MONTHLY", "QUARTERLY", "SEMI_ANNUAL"] as const;
 type ReminderInterval = (typeof REMINDER_INTERVALS)[number];
 const REMINDER_MONTHS: Record<ReminderInterval, number> = { MONTHLY: 1, QUARTERLY: 3, SEMI_ANNUAL: 6 };
 
-const PHOTO_KINDS = ["EQUIPMENT", "WORK_DONE"] as const;
+const PHOTO_KINDS = ["EQUIPMENT", "WORK_DONE", "BEFORE", "AFTER"] as const;
 type PhotoKind = (typeof PHOTO_KINDS)[number];
 
 const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024;
@@ -74,6 +75,7 @@ const DETAIL_SELECT = {
   timeOut: true,
   warrantyStatus: true,
   technicianReport: true,
+  materialsUsed: true,
   comments: true,
   additionalInfo: true,
   reminderInterval: true,
@@ -100,6 +102,10 @@ const DETAIL_SELECT = {
   reviewedBy: { select: USER_SELECT },
   technicians: { include: { employee: { select: EMPLOYEE_SELECT } } },
   photos: { select: { id: true, kind: true, fileName: true, mimeType: true, createdAt: true } },
+  units: {
+    orderBy: { order: "asc" },
+    select: { id: true, label: true, problem: true, action: true, order: true },
+  },
 } satisfies Prisma.InterventionReportSelect;
 
 function decodeDataUrl(input: unknown): { buffer: Buffer; mimeType: string } | null {
@@ -116,8 +122,16 @@ function withInterventionNumber<T extends { sequenceNumber: number }>(report: T)
 
 router.use(requireAuth);
 
+function parseDateOnly(value: unknown): Date | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value.trim());
+  if (!match) return null;
+  const date = new Date(`${match[1]}-${match[2]}-${match[3]}T00:00:00.000Z`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 router.get("/", async (req, res) => {
-  const { status, workOrderId, customerId, dueRemindersOnly } = req.query;
+  const { status, workOrderId, customerId, dueRemindersOnly, jobCategory, workType, from, to } = req.query;
 
   const where: Prisma.InterventionReportWhereInput = {};
   if (typeof status === "string" && STATUSES.includes(status as Status)) {
@@ -131,6 +145,19 @@ router.get("/", async (req, res) => {
   }
   if (dueRemindersOnly === "true") {
     where.nextReminderAt = { lte: new Date() };
+  }
+  if (typeof jobCategory === "string" && JOB_CATEGORIES.includes(jobCategory as JobCategory)) {
+    where.jobCategory = jobCategory as JobCategory;
+  }
+  if (typeof workType === "string" && WORK_TYPES.includes(workType as WorkType)) {
+    where.workType = workType as WorkType;
+  }
+  const fromDate = parseDateOnly(from);
+  const toDate = parseDateOnly(to);
+  if (fromDate || toDate) {
+    where.date = {};
+    if (fromDate) where.date.gte = fromDate;
+    if (toDate) where.date.lte = new Date(toDate.getTime() + 24 * 60 * 60 * 1000 - 1);
   }
 
   const interventionReports = await prisma.interventionReport.findMany({
@@ -258,9 +285,11 @@ router.post("/", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
     timeOut,
     warrantyStatus,
     technicianReport,
+    materialsUsed,
     comments,
     additionalInfo,
     technicianIds,
+    units,
     signedByName,
     signatureData,
     attachmentData,
@@ -284,6 +313,12 @@ router.post("/", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
   }
   if (warrantyStatus !== undefined && warrantyStatus !== null && !WARRANTY_STATUSES.includes(warrantyStatus)) {
     return res.status(400).json({ error: "Invalid warranty status" });
+  }
+  const unitRows = Array.isArray(units) ? units : [];
+  for (const unit of unitRows) {
+    if (typeof unit?.label !== "string" || !unit.label.trim() || typeof unit?.problem !== "string" || !unit.problem.trim()) {
+      return res.status(400).json({ error: "Each unit needs a label and a problem" });
+    }
   }
 
   let signature: { buffer: Buffer; mimeType: string } | null = null;
@@ -331,6 +366,7 @@ router.post("/", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
         timeOut: typeof timeOut === "string" && timeOut ? timeOut : null,
         warrantyStatus: (warrantyStatus as WarrantyStatus) || null,
         technicianReport: typeof technicianReport === "string" && technicianReport ? technicianReport : null,
+        materialsUsed: typeof materialsUsed === "string" && materialsUsed ? materialsUsed : null,
         comments: typeof comments === "string" && comments ? comments : null,
         additionalInfo: typeof additionalInfo === "string" && additionalInfo ? additionalInfo : null,
         signedByName: typeof signedByName === "string" && signedByName ? signedByName : null,
@@ -341,6 +377,14 @@ router.post("/", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
         attachmentFileName: attachment && typeof attachmentFileName === "string" ? attachmentFileName : null,
         createdById: req.user!.sub,
         technicians: { create: techIds.map((employeeId) => ({ employeeId })) },
+        units: {
+          create: unitRows.map((unit, i) => ({
+            label: unit.label.trim(),
+            problem: unit.problem.trim(),
+            action: typeof unit.action === "string" && unit.action.trim() ? unit.action.trim() : null,
+            order: i,
+          })),
+        },
       },
       select: { id: true, workOrderId: true, workCompleted: true },
     });
@@ -353,7 +397,11 @@ router.post("/", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
       where: { id: created.id },
       select: DETAIL_SELECT,
     });
-    res.status(201).json({ interventionReport: withInterventionNumber(interventionReport!) });
+    const withNumber = withInterventionNumber(interventionReport!);
+    await notifyRoles(OPS_MANAGE_ROLES, "INTERVENTION_REPORT_SUBMITTED", `Intervention report ${withNumber.interventionNumber} needs review`, {
+      link: `/dashboard/operations/intervention-reports/${withNumber.id}`,
+    });
+    res.status(201).json({ interventionReport: withNumber });
   } catch (err) {
     if (isForeignKeyConstraintError(err)) return res.status(400).json({ error: "Customer, work order, or technician not found" });
     throw err;
@@ -417,7 +465,14 @@ async function review(id: string, reviewerId: string, toStatus: "APPROVED" | "RE
     data: { status: toStatus, reviewedById: reviewerId, reviewedAt: new Date(), reviewNote: note || null },
   });
   const interventionReport = await prisma.interventionReport.findUnique({ where: { id }, select: DETAIL_SELECT });
-  return { interventionReport: withInterventionNumber(interventionReport!) };
+  const withNumber = withInterventionNumber(interventionReport!);
+  await notifyUser(
+    existing.createdById,
+    toStatus === "APPROVED" ? "INTERVENTION_REPORT_APPROVED" : "INTERVENTION_REPORT_REJECTED",
+    `Intervention report ${withNumber.interventionNumber} was ${toStatus === "APPROVED" ? "approved" : "rejected"}`,
+    { link: `/dashboard/operations/intervention-reports/${withNumber.id}` },
+  );
+  return { interventionReport: withNumber };
 }
 
 router.post("/:id/approve", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {

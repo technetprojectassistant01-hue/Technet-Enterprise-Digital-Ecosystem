@@ -15,6 +15,7 @@ export interface CurrentUser {
   email: string
   name: string | null
   role: Role
+  employeeId: string | null
 }
 
 export interface ManagedUser extends CurrentUser {
@@ -548,12 +549,12 @@ export interface Employee extends EmployeeSummary {
 
 export interface EmployeeDetail extends Employee {
   user: { id: string; email: string; role: Role } | null
-  managedProjects: { id: string; projectNumber: string; name: string; status: ProjectStatus }[]
+  managedProjects: { id: string; name: string; status: ProjectStatus }[]
   projectAssignments: {
     id: string
     role: string | null
     assignedAt: string
-    project: { id: string; projectNumber: string; name: string; status: ProjectStatus }
+    project: { id: string; name: string; status: ProjectStatus }
   }[]
 }
 
@@ -561,6 +562,7 @@ export interface EmployeeInput {
   employeeCode: string
   firstName: string
   lastName: string
+  userId?: string
   email?: string
   phone?: string
   position?: string
@@ -608,6 +610,18 @@ export function getEmployee(id: string) {
 
 export function listDepartments() {
   return request<{ departments: string[] }>('/api/employees/departments')
+}
+
+export interface LinkableUser {
+  id: string
+  email: string
+  name: string | null
+  role: Role
+  linkedEmployeeId: string | null
+}
+
+export function listLinkableUsers() {
+  return request<{ users: LinkableUser[] }>('/api/employees/linkable-users')
 }
 
 /* ---------------------------------------------------------------- *
@@ -713,6 +727,35 @@ export function updateLeaveType(id: string, input: Partial<LeaveTypeInput>) {
 
 export function deleteLeaveType(id: string) {
   return request<null>(`/api/leave/types/${id}`, { method: 'DELETE' })
+}
+
+export interface PublicHoliday {
+  id: string
+  date: string
+  name: string
+}
+
+export function listPublicHolidays(year?: number) {
+  const qs = year ? `?year=${year}` : ''
+  return request<{ holidays: PublicHoliday[] }>(`/api/public-holidays${qs}`)
+}
+
+export function createPublicHoliday(input: { date: string; name: string }) {
+  return request<{ holiday: PublicHoliday }>('/api/public-holidays', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function updatePublicHoliday(id: string, input: Partial<{ date: string; name: string }>) {
+  return request<{ holiday: PublicHoliday }>(`/api/public-holidays/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
+}
+
+export function deletePublicHoliday(id: string) {
+  return request<null>(`/api/public-holidays/${id}`, { method: 'DELETE' })
 }
 
 export function listLeaveBalances(params: { year?: number; employeeId?: string } = {}) {
@@ -1456,7 +1499,13 @@ export const JOB_CATEGORY_LABELS: Record<JobCategory, string> = {
   OTHERS: 'Others',
 }
 
-export type WorkOrderStatus = 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
+export type WorkOrderStatus =
+  | 'SCHEDULED'
+  | 'IN_PROGRESS'
+  | 'WAITING_FOR_PARTS'
+  | 'COMPLETED'
+  | 'REOPENED'
+  | 'CANCELLED'
 export type WarrantyStatus = 'YES' | 'NO' | 'UNKNOWN'
 export type ReportStatus = 'SUBMITTED' | 'APPROVED' | 'REJECTED'
 
@@ -1475,9 +1524,66 @@ export interface WorkOrder {
   description: string | null
   status: WorkOrderStatus
   scheduledDate: string
+  siteLat: string | null
+  siteLng: string | null
+  siteAddress: string | null
   technicians: { id: string; employee: EmployeeSummary }[]
   createdAt: string
   updatedAt: string
+}
+
+export type SiteVerificationStatus = 'ON_SITE' | 'OUTSIDE_SITE'
+export type SiteExitReason = 'MATERIALS' | 'ANOTHER_SITE' | 'SUPERVISOR_INSTRUCTION' | 'EMERGENCY' | 'OTHER'
+
+export const SITE_EXIT_REASON_LABELS: Record<SiteExitReason, string> = {
+  MATERIALS: 'Collecting materials',
+  ANOTHER_SITE: 'Travelling to another site',
+  SUPERVISOR_INSTRUCTION: 'Supervisor instruction',
+  EMERGENCY: 'Emergency',
+  OTHER: 'Other',
+}
+
+export interface SiteVerification {
+  id: string
+  siteAttendanceId: string
+  checkedAt: string
+  lat: string
+  lng: string
+  distanceMeters: number
+  status: SiteVerificationStatus
+  exitReason: SiteExitReason | null
+  exitReasonNote: string | null
+}
+
+export interface SiteAttendanceWorkOrderSummary {
+  id: string
+  workOrderNumber: string
+  title: string
+  siteLat: string | null
+  siteLng: string | null
+  siteAddress: string | null
+}
+
+export interface SiteAttendance {
+  id: string
+  workOrderId: string | null
+  workOrder: SiteAttendanceWorkOrderSummary | null
+  employeeId: string
+  employee?: EmployeeSummary
+  checkInAt: string
+  checkInLat: string
+  checkInLng: string
+  checkInNote: string | null
+  checkOutAt: string | null
+  checkOutLat: string | null
+  checkOutLng: string | null
+  checkOutNote: string | null
+  verifications: SiteVerification[]
+}
+
+/** Endpoints that return a whole team's visits always include the technician. */
+export interface SiteAttendanceWithEmployee extends SiteAttendance {
+  employee: EmployeeSummary
 }
 
 export interface WorkOrderDetail extends WorkOrder {
@@ -1489,6 +1595,7 @@ export interface WorkOrderDetail extends WorkOrder {
     workCompleted: boolean
     createdAt: string
   }[]
+  siteAttendance: SiteAttendanceWithEmployee[]
 }
 
 export interface WorkOrderInput {
@@ -1500,13 +1607,18 @@ export interface WorkOrderInput {
   description?: string
   scheduledDate: string
   technicianIds: string[]
+  siteQuery?: string
 }
 
-export function listWorkOrders(params: { status?: WorkOrderStatus; customerId?: string; technicianId?: string } = {}) {
+export function listWorkOrders(
+  params: { status?: WorkOrderStatus; customerId?: string; technicianId?: string; from?: string; to?: string } = {},
+) {
   const query = new URLSearchParams()
   if (params.status) query.set('status', params.status)
   if (params.customerId) query.set('customerId', params.customerId)
   if (params.technicianId) query.set('technicianId', params.technicianId)
+  if (params.from) query.set('from', params.from)
+  if (params.to) query.set('to', params.to)
   const qs = query.toString()
   return request<{ workOrders: WorkOrder[] }>(`/api/work-orders${qs ? `?${qs}` : ''}`)
 }
@@ -1528,6 +1640,7 @@ export interface WorkOrderUpdateInput {
   scheduledDate?: string
   status?: WorkOrderStatus
   technicianIds?: string[]
+  siteQuery?: string
 }
 
 export function updateWorkOrder(id: string, input: WorkOrderUpdateInput) {
@@ -1539,6 +1652,69 @@ export function updateWorkOrder(id: string, input: WorkOrderUpdateInput) {
 
 export function deleteWorkOrder(id: string) {
   return request<null>(`/api/work-orders/${id}`, { method: 'DELETE' })
+}
+
+export function verifyMyLocation(coords: { lat: number; lng: number }) {
+  return request<{ skipped: true } | { verification: SiteVerification }>('/api/site-attendance/verify-location', {
+    method: 'POST',
+    body: JSON.stringify(coords),
+  })
+}
+
+export function submitMyExitReason(input: { reason: SiteExitReason; note?: string }) {
+  return request<{ verification: SiteVerification }>('/api/site-attendance/exit-reason', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export interface SiteTrackingEntry extends SiteAttendanceWithEmployee {
+  workOrder: {
+    id: string
+    workOrderNumber: string
+    title: string
+    siteLat: string | null
+    siteLng: string | null
+    siteAddress: string | null
+    customer: WorkOrderCustomer
+  }
+}
+
+export function getSiteTracking() {
+  return request<{ current: SiteTrackingEntry[]; recentlyCompleted: SiteTrackingEntry[] }>(
+    '/api/work-orders/site-tracking',
+  )
+}
+
+export function getMyAttendance() {
+  return request<{ current: SiteAttendance | null; history: SiteAttendance[] }>('/api/site-attendance/me')
+}
+
+export function requestLocationVerification(siteAttendanceId: string) {
+  return request<{ ok: true }>(`/api/site-attendance/${siteAttendanceId}/request-verification`, { method: 'POST' })
+}
+
+export function listTeamAttendance(params: { month?: string } = {}) {
+  const query = new URLSearchParams()
+  if (params.month) query.set('month', params.month)
+  const qs = query.toString()
+  return request<{ current: SiteAttendanceWithEmployee[]; history: SiteAttendanceWithEmployee[] }>(
+    `/api/site-attendance${qs ? `?${qs}` : ''}`,
+  )
+}
+
+export function checkInAttendance(coords: { lat: number; lng: number; note?: string }) {
+  return request<{ siteAttendance: SiteAttendance }>('/api/site-attendance/check-in', {
+    method: 'POST',
+    body: JSON.stringify(coords),
+  })
+}
+
+export function checkOutAttendance(coords: { lat: number; lng: number; note?: string }) {
+  return request<{ siteAttendance: SiteAttendance }>('/api/site-attendance/check-out', {
+    method: 'POST',
+    body: JSON.stringify(coords),
+  })
 }
 
 export interface DailyWorkReport {
@@ -1564,9 +1740,11 @@ export interface DailyWorkReportInput {
   workOrderIds: string[]
 }
 
-export function listDailyReports(params: { status?: ReportStatus } = {}) {
+export function listDailyReports(params: { status?: ReportStatus; from?: string; to?: string } = {}) {
   const query = new URLSearchParams()
   if (params.status) query.set('status', params.status)
+  if (params.from) query.set('from', params.from)
+  if (params.to) query.set('to', params.to)
   const qs = query.toString()
   return request<{ dailyWorkReports: DailyWorkReport[] }>(`/api/daily-reports${qs ? `?${qs}` : ''}`)
 }
@@ -1613,7 +1791,7 @@ export const REMINDER_INTERVAL_LABELS: Record<ReminderInterval, string> = {
   SEMI_ANNUAL: 'Every 6 Months',
 }
 
-export type PhotoKind = 'EQUIPMENT' | 'WORK_DONE'
+export type PhotoKind = 'EQUIPMENT' | 'WORK_DONE' | 'BEFORE' | 'AFTER'
 
 export interface InterventionReportPhoto {
   id: string
@@ -1650,6 +1828,7 @@ export interface InterventionReport {
   timeOut: string | null
   warrantyStatus: WarrantyStatus | null
   technicianReport: string | null
+  materialsUsed: string | null
   comments: string | null
   additionalInfo: string | null
   reminderInterval: ReminderInterval | null
@@ -1665,8 +1844,17 @@ export interface InterventionReport {
   reviewNote: string | null
   technicians: { id: string; employee: EmployeeSummary }[]
   photos: InterventionReportPhoto[]
+  units: InterventionReportUnit[]
   createdAt: string
   updatedAt: string
+}
+
+export interface InterventionReportUnit {
+  id: string
+  label: string
+  problem: string
+  action: string | null
+  order: number
 }
 
 export interface InterventionReportInput {
@@ -1692,9 +1880,11 @@ export interface InterventionReportInput {
   timeOut?: string
   warrantyStatus?: WarrantyStatus
   technicianReport?: string
+  materialsUsed?: string
   comments?: string
   additionalInfo?: string
   technicianIds: string[]
+  units?: { label: string; problem: string; action?: string }[]
   signedByName?: string
   signatureData?: string
   attachmentData?: string
@@ -1702,13 +1892,26 @@ export interface InterventionReportInput {
 }
 
 export function listInterventionReports(
-  params: { status?: ReportStatus; workOrderId?: string; customerId?: string; dueRemindersOnly?: boolean } = {},
+  params: {
+    status?: ReportStatus
+    workOrderId?: string
+    customerId?: string
+    dueRemindersOnly?: boolean
+    jobCategory?: JobCategory
+    workType?: ServiceCategory
+    from?: string
+    to?: string
+  } = {},
 ) {
   const query = new URLSearchParams()
   if (params.status) query.set('status', params.status)
   if (params.workOrderId) query.set('workOrderId', params.workOrderId)
   if (params.customerId) query.set('customerId', params.customerId)
   if (params.dueRemindersOnly) query.set('dueRemindersOnly', 'true')
+  if (params.jobCategory) query.set('jobCategory', params.jobCategory)
+  if (params.workType) query.set('workType', params.workType)
+  if (params.from) query.set('from', params.from)
+  if (params.to) query.set('to', params.to)
   const qs = query.toString()
   return request<{ interventionReports: InterventionReport[] }>(`/api/intervention-reports${qs ? `?${qs}` : ''}`)
 }
@@ -1852,4 +2055,472 @@ export function deleteDocument(id: string) {
 
 export function documentDownloadUrl(id: string) {
   return `${API_URL}/api/documents/${id}/download`
+}
+
+// ---------- Maintenance ----------
+
+export type AssetStatus = 'ACTIVE' | 'DECOMMISSIONED'
+export type MaintenanceFrequency = 'MONTHLY' | 'QUARTERLY' | 'SEMI_ANNUAL' | 'ANNUAL'
+export type MaintenanceContractStatus = 'ACTIVE' | 'EXPIRED' | 'CANCELLED'
+export type MaintenanceRequestPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
+export type MaintenanceRequestStatus = 'SUBMITTED' | 'SCHEDULED' | 'COMPLETED' | 'CANCELLED'
+export type MaintenanceScheduleStatus = 'SCHEDULED' | 'COMPLETED' | 'CANCELLED'
+
+export interface AssetCustomer extends CustomerSummary {
+  address: string | null
+}
+
+export interface Asset {
+  id: string
+  sequenceNumber: number
+  assetNumber: string
+  name: string
+  category: string | null
+  serialNumber: string | null
+  location: string | null
+  customerId: string
+  customer: AssetCustomer
+  status: AssetStatus
+  notes: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface AssetInput {
+  name: string
+  category?: string
+  serialNumber?: string
+  location?: string
+  customerId: string
+  notes?: string
+}
+
+export interface AssetUpdateInput {
+  name?: string
+  category?: string | null
+  serialNumber?: string | null
+  location?: string | null
+  status?: AssetStatus
+  notes?: string | null
+}
+
+/** The trimmed asset reference embedded in a standalone contract/request/schedule. */
+export interface MaintenanceAssetRef {
+  id: string
+  sequenceNumber: number
+  assetNumber: string
+  name: string
+  customer: CustomerSummary
+}
+
+/** A contract row as it appears nested under Asset.contracts (no asset back-reference). */
+export interface AssetHistoryContract {
+  id: string
+  sequenceNumber: number
+  contractNumber: string
+  assetId: string
+  frequency: MaintenanceFrequency
+  startDate: string
+  expiryDate: string
+  status: MaintenanceContractStatus
+  notes: string | null
+  createdById: string
+  createdAt: string
+  updatedAt: string
+}
+
+/** A request row as it appears nested under Asset.requests (no asset back-reference). */
+export interface AssetHistoryRequest {
+  id: string
+  sequenceNumber: number
+  requestNumber: string
+  assetId: string
+  contractId: string | null
+  description: string
+  priority: MaintenanceRequestPriority
+  status: MaintenanceRequestStatus
+  requestedById: string
+  createdAt: string
+}
+
+export interface MaintenanceContract extends AssetHistoryContract {
+  asset: MaintenanceAssetRef
+}
+
+export interface MaintenanceContractInput {
+  assetId: string
+  frequency: MaintenanceFrequency
+  startDate: string
+  expiryDate: string
+  notes?: string
+}
+
+export interface MaintenanceContractUpdateInput {
+  frequency?: MaintenanceFrequency
+  startDate?: string
+  expiryDate?: string
+  status?: MaintenanceContractStatus
+  notes?: string | null
+}
+
+export interface MaintenanceContractDetail extends MaintenanceContract {
+  schedules: MaintenanceSchedule[]
+}
+
+export interface MaintenanceRequest extends AssetHistoryRequest {
+  asset: MaintenanceAssetRef
+  requestedBy: { id: string; name: string | null; email: string }
+}
+
+export interface MaintenanceRequestDetail extends MaintenanceRequest {
+  schedule: MaintenanceSchedule | null
+}
+
+export interface MaintenanceRequestInput {
+  assetId: string
+  contractId?: string
+  description: string
+  priority?: MaintenanceRequestPriority
+}
+
+/** Bare report fields, without the reviewer/submitter expansion — used inside Asset history. */
+export interface AssetHistoryReport {
+  id: string
+  scheduleId: string
+  remarks: string
+  workCompleted: boolean
+  recommendations: string | null
+  status: ReportStatus
+  submittedById: string
+  reviewedById: string | null
+  reviewedAt: string | null
+  reviewNote: string | null
+  createdAt: string
+}
+
+export interface MaintenanceReport extends AssetHistoryReport {
+  submittedBy: { id: string; name: string | null; email: string }
+  reviewedBy: { id: string; name: string | null; email: string } | null
+}
+
+export interface MaintenanceReportInput {
+  remarks: string
+  workCompleted: boolean
+  recommendations?: string
+}
+
+export interface MaintenanceSchedule {
+  id: string
+  contractId: string | null
+  contract: { id: string; sequenceNumber: number; contractNumber: string; asset: MaintenanceAssetRef } | null
+  requestId: string | null
+  request:
+    | { id: string; sequenceNumber: number; requestNumber: string; description: string; priority: MaintenanceRequestPriority; asset: MaintenanceAssetRef }
+    | null
+  scheduledDate: string
+  status: MaintenanceScheduleStatus
+  createdById: string
+  createdAt: string
+  updatedAt: string
+  technicians: { id: string; employee: EmployeeSummary }[]
+  report: MaintenanceReport | null
+}
+
+export interface MaintenanceScheduleInput {
+  contractId: string
+  scheduledDate: string
+  technicianIds: string[]
+}
+
+export interface MaintenanceScheduleUpdateInput {
+  scheduledDate?: string
+  technicianIds?: string[]
+}
+
+/** A schedule row as it appears nested under Asset.schedules — trimmed contract/request refs, bare report. */
+export interface AssetHistorySchedule {
+  id: string
+  contractId: string | null
+  contract: { id: string; sequenceNumber: number; contractNumber: string } | null
+  requestId: string | null
+  request: { id: string; sequenceNumber: number; requestNumber: string } | null
+  scheduledDate: string
+  status: MaintenanceScheduleStatus
+  createdById: string
+  createdAt: string
+  updatedAt: string
+  technicians: { id: string; employee: EmployeeSummary }[]
+  report: AssetHistoryReport | null
+}
+
+export interface AssetDetail extends Asset {
+  contracts: AssetHistoryContract[]
+  requests: AssetHistoryRequest[]
+  schedules: AssetHistorySchedule[]
+}
+
+export function listAssets(params: { search?: string; customerId?: string; status?: AssetStatus } = {}) {
+  const query = new URLSearchParams()
+  if (params.search) query.set('search', params.search)
+  if (params.customerId) query.set('customerId', params.customerId)
+  if (params.status) query.set('status', params.status)
+  const qs = query.toString()
+  return request<{ assets: Asset[] }>(`/api/maintenance-assets${qs ? `?${qs}` : ''}`)
+}
+
+export function getAsset(id: string) {
+  return request<{ asset: AssetDetail }>(`/api/maintenance-assets/${id}`)
+}
+
+export function createAsset(input: AssetInput) {
+  return request<{ asset: Asset }>('/api/maintenance-assets', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function updateAsset(id: string, input: AssetUpdateInput) {
+  return request<{ asset: Asset }>(`/api/maintenance-assets/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
+}
+
+export function deleteAsset(id: string) {
+  return request<null>(`/api/maintenance-assets/${id}`, { method: 'DELETE' })
+}
+
+export function listMaintenanceContracts(params: { assetId?: string; status?: MaintenanceContractStatus; expiringSoon?: boolean } = {}) {
+  const query = new URLSearchParams()
+  if (params.assetId) query.set('assetId', params.assetId)
+  if (params.status) query.set('status', params.status)
+  if (params.expiringSoon) query.set('expiringSoon', 'true')
+  const qs = query.toString()
+  return request<{ contracts: MaintenanceContract[] }>(`/api/maintenance-contracts${qs ? `?${qs}` : ''}`)
+}
+
+export function getMaintenanceContract(id: string) {
+  return request<{ contract: MaintenanceContractDetail }>(`/api/maintenance-contracts/${id}`)
+}
+
+export function createMaintenanceContract(input: MaintenanceContractInput) {
+  return request<{ contract: MaintenanceContract }>('/api/maintenance-contracts', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function updateMaintenanceContract(id: string, input: MaintenanceContractUpdateInput) {
+  return request<{ contract: MaintenanceContract }>(`/api/maintenance-contracts/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
+}
+
+export function deleteMaintenanceContract(id: string) {
+  return request<null>(`/api/maintenance-contracts/${id}`, { method: 'DELETE' })
+}
+
+export function listMaintenanceRequests(params: { status?: MaintenanceRequestStatus; assetId?: string } = {}) {
+  const query = new URLSearchParams()
+  if (params.status) query.set('status', params.status)
+  if (params.assetId) query.set('assetId', params.assetId)
+  const qs = query.toString()
+  return request<{ requests: MaintenanceRequest[] }>(`/api/maintenance-requests${qs ? `?${qs}` : ''}`)
+}
+
+export function getMaintenanceRequest(id: string) {
+  return request<{ request: MaintenanceRequestDetail }>(`/api/maintenance-requests/${id}`)
+}
+
+export function createMaintenanceRequest(input: MaintenanceRequestInput) {
+  return request<{ request: MaintenanceRequest }>('/api/maintenance-requests', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function scheduleMaintenanceRequest(id: string, input: { scheduledDate: string; technicianIds: string[] }) {
+  return request<{ request: MaintenanceRequestDetail }>(`/api/maintenance-requests/${id}/schedule`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function cancelMaintenanceRequest(id: string) {
+  return request<{ request: MaintenanceRequest }>(`/api/maintenance-requests/${id}/cancel`, { method: 'POST' })
+}
+
+export function deleteMaintenanceRequest(id: string) {
+  return request<null>(`/api/maintenance-requests/${id}`, { method: 'DELETE' })
+}
+
+export function listMaintenanceSchedules(params: { status?: MaintenanceScheduleStatus; technicianId?: string; contractId?: string } = {}) {
+  const query = new URLSearchParams()
+  if (params.status) query.set('status', params.status)
+  if (params.technicianId) query.set('technicianId', params.technicianId)
+  if (params.contractId) query.set('contractId', params.contractId)
+  const qs = query.toString()
+  return request<{ schedules: MaintenanceSchedule[] }>(`/api/maintenance-schedules${qs ? `?${qs}` : ''}`)
+}
+
+export function getMaintenanceSchedule(id: string) {
+  return request<{ schedule: MaintenanceSchedule }>(`/api/maintenance-schedules/${id}`)
+}
+
+export function createMaintenanceSchedule(input: MaintenanceScheduleInput) {
+  return request<{ schedule: MaintenanceSchedule }>('/api/maintenance-schedules', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function updateMaintenanceSchedule(id: string, input: MaintenanceScheduleUpdateInput) {
+  return request<{ schedule: MaintenanceSchedule }>(`/api/maintenance-schedules/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
+}
+
+export function deleteMaintenanceSchedule(id: string) {
+  return request<null>(`/api/maintenance-schedules/${id}`, { method: 'DELETE' })
+}
+
+export function submitMaintenanceReport(scheduleId: string, input: MaintenanceReportInput) {
+  return request<{ schedule: MaintenanceSchedule }>(`/api/maintenance-schedules/${scheduleId}/report`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function approveMaintenanceReport(scheduleId: string, note?: string) {
+  return request<{ schedule: MaintenanceSchedule }>(`/api/maintenance-schedules/${scheduleId}/report/approve`, {
+    method: 'POST',
+    body: JSON.stringify({ note }),
+  })
+}
+
+export function rejectMaintenanceReport(scheduleId: string, note?: string) {
+  return request<{ schedule: MaintenanceSchedule }>(`/api/maintenance-schedules/${scheduleId}/report/reject`, {
+    method: 'POST',
+    body: JSON.stringify({ note }),
+  })
+}
+
+// ---------- Payroll ----------
+
+export interface PayrollRun {
+  id: string
+  year: number
+  month: number
+  createdBy: { id: string; name: string | null; email: string }
+  createdAt: string
+  employeeCount: number
+  totalNetPay: number
+}
+
+export interface PayrollEmployeeRef extends EmployeeSummary {
+  employeeCode: string
+}
+
+export interface PayrollLine {
+  id: string
+  payrollRunId: string
+  employeeId: string
+  employee: PayrollEmployeeRef
+  basicSalary: string
+  hoursWorked: string
+  overtimeHours: string
+  unpaidLeaveDays: string
+  deduction: string
+  netPay: string
+}
+
+export interface PayrollRunDetail {
+  id: string
+  year: number
+  month: number
+  createdBy: { id: string; name: string | null; email: string }
+  createdAt: string
+  lines: PayrollLine[]
+}
+
+export function listPayrollRuns() {
+  return request<{ runs: PayrollRun[] }>('/api/payroll')
+}
+
+export function getPayrollRun(id: string) {
+  return request<{ run: PayrollRunDetail }>(`/api/payroll/${id}`)
+}
+
+export function processPayroll(year: number, month: number) {
+  return request<{ run: PayrollRunDetail }>('/api/payroll/process', {
+    method: 'POST',
+    body: JSON.stringify({ year, month }),
+  })
+}
+
+export function deletePayrollRun(id: string) {
+  return request<null>(`/api/payroll/${id}`, { method: 'DELETE' })
+}
+
+export interface InsightSummary {
+  monthlyRevenue: number
+  activeProjects: number
+  activeWorkOrders: number
+  overdueInvoices: { count: number; total: number }
+  openMaintenanceRequests: number
+  lowStockItems: number
+  techniciansOnSite: number
+  generatedAt: string
+}
+
+export function getInsightSummary() {
+  return request<{ summary: InsightSummary }>('/api/insight/summary')
+}
+
+export type NotificationType =
+  | 'LEAVE_REQUEST_APPROVED'
+  | 'LEAVE_REQUEST_REJECTED'
+  | 'REQUISITION_APPROVED'
+  | 'REQUISITION_REJECTED'
+  | 'WORK_ORDER_ASSIGNED'
+  | 'QUOTATION_ACCEPTED'
+  | 'QUOTATION_REJECTED'
+  | 'INTERVENTION_REPORT_SUBMITTED'
+  | 'INTERVENTION_REPORT_APPROVED'
+  | 'INTERVENTION_REPORT_REJECTED'
+  | 'MAINTENANCE_REQUEST_SCHEDULED'
+  | 'MAINTENANCE_REQUEST_CANCELLED'
+  | 'MAINTENANCE_REQUEST_COMPLETED'
+  | 'MAINTENANCE_REPORT_SUBMITTED'
+  | 'MAINTENANCE_REPORT_APPROVED'
+  | 'MAINTENANCE_REPORT_REJECTED'
+  | 'PROJECT_ASSIGNED'
+  | 'LOCATION_CHECK_REQUESTED'
+  | 'DAILY_REPORT_SUBMITTED'
+  | 'DAILY_REPORT_APPROVED'
+  | 'DAILY_REPORT_REJECTED'
+  | 'WORK_ORDER_STATUS_CHANGED'
+
+export interface Notification {
+  id: string
+  type: NotificationType
+  title: string
+  message: string | null
+  link: string | null
+  readAt: string | null
+  createdAt: string
+}
+
+export function listNotifications() {
+  return request<{ notifications: Notification[]; unreadCount: number }>('/api/notifications')
+}
+
+export function markNotificationRead(id: string) {
+  return request<{ ok: true }>(`/api/notifications/${id}/read`, { method: 'POST' })
+}
+
+export function markAllNotificationsRead() {
+  return request<{ ok: true }>('/api/notifications/read-all', { method: 'POST' })
 }

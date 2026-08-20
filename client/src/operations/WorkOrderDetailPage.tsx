@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, X, Trash2, FileText, Plus } from 'lucide-react'
+import { ArrowLeft, X, Trash2, FileText, Plus, MapPin, Pencil } from 'lucide-react'
 import * as api from '../lib/api'
 import type { WorkOrderDetail, WorkOrderStatus } from '../lib/api'
 import { JOB_CATEGORY_LABELS } from '../lib/api'
@@ -10,7 +10,17 @@ import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
 import { hasRole, OPS_MANAGE_ROLES, OPS_SUBMIT_ROLES } from '../lib/permissions'
+import { mapLink } from '../lib/geolocation'
 import { workOrderStatusTone, reportStatusTone } from '../erp/statusTones'
+
+const inputClass =
+  'rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
+
+function siteStatusTone(status: 'ON_SITE' | 'OUTSIDE_SITE' | 'UNVERIFIED') {
+  if (status === 'ON_SITE') return 'success' as const
+  if (status === 'OUTSIDE_SITE') return 'warning' as const
+  return 'neutral' as const
+}
 
 function WorkOrderDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -24,6 +34,9 @@ function WorkOrderDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [actioning, setActioning] = useState(false)
+  const [editingSite, setEditingSite] = useState(false)
+  const [siteQueryInput, setSiteQueryInput] = useState('')
+  const [savingSite, setSavingSite] = useState(false)
 
   function load() {
     if (!id) return
@@ -37,6 +50,16 @@ function WorkOrderDetailPage() {
 
   useEffect(load, [id])
 
+  const myEmployeeId = user?.employeeId ?? null
+  const isAssignedTechnician =
+    !!workOrder && myEmployeeId !== null && workOrder.technicians.some((t) => t.employee.id === myEmployeeId)
+  const myOpenVisit =
+    workOrder && myEmployeeId
+      ? workOrder.siteAttendance.find((v) => v.employee.id === myEmployeeId && !v.checkOutAt)
+      : undefined
+  const hasSiteCoords = !!workOrder?.siteLat && !!workOrder?.siteLng
+  const myLatestVerification = myOpenVisit?.verifications[0] ?? null
+
   async function setStatus(status: WorkOrderStatus) {
     if (!workOrder) return
     setActioning(true)
@@ -48,6 +71,26 @@ function WorkOrderDetailPage() {
       toast.error(err instanceof Error ? err.message : 'Failed to update work order')
     } finally {
       setActioning(false)
+    }
+  }
+
+  function openSiteEditor() {
+    setSiteQueryInput(workOrder?.siteAddress ?? '')
+    setEditingSite(true)
+  }
+
+  async function handleSaveSite() {
+    if (!workOrder) return
+    setSavingSite(true)
+    try {
+      await api.updateWorkOrder(workOrder.id, { siteQuery: siteQueryInput })
+      toast.success('Site location updated')
+      setEditingSite(false)
+      load()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update site location')
+    } finally {
+      setSavingSite(false)
     }
   }
 
@@ -87,18 +130,74 @@ function WorkOrderDetailPage() {
           <div className="flex items-center gap-3">
             <h1 className="font-mono text-2xl font-bold text-ink-100">{workOrder.workOrderNumber}</h1>
             <Badge tone={workOrderStatusTone[workOrder.status]}>{workOrder.status.replace('_', ' ')}</Badge>
+            {isAssignedTechnician && myOpenVisit && (
+              <Badge tone={siteStatusTone(myLatestVerification?.status ?? 'UNVERIFIED')}>
+                {myLatestVerification ? myLatestVerification.status.replace('_', ' ') : 'NOT YET VERIFIED'}
+              </Badge>
+            )}
           </div>
           <p className="mt-1 text-sm text-ink-300">
             {workOrder.title} · {workOrder.customer.company || workOrder.customer.name} ·{' '}
             {JOB_CATEGORY_LABELS[workOrder.jobCategory]} · Scheduled {workOrder.scheduledDate.slice(0, 10)}
           </p>
           {workOrder.description && <p className="mt-2 text-sm text-ink-400">{workOrder.description}</p>}
+
+          {canManage && (
+            <div className="mt-2 text-sm">
+              {editingSite ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    value={siteQueryInput}
+                    onChange={(e) => setSiteQueryInput(e.target.value)}
+                    placeholder="e.g. Ebene, Mauritius (area/street, not a company name)"
+                    className={inputClass}
+                  />
+                  <button type="button" onClick={handleSaveSite} disabled={savingSite} className={primaryButtonClass}>
+                    Save
+                  </button>
+                  <button type="button" onClick={() => setEditingSite(false)} className={secondaryButtonClass}>
+                    Cancel
+                  </button>
+                </div>
+              ) : hasSiteCoords ? (
+                <div className="flex items-center gap-2 text-ink-400">
+                  <a
+                    href={mapLink(workOrder.siteLat!, workOrder.siteLng!)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-1.5 text-cyan-accent hover:underline"
+                  >
+                    <MapPin className="h-3.5 w-3.5" />
+                    {workOrder.siteAddress ?? 'Site location set'}
+                  </a>
+                  <button type="button" onClick={openSiteEditor} className="text-ink-400 hover:text-ink-100">
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <button type="button" onClick={openSiteEditor} className="flex items-center gap-1.5 text-ink-400 hover:text-ink-100">
+                  <MapPin className="h-3.5 w-3.5" />
+                  Set site location for geofenced tracking
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {canSubmit && workOrder.status === 'SCHEDULED' && (
             <button type="button" onClick={() => setStatus('IN_PROGRESS')} disabled={actioning} className={primaryButtonClass}>
               Start Work
+            </button>
+          )}
+          {canSubmit && workOrder.status === 'IN_PROGRESS' && (
+            <button
+              type="button"
+              onClick={() => setStatus('WAITING_FOR_PARTS')}
+              disabled={actioning}
+              className={secondaryButtonClass}
+            >
+              Waiting for Parts
             </button>
           )}
           {canSubmit && workOrder.status === 'IN_PROGRESS' && (
@@ -106,11 +205,30 @@ function WorkOrderDetailPage() {
               Mark Completed
             </button>
           )}
-          {canSubmit && (workOrder.status === 'SCHEDULED' || workOrder.status === 'IN_PROGRESS') && (
-            <button type="button" onClick={() => setStatus('CANCELLED')} disabled={actioning} className={dangerButtonClass}>
-              Cancel
+          {canSubmit && workOrder.status === 'WAITING_FOR_PARTS' && (
+            <button type="button" onClick={() => setStatus('IN_PROGRESS')} disabled={actioning} className={primaryButtonClass}>
+              Resume Work
             </button>
           )}
+          {canManage && workOrder.status === 'COMPLETED' && (
+            <button type="button" onClick={() => setStatus('REOPENED')} disabled={actioning} className={secondaryButtonClass}>
+              Reopen
+            </button>
+          )}
+          {canManage && workOrder.status === 'REOPENED' && (
+            <button type="button" onClick={() => setStatus('IN_PROGRESS')} disabled={actioning} className={primaryButtonClass}>
+              Resume Work
+            </button>
+          )}
+          {canSubmit &&
+            (workOrder.status === 'SCHEDULED' ||
+              workOrder.status === 'IN_PROGRESS' ||
+              workOrder.status === 'WAITING_FOR_PARTS' ||
+              workOrder.status === 'REOPENED') && (
+              <button type="button" onClick={() => setStatus('CANCELLED')} disabled={actioning} className={dangerButtonClass}>
+                Cancel
+              </button>
+            )}
           {canManage && (
             <button type="button" onClick={handleDelete} className={secondaryButtonClass}>
               <Trash2 className="h-4 w-4" />
@@ -131,6 +249,72 @@ function WorkOrderDetailPage() {
                 {t.employee.position && <span className="text-ink-500"> · {t.employee.position}</span>}
               </span>
             ))}
+          </div>
+        )}
+      </Panel>
+
+      <Panel title="Site Attendance">
+        {workOrder.siteAttendance.length === 0 ? (
+          <p className="text-sm text-ink-400">No site check-ins recorded yet.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
+                  <th className="px-3 py-3 font-semibold">TECHNICIAN</th>
+                  <th className="px-3 py-3 font-semibold">CHECK-IN</th>
+                  <th className="px-3 py-3 font-semibold">CHECK-OUT</th>
+                  <th className="px-3 py-3 font-semibold">STATUS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {workOrder.siteAttendance.map((v) => {
+                  const latest = v.verifications[0] ?? null
+                  return (
+                    <tr key={v.id} className="border-b border-ink-800 last:border-0">
+                      <td className="px-3 py-3 text-ink-100">
+                        {v.employee.firstName} {v.employee.lastName}
+                      </td>
+                      <td className="px-3 py-3 text-ink-300">
+                        <a
+                          href={mapLink(v.checkInLat, v.checkInLng)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-1.5 text-cyan-accent hover:underline"
+                        >
+                          <MapPin className="h-3.5 w-3.5" />
+                          {new Date(v.checkInAt).toLocaleString()}
+                          {v.checkInNote && <span> · {v.checkInNote}</span>}
+                        </a>
+                      </td>
+                      <td className="px-3 py-3 text-ink-300">
+                        {v.checkOutAt && v.checkOutLat && v.checkOutLng ? (
+                          <a
+                            href={mapLink(v.checkOutLat, v.checkOutLng)}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center gap-1.5 text-cyan-accent hover:underline"
+                          >
+                            <MapPin className="h-3.5 w-3.5" />
+                            {new Date(v.checkOutAt).toLocaleString()}
+                            {v.checkOutNote && <span> · {v.checkOutNote}</span>}
+                          </a>
+                        ) : (
+                          <span className="text-ink-500">Still on site</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-3">
+                        {latest ? (
+                          <Badge tone={siteStatusTone(latest.status)}>{latest.status.replace('_', ' ')}</Badge>
+                        ) : (
+                          <span className="text-ink-500">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </Panel>

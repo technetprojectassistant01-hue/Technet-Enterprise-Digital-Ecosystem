@@ -14,6 +14,7 @@ import { useEmployees } from '../erp/useEmployees'
 import { useCustomers } from '../erp/useCustomers'
 import { useWorkOrders } from './useWorkOrders'
 import SignaturePad from './SignaturePad'
+import UnitBreakdownEditor, { type UnitBreakdownRow } from './UnitBreakdownEditor'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -50,11 +51,13 @@ interface DraftFields {
   actionTaken: string
   workCompleted: boolean
   incompleteDetails: string
+  units: UnitBreakdownRow[]
   technicianIds: string[]
   timeIn: string
   timeOut: string
   warrantyStatus: WarrantyStatus | ''
   technicianReport: string
+  materialsUsed: string
   comments: string
   additionalInfo: string
   signedByName: string
@@ -160,6 +163,7 @@ function InterventionReportFormPage() {
   const [actionTaken, setActionTaken] = useState(draft?.actionTaken ?? '')
   const [workCompleted, setWorkCompleted] = useState(draft?.workCompleted ?? true)
   const [incompleteDetails, setIncompleteDetails] = useState(draft?.incompleteDetails ?? '')
+  const [units, setUnits] = useState<UnitBreakdownRow[]>(draft?.units ?? [])
 
   const [technicianIds, setTechnicianIds] = useState<string[]>(draft?.technicianIds ?? [])
   const [timeIn, setTimeIn] = useState(draft?.timeIn ?? '')
@@ -167,9 +171,12 @@ function InterventionReportFormPage() {
 
   const [warrantyStatus, setWarrantyStatus] = useState<WarrantyStatus | ''>(draft?.warrantyStatus ?? '')
   const [technicianReport, setTechnicianReport] = useState(draft?.technicianReport ?? '')
+  const [materialsUsed, setMaterialsUsed] = useState(draft?.materialsUsed ?? '')
   const [comments, setComments] = useState(draft?.comments ?? '')
   const [additionalInfo, setAdditionalInfo] = useState(draft?.additionalInfo ?? '')
 
+  const [beforePhotos, setBeforePhotos] = useState<File[]>([])
+  const [afterPhotos, setAfterPhotos] = useState<File[]>([])
   const [equipmentPhotos, setEquipmentPhotos] = useState<File[]>([])
   const [workDonePhotos, setWorkDonePhotos] = useState<File[]>([])
 
@@ -199,11 +206,13 @@ function InterventionReportFormPage() {
       actionTaken,
       workCompleted,
       incompleteDetails,
+      units,
       technicianIds,
       timeIn,
       timeOut,
       warrantyStatus,
       technicianReport,
+      materialsUsed,
       comments,
       additionalInfo,
       signedByName,
@@ -234,11 +243,13 @@ function InterventionReportFormPage() {
     actionTaken,
     workCompleted,
     incompleteDetails,
+    units,
     technicianIds,
     timeIn,
     timeOut,
     warrantyStatus,
     technicianReport,
+    materialsUsed,
     comments,
     additionalInfo,
     signedByName,
@@ -263,11 +274,13 @@ function InterventionReportFormPage() {
     setActionTaken('')
     setWorkCompleted(true)
     setIncompleteDetails('')
+    setUnits([])
     setTechnicianIds([])
     setTimeIn('')
     setTimeOut('')
     setWarrantyStatus('')
     setTechnicianReport('')
+    setMaterialsUsed('')
     setComments('')
     setAdditionalInfo('')
     setSignedByName('')
@@ -322,6 +335,15 @@ function InterventionReportFormPage() {
       setFormError('Enter the name of the person signing')
       return
     }
+    const cleanedUnits = units
+      .filter((u) => u.label.trim() || u.problem.trim() || u.action.trim())
+      .map((u) => ({ label: u.label.trim(), problem: u.problem.trim(), action: u.action.trim() }))
+    for (const u of cleanedUnits) {
+      if (!u.label || !u.problem) {
+        setFormError('Each unit needs a label and a problem')
+        return
+      }
+    }
 
     setSubmitting(true)
     try {
@@ -351,9 +373,11 @@ function InterventionReportFormPage() {
         timeOut: timeOut || undefined,
         warrantyStatus: warrantyStatus || undefined,
         technicianReport: technicianReport || undefined,
+        materialsUsed: materialsUsed || undefined,
         comments: comments || undefined,
         additionalInfo: additionalInfo || undefined,
         technicianIds,
+        units: cleanedUnits.length > 0 ? cleanedUnits : undefined,
         signedByName,
         signatureData,
         attachmentData,
@@ -361,6 +385,8 @@ function InterventionReportFormPage() {
       })
 
       const photoUploads = [
+        ...beforePhotos.map((f) => ({ file: f, kind: 'BEFORE' as const })),
+        ...afterPhotos.map((f) => ({ file: f, kind: 'AFTER' as const })),
         ...equipmentPhotos.map((f) => ({ file: f, kind: 'EQUIPMENT' as const })),
         ...workDonePhotos.map((f) => ({ file: f, kind: 'WORK_DONE' as const })),
       ]
@@ -544,6 +570,7 @@ function InterventionReportFormPage() {
 
         <Panel title="Fault & Work Done">
           <div className="flex flex-col gap-4">
+            <PhotoPicker label="BEFORE PHOTOS" files={beforePhotos} onChange={setBeforePhotos} />
             <div>
               <label className={labelClass}>
                 NATURE OF INTERVENTION / FAULT REPORTED
@@ -594,7 +621,29 @@ function InterventionReportFormPage() {
                 />
               </div>
             )}
+            <div>
+              <label className={labelClass}>
+                PER-UNIT BREAKDOWN (OPTIONAL — for visits covering multiple pieces of equipment)
+              </label>
+              <p className="mt-1 text-xs text-ink-500">
+                e.g. "Unit 1 — leaking" / "Unit 2 — not blowing air". Leave this empty for a single-equipment visit.
+              </p>
+              <div className="mt-2">
+                <UnitBreakdownEditor units={units} onChange={setUnits} />
+              </div>
+            </div>
             <PhotoPicker label="PHOTOS OF WORK DONE" files={workDonePhotos} onChange={setWorkDonePhotos} />
+            <PhotoPicker label="AFTER PHOTOS" files={afterPhotos} onChange={setAfterPhotos} />
+            <div>
+              <label className={labelClass}>MATERIALS USED (OPTIONAL)</label>
+              <textarea
+                value={materialsUsed}
+                onChange={(e) => setMaterialsUsed(e.target.value)}
+                rows={2}
+                placeholder="e.g. 2x contactor 25A, 5m cable, 1x filter"
+                className={`mt-2 ${inputClass}`}
+              />
+            </div>
           </div>
         </Panel>
 

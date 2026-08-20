@@ -25,8 +25,16 @@ import {
   ClipboardCheck,
   CalendarDays,
   BadgeCheck,
+  Box,
+  AlertTriangle,
+  Banknote,
+  MapPinned,
+  Radar,
+  UserCheck,
   type LucideIcon,
 } from 'lucide-react'
+import { FIELD_ONLY_ROLES, NON_ADMIN_ROLES } from '../lib/permissions'
+import type { Role } from '../lib/api'
 
 export interface NavItem {
   label: string
@@ -34,6 +42,8 @@ export interface NavItem {
   icon: LucideIcon
   end?: boolean
   children?: NavItem[]
+  /** Roles this item is hidden from, e.g. field-only staff who don't use this module. */
+  hiddenFrom?: readonly Role[]
 }
 
 export const MAIN_NAV: NavItem[] = [
@@ -43,6 +53,7 @@ export const MAIN_NAV: NavItem[] = [
     to: '/dashboard/erp',
     icon: SlidersHorizontal,
     end: true,
+    hiddenFrom: FIELD_ONLY_ROLES,
     children: [
       { label: 'Overview', to: '/dashboard/erp', icon: LayoutGrid, end: true },
       { label: 'Inventory', to: '/dashboard/erp/inventory', icon: SlidersHorizontal },
@@ -76,7 +87,6 @@ export const MAIN_NAV: NavItem[] = [
           { label: 'Overview', to: '/dashboard/erp/hr', icon: LayoutGrid, end: true },
           { label: 'Employees', to: '/dashboard/erp/hr/employees', icon: UserCog },
           { label: 'Leave', to: '/dashboard/erp/hr/leave', icon: CalendarDays },
-          { label: 'Attendance', to: '/dashboard/erp/hr/attendance', icon: ClipboardCheck },
           { label: 'Certifications', to: '/dashboard/erp/hr/certifications', icon: BadgeCheck },
         ],
       },
@@ -84,8 +94,18 @@ export const MAIN_NAV: NavItem[] = [
       { label: 'Documents', to: '/dashboard/erp/documents', icon: FileText },
     ],
   },
-  { label: 'Technet Maintenance', to: '/dashboard/maintenance', icon: Wrench },
-  { label: 'Technet Connect', to: '/dashboard/connect', icon: Share2 },
+  {
+    label: 'Technet Maintenance',
+    to: '/dashboard/maintenance',
+    icon: Wrench,
+    children: [
+      { label: 'Assets', to: '/dashboard/maintenance/assets', icon: Box },
+      { label: 'Contracts', to: '/dashboard/maintenance/contracts', icon: ScrollText },
+      { label: 'Requests', to: '/dashboard/maintenance/requests', icon: AlertTriangle },
+      { label: 'Schedule', to: '/dashboard/maintenance/schedule', icon: CalendarClock },
+    ],
+  },
+  { label: 'Technet Connect', to: '/dashboard/connect', icon: Share2, hiddenFrom: FIELD_ONLY_ROLES },
   {
     label: 'Technet Operations',
     to: '/dashboard/operations',
@@ -94,11 +114,23 @@ export const MAIN_NAV: NavItem[] = [
       { label: 'Work Orders', to: '/dashboard/operations/work-orders', icon: CalendarClock },
       { label: 'Daily Reports', to: '/dashboard/operations/daily-reports', icon: ClipboardList },
       { label: 'Intervention Reports', to: '/dashboard/operations/intervention-reports', icon: ClipboardCheck },
+      { label: 'Team Attendance', to: '/dashboard/operations/team-attendance', icon: MapPinned },
+      { label: 'Field Operations', to: '/dashboard/operations/field-tracking', icon: Radar },
     ],
   },
-  { label: 'Technet Workforce', to: '/dashboard/workforce', icon: Users },
-  { label: 'Technet Digital Marketing', to: '/dashboard/marketing', icon: Megaphone },
-  { label: 'Technet Insight', to: '/dashboard/insight', icon: LineChart },
+  {
+    label: 'Technet Workforce',
+    to: '/dashboard/workforce',
+    icon: Users,
+    hiddenFrom: FIELD_ONLY_ROLES,
+    children: [
+      { label: 'Availability', to: '/dashboard/workforce/availability', icon: UserCheck },
+      { label: 'Attendance', to: '/dashboard/workforce/attendance', icon: ClipboardCheck },
+      { label: 'Payroll', to: '/dashboard/workforce/payroll', icon: Banknote },
+    ],
+  },
+  { label: 'Technet Digital Marketing', to: '/dashboard/marketing', icon: Megaphone, hiddenFrom: FIELD_ONLY_ROLES },
+  { label: 'Technet Insight', to: '/dashboard/insight', icon: LineChart, hiddenFrom: NON_ADMIN_ROLES },
 ]
 
 export const SYSTEM_NAV: NavItem[] = [
