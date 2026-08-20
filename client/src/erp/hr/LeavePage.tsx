@@ -8,13 +8,15 @@ import { hasRole, HR_ROLES } from '../../lib/permissions'
 import LeaveRequestsTab from './LeaveRequestsTab'
 import LeaveBalancesTab from './LeaveBalancesTab'
 import LeaveTypesTab from './LeaveTypesTab'
+import HolidaysTab from './HolidaysTab'
 
-type View = 'requests' | 'balances' | 'types'
+type View = 'requests' | 'balances' | 'types' | 'holidays'
 
 const VIEWS: { key: View; label: string }[] = [
   { key: 'requests', label: 'Requests' },
   { key: 'balances', label: 'Balances' },
   { key: 'types', label: 'Leave Types' },
+  { key: 'holidays', label: 'Public Holidays' },
 ]
 
 function LeavePage() {
@@ -66,8 +68,10 @@ function LeavePage() {
         <LeaveRequestsTab leaveTypes={leaveTypes} />
       ) : view === 'balances' ? (
         <LeaveBalancesTab leaveTypes={leaveTypes} />
-      ) : (
+      ) : view === 'types' ? (
         <LeaveTypesTab leaveTypes={leaveTypes} onChanged={loadTypes} />
+      ) : (
+        <HolidaysTab />
       )}
     </div>
   )
