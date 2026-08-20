@@ -37,7 +37,7 @@ Technet-Enterprise-Digital-Ecosystem/
 │   │   └── hr/          HR sub-module (employees, leave, attendance, certifications)
 │   ├── maintenance/     Technet Maintenance module (assets, contracts, requests, schedule)
 │   ├── operations/      Technet Operations module (work orders, reports, attendance, field ops)
-│   ├── workforce/       Technet Workforce module (payroll only, so far)
+│   ├── workforce/       Technet Workforce module (Availability, Attendance, Payroll)
 │   ├── dashboard/       Shared shell: nav, sidebar, layout, reusable UI kit, AttendanceWidget
 │   ├── lib/             api.ts (all HTTP calls + types), permissions.ts, geolocation.ts, csv.ts
 │   └── context/         AuthContext
@@ -61,12 +61,12 @@ Everyone lands on **Overview** (`/dashboard`) — as of 2026-08-19 this is real,
 | — Inventory | Built | Items, stock movements |
 | — Finance | Built | Customers, Invoices (+PDF), Expenses, Quotations (+PDF), Contracts |
 | — Procurement | Built | Suppliers, Requisitions, Purchase Orders (+PDF), goods receipt |
-| — HR | Built | Employee profiles, Leave (types/balances/requests/timesheet, public holiday calendar excluded from working-day counts — added 2026-08-20, manually maintained since several Mauritius holidays are lunar/gazette-dependent), Attendance (office clock-in/out, separate from Operations GPS attendance), Certifications & Training |
+| — HR | Built | Employee profiles, Leave (types/balances/requests/timesheet, public holiday calendar excluded from working-day counts — added 2026-08-20, manually maintained since several Mauritius holidays are lunar/gazette-dependent), Certifications & Training. **Attendance moved to Technet Workforce 2026-08-20** — see below. |
 | — Projects | Built | Project registry, assignments, status history |
 | — Documents | Built | File storage (DB `Bytes` column, not S3/cloud storage), categorized by Contract/Invoice/HR/Project/General |
 | **Technet Maintenance** | Built | Assets, Maintenance Contracts, Maintenance Requests, Maintenance Schedule/Reports — built explicitly "from the SDD" per commit history |
 | **Technet Operations** | Built | Work Orders (now with a `WAITING_FOR_PARTS`/`REOPENED` lifecycle, added 2026-08-19), Daily Reports, Intervention Reports, Team Attendance, Field Operations — see §7, this is where most recent work has concentrated |
-| **Technet Workforce** | Partially built | Only Payroll (run creation, per-employee line breakdown, net pay computation) is built. HR-gated (hidden from field-only roles). |
+| **Technet Workforce** | Built | Restructured 2026-08-20 per manager/stakeholder discussion, to stop ERP HR and Workforce covering the same ground. Three tabs: **Availability** (`/dashboard/workforce/availability`, default landing page) — read-only "who's available today" grouped into Available/On Leave/Absent, built on the existing manual attendance register (no real biometric attendance-machine integration exists — see §11), visible to HR **and Operations Managers** (`WORKFORCE_VIEW_ROLES`) since Operations consults it before assigning jobs, though job assignment itself stays in Operations, not Workforce. **Attendance** (moved from ERP HR — daily register + timesheets, HR-only edit rights). **Payroll** (run creation, per-employee line breakdown, net pay computation, HR-only). |
 | **Technet Connect** | **Stub only** (`ModuleStub`) | Meant to be a customer self-service portal (register/login, request quotations, track status, view invoices/receipts) per the flowchart — not started |
 | **Technet Digital Marketing** | **Stub only** | Meant for campaign creation, AI content generation, scheduling/analytics per the flowchart — not started |
 | **Technet Insight** | **Built** (2026-08-19) | Read-only executive KPI dashboard (`/dashboard/insight`) — revenue, active projects/work orders, overdue invoices, open maintenance requests, low stock, technicians on site. **ADMIN-only** (no Managing Director role exists — see §11) |
@@ -92,6 +92,7 @@ Role groups used for gating (server `roles.ts` / client `permissions.ts`):
 - `OPS_SUBMIT_ROLES` = ADMIN, OPERATIONS_MANAGER, FIELD_TECHNICIAN, EMPLOYEE — submitting field-generated records (check-ins, daily reports, intervention reports).
 - `NON_FIELD_ROLES` / `FIELD_ONLY_ROLES` — as of 2026-08-13, **FIELD_TECHNICIAN and EMPLOYEE are restricted client- and server-side to Overview + Technet Operations + Technet Maintenance only**. They cannot see or hit the API for ERP/Connect/Workforce/Marketing/Insight. This was an explicit request ("everyone is not supposed to see everything") — enforced both by hiding nav items (`NavItem.hiddenFrom`) and by blocking the actual routes server-side (`requireRole(...NON_FIELD_ROLES)` prepended to 11 route files), not just cosmetically. `RoleRoute.tsx` (client) is the reusable route-level gate; `AdminRoute.tsx` is the older admin-only equivalent kept for `/dashboard/users`.
 - Various per-module role groups: `SALES_ROLES`, `FINANCE_ROLES`, `PROCUREMENT_ROLES`, `HR_ROLES`, `DOCUMENT_ROLES`.
+- `WORKFORCE_VIEW_ROLES` = ADMIN, HR_OFFICER, OPERATIONS_MANAGER — added 2026-08-20 for Technet Workforce's Availability view specifically; Attendance edit rights and Payroll stay `HR_ROLES`-only.
 
 ## 7. Technet Operations — the most actively developed area
 
@@ -164,7 +165,7 @@ The SDD (see §1) describes a *proposed* design from an internship research effo
 - **Email-based quotation intake**: SDD describes parsing inbound customer emails into quotation requests (§2.7.1, §5.14.1) as a deliberate channel alongside the portal, with indicative per-email costs discussed. Not implemented — Technet Connect itself is still a stub.
 - **Attendance machine integration**: SDD's Workforce module centers on syncing the existing facial-recognition attendance machine. Actual: "Attendance Sync" is still a decorative stub tile; office attendance is a separate manual `AttendanceRecord` HR feature, distinct from the GPS-based `SiteAttendance` system that Operations actually uses (see §7a) — the SDD's Attendance Sync and this repo's GPS site attendance are two different things with similar names, don't conflate them.
 - **RBAC granularity**: SDD's role list (Chapter 1, 6) includes Managing Director as a distinct role from Administrator, plus a Customer role. Actual `Role` enum (§6 above) has no separate Managing Director or Customer role — ADMIN covers that ground, and there's no customer-facing auth at all yet since Connect is unbuilt.
-- **Module naming**: what the SDD calls "Technet Workforce" (attendance sync + leave + payroll) is split in the actual repo — HR leave/attendance lives under ERP → HR, while `workforce/` only holds Payroll.
+- **Module naming**: what the SDD calls "Technet Workforce" (attendance sync + leave + payroll) is now closer to reality as of 2026-08-20 — Workforce holds Availability + Attendance + Payroll, ERP HR keeps Employees/Leave/Certifications. Still diverges from the SDD in one way: there is no real biometric/facial-recognition attendance-machine sync (see the Attendance Sync line above) — Workforce's Availability view is built on the existing manual attendance register, not a machine feed.
 
 If a future task references something from the SDD (a specific API path like `/api/v1/quotations/{id}/approve`, a table/column name, a security control), verify it against the actual code first — the SDD was written independently and predates or idealizes parts of what's actually built.
 
