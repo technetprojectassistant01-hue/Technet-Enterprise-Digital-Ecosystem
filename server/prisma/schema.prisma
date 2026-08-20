@@ -944,6 +944,7 @@ model InterventionReport {
 
   technicians InterventionReportTechnician[]
   photos      InterventionReportPhoto[]
+  units       InterventionReportUnit[]
 }
 
 model InterventionReportTechnician {
@@ -954,6 +955,18 @@ model InterventionReportTechnician {
   employee             Employee           @relation(fields: [employeeId], references: [id])
 
   @@unique([interventionReportId, employeeId])
+}
+
+model InterventionReportUnit {
+  id                   String             @id @default(uuid())
+  interventionReportId String
+  interventionReport   InterventionReport @relation(fields: [interventionReportId], references: [id], onDelete: Cascade)
+  label                String
+  problem              String
+  action               String?
+  order                Int                @default(0)
+
+  @@index([interventionReportId])
 }
 
 model InterventionReportPhoto {
