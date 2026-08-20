@@ -105,6 +105,14 @@ function InterventionReportsPage() {
     load(EMPTY_FILTERS)
   }
 
+  /** Quick relative-date shortcuts for the common "how many in the last N months" phone-call question. */
+  function applyQuickRange(months: number) {
+    const to = new Date()
+    const from = new Date()
+    from.setMonth(from.getMonth() - months)
+    updateFilters({ from: from.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10) })
+  }
+
   function jumpToPendingReview() {
     const next = { ...filters, status: 'SUBMITTED' as const, dueRemindersOnly: false }
     setFilters(next)
@@ -233,6 +241,21 @@ function InterventionReportsPage() {
               className={inputClass}
             />
           </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-semibold tracking-widest text-ink-400">QUICK RANGE</label>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => applyQuickRange(3)} className={secondaryButtonClass}>
+                3 mo
+              </button>
+              <button type="button" onClick={() => applyQuickRange(6)} className={secondaryButtonClass}>
+                6 mo
+              </button>
+              <button type="button" onClick={() => applyQuickRange(12)} className={secondaryButtonClass}>
+                12 mo
+              </button>
+            </div>
+          </div>
         </div>
 
         <div className="mb-4 flex flex-wrap gap-2">
@@ -271,6 +294,14 @@ function InterventionReportsPage() {
         </div>
 
         {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
+
+        {!loading && (
+          <p className="mb-3 text-sm text-ink-400">
+            {reports.length} intervention{reports.length === 1 ? '' : 's'} found
+            {filters.customerId && ' for this customer'}
+            {(filters.from || filters.to) && ' in this date range'}
+          </p>
+        )}
 
         {loading ? (
           <TableSkeleton cols={8} />
