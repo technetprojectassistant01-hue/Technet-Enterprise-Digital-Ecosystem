@@ -53,7 +53,7 @@ A **separate, sibling directory** `Technet TEDE/pw-check/` (one level up from th
 
 ## 5. Modules — what's actually built vs. stubbed
 
-Everyone lands on **Overview** (`/dashboard`) — a dashboard home with mock "system health" tiles (decorative, not real data) plus the real **My Attendance** widget for linked employees.
+Everyone lands on **Overview** (`/dashboard`) — as of 2026-08-19 this is real, not decorative: a "Recent Activity" panel of actual notifications and a role-aware "Quick Stats" row (each tile backed by a real endpoint, only shown to roles that can access it), plus the real **My Attendance** widget for linked employees. (It used to be fake "system health" tiles — see git history 2026-08-19 "Replace the fake Overview dashboard with real data" if that's referenced anywhere stale.)
 
 | Module | Status | Notes |
 |---|---|---|
@@ -65,15 +65,16 @@ Everyone lands on **Overview** (`/dashboard`) — a dashboard home with mock "sy
 | — Projects | Built | Project registry, assignments, status history |
 | — Documents | Built | File storage (DB `Bytes` column, not S3/cloud storage), categorized by Contract/Invoice/HR/Project/General |
 | **Technet Maintenance** | Built | Assets, Maintenance Contracts, Maintenance Requests, Maintenance Schedule/Reports — built explicitly "from the SDD" per commit history |
-| **Technet Operations** | Built | Work Orders, Daily Reports, Intervention Reports, Team Attendance, Field Operations — see §7, this is where most recent work has concentrated |
+| **Technet Operations** | Built | Work Orders (now with a `WAITING_FOR_PARTS`/`REOPENED` lifecycle, added 2026-08-19), Daily Reports, Intervention Reports, Team Attendance, Field Operations — see §7, this is where most recent work has concentrated |
 | **Technet Workforce** | Partially built | Only Payroll (run creation, per-employee line breakdown, net pay computation) is built. HR-gated (hidden from field-only roles). |
 | **Technet Connect** | **Stub only** (`ModuleStub`) | Meant to be a customer self-service portal (register/login, request quotations, track status, view invoices/receipts) per the flowchart — not started |
 | **Technet Digital Marketing** | **Stub only** | Meant for campaign creation, AI content generation, scheduling/analytics per the flowchart — not started |
-| **Technet Insight** | **Stub only** | Meant to be an executive dashboard (real-time KPIs, drill-down reports) per the flowchart — not started |
+| **Technet Insight** | **Built** (2026-08-19) | Read-only executive KPI dashboard (`/dashboard/insight`) — revenue, active projects/work orders, overdue invoices, open maintenance requests, low stock, technicians on site. **ADMIN-only** (no Managing Director role exists — see §11) |
 | **Security** (System nav) | **Stub only** | — |
 | Settings, User Management | Built | Admin-only user management (`/dashboard/users`), self-service password change |
+| **Notifications** | **Built** (2026-08-19), in-app only | `server/src/lib/notifications.ts` (`notifyUser`/`notifyEmployee`/`notifyRoles`), `/api/notifications`, bell icon in `Dashboard.tsx` header (`NotificationBell.tsx`) + Overview's Recent Activity panel. Triggers so far: leave approve/reject, requisition approve/reject, work order technician assignment, quotation accept/reject, intervention report submit+review, maintenance request schedule/cancel, maintenance report submit+review+completion, project assignment. No email/SMS — in-app polling only (60s). |
 
-Also **not built** (per the flowchart, confirmed unimplemented): a biometric/facial-recognition attendance-machine integration for office staff ("Attendance Sync" under Workforce is currently just a decorative dashboard tile), SMS gateway, general AI content-generation service, cloud file storage (documents are DB blobs today), and a Notifications system (in-app/email/SMS).
+Also **not built** (per the flowchart, confirmed unimplemented): a biometric/facial-recognition attendance-machine integration for office staff ("Attendance Sync" under Workforce is currently just a decorative dashboard tile), SMS gateway, general AI content-generation service, cloud file storage (documents are DB blobs today), and email notifications (in-app notifications now exist, see table above).
 
 ## 6. Roles & access control (RBAC)
 
@@ -170,4 +171,16 @@ If a future task references something from the SDD (a specific API path like `/a
 ## 12. Where to look for more history
 
 - `git log --oneline` in the repo root — 173+ commits from 2026-07-20 to present, one logical change per commit with descriptive messages (per the convention above), effectively a full changelog.
-- The auto-memory system (Claude-side, not in this repo) tracks: commit-granularity feedback, the GPS-attendance feature's evolving architecture, the deliberate geocoding-provider choice, and now the SDD's location and divergences from actual implementation (§11) — this document folds their content in, but they may have been updated further since this file was written.
+- The auto-memory system (Claude-side, not in this repo) tracks: commit-granularity feedback, the GPS-attendance feature's evolving architecture, the deliberate geocoding-provider choice, the SDD's location and divergences from actual implementation (§11), and — as of 2026-08-19 — a manager-meeting brief covering intervention report search/breakdown, field-entry friction, attendance-trust confirmation, and offline/PWA scoping, actively being worked through starting 2026-08-20. This document folds their content in where practical, but they may have been updated further since this file was last written — check memory for anything time-sensitive.
+
+## 13. Active work as of 2026-08-20 — manager-meeting follow-ups
+
+Two briefs (both under `C:\Users\User\Downloads\`) drive current work: `claude-code-brief-manager-meeting-2026-08-19.md` and its companion `claude-code-brief-pwa-offline.md`. Manager's stated build philosophy, treated as a hard constraint: intervention volume is single digits now (~5-7 near-term) — a 2-day manual workaround beats a 2-3 month automated build at this volume; don't over-engineer. Priority order (investigation-first items before build items):
+
+1. **Field-entry duplication** — likely the actual blocker on report submission, not technology. Investigate the real Daily/Intervention report field flow for redundant re-entry before building anything.
+2. **Attendance-trust confirmation** — existing GPS system (§7a) likely already answers the manager's stated need (free, non-real-time location checks). Confirm/demo against his own examples rather than build more; the one possible real gap is a supervisor-initiated on-demand location check (today only technician-initiated) — ask before building.
+3. **Intervention search/audit by client** — likely already covered by existing customer + date filters (§7c); verify usability for a live phone-call context. Open question: structured sub-location field (e.g. "Level 5") vs. free text — confirm with manager before adding a schema field.
+4. **Per-unit problem/action breakdown** on `InterventionReport` (e.g. 5 aircon units, one line each) — check if the model supports this or is free-text only; most likely genuine schema/build item this round.
+5. **Offline save + auto-sync** — PWA install (Part 1, low-risk) should ship before offline field-flow support (Part 2); confirm exact offline scope needed (check-in only vs. full report+photo submission vs. viewing-only) with the manager before writing queue code.
+6. **Parallel-team visibility** — quick check whether Field Operations/Team Attendance reads cleanly with multiple concurrent rotating teams.
+7. **OCR/scan ingestion** — explicitly parked by the manager as a contingency only. Do not build.
