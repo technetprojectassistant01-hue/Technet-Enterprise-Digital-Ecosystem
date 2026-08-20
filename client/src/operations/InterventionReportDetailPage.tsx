@@ -261,6 +261,22 @@ function InterventionReportDetailPage() {
             <Field label="TIME OUT" value={report.timeOut} />
           </div>
           {!report.workCompleted && <Field label="DETAILS" value={report.incompleteDetails} />}
+          {report.units.length > 0 && (
+            <div>
+              <div className={fieldLabelClass}>PER-UNIT BREAKDOWN</div>
+              <div className="mt-2 flex flex-col gap-2">
+                {report.units.map((unit) => (
+                  <div key={unit.id} className="rounded-md border border-ink-700 bg-ink-950 px-3 py-2.5">
+                    <div className="text-xs font-semibold text-ink-200">{unit.label}</div>
+                    <div className="mt-1 text-xs text-ink-300">{unit.problem}</div>
+                    <div className="mt-1 text-xs text-ink-500">
+                      {unit.action ? unit.action : 'Not yet actioned'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </Panel>
 
