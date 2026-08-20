@@ -16,6 +16,9 @@ export const FINANCE_ROLES = ["ADMIN", "FINANCE_OFFICER"] as const;
 export const PROCUREMENT_ROLES = ["ADMIN", "STOREKEEPER"] as const;
 export const HR_ROLES = ["ADMIN", "HR_OFFICER"] as const;
 
+/** Read-only "who's around today" visibility for Operations Managers, alongside HR's full edit rights. */
+export const WORKFORCE_VIEW_ROLES = ["ADMIN", "HR_OFFICER", "OPERATIONS_MANAGER"] as const;
+
 /** Create/edit/delete and approve/reject operations-side records. */
 export const OPS_MANAGE_ROLES = ["ADMIN", "OPERATIONS_MANAGER"] as const;
 
