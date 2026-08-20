@@ -102,6 +102,10 @@ const DETAIL_SELECT = {
   reviewedBy: { select: USER_SELECT },
   technicians: { include: { employee: { select: EMPLOYEE_SELECT } } },
   photos: { select: { id: true, kind: true, fileName: true, mimeType: true, createdAt: true } },
+  units: {
+    orderBy: { order: "asc" },
+    select: { id: true, label: true, problem: true, action: true, order: true },
+  },
 } satisfies Prisma.InterventionReportSelect;
 
 function decodeDataUrl(input: unknown): { buffer: Buffer; mimeType: string } | null {
@@ -285,6 +289,7 @@ router.post("/", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
     comments,
     additionalInfo,
     technicianIds,
+    units,
     signedByName,
     signatureData,
     attachmentData,
@@ -308,6 +313,12 @@ router.post("/", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
   }
   if (warrantyStatus !== undefined && warrantyStatus !== null && !WARRANTY_STATUSES.includes(warrantyStatus)) {
     return res.status(400).json({ error: "Invalid warranty status" });
+  }
+  const unitRows = Array.isArray(units) ? units : [];
+  for (const unit of unitRows) {
+    if (typeof unit?.label !== "string" || !unit.label.trim() || typeof unit?.problem !== "string" || !unit.problem.trim()) {
+      return res.status(400).json({ error: "Each unit needs a label and a problem" });
+    }
   }
 
   let signature: { buffer: Buffer; mimeType: string } | null = null;
@@ -366,6 +377,14 @@ router.post("/", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
         attachmentFileName: attachment && typeof attachmentFileName === "string" ? attachmentFileName : null,
         createdById: req.user!.sub,
         technicians: { create: techIds.map((employeeId) => ({ employeeId })) },
+        units: {
+          create: unitRows.map((unit, i) => ({
+            label: unit.label.trim(),
+            problem: unit.problem.trim(),
+            action: typeof unit.action === "string" && unit.action.trim() ? unit.action.trim() : null,
+            order: i,
+          })),
+        },
       },
       select: { id: true, workOrderId: true, workCompleted: true },
     });
