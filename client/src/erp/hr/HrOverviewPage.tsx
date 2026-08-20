@@ -194,7 +194,7 @@ function HrOverviewPage() {
           icon={ClipboardCheck}
           action={
             <Link
-              to="/dashboard/erp/hr/attendance"
+              to="/dashboard/workforce/attendance"
               className="flex items-center gap-1 text-xs text-ink-300 hover:text-cyan-accent"
             >
               Daily register <ArrowRight className="h-3 w-3" />

@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { CalendarRange } from 'lucide-react'
-import * as api from '../../lib/api'
-import type { Timesheet } from '../../lib/api'
-import { Panel, StatCard, Badge, EmptyState, TableSkeleton } from '../../dashboard/ui'
-import { useEmployees } from '../useEmployees'
-import { attendanceStatusTone } from '../statusTones'
+import * as api from '../lib/api'
+import type { Timesheet } from '../lib/api'
+import { Panel, StatCard, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
+import { useEmployees } from '../erp/useEmployees'
+import { attendanceStatusTone } from '../erp/statusTones'
 import { inputClass } from './formStyles'
 
 const MONTHS = [

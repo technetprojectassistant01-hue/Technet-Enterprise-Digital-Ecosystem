@@ -25,7 +25,6 @@ import HrOverviewPage from './erp/hr/HrOverviewPage'
 import EmployeesPage from './erp/hr/EmployeesPage'
 import EmployeeDetailPage from './erp/hr/EmployeeDetailPage'
 import LeavePage from './erp/hr/LeavePage'
-import AttendancePage from './erp/hr/AttendancePage'
 import CertificationsPage from './erp/hr/CertificationsPage'
 import ProjectsPage from './erp/ProjectsPage'
 import ProjectDetailPage from './erp/ProjectDetailPage'
@@ -53,6 +52,8 @@ import RequestsPage from './maintenance/RequestsPage'
 import SchedulePage from './maintenance/SchedulePage'
 import ScheduleDetailPage from './maintenance/ScheduleDetailPage'
 import WorkforceLayout from './workforce/WorkforceLayout'
+import AvailabilityTab from './workforce/AvailabilityTab'
+import AttendancePage from './workforce/AttendancePage'
 import PayrollPage from './workforce/PayrollPage'
 import PayrollDetailPage from './workforce/PayrollDetailPage'
 import ModuleStub from './dashboard/ModuleStub'
@@ -100,7 +101,6 @@ function App() {
                 <Route path="employees" element={<EmployeesPage />} />
                 <Route path="employees/:id" element={<EmployeeDetailPage />} />
                 <Route path="leave" element={<LeavePage />} />
-                <Route path="attendance" element={<AttendancePage />} />
                 <Route path="certifications" element={<CertificationsPage />} />
               </Route>
               <Route path="projects" element={<ProjectsPage />} />
@@ -135,7 +135,9 @@ function App() {
             <Route path="field-tracking" element={<FieldOperationsPage />} />
           </Route>
           <Route path="workforce" element={<WorkforceLayout />}>
-            <Route index element={<Navigate to="payroll" replace />} />
+            <Route index element={<Navigate to="availability" replace />} />
+            <Route path="availability" element={<AvailabilityTab />} />
+            <Route path="attendance" element={<AttendancePage />} />
             <Route path="payroll" element={<PayrollPage />} />
             <Route path="payroll/:id" element={<PayrollDetailPage />} />
           </Route>

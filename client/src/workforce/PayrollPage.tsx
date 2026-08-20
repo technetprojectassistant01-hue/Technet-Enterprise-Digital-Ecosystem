@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, Banknote, Trash2, Download } from 'lucide-react'
+import { Plus, Banknote, Trash2, Download, Lock } from 'lucide-react'
 import * as api from '../lib/api'
 import type { PayrollRun } from '../lib/api'
 import { Panel, StatCard, Modal, EmptyState, TableSkeleton } from '../dashboard/ui'
@@ -8,6 +8,8 @@ import { primaryButtonClass, secondaryButtonClass } from '../dashboard/buttonSty
 import { downloadCsv } from '../lib/csv'
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
+import { useAuth } from '../context/AuthContext'
+import { hasRole, HR_ROLES } from '../lib/permissions'
 import { formatMoney } from '../lib/format'
 
 const inputClass =
@@ -20,6 +22,8 @@ const MONTHS = [
 ]
 
 function PayrollPage() {
+  const { user } = useAuth()
+  const canAccess = hasRole(user?.role, HR_ROLES)
   const toast = useToast()
   const confirm = useConfirm()
   const now = new Date()
@@ -34,6 +38,10 @@ function PayrollPage() {
   const [submitting, setSubmitting] = useState(false)
 
   function load() {
+    if (!canAccess) {
+      setLoading(false)
+      return
+    }
     setLoading(true)
     api
       .listPayrollRuns()
@@ -42,7 +50,7 @@ function PayrollPage() {
       .finally(() => setLoading(false))
   }
 
-  useEffect(load, [])
+  useEffect(load, [canAccess])
 
   function openProcess() {
     setYear(now.getFullYear())
@@ -100,6 +108,10 @@ function PayrollPage() {
       ],
       runs,
     )
+  }
+
+  if (!canAccess) {
+    return <EmptyState icon={Lock} message="This section is restricted to HR staff." />
   }
 
   return (

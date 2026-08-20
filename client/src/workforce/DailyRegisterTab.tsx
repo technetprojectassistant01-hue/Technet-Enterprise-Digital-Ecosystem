@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ClipboardCheck, Save, ChevronLeft, ChevronRight } from 'lucide-react'
-import * as api from '../../lib/api'
-import type { AttendanceRecordInput, AttendanceRosterRow, AttendanceStatus } from '../../lib/api'
-import { Panel, StatCard, EmptyState, TableSkeleton } from '../../dashboard/ui'
-import { useToast } from '../../dashboard/ToastContext'
+import * as api from '../lib/api'
+import type { AttendanceRecordInput, AttendanceRosterRow, AttendanceStatus } from '../lib/api'
+import { Panel, StatCard, EmptyState, TableSkeleton } from '../dashboard/ui'
+import { useToast } from '../dashboard/ToastContext'
 import { inputClass, primaryButtonClass } from './formStyles'
 
 const STATUSES: AttendanceStatus[] = [
