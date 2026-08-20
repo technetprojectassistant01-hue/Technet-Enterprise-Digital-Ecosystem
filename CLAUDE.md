@@ -61,7 +61,7 @@ Everyone lands on **Overview** (`/dashboard`) — as of 2026-08-19 this is real,
 | — Inventory | Built | Items, stock movements |
 | — Finance | Built | Customers, Invoices (+PDF), Expenses, Quotations (+PDF), Contracts |
 | — Procurement | Built | Suppliers, Requisitions, Purchase Orders (+PDF), goods receipt |
-| — HR | Built | Employee profiles, Leave (types/balances/requests/timesheet), Attendance (office clock-in/out, separate from Operations GPS attendance), Certifications & Training |
+| — HR | Built | Employee profiles, Leave (types/balances/requests/timesheet, public holiday calendar excluded from working-day counts — added 2026-08-20, manually maintained since several Mauritius holidays are lunar/gazette-dependent), Attendance (office clock-in/out, separate from Operations GPS attendance), Certifications & Training |
 | — Projects | Built | Project registry, assignments, status history |
 | — Documents | Built | File storage (DB `Bytes` column, not S3/cloud storage), categorized by Contract/Invoice/HR/Project/General |
 | **Technet Maintenance** | Built | Assets, Maintenance Contracts, Maintenance Requests, Maintenance Schedule/Reports — built explicitly "from the SDD" per commit history |
