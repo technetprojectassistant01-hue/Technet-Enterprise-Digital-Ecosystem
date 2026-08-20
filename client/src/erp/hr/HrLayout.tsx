@@ -5,7 +5,6 @@ const TABS: { label: string; to: string; end?: boolean }[] = [
   { label: 'Overview', to: '/dashboard/erp/hr', end: true },
   { label: 'Employees', to: '/dashboard/erp/hr/employees' },
   { label: 'Leave', to: '/dashboard/erp/hr/leave' },
-  { label: 'Attendance', to: '/dashboard/erp/hr/attendance' },
   { label: 'Certifications', to: '/dashboard/erp/hr/certifications' },
 ]
 
