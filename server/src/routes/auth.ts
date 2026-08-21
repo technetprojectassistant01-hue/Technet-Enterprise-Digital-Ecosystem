@@ -21,7 +21,7 @@ const forgotPasswordLimiter = rateLimit({
 const COOKIE_NAME = "token";
 const isProduction = process.env.NODE_ENV === "production";
 
-// Client (Cloudflare) and server (Railway) are different sites in
+// Client (Cloudflare) and server (Render) are different sites in
 // production, so the session cookie needs SameSite=None to be sent on
 // cross-site fetch calls. In dev both run on localhost (same site), so
 // Lax is fine and avoids needing HTTPS locally.
