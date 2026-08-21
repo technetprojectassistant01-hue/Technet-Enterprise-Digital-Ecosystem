@@ -23,7 +23,7 @@ There is a formal **SDD (Software Design Document)**, the actual source of truth
 ## 3. Deployment topology
 
 - **Client** → Cloudflare Workers (via `wrangler`, static SPA build with `not_found_handling: single-page-application`). Domain: `technet-digital.workers.dev` (or a custom domain pointed at it).
-- **Server** → Railway (Node host running the compiled Express app; `railway.json` builds with `npm run build -w server` and starts with `npm run start -w server`, which runs `prisma migrate deploy` before booting).
+- **Server** → Render free web service (Node host running the compiled Express app; `render.yaml` builds with `npm ci && npm run build -w server` and starts with `npm run start -w server`, which runs `prisma migrate deploy` before booting). Free instances sleep after ~15 min idle, so the first request after a quiet period takes 30-60s — this looks like a hang but is not.
 - **Database** → Neon Postgres.
 - Client and server are different origins in production, so auth cookies use `SameSite=None; Secure; Partitioned` in prod and `SameSite=Lax` in dev (see the cookie config comment in `server/src/routes/auth.ts` — this was hard-won; don't simplify it without understanding why).
 - **Known deploy gotcha**: Cloudflare has intermittently served stale cached HTML/JS after a successful deploy (`CF-Cache-Status: HIT` with old content, confirmed via direct `curl`, not just browser cache). Fix: push a fresh commit to force a new deploy version. If "I don't see the new feature" comes up after confirming a deploy succeeded, check `CF-Cache-Status` via curl before assuming the code is wrong.
