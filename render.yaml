@@ -1,0 +1,35 @@
+# Render Blueprint for the Technet Digital API.
+#
+# The client is NOT deployed here - it goes to Cloudflare Workers via
+# .github/workflows/deploy-client.yml. Only the Express API lives on Render.
+#
+# To deploy: Render dashboard -> New -> Blueprint -> pick this repo.
+services:
+  - type: web
+    name: technet-digital-api
+    runtime: node
+    plan: free
+    # Build from the repo root so npm workspaces resolve; `npm ci` installs
+    # both workspaces, then we compile only the server.
+    buildCommand: npm ci && npm run build -w server
+    # `start` runs `prisma migrate deploy` before booting, so schema changes
+    # apply automatically on each deploy.
+    startCommand: npm run start -w server
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Neon connection string. Use the DIRECT (non-pooled) URL - `prisma
+      # migrate deploy` takes advisory locks that the pooler doesn't support.
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      # Must exactly match the deployed client origin, no trailing slash,
+      # or cookies won't be sent (CORS runs with credentials: true).
+      - key: CLIENT_ORIGIN
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
