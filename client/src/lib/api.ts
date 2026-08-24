@@ -250,6 +250,7 @@ export interface Customer extends CustomerSummary {
   taxNumber: string | null
   createdAt: string
   updatedAt: string
+  portalUser?: { id: string; email: string } | null
 }
 
 export interface CustomerInput {
@@ -2569,4 +2570,116 @@ export function markNotificationRead(id: string) {
 
 export function markAllNotificationsRead() {
   return request<{ ok: true }>('/api/notifications/read-all', { method: 'POST' })
+}
+
+/* ------------------------------------------------------------------ *
+ * Technet Connect - customer portal access (staff side)
+ * ------------------------------------------------------------------ */
+
+export function grantPortalAccess(customerId: string, email?: string) {
+  return request<{ email: string; password: string }>(`/api/customers/${customerId}/portal-access`, {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  })
+}
+
+export function resetPortalAccess(customerId: string) {
+  return request<{ email: string; password: string }>(`/api/customers/${customerId}/portal-access/reset`, {
+    method: 'POST',
+  })
+}
+
+export function revokePortalAccess(customerId: string) {
+  return request<null>(`/api/customers/${customerId}/portal-access`, { method: 'DELETE' })
+}
+
+export type QuotationRequestStatus = 'PENDING' | 'CONVERTED' | 'DECLINED'
+
+export interface QuotationRequest {
+  id: string
+  customerId: string
+  customer: SalesDocumentCustomer
+  description: string
+  status: QuotationRequestStatus
+  convertedQuotation: { id: string; quotationNumber: string } | null
+  reviewNote: string | null
+  createdAt: string
+}
+
+export function listQuoteRequests(status?: QuotationRequestStatus) {
+  const qs = status ? `?status=${status}` : ''
+  return request<{ requests: QuotationRequest[] }>(`/api/quotations/quote-requests${qs}`)
+}
+
+export function convertQuoteRequest(id: string, input: Omit<QuotationInput, 'customerId'>) {
+  return request<{ quotation: Quotation }>(`/api/quotations/quote-requests/${id}/convert`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function declineQuoteRequest(id: string, note?: string) {
+  return request<{ request: QuotationRequest }>(`/api/quotations/quote-requests/${id}/decline`, {
+    method: 'POST',
+    body: JSON.stringify({ note }),
+  })
+}
+
+/* ------------------------------------------------------------------ *
+ * Technet Connect - customer-facing portal (separate auth domain)
+ * ------------------------------------------------------------------ */
+
+export interface PortalCustomer {
+  id: string
+  name: string
+  email: string
+}
+
+export function portalLogin(email: string, password: string) {
+  return request<{ customer: PortalCustomer }>('/api/portal-auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  })
+}
+
+export function portalLogout() {
+  return request<{ ok: true }>('/api/portal-auth/logout', { method: 'POST' })
+}
+
+export function portalFetchMe() {
+  return request<{ customer: PortalCustomer }>('/api/portal-auth/me')
+}
+
+export function portalListQuotations() {
+  return request<{ quotations: Quotation[] }>('/api/portal/quotations')
+}
+
+export function portalListInvoices() {
+  return request<{ invoices: Invoice[] }>('/api/portal/invoices')
+}
+
+export interface PortalWorkOrder {
+  id: string
+  workOrderNumber: string
+  title: string
+  jobCategory: JobCategory
+  description: string | null
+  status: WorkOrderStatus
+  scheduledDate: string
+  siteAddress: string | null
+}
+
+export function portalListWorkOrders() {
+  return request<{ workOrders: PortalWorkOrder[] }>('/api/portal/work-orders')
+}
+
+export function portalListQuoteRequests() {
+  return request<{ requests: QuotationRequest[] }>('/api/portal/quote-requests')
+}
+
+export function portalSubmitQuoteRequest(description: string) {
+  return request<{ request: QuotationRequest }>('/api/portal/quote-requests', {
+    method: 'POST',
+    body: JSON.stringify({ description }),
+  })
 }
