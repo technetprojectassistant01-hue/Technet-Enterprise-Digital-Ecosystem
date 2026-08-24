@@ -6,6 +6,7 @@ import { signAuthToken } from "../lib/jwt";
 import { requireAuth } from "../middleware/auth";
 import { generateResetToken, hashResetToken } from "../lib/passwordReset";
 import { sendPasswordResetEmail } from "../lib/email";
+import { logSecurityEvent } from "../lib/securityEvents";
 
 const router = Router();
 
@@ -49,13 +50,17 @@ router.post("/login", async (req, res) => {
     include: { employee: { select: { id: true } } },
   });
   if (!user) {
+    await logSecurityEvent("LOGIN_FAILED", { actorEmail: email, detail: "No account with this email" });
     return res.status(401).json({ error: "Invalid email or password" });
   }
 
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) {
+    await logSecurityEvent("LOGIN_FAILED", { actorUserId: user.id, actorEmail: email, detail: "Incorrect password" });
     return res.status(401).json({ error: "Invalid email or password" });
   }
+
+  await logSecurityEvent("LOGIN_SUCCEEDED", { actorUserId: user.id, actorEmail: user.email });
 
   const token = signAuthToken({ sub: user.id, role: user.role });
 
@@ -116,6 +121,7 @@ router.post("/change-password", requireAuth, async (req, res) => {
 
   const passwordHash = await bcrypt.hash(newPassword, 12);
   await prisma.user.update({ where: { id: user.id }, data: { passwordHash } });
+  await logSecurityEvent("PASSWORD_CHANGED", { actorUserId: user.id, actorEmail: user.email });
 
   res.json({ ok: true });
 });
@@ -142,6 +148,7 @@ router.post("/forgot-password", forgotPasswordLimiter, async (req, res) => {
     const clientOrigin = process.env.CLIENT_ORIGIN || "http://localhost:5173";
     const resetUrl = `${clientOrigin}/reset-password?token=${token}`;
     await sendPasswordResetEmail(user.email, resetUrl);
+    await logSecurityEvent("PASSWORD_RESET_REQUESTED", { actorUserId: user.id, actorEmail: user.email });
   }
 
   res.json({ ok: true });
@@ -158,7 +165,10 @@ router.post("/reset-password", async (req, res) => {
   }
 
   const tokenHash = hashResetToken(token);
-  const resetToken = await prisma.passwordResetToken.findUnique({ where: { tokenHash } });
+  const resetToken = await prisma.passwordResetToken.findUnique({
+    where: { tokenHash },
+    include: { user: { select: { email: true } } },
+  });
 
   if (
     !resetToken ||
@@ -180,6 +190,10 @@ router.post("/reset-password", async (req, res) => {
       where: { userId: resetToken.userId, usedAt: null },
     }),
   ]);
+  await logSecurityEvent("PASSWORD_RESET_COMPLETED", {
+    actorUserId: resetToken.userId,
+    actorEmail: resetToken.user.email,
+  });
 
   res.json({ ok: true });
 });
