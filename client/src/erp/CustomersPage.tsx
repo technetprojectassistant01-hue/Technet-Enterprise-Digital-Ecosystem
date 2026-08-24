@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Search, Plus, Pencil, Trash2, Users, Download } from 'lucide-react'
+import { Search, Plus, Pencil, Trash2, Users, Download, KeyRound, Copy } from 'lucide-react'
 import * as api from '../lib/api'
 import type { Customer } from '../lib/api'
 import { Panel, StatCard, Modal, EmptyState, TableSkeleton } from '../dashboard/ui'
@@ -61,6 +61,13 @@ function CustomersPage() {
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+
+  const [portalAccessFor, setPortalAccessFor] = useState<Customer | null>(null)
+  const [portalEmailInput, setPortalEmailInput] = useState('')
+  const [portalResult, setPortalResult] = useState<{ email: string; password: string } | null>(null)
+  const [portalBusy, setPortalBusy] = useState(false)
+  const [portalError, setPortalError] = useState<string | null>(null)
+  const [portalCopied, setPortalCopied] = useState(false)
 
   function load(searchValue = search) {
     setLoading(true)
@@ -147,6 +154,72 @@ function CustomersPage() {
     }
   }
 
+  function openPortalAccess(c: Customer) {
+    setPortalAccessFor(c)
+    setPortalEmailInput(c.email || '')
+    setPortalResult(null)
+    setPortalError(null)
+  }
+
+  function closePortalAccess() {
+    setPortalAccessFor(null)
+    setPortalResult(null)
+  }
+
+  async function handleGrantPortalAccess() {
+    if (!portalAccessFor) return
+    setPortalError(null)
+    setPortalBusy(true)
+    try {
+      const result = await api.grantPortalAccess(portalAccessFor.id, portalEmailInput || undefined)
+      setPortalResult(result)
+      setPortalCopied(false)
+      load()
+    } catch (err) {
+      setPortalError(err instanceof Error ? err.message : 'Failed to grant portal access')
+    } finally {
+      setPortalBusy(false)
+    }
+  }
+
+  async function handleResetPortalAccess() {
+    if (!portalAccessFor) return
+    setPortalError(null)
+    setPortalBusy(true)
+    try {
+      const result = await api.resetPortalAccess(portalAccessFor.id)
+      setPortalResult(result)
+      setPortalCopied(false)
+    } catch (err) {
+      setPortalError(err instanceof Error ? err.message : 'Failed to reset portal access')
+    } finally {
+      setPortalBusy(false)
+    }
+  }
+
+  async function handleRevokePortalAccess() {
+    if (!portalAccessFor) return
+    const ok = await confirm({
+      title: 'Revoke portal access',
+      message: `Revoke ${portalAccessFor.name}'s portal login? They will no longer be able to sign in to view quotations, invoices, or jobs.`,
+      confirmLabel: 'Revoke',
+      tone: 'danger',
+    })
+    if (!ok) return
+    setPortalError(null)
+    setPortalBusy(true)
+    try {
+      await api.revokePortalAccess(portalAccessFor.id)
+      toast.success('Portal access revoked')
+      closePortalAccess()
+      load()
+    } catch (err) {
+      setPortalError(err instanceof Error ? err.message : 'Failed to revoke portal access')
+    } finally {
+      setPortalBusy(false)
+    }
+  }
+
   function exportCsv() {
     downloadCsv(
       'customers',
@@ -226,6 +299,15 @@ function CustomersPage() {
                     {canWrite && (
                       <td className="px-3 py-3">
                         <div className="flex items-center justify-end gap-3 text-ink-400">
+                          <button
+                            type="button"
+                            onClick={() => openPortalAccess(c)}
+                            aria-label="Portal access"
+                            title={c.portalUser ? `Portal access granted (${c.portalUser.email})` : 'Grant portal access'}
+                            className={c.portalUser ? 'text-cyan-accent hover:text-cyan-accent-dark' : 'hover:text-ink-100'}
+                          >
+                            <KeyRound className="h-4 w-4" />
+                          </button>
                           <button type="button" onClick={() => openEdit(c)} aria-label="Edit customer" className="hover:text-ink-100">
                             <Pencil className="h-4 w-4" />
                           </button>
@@ -313,6 +395,85 @@ function CustomersPage() {
               {submitting ? 'Saving…' : editing ? 'Save Changes' : 'Create Customer'}
             </button>
           </form>
+        </Modal>
+      )}
+
+      {portalAccessFor && (
+        <Modal title="Portal Access" onClose={closePortalAccess}>
+          <p className="mb-4 text-sm text-ink-400">
+            {portalAccessFor.name} {portalAccessFor.company ? `(${portalAccessFor.company})` : ''}
+          </p>
+
+          {portalResult ? (
+            <div className="flex flex-col gap-3">
+              <p className="text-sm text-ink-300">
+                Portal login for <span className="text-ink-100">{portalResult.email}</span>. Copy the password and
+                share it with them directly — it won't be shown again, and no email was sent.
+              </p>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-cyan-accent">
+                  {portalResult.password}
+                </code>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(portalResult.password)
+                    setPortalCopied(true)
+                  }}
+                  className="flex items-center gap-1.5 rounded-md bg-cyan-accent px-3 py-2 text-xs font-semibold text-ink-950 hover:bg-cyan-accent-dark"
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                  {portalCopied ? 'Copied' : 'Copy'}
+                </button>
+              </div>
+            </div>
+          ) : portalAccessFor.portalUser ? (
+            <div className="flex flex-col gap-4">
+              <p className="text-sm text-ink-300">
+                Portal access is active for <span className="text-ink-100">{portalAccessFor.portalUser.email}</span>.
+              </p>
+              {portalError && <p className="text-sm text-red-400">{portalError}</p>}
+              <div className="flex gap-3">
+                <button type="button" onClick={handleResetPortalAccess} disabled={portalBusy} className={secondaryButtonClass}>
+                  Reset Password
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRevokePortalAccess}
+                  disabled={portalBusy}
+                  className="rounded-md border border-red-400/50 px-4 py-2 text-sm text-red-400 hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Revoke Access
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-4">
+              <p className="text-sm text-ink-300">
+                Grant this customer their own login to view quotations, invoices, and job status, and to request new
+                quotations.
+              </p>
+              <div>
+                <label className={labelClass}>PORTAL EMAIL</label>
+                <input
+                  type="email"
+                  value={portalEmailInput}
+                  onChange={(e) => setPortalEmailInput(e.target.value)}
+                  placeholder="customer@company.com"
+                  className={`mt-2 ${inputClass}`}
+                />
+              </div>
+              {portalError && <p className="text-sm text-red-400">{portalError}</p>}
+              <button
+                type="button"
+                onClick={handleGrantPortalAccess}
+                disabled={portalBusy || !portalEmailInput.trim()}
+                className={`justify-center py-2.5 ${primaryButtonClass}`}
+              >
+                {portalBusy ? 'Granting…' : 'Grant Access'}
+              </button>
+            </div>
+          )}
         </Modal>
       )}
     </div>
