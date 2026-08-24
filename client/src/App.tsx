@@ -1,9 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
-import {
-  Share2,
-  Megaphone,
-  ShieldCheck,
-} from 'lucide-react'
+import { Share2, Megaphone } from 'lucide-react'
 import Login from './Login'
 import ForgotPassword from './ForgotPassword'
 import ResetPassword from './ResetPassword'
@@ -57,6 +53,7 @@ import AttendancePage from './workforce/AttendancePage'
 import PayrollPage from './workforce/PayrollPage'
 import PayrollDetailPage from './workforce/PayrollDetailPage'
 import ModuleStub from './dashboard/ModuleStub'
+import SecurityPage from './SecurityPage'
 import InsightDashboardPage from './insight/InsightDashboardPage'
 import UsersPage from './UsersPage'
 import SettingsPage from './SettingsPage'
@@ -147,10 +144,7 @@ function App() {
               element={<ModuleStub title="Technet Digital Marketing" icon={Megaphone} />}
             />
           </Route>
-          <Route
-            path="security"
-            element={<ModuleStub title="Security" icon={ShieldCheck} />}
-          />
+          <Route path="security" element={<SecurityPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route element={<AdminRoute />}>
             <Route path="users" element={<UsersPage />} />
