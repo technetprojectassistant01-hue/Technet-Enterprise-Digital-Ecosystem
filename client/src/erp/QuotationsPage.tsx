@@ -14,6 +14,7 @@ import { hasRole, SALES_ROLES } from '../lib/permissions'
 import { quotationStatusTone as statusTone } from './statusTones'
 import { formatMoney } from '../lib/format'
 import SalesLineItemsEditor, { EMPTY_SALES_LINE_ITEM, type SalesLineItemRow } from './SalesLineItemsEditor'
+import QuoteRequestsTab from './QuoteRequestsTab'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -39,6 +40,7 @@ function QuotationsPage() {
   const [items, setItems] = useState<SalesLineItemRow[]>([{ ...EMPTY_SALES_LINE_ITEM }])
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [view, setView] = useState<'quotations' | 'requests'>('quotations')
 
   function load() {
     setLoading(true)
@@ -150,25 +152,54 @@ function QuotationsPage() {
           <h1 className="text-2xl font-bold text-ink-100">Quotations</h1>
           <p className="mt-1 text-sm text-ink-300">Draft, send, and track the sales pipeline.</p>
         </div>
-        <div className="flex items-center gap-3">
-          <button type="button" onClick={exportCsv} className={secondaryButtonClass}>
-            <Download className="h-4 w-4" />
-            Export CSV
-          </button>
-          {canWrite && (
-            <button
-              type="button"
-              onClick={openCreate}
-              disabled={customers.length === 0}
-              className={primaryButtonClass}
-            >
-              <Plus className="h-4 w-4" />
-              New Quotation
+        {view === 'quotations' && (
+          <div className="flex items-center gap-3">
+            <button type="button" onClick={exportCsv} className={secondaryButtonClass}>
+              <Download className="h-4 w-4" />
+              Export CSV
             </button>
-          )}
-        </div>
+            {canWrite && (
+              <button
+                type="button"
+                onClick={openCreate}
+                disabled={customers.length === 0}
+                className={primaryButtonClass}
+              >
+                <Plus className="h-4 w-4" />
+                New Quotation
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
+      {canWrite && (
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setView('quotations')}
+            className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
+              view === 'quotations' ? 'bg-cyan-accent/10 text-cyan-accent' : 'text-ink-300 hover:bg-ink-800 hover:text-ink-100'
+            }`}
+          >
+            Quotations
+          </button>
+          <button
+            type="button"
+            onClick={() => setView('requests')}
+            className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
+              view === 'requests' ? 'bg-cyan-accent/10 text-cyan-accent' : 'text-ink-300 hover:bg-ink-800 hover:text-ink-100'
+            }`}
+          >
+            Quote Requests
+          </button>
+        </div>
+      )}
+
+      {view === 'requests' ? (
+        <QuoteRequestsTab />
+      ) : (
+        <>
       {canWrite && customers.length === 0 && (
         <p className="text-sm text-ink-400">Add a customer first before creating quotations.</p>
       )}
@@ -322,6 +353,8 @@ function QuotationsPage() {
             </button>
           </form>
         </Modal>
+      )}
+        </>
       )}
     </div>
   )
