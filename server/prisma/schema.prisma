@@ -255,6 +255,39 @@ model User {
   quotationsCreated Quotation[] @relation("QuotationCreator")
 
   notifications Notification[]
+
+  securityEventsAsActor  SecurityEvent[] @relation("SecurityEventActor")
+  securityEventsAsTarget SecurityEvent[] @relation("SecurityEventTarget")
+}
+
+enum SecurityEventType {
+  LOGIN_SUCCEEDED
+  LOGIN_FAILED
+  PASSWORD_CHANGED
+  PASSWORD_RESET_REQUESTED
+  PASSWORD_RESET_COMPLETED
+  ADMIN_PASSWORD_RESET_FORCED
+  USER_CREATED
+  USER_ROLE_CHANGED
+  USER_DELETED
+}
+
+/** Security-relevant events only (auth, password, user/role management) - not a general
+ * change-history log across every ERP record. */
+model SecurityEvent {
+  id           String            @id @default(uuid())
+  type         SecurityEventType
+  actorUserId  String?
+  actor        User?             @relation("SecurityEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  actorEmail   String
+  targetUserId String?
+  target       User?             @relation("SecurityEventTarget", fields: [targetUserId], references: [id], onDelete: SetNull)
+  detail       String?
+  createdAt    DateTime          @default(now())
+
+  @@index([type])
+  @@index([createdAt])
+  @@index([actorUserId])
 }
 
 model PasswordResetToken {
