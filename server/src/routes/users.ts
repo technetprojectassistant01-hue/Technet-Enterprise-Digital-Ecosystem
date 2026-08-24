@@ -1,14 +1,21 @@
-import { Router } from "express";
+import { Router, type Request } from "express";
 import bcrypt from "bcryptjs";
 import { Prisma } from "../generated/prisma/client";
 import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { isUniqueConstraintError, isForeignKeyConstraintError, isNotFoundError } from "../lib/prismaErrors";
 import { ALL_ROLES, type Role } from "../lib/roles";
+import { logSecurityEvent } from "../lib/securityEvents";
 
 const router = Router();
 
 router.use(requireAuth, requireRole("ADMIN"));
+
+/** The acting admin's own email, for actorEmail on security events - the JWT payload only carries sub/role. */
+async function actorEmail(req: Request): Promise<string> {
+  const actor = await prisma.user.findUnique({ where: { id: req.user!.sub }, select: { email: true } });
+  return actor?.email ?? "unknown";
+}
 
 const userSelect = {
   id: true,
@@ -51,6 +58,12 @@ router.post("/", async (req, res) => {
       },
       select: userSelect,
     });
+    await logSecurityEvent("USER_CREATED", {
+      actorUserId: req.user!.sub,
+      actorEmail: await actorEmail(req),
+      targetUserId: user.id,
+      detail: `${user.email} (${user.role})`,
+    });
     res.status(201).json({ user });
   } catch (err) {
     if (isUniqueConstraintError(err)) return res.status(409).json({ error: "A user with that email already exists" });
@@ -78,11 +91,31 @@ router.patch("/:id", async (req, res) => {
   if (password !== undefined) data.passwordHash = await bcrypt.hash(password, 12);
 
   try {
+    const before = role !== undefined ? await prisma.user.findUnique({ where: { id }, select: { role: true } }) : null;
+
     const user = await prisma.user.update({
       where: { id },
       data,
       select: userSelect,
     });
+
+    if (role !== undefined && before && before.role !== role) {
+      await logSecurityEvent("USER_ROLE_CHANGED", {
+        actorUserId: req.user!.sub,
+        actorEmail: await actorEmail(req),
+        targetUserId: user.id,
+        detail: `${before.role} -> ${role}`,
+      });
+    }
+    if (password !== undefined && id !== req.user!.sub) {
+      await logSecurityEvent("ADMIN_PASSWORD_RESET_FORCED", {
+        actorUserId: req.user!.sub,
+        actorEmail: await actorEmail(req),
+        targetUserId: user.id,
+        detail: user.email,
+      });
+    }
+
     res.json({ user });
   } catch (err) {
     if (isNotFoundError(err)) return res.status(404).json({ error: "User not found" });
@@ -98,7 +131,15 @@ router.delete("/:id", async (req, res) => {
   }
 
   try {
+    const target = await prisma.user.findUnique({ where: { id }, select: { email: true } });
+    if (!target) return res.status(404).json({ error: "User not found" });
+
     await prisma.user.delete({ where: { id } });
+    await logSecurityEvent("USER_DELETED", {
+      actorUserId: req.user!.sub,
+      actorEmail: await actorEmail(req),
+      detail: target.email,
+    });
     res.status(204).end();
   } catch (err) {
     if (isNotFoundError(err)) return res.status(404).json({ error: "User not found" });
