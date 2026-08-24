@@ -1,5 +1,5 @@
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
-import { Share2, Megaphone } from 'lucide-react'
+import { Megaphone } from 'lucide-react'
 import Login from './Login'
 import ForgotPassword from './ForgotPassword'
 import ResetPassword from './ResetPassword'
@@ -53,6 +53,7 @@ import AttendancePage from './workforce/AttendancePage'
 import PayrollPage from './workforce/PayrollPage'
 import PayrollDetailPage from './workforce/PayrollDetailPage'
 import ModuleStub from './dashboard/ModuleStub'
+import ConnectInfoPage from './ConnectInfoPage'
 import SecurityPage from './SecurityPage'
 import { PortalAuthProvider } from './portal/PortalAuthContext'
 import PortalProtectedRoute from './portal/PortalProtectedRoute'
@@ -123,10 +124,7 @@ function App() {
             <Route path="schedule/:id" element={<ScheduleDetailPage />} />
           </Route>
           <Route element={<RoleRoute blockedRoles={FIELD_ONLY_ROLES} />}>
-            <Route
-              path="connect"
-              element={<ModuleStub title="Technet Connect" icon={Share2} />}
-            />
+            <Route path="connect" element={<ConnectInfoPage />} />
           </Route>
           <Route path="operations" element={<OperationsLayout />}>
             <Route index element={<Navigate to="work-orders" replace />} />
