@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
 import { Share2, Megaphone } from 'lucide-react'
 import Login from './Login'
 import ForgotPassword from './ForgotPassword'
@@ -54,6 +54,14 @@ import PayrollPage from './workforce/PayrollPage'
 import PayrollDetailPage from './workforce/PayrollDetailPage'
 import ModuleStub from './dashboard/ModuleStub'
 import SecurityPage from './SecurityPage'
+import { PortalAuthProvider } from './portal/PortalAuthContext'
+import PortalProtectedRoute from './portal/PortalProtectedRoute'
+import PortalLogin from './portal/PortalLogin'
+import PortalLayout from './portal/PortalLayout'
+import PortalQuotationsPage from './portal/PortalQuotationsPage'
+import PortalInvoicesPage from './portal/PortalInvoicesPage'
+import PortalWorkOrdersPage from './portal/PortalWorkOrdersPage'
+import PortalRequestQuotePage from './portal/PortalRequestQuotePage'
 import InsightDashboardPage from './insight/InsightDashboardPage'
 import UsersPage from './UsersPage'
 import SettingsPage from './SettingsPage'
@@ -149,6 +157,19 @@ function App() {
           <Route element={<AdminRoute />}>
             <Route path="users" element={<UsersPage />} />
             <Route path="insight" element={<InsightDashboardPage />} />
+          </Route>
+        </Route>
+      </Route>
+      {/* Technet Connect - separate auth domain from staff (AuthContext/ProtectedRoute above) */}
+      <Route path="/portal" element={<PortalAuthProvider><Outlet /></PortalAuthProvider>}>
+        <Route path="login" element={<PortalLogin />} />
+        <Route element={<PortalProtectedRoute />}>
+          <Route element={<PortalLayout />}>
+            <Route index element={<Navigate to="quotations" replace />} />
+            <Route path="quotations" element={<PortalQuotationsPage />} />
+            <Route path="invoices" element={<PortalInvoicesPage />} />
+            <Route path="jobs" element={<PortalWorkOrdersPage />} />
+            <Route path="request-quote" element={<PortalRequestQuotePage />} />
           </Route>
         </Route>
       </Route>

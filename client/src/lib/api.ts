@@ -2683,3 +2683,11 @@ export function portalSubmitQuoteRequest(description: string) {
     body: JSON.stringify({ description }),
   })
 }
+
+export function portalQuotationPdfUrl(id: string) {
+  return `${API_URL}/api/portal/quotations/${id}/pdf`
+}
+
+export function portalInvoicePdfUrl(id: string) {
+  return `${API_URL}/api/portal/invoices/${id}/pdf`
+}
