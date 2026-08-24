@@ -48,6 +48,122 @@ router.get("/", async (req, res) => {
   res.json({ quotations });
 });
 
+/* ------------------------------------------------------------------ *
+ * Quote requests (Technet Connect) - must be declared before GET /:id,
+ * otherwise Express would match "quote-requests" as an :id.
+ * ------------------------------------------------------------------ */
+
+router.get("/quote-requests", requireRole(...SALES_ROLES), async (req, res) => {
+  const { status } = req.query;
+  const where: Prisma.QuotationRequestWhereInput = {};
+  if (typeof status === "string" && ["PENDING", "CONVERTED", "DECLINED"].includes(status)) {
+    where.status = status as "PENDING" | "CONVERTED" | "DECLINED";
+  }
+
+  const requests = await prisma.quotationRequest.findMany({
+    where,
+    include: { customer: { select: CUSTOMER_SELECT }, convertedQuotation: { select: { id: true, quotationNumber: true } } },
+    orderBy: { createdAt: "desc" },
+  });
+  res.json({ requests });
+});
+
+router.post("/quote-requests/:id/convert", requireRole(...SALES_ROLES), async (req, res) => {
+  const id = req.params.id as string;
+  const { quotationNumber, title, vatRate, expiresAt, items } = req.body ?? {};
+
+  const request = await prisma.quotationRequest.findUnique({ where: { id } });
+  if (!request) return res.status(404).json({ error: "Quote request not found" });
+  if (request.status !== "PENDING") {
+    return res.status(400).json({ error: `This request was already ${request.status.toLowerCase()}` });
+  }
+
+  if (typeof quotationNumber !== "string" || !quotationNumber.trim()) {
+    return res.status(400).json({ error: "Quotation number is required" });
+  }
+  if (typeof title !== "string" || !title.trim()) {
+    return res.status(400).json({ error: "Title is required" });
+  }
+  if (vatRate !== undefined && (!Number.isFinite(vatRate) || vatRate < 0)) {
+    return res.status(400).json({ error: "VAT rate must be a non-negative number" });
+  }
+  if (!Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ error: "At least one line item is required" });
+  }
+  for (const item of items as QuotationItemInput[]) {
+    if (typeof item.description !== "string" || !item.description.trim()) {
+      return res.status(400).json({ error: "Every line item needs a description" });
+    }
+    if (!Number.isFinite(item.quantity) || item.quantity <= 0) {
+      return res.status(400).json({ error: "Every line item needs a positive quantity" });
+    }
+    if (!Number.isFinite(item.unitPrice) || item.unitPrice <= 0) {
+      return res.status(400).json({ error: "Every line item needs a positive unit price" });
+    }
+  }
+
+  const rate = vatRate !== undefined ? Number(vatRate) : 15;
+  const subtotal = (items as QuotationItemInput[]).reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
+  const vatAmount = subtotal * (rate / 100);
+  const total = subtotal + vatAmount;
+
+  try {
+    const quotation = await prisma.quotation.create({
+      data: {
+        customerId: request.customerId,
+        quotationNumber: quotationNumber.trim(),
+        title: title.trim(),
+        status: "DRAFT",
+        vatRate: rate,
+        subtotal,
+        vatAmount,
+        total,
+        expiresAt: expiresAt ? new Date(expiresAt) : null,
+        createdById: req.user!.sub,
+        items: {
+          create: (items as QuotationItemInput[]).map((item) => ({
+            description: item.description.trim(),
+            quantity: Math.trunc(item.quantity),
+            unitPrice: item.unitPrice,
+          })),
+        },
+      },
+      include: { customer: { select: CUSTOMER_SELECT }, items: true },
+    });
+
+    await prisma.quotationRequest.update({
+      where: { id },
+      data: { status: "CONVERTED", convertedQuotationId: quotation.id, reviewedById: req.user!.sub },
+    });
+
+    res.status(201).json({ quotation });
+  } catch (err) {
+    if (isUniqueConstraintError(err)) return res.status(409).json({ error: "A quotation with that number already exists" });
+    throw err;
+  }
+});
+
+router.post("/quote-requests/:id/decline", requireRole(...SALES_ROLES), async (req, res) => {
+  const id = req.params.id as string;
+  const { note } = req.body ?? {};
+
+  const request = await prisma.quotationRequest.findUnique({ where: { id } });
+  if (!request) return res.status(404).json({ error: "Quote request not found" });
+  if (request.status !== "PENDING") {
+    return res.status(400).json({ error: `This request was already ${request.status.toLowerCase()}` });
+  }
+
+  const updated = await prisma.quotationRequest.update({
+    where: { id },
+    data: {
+      status: "DECLINED",
+      reviewedById: req.user!.sub,
+      reviewNote: typeof note === "string" && note.trim() ? note.trim() : null,
+    },
+  });
+  res.json({ request: updated });
+});
+
 router.get("/:id", async (req, res) => {
   const id = req.params.id as string;
   const quotation = await prisma.quotation.findUnique({
