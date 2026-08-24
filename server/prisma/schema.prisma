@@ -254,6 +254,9 @@ model User {
 
   quotationsCreated Quotation[] @relation("QuotationCreator")
 
+  customerPortalUsersGranted CustomerPortalUser[]
+  quotationRequestsReviewed  QuotationRequest[]
+
   notifications Notification[]
 
   securityEventsAsActor  SecurityEvent[] @relation("SecurityEventActor")
@@ -526,6 +529,9 @@ model Customer {
   workOrders          WorkOrder[]
   interventionReports InterventionReport[]
   assets              Asset[]
+
+  portalUser        CustomerPortalUser?
+  quotationRequests QuotationRequest[]
 }
 
 model Contract {
@@ -561,7 +567,42 @@ model Quotation {
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 
-  items QuotationItem[]
+  items            QuotationItem[]
+  quotationRequest QuotationRequest?
+}
+
+/** Staff-granted customer login - one per Customer company for v1, not per individual contact. */
+model CustomerPortalUser {
+  id           String   @id @default(uuid())
+  customerId   String   @unique
+  customer     Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  email        String   @unique
+  passwordHash String
+  createdById  String
+  createdBy    User     @relation(fields: [createdById], references: [id])
+  createdAt    DateTime @default(now())
+}
+
+enum QuotationRequestStatus {
+  PENDING
+  CONVERTED
+  DECLINED
+}
+
+/** A customer-submitted "please quote me for X" request via the portal - not a real Quotation
+ * until staff converts it. */
+model QuotationRequest {
+  id                   String                 @id @default(uuid())
+  customerId           String
+  customer             Customer               @relation(fields: [customerId], references: [id])
+  description          String
+  status               QuotationRequestStatus @default(PENDING)
+  convertedQuotationId String?                @unique
+  convertedQuotation   Quotation?             @relation(fields: [convertedQuotationId], references: [id])
+  reviewedById         String?
+  reviewedBy           User?                  @relation(fields: [reviewedById], references: [id])
+  reviewNote           String?
+  createdAt            DateTime               @default(now())
 }
 
 model QuotationItem {
@@ -1179,6 +1220,7 @@ enum NotificationType {
   DAILY_REPORT_APPROVED
   DAILY_REPORT_REJECTED
   WORK_ORDER_STATUS_CHANGED
+  QUOTATION_REQUEST_SUBMITTED
 }
 
 model Notification {
