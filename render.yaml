@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: technet-digital-api
+    runtime: node
+    plan: free
+    # Runs from the repo root (not a rootDir) on purpose: this is an npm-workspaces monorepo,
+    # and the root package.json + lockfile are what npm needs to resolve server/'s dependencies
+    # correctly. Mirrors the exact commands railway.json used successfully.
+    buildCommand: npm ci && npm run build -w server
+    startCommand: npm run start -w server
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: NODE_ENV
+        value: production
+      - key: CLIENT_ORIGIN
+        value: https://technet-digital.technetprojectassistant01.workers.dev
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
