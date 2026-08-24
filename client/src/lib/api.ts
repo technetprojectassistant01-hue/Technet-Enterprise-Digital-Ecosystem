@@ -115,6 +115,52 @@ export function deleteUser(id: string) {
   return request<null>(`/api/users/${id}`, { method: 'DELETE' })
 }
 
+export type SecurityEventType =
+  | 'LOGIN_SUCCEEDED'
+  | 'LOGIN_FAILED'
+  | 'PASSWORD_CHANGED'
+  | 'PASSWORD_RESET_REQUESTED'
+  | 'PASSWORD_RESET_COMPLETED'
+  | 'ADMIN_PASSWORD_RESET_FORCED'
+  | 'USER_CREATED'
+  | 'USER_ROLE_CHANGED'
+  | 'USER_DELETED'
+
+export interface SecurityEvent {
+  id: string
+  type: SecurityEventType
+  actorEmail: string
+  actor: { id: string; email: string; name: string | null } | null
+  targetUserId: string | null
+  target: { id: string; email: string; name: string | null } | null
+  detail: string | null
+  createdAt: string
+}
+
+export interface MySecurityEvent {
+  id: string
+  type: SecurityEventType
+  createdAt: string
+}
+
+export function listSecurityEvents(
+  params: { type?: SecurityEventType; actorUserId?: string; from?: string; to?: string; take?: number; skip?: number } = {},
+) {
+  const query = new URLSearchParams()
+  if (params.type) query.set('type', params.type)
+  if (params.actorUserId) query.set('actorUserId', params.actorUserId)
+  if (params.from) query.set('from', params.from)
+  if (params.to) query.set('to', params.to)
+  if (params.take) query.set('take', String(params.take))
+  if (params.skip) query.set('skip', String(params.skip))
+  const qs = query.toString()
+  return request<{ events: SecurityEvent[]; total: number }>(`/api/security/audit-log${qs ? `?${qs}` : ''}`)
+}
+
+export function listMySecurityEvents() {
+  return request<{ events: MySecurityEvent[] }>('/api/security/audit-log/me')
+}
+
 export type MovementType = 'IN' | 'OUT' | 'ADJUSTMENT'
 
 export interface InventoryItem {
