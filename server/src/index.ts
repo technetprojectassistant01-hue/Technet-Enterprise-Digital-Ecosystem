@@ -34,6 +34,7 @@ import siteAttendanceRouter from "./routes/siteAttendance";
 import insightRouter from "./routes/insight";
 import securityRouter from "./routes/security";
 import portalAuthRouter from "./routes/portalAuth";
+import portalRouter from "./routes/portal";
 import notificationsRouter from "./routes/notifications";
 import { requireAuth, requireRole } from "./middleware/auth";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
@@ -92,6 +93,7 @@ app.use("/api/site-attendance", siteAttendanceRouter);
 app.use("/api/insight", insightRouter);
 app.use("/api/security", securityRouter);
 app.use("/api/portal-auth", portalAuthRouter);
+app.use("/api/portal", portalRouter);
 app.use("/api/notifications", notificationsRouter);
 
 app.get("/api/admin/ping", requireAuth, requireRole("ADMIN"), (_req, res) => {
