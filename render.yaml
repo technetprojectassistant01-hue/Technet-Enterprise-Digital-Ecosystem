@@ -6,7 +6,10 @@ services:
     # Runs from the repo root (not a rootDir) on purpose: this is an npm-workspaces monorepo,
     # and the root package.json + lockfile are what npm needs to resolve server/'s dependencies
     # correctly. Mirrors the exact commands railway.json used successfully.
-    buildCommand: npm ci && npm run build -w server
+    # --include=dev is required here: NODE_ENV=production (below) applies during the build step
+    # too, which makes a plain `npm ci` skip devDependencies - but the build itself needs
+    # typescript/@types/*/vitest to compile. This forces them in regardless of NODE_ENV.
+    buildCommand: npm ci --include=dev && npm run build -w server
     startCommand: npm run start -w server
     healthCheckPath: /api/health
     envVars:
