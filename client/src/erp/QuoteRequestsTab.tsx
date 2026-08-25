@@ -152,7 +152,7 @@ function QuoteRequestsTab() {
 
     setSubmitting(true)
     try {
-      await api.convertQuoteRequest(converting.id, {
+      const { quotation } = await api.convertQuoteRequest(converting.id, {
         customerId: converting.customerId ? undefined : convertCustomerId,
         title,
         vatRate: Number(vatRate) || 0,
@@ -165,8 +165,10 @@ function QuoteRequestsTab() {
         })),
       })
       toast.success('Converted to a draft quotation')
-      setConverting(null)
-      load()
+      // Jump straight to the new quotation - the Quotations tab's own list only
+      // loads once on mount, so switching tabs wouldn't show it without this.
+      window.location.href = `/dashboard/erp/finance/quotations/${quotation.id}`
+      return
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Failed to convert request')
     } finally {
