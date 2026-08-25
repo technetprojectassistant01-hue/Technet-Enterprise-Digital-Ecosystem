@@ -5,7 +5,7 @@ import { Prisma } from "../generated/prisma/client";
 import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { isForeignKeyConstraintError, isNotFoundError, isUniqueConstraintError } from "../lib/prismaErrors";
-import { SALES_ROLES, NON_FIELD_ROLES } from "../lib/roles";
+import { CUSTOMER_MANAGE_ROLES, NON_FIELD_ROLES } from "../lib/roles";
 
 /** A random temporary password for portal access, same shape as User Management's Reset Password. */
 function generateTempPassword(): string {
@@ -55,7 +55,7 @@ router.get("/:id", async (req, res) => {
   res.json({ customer });
 });
 
-router.post("/", requireRole(...SALES_ROLES), async (req, res) => {
+router.post("/", requireRole(...CUSTOMER_MANAGE_ROLES), async (req, res) => {
   const { name, email, phone, company, address, vatNumber, taxNumber } = req.body ?? {};
 
   if (typeof name !== "string" || !name.trim()) {
@@ -76,7 +76,7 @@ router.post("/", requireRole(...SALES_ROLES), async (req, res) => {
   res.status(201).json({ customer });
 });
 
-router.patch("/:id", requireRole(...SALES_ROLES), async (req, res) => {
+router.patch("/:id", requireRole(...CUSTOMER_MANAGE_ROLES), async (req, res) => {
   const id = req.params.id as string;
   const { name, email, phone, company, address, vatNumber, taxNumber } = req.body ?? {};
 
@@ -98,7 +98,7 @@ router.patch("/:id", requireRole(...SALES_ROLES), async (req, res) => {
   }
 });
 
-router.delete("/:id", requireRole(...SALES_ROLES), async (req, res) => {
+router.delete("/:id", requireRole(...CUSTOMER_MANAGE_ROLES), async (req, res) => {
   const id = req.params.id as string;
   try {
     await prisma.customer.delete({ where: { id } });
@@ -118,7 +118,7 @@ router.delete("/:id", requireRole(...SALES_ROLES), async (req, res) => {
  * Portal access (Technet Connect) - grant/reset/revoke a customer login
  * ------------------------------------------------------------------ */
 
-router.post("/:id/portal-access", requireRole(...SALES_ROLES), async (req, res) => {
+router.post("/:id/portal-access", requireRole(...CUSTOMER_MANAGE_ROLES), async (req, res) => {
   const id = req.params.id as string;
   const { email } = req.body ?? {};
 
@@ -146,7 +146,7 @@ router.post("/:id/portal-access", requireRole(...SALES_ROLES), async (req, res) 
   }
 });
 
-router.post("/:id/portal-access/reset", requireRole(...SALES_ROLES), async (req, res) => {
+router.post("/:id/portal-access/reset", requireRole(...CUSTOMER_MANAGE_ROLES), async (req, res) => {
   const id = req.params.id as string;
   const password = generateTempPassword();
   const passwordHash = await bcrypt.hash(password, 12);
@@ -163,7 +163,7 @@ router.post("/:id/portal-access/reset", requireRole(...SALES_ROLES), async (req,
   }
 });
 
-router.delete("/:id/portal-access", requireRole(...SALES_ROLES), async (req, res) => {
+router.delete("/:id/portal-access", requireRole(...CUSTOMER_MANAGE_ROLES), async (req, res) => {
   const id = req.params.id as string;
   try {
     await prisma.customerPortalUser.delete({ where: { customerId: id } });
