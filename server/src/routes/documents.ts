@@ -7,7 +7,7 @@ import { DOCUMENT_ROLES, NON_FIELD_ROLES } from "../lib/roles";
 
 const router = Router();
 
-const CATEGORIES = ["CONTRACT", "INVOICE", "HR", "PROJECT", "GENERAL"] as const;
+const CATEGORIES = ["CONTRACT", "INVOICE", "HR", "PROJECT", "GENERAL", "QUOTATION"] as const;
 type DocumentCategory = (typeof CATEGORIES)[number];
 
 const MAX_FILE_BYTES = 15 * 1024 * 1024;
@@ -33,6 +33,8 @@ const DETAIL_SELECT = {
   project: { select: { id: true, name: true } },
   customerId: true,
   customer: { select: { id: true, name: true, company: true } },
+  quotationId: true,
+  quotation: { select: { id: true, quotationNumber: true } },
   uploadedById: true,
   uploadedBy: { select: { id: true, name: true, email: true } },
   createdAt: true,
@@ -49,7 +51,7 @@ function decodeDataUrl(input: unknown): { buffer: Buffer; mimeType: string } | n
 router.use(requireAuth, requireRole(...NON_FIELD_ROLES));
 
 router.get("/", async (req, res) => {
-  const { category, projectId, customerId, search } = req.query;
+  const { category, projectId, customerId, quotationId, search } = req.query;
 
   const where: Prisma.DocumentWhereInput = {};
   if (typeof category === "string" && CATEGORIES.includes(category as DocumentCategory)) {
@@ -57,6 +59,7 @@ router.get("/", async (req, res) => {
   }
   if (typeof projectId === "string" && projectId) where.projectId = projectId;
   if (typeof customerId === "string" && customerId) where.customerId = customerId;
+  if (typeof quotationId === "string" && quotationId) where.quotationId = quotationId;
   if (typeof search === "string" && search.trim()) {
     where.OR = [
       { title: { contains: search, mode: "insensitive" } },
@@ -85,7 +88,7 @@ router.get("/:id/download", async (req, res) => {
 });
 
 router.post("/", requireRole(...DOCUMENT_ROLES), async (req, res) => {
-  const { title, category, projectId, customerId, fileData, fileName } = req.body ?? {};
+  const { title, category, projectId, customerId, quotationId, fileData, fileName } = req.body ?? {};
 
   if (typeof title !== "string" || !title.trim()) {
     return res.status(400).json({ error: "Title is required" });
@@ -116,20 +119,21 @@ router.post("/", requireRole(...DOCUMENT_ROLES), async (req, res) => {
         sizeBytes: file.buffer.byteLength,
         projectId: typeof projectId === "string" && projectId ? projectId : null,
         customerId: typeof customerId === "string" && customerId ? customerId : null,
+        quotationId: typeof quotationId === "string" && quotationId ? quotationId : null,
         uploadedById: req.user!.sub,
       },
       select: DETAIL_SELECT,
     });
     res.status(201).json({ document });
   } catch (err) {
-    if (isForeignKeyConstraintError(err)) return res.status(400).json({ error: "Project or customer not found" });
+    if (isForeignKeyConstraintError(err)) return res.status(400).json({ error: "Project, customer, or quotation not found" });
     throw err;
   }
 });
 
 router.patch("/:id", requireRole(...DOCUMENT_ROLES), async (req, res) => {
   const id = req.params.id as string;
-  const { title, category, projectId, customerId } = req.body ?? {};
+  const { title, category, projectId, customerId, quotationId } = req.body ?? {};
 
   if (category !== undefined && !CATEGORIES.includes(category)) {
     return res.status(400).json({ error: "Invalid category" });
@@ -140,13 +144,14 @@ router.patch("/:id", requireRole(...DOCUMENT_ROLES), async (req, res) => {
   if (category !== undefined) data.category = category as DocumentCategory;
   if (projectId !== undefined) data.project = projectId ? { connect: { id: projectId } } : { disconnect: true };
   if (customerId !== undefined) data.customer = customerId ? { connect: { id: customerId } } : { disconnect: true };
+  if (quotationId !== undefined) data.quotation = quotationId ? { connect: { id: quotationId } } : { disconnect: true };
 
   try {
     const document = await prisma.document.update({ where: { id }, data, select: DETAIL_SELECT });
     res.json({ document });
   } catch (err) {
     if (isNotFoundError(err)) return res.status(404).json({ error: "Document not found" });
-    if (isForeignKeyConstraintError(err)) return res.status(400).json({ error: "Project or customer not found" });
+    if (isForeignKeyConstraintError(err)) return res.status(400).json({ error: "Project, customer, or quotation not found" });
     throw err;
   }
 });

@@ -7,6 +7,8 @@ export const SALES_ROLES: readonly Role[] = ['ADMIN', 'SALES_OFFICER']
 export const FINANCE_ROLES: readonly Role[] = ['ADMIN', 'FINANCE_OFFICER']
 /** Customer registration/editing: Sales normally owns this, but Finance also needs it (billing contacts, VAT details). */
 export const CUSTOMER_MANAGE_ROLES: readonly Role[] = ['ADMIN', 'SALES_OFFICER', 'FINANCE_OFFICER']
+/** Read-only visibility into the Quote Request queue for Operations Managers, alongside Sales' full edit rights. */
+export const QUOTE_REQUEST_VIEW_ROLES: readonly Role[] = ['ADMIN', 'SALES_OFFICER', 'OPERATIONS_MANAGER']
 export const PROCUREMENT_ROLES: readonly Role[] = ['ADMIN', 'STOREKEEPER']
 export const HR_ROLES: readonly Role[] = ['ADMIN', 'HR_OFFICER']
 /** Read-only "who's around today" visibility for Operations Managers, alongside HR's full edit rights. */
