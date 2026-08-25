@@ -30,18 +30,31 @@ export function generateQuotationPdf(quotation: QuotationForPdf, signatoryName: 
   // Page 1 — cover letter
   drawLetterhead(doc);
   const dateStr = ordinalDate(quotation.issuedAt);
-  doc.font("Helvetica").fontSize(10);
-  doc.text(`Date:  ${dateStr}`);
-  doc.text(`Ref:   ${quotation.quotationNumber}`);
+
+  // Bold label / plain value pairs in a fixed-width label column, matching the real letterhead
+  // template rather than plain "Label: value" strings.
+  const labelX = doc.page.margins.left;
+  const valueX = labelX + 42;
+  const valueWidth = doc.page.width - doc.page.margins.right - valueX;
+  function labelRow(label: string, value: string) {
+    const y = doc.y;
+    doc.font("Helvetica-Bold").fontSize(10).text(label, labelX, y);
+    doc.font("Helvetica").fontSize(10).text(value, valueX, y, { width: valueWidth });
+  }
+  function indentedLine(value: string) {
+    doc.font("Helvetica").fontSize(10).text(value, valueX, doc.y, { width: valueWidth });
+  }
+
+  labelRow("Date:", dateStr);
+  labelRow("Ref:", quotation.quotationNumber);
   doc.moveDown();
-  doc.text("To:");
-  doc.text("The Manager");
-  doc.text(quotation.customer.company || quotation.customer.name);
-  if (quotation.customer.address) doc.text(quotation.customer.address);
+  labelRow("To:", "The Manager");
+  indentedLine(quotation.customer.company || quotation.customer.name);
+  if (quotation.customer.address) indentedLine(quotation.customer.address);
   doc.moveDown();
-  if (quotation.contactPerson) doc.text(`Attn: ${quotation.contactPerson}`);
-  if (quotation.customer.phone) doc.text(`Tel: ${quotation.customer.phone}`);
-  if (quotation.customer.email) doc.text(`Email: ${quotation.customer.email}`);
+  if (quotation.contactPerson) labelRow("Attn:", quotation.contactPerson);
+  if (quotation.customer.phone) labelRow("Tel:", quotation.customer.phone);
+  if (quotation.customer.email) labelRow("Email:", quotation.customer.email);
   doc.moveDown();
   doc
     .moveTo(doc.page.margins.left, doc.y)
