@@ -1,6 +1,6 @@
 export const COMPANY = {
-  name: "Technet Engineering Ltd",
-  addressLines: ["Pont St Louis", "Pailles 11221, Mauritius"],
+  name: "Technet Engineering",
+  addressLines: ["Avenue St Vincent de Paul", "Les Pailles 11221, Mauritius"],
   vat: "27392600",
   brn: "C15134617",
   tel: "+(230) 286 1100",
@@ -22,14 +22,11 @@ export const INVOICE_CONDITIONS = [
   "THE WARRANTY IS VOID IF THE EQUIPMENT IS/ARE ALTERED OR TAMPERED / IMPROPERLY REPAIRED OR SERVICED BY ANY OTHER THAN TECHNET ENGINEERING SERVICE TEAM.",
 ];
 
+/** Terms of payments is deliberately excluded here - it's now driven per-quotation by the actual
+ * selected PaymentTermsTemplate (see quotationPdf.ts), not a fixed default. */
 export const QUOTATION_CONDITIONS: { label: string; value: string }[] = [
   { label: "Prices", value: "Inclusive of custom duties where applicable but exclusive of VAT." },
   { label: "Exchange Rate", value: "Not Applicable" },
-  {
-    label: "Terms of payments",
-    value:
-      "60% Upon Order confirmation, 40% On Installation & Testing. All equipment delivered will remain the property of Technet Engineering Ltd until full payment is effected.",
-  },
   { label: "Delivery period", value: "+/- 3 days" },
   { label: "Validity", value: "15 Calendar days" },
   {
@@ -47,4 +44,22 @@ export const QUOTATION_CONDITIONS: { label: string; value: string }[] = [
     value:
       "The Warranty does not apply (i) any product that has been damaged by abuse, misuse, tampering, fire or water higher than specified voltage, electronic disruption, lighting or (ii) damage resulting from damage to case or interior component modules or acts of God. THE WARRANTY IS VOID IF THE EQUIPMENT IS/ARE ALTERED OR TAMPERED / IMPROPERLY REPAIRED OR SERVICED BY ANYONE OTHER THAN TECHNET'S SERVICE TEAM.",
   },
+  { label: "Countries of Origin", value: "n/a" },
+  { label: "Exclusions", value: "Cable Ways: n/a\nMasonry Works: n/a\nExternal Works: n/a" },
 ];
+
+/** Human-readable rendering of a Quotation's paymentTerms enum, for the Conditions of Sale page. */
+export function paymentTermsDescription(paymentTerms: string): string {
+  const schedule = (() => {
+    switch (paymentTerms) {
+      case "SPLIT_60_40_20":
+        return "60% Upon Order confirmation\n40% On Installation & Testing\n20% Upon Completion";
+      case "SPLIT_50_50":
+        return "50% Upon Order confirmation\n50% On Installation & Testing";
+      case "FULL_ON_CONFIRMATION":
+      default:
+        return "100% Upon Order confirmation";
+    }
+  })();
+  return `${schedule}\n\nAll equipment delivered will remain the property of Technet Engineering Ltd until full payment is effected.`;
+}
