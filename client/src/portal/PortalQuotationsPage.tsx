@@ -5,11 +5,35 @@ import type { Quotation } from '../lib/api'
 import { Panel, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { quotationStatusTone } from '../erp/statusTones'
 import { formatMoney } from '../lib/format'
+import { useToast } from '../dashboard/ToastContext'
 
 function PortalQuotationsPage() {
+  const toast = useToast()
   const [quotations, setQuotations] = useState<Quotation[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [downloadingId, setDownloadingId] = useState<string | null>(null)
+
+  async function handleDownloadPdf(q: Quotation) {
+    setDownloadingId(q.id)
+    try {
+      const res = await fetch(api.portalQuotationPdfUrl(q.id), { credentials: 'include' })
+      if (!res.ok) throw new Error('Failed to download PDF')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${q.quotationNumber}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to download PDF')
+    } finally {
+      setDownloadingId(null)
+    }
+  }
 
   useEffect(() => {
     api
@@ -56,15 +80,15 @@ function PortalQuotationsPage() {
                   <td className="px-5 py-3 text-ink-100">{formatMoney(q.total)}</td>
                   <td className="px-5 py-3 text-ink-400">{new Date(q.issuedAt).toLocaleDateString()}</td>
                   <td className="px-5 py-3">
-                    <a
-                      href={api.portalQuotationPdfUrl(q.id)}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center gap-1.5 text-xs text-cyan-accent hover:underline"
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadPdf(q)}
+                      disabled={downloadingId === q.id}
+                      className="flex items-center gap-1.5 text-xs text-cyan-accent hover:underline disabled:opacity-50"
                     >
                       <Download className="h-3.5 w-3.5" />
-                      PDF
-                    </a>
+                      {downloadingId === q.id ? 'Downloading…' : 'PDF'}
+                    </button>
                   </td>
                 </tr>
               ))}
