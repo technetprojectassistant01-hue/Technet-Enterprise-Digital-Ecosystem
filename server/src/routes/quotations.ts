@@ -420,17 +420,44 @@ router.post("/", requireRole(...SALES_ROLES), async (req, res) => {
 
 router.patch("/:id", requireRole(...SALES_ROLES), async (req, res) => {
   const id = req.params.id as string;
-  const { title, contactPerson, status, expiresAt, poReference } = req.body ?? {};
+  const {
+    title,
+    contactPerson,
+    status,
+    expiresAt,
+    poReference,
+    customerId,
+    vatRate,
+    paymentTerms,
+    availabilityStatus,
+    orderDays,
+    items,
+  } = req.body ?? {};
 
   if (status !== undefined && !STATUSES.includes(status)) {
     return res.status(400).json({ error: "Invalid status" });
   }
-  if (status !== undefined) {
-    const current = await prisma.quotation.findUnique({ where: { id }, select: { status: true } });
-    if (!current) return res.status(404).json({ error: "Quotation not found" });
-    if (!ALLOWED_TRANSITIONS[current.status].includes(status)) {
-      return res.status(400).json({ error: `Cannot move a quotation from ${current.status} to ${status}` });
-    }
+
+  const current = await prisma.quotation.findUnique({ where: { id }, include: { items: true } });
+  if (!current) return res.status(404).json({ error: "Quotation not found" });
+
+  if (status !== undefined && !ALLOWED_TRANSITIONS[current.status].includes(status)) {
+    return res.status(400).json({ error: `Cannot move a quotation from ${current.status} to ${status}` });
+  }
+
+  // Customer, pricing, and line items are only editable while still a Draft - once sent, the
+  // document has gone to the customer and shouldn't silently change underneath them.
+  const editingDraftOnlyFields =
+    customerId !== undefined ||
+    vatRate !== undefined ||
+    paymentTerms !== undefined ||
+    availabilityStatus !== undefined ||
+    orderDays !== undefined ||
+    items !== undefined;
+  if (editingDraftOnlyFields && current.status !== "DRAFT") {
+    return res
+      .status(400)
+      .json({ error: "Only draft quotations can have their customer, pricing, or line items edited" });
   }
 
   const data: Prisma.QuotationUpdateInput = {};
@@ -439,6 +466,51 @@ router.patch("/:id", requireRole(...SALES_ROLES), async (req, res) => {
   if (status !== undefined) data.status = status as QuotationStatus;
   if (expiresAt !== undefined) data.expiresAt = expiresAt ? new Date(expiresAt) : null;
   if (poReference !== undefined) data.poReference = typeof poReference === "string" && poReference.trim() ? poReference.trim() : null;
+  if (customerId !== undefined) {
+    if (typeof customerId !== "string" || !customerId) return res.status(400).json({ error: "customerId is required" });
+    data.customer = { connect: { id: customerId } };
+  }
+
+  let newItems: QuotationItemInput[] | undefined;
+  if (items !== undefined) {
+    const itemsResult = validateItems(items);
+    if ("error" in itemsResult) return res.status(400).json({ error: itemsResult.error });
+    newItems = itemsResult.items;
+  }
+  if (paymentTerms !== undefined || availabilityStatus !== undefined || orderDays !== undefined) {
+    const extras = parseQuotationExtras({ paymentTerms, availabilityStatus, orderDays });
+    if ("error" in extras) return res.status(400).json({ error: extras.error });
+    data.paymentTerms = extras.paymentTerms;
+    data.availabilityStatus = extras.availabilityStatus;
+    data.orderDays = extras.orderDays;
+  }
+  if (vatRate !== undefined && (!Number.isFinite(vatRate) || vatRate < 0)) {
+    return res.status(400).json({ error: "VAT rate must be a non-negative number" });
+  }
+
+  // Recompute totals if the line items or VAT rate changed.
+  if (newItems || vatRate !== undefined) {
+    const effectiveItems: QuotationItemInput[] =
+      newItems ||
+      current.items.map((i) => ({ description: i.description, quantity: i.quantity, unitPrice: Number(i.unitPrice) }));
+    const effectiveRate = vatRate !== undefined ? Number(vatRate) : Number(current.vatRate);
+    const subtotal = effectiveItems.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
+    const vatAmount = subtotal * (effectiveRate / 100);
+    data.vatRate = effectiveRate;
+    data.subtotal = subtotal;
+    data.vatAmount = vatAmount;
+    data.total = subtotal + vatAmount;
+    if (newItems) {
+      data.items = {
+        deleteMany: {},
+        create: newItems.map((item) => ({
+          description: item.description.trim(),
+          quantity: Math.trunc(item.quantity),
+          unitPrice: item.unitPrice,
+        })),
+      };
+    }
+  }
 
   try {
     const quotation = await prisma.quotation.update({
@@ -457,6 +529,7 @@ router.patch("/:id", requireRole(...SALES_ROLES), async (req, res) => {
     res.json({ quotation });
   } catch (err) {
     if (isNotFoundError(err)) return res.status(404).json({ error: "Quotation not found" });
+    if (isForeignKeyConstraintError(err)) return res.status(400).json({ error: "Customer not found" });
     throw err;
   }
 });

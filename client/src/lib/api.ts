@@ -503,6 +503,13 @@ export interface QuotationUpdateInput {
   status?: QuotationStatus
   expiresAt?: string | null
   poReference?: string | null
+  // Draft-only fields - the server rejects these once the quotation has been sent.
+  customerId?: string
+  vatRate?: number
+  paymentTerms?: PaymentTermsTemplate
+  availabilityStatus?: QuotationAvailability | null
+  orderDays?: number | null
+  items?: SalesLineItemInput[]
 }
 
 export function updateQuotation(id: string, input: QuotationUpdateInput) {

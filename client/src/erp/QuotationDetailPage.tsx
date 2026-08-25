@@ -1,9 +1,16 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, Download, Mail, X, Trash2, Upload, Paperclip } from 'lucide-react'
+import { ArrowLeft, Download, Mail, X, Trash2, Upload, Paperclip, Pencil } from 'lucide-react'
 import * as api from '../lib/api'
-import type { Quotation, QuotationFollowUp, QuotationFollowUpOutcome, Document } from '../lib/api'
-import { QUOTATION_FOLLOWUP_OUTCOMES } from '../lib/api'
+import type {
+  Quotation,
+  QuotationFollowUp,
+  QuotationFollowUpOutcome,
+  Document,
+  PaymentTermsTemplate,
+  QuotationAvailability,
+} from '../lib/api'
+import { QUOTATION_FOLLOWUP_OUTCOMES, PAYMENT_TERMS_OPTIONS } from '../lib/api'
 import { Panel, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { primaryButtonClass, secondaryButtonClass, dangerButtonClass } from '../dashboard/buttonStyles'
 import { useToast } from '../dashboard/ToastContext'
@@ -12,6 +19,8 @@ import { useAuth } from '../context/AuthContext'
 import { hasRole, SALES_ROLES } from '../lib/permissions'
 import { quotationStatusTone } from './statusTones'
 import { formatMoney } from '../lib/format'
+import { useCustomers } from './useCustomers'
+import SalesLineItemsEditor, { EMPTY_SALES_LINE_ITEM, type SalesLineItemRow } from './SalesLineItemsEditor'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -49,11 +58,23 @@ function QuotationDetailPage() {
   const confirm = useConfirm()
   const { user } = useAuth()
   const canWrite = hasRole(user?.role, SALES_ROLES)
+  const customers = useCustomers()
 
   const [quotation, setQuotation] = useState<Quotation | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [updating, setUpdating] = useState(false)
+
+  const [editingItems, setEditingItems] = useState(false)
+  const [editCustomerId, setEditCustomerId] = useState('')
+  const [editVatRate, setEditVatRate] = useState('15')
+  const [editPaymentTerms, setEditPaymentTerms] = useState<PaymentTermsTemplate>('FULL_ON_CONFIRMATION')
+  const [editIncludesOrder, setEditIncludesOrder] = useState(false)
+  const [editAvailabilityStatus, setEditAvailabilityStatus] = useState<QuotationAvailability>('IN_STOCK')
+  const [editOrderDays, setEditOrderDays] = useState('')
+  const [editItems, setEditItems] = useState<SalesLineItemRow[]>([{ ...EMPTY_SALES_LINE_ITEM }])
+  const [editError, setEditError] = useState<string | null>(null)
+  const [savingItems, setSavingItems] = useState(false)
 
   const [poReference, setPoReference] = useState('')
   const [savingPoReference, setSavingPoReference] = useState(false)
@@ -126,6 +147,58 @@ function QuotationDetailPage() {
       toast.error(err instanceof Error ? err.message : 'Failed to update status')
     } finally {
       setUpdating(false)
+    }
+  }
+
+  function openEditItems() {
+    if (!quotation) return
+    setEditCustomerId(quotation.customerId)
+    setEditVatRate(String(Number(quotation.vatRate)))
+    setEditPaymentTerms(quotation.paymentTerms)
+    setEditIncludesOrder(!!quotation.availabilityStatus)
+    setEditAvailabilityStatus(quotation.availabilityStatus || 'IN_STOCK')
+    setEditOrderDays(quotation.orderDays ? String(quotation.orderDays) : '')
+    setEditItems(
+      quotation.items.map((item) => ({
+        description: item.description,
+        quantity: String(item.quantity),
+        unitPrice: item.unitPrice,
+      })),
+    )
+    setEditError(null)
+    setEditingItems(true)
+  }
+
+  async function handleSaveItems(e: FormEvent) {
+    e.preventDefault()
+    setEditError(null)
+    if (!quotation) return
+    if (!editCustomerId) return setEditError('Select a customer')
+    if (editIncludesOrder && editAvailabilityStatus === 'ORDER_PENDING' && (!editOrderDays.trim() || Number(editOrderDays) <= 0)) {
+      return setEditError('Enter how many days until the order is received')
+    }
+
+    setSavingItems(true)
+    try {
+      await api.updateQuotation(quotation.id, {
+        customerId: editCustomerId,
+        vatRate: Number(editVatRate) || 0,
+        paymentTerms: editPaymentTerms,
+        availabilityStatus: editIncludesOrder ? editAvailabilityStatus : null,
+        orderDays: editIncludesOrder && editAvailabilityStatus === 'ORDER_PENDING' ? Number(editOrderDays) : null,
+        items: editItems.map((item) => ({
+          description: item.description,
+          quantity: Number(item.quantity),
+          unitPrice: Number(item.unitPrice),
+        })),
+      })
+      toast.success('Quotation updated')
+      setEditingItems(false)
+      load()
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : 'Failed to save changes')
+    } finally {
+      setSavingItems(false)
     }
   }
 
@@ -366,45 +439,149 @@ function QuotationDetailPage() {
         </Panel>
       </div>
 
-      <Panel title="Line Items">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
-                <th className="px-3 py-3 font-semibold">#</th>
-                <th className="px-3 py-3 font-semibold">DESCRIPTION</th>
-                <th className="px-3 py-3 font-semibold">QTY</th>
-                <th className="px-3 py-3 font-semibold">UNIT PRICE</th>
-                <th className="px-3 py-3 font-semibold">TOTAL AMOUNT</th>
-              </tr>
-            </thead>
-            <tbody>
-              {quotation.items.map((item, i) => (
-                <tr key={item.id} className="border-b border-ink-800 last:border-0">
-                  <td className="px-3 py-3 align-top font-mono text-xs text-ink-500">{String(i + 1).padStart(2, '0')}</td>
-                  <td className="whitespace-pre-wrap px-3 py-3 font-medium text-ink-100">{item.description}</td>
-                  <td className="px-3 py-3 align-top text-ink-300">{item.quantity}</td>
-                  <td className="px-3 py-3 align-top text-ink-300">{formatMoney(item.unitPrice)}</td>
-                  <td className="px-3 py-3 align-top text-ink-100">{formatMoney(Number(item.unitPrice) * item.quantity)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div className="mt-4 flex flex-col items-end gap-1 text-sm">
-          <div className="flex w-56 justify-between text-ink-300">
-            <span>Subtotal</span>
-            <span>{formatMoney(quotation.subtotal)}</span>
-          </div>
-          <div className="flex w-56 justify-between text-ink-300">
-            <span>VAT ({Number(quotation.vatRate)}%)</span>
-            <span>{formatMoney(quotation.vatAmount)}</span>
-          </div>
-          <div className="flex w-56 justify-between border-t border-ink-700 pt-1 font-semibold text-cyan-accent">
-            <span>Total</span>
-            <span>{formatMoney(quotation.total)}</span>
-          </div>
-        </div>
+      <Panel
+        title="Line Items"
+        action={
+          canWrite &&
+          quotation.status === 'DRAFT' &&
+          !editingItems && (
+            <button type="button" onClick={openEditItems} className={secondaryButtonClass}>
+              <Pencil className="h-4 w-4" />
+              Edit
+            </button>
+          )
+        }
+      >
+        {editingItems ? (
+          <form onSubmit={handleSaveItems} className="flex flex-col gap-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={labelClass}>CUSTOMER</label>
+                <select value={editCustomerId} onChange={(e) => setEditCustomerId(e.target.value)} className={`mt-2 ${inputClass}`}>
+                  <option value="">Select a customer</option>
+                  {customers.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.company || c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={labelClass}>PAYMENT TERMS</label>
+                <select
+                  value={editPaymentTerms}
+                  onChange={(e) => setEditPaymentTerms(e.target.value as PaymentTermsTemplate)}
+                  className={`mt-2 ${inputClass}`}
+                >
+                  {PAYMENT_TERMS_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="max-w-[200px]">
+              <label className={labelClass}>VAT %</label>
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                value={editVatRate}
+                onChange={(e) => setEditVatRate(e.target.value)}
+                className={`mt-2 ${inputClass}`}
+              />
+            </div>
+
+            <div className="rounded-md border border-ink-700 px-4 py-3">
+              <label className="flex items-center gap-2 text-sm text-ink-200">
+                <input type="checkbox" checked={editIncludesOrder} onChange={(e) => setEditIncludesOrder(e.target.checked)} />
+                This quotation includes a product order (not just installation/service labor)
+              </label>
+              {editIncludesOrder && (
+                <div className="mt-3 grid grid-cols-2 gap-4">
+                  <div>
+                    <label className={labelClass}>AVAILABILITY</label>
+                    <select
+                      value={editAvailabilityStatus}
+                      onChange={(e) => setEditAvailabilityStatus(e.target.value as QuotationAvailability)}
+                      className={`mt-2 ${inputClass}`}
+                    >
+                      <option value="IN_STOCK">In stock</option>
+                      <option value="ORDER_PENDING">Order to be received in...</option>
+                    </select>
+                  </div>
+                  {editAvailabilityStatus === 'ORDER_PENDING' && (
+                    <div>
+                      <label className={labelClass}>DAYS FROM CONFIRMATION</label>
+                      <input
+                        type="number"
+                        min={1}
+                        value={editOrderDays}
+                        onChange={(e) => setEditOrderDays(e.target.value)}
+                        className={`mt-2 ${inputClass}`}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <SalesLineItemsEditor items={editItems} onChange={setEditItems} />
+
+            {editError && <p className="text-sm text-red-400">{editError}</p>}
+
+            <div className="flex gap-3">
+              <button type="submit" disabled={savingItems} className={primaryButtonClass}>
+                {savingItems ? 'Saving…' : 'Save Changes'}
+              </button>
+              <button type="button" onClick={() => setEditingItems(false)} className={secondaryButtonClass}>
+                Cancel
+              </button>
+            </div>
+          </form>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
+                    <th className="px-3 py-3 font-semibold">#</th>
+                    <th className="px-3 py-3 font-semibold">DESCRIPTION</th>
+                    <th className="px-3 py-3 font-semibold">QTY</th>
+                    <th className="px-3 py-3 font-semibold">UNIT PRICE</th>
+                    <th className="px-3 py-3 font-semibold">TOTAL AMOUNT</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {quotation.items.map((item, i) => (
+                    <tr key={item.id} className="border-b border-ink-800 last:border-0">
+                      <td className="px-3 py-3 align-top font-mono text-xs text-ink-500">{String(i + 1).padStart(2, '0')}</td>
+                      <td className="whitespace-pre-wrap px-3 py-3 font-medium text-ink-100">{item.description}</td>
+                      <td className="px-3 py-3 align-top text-ink-300">{item.quantity}</td>
+                      <td className="px-3 py-3 align-top text-ink-300">{formatMoney(item.unitPrice)}</td>
+                      <td className="px-3 py-3 align-top text-ink-100">{formatMoney(Number(item.unitPrice) * item.quantity)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="mt-4 flex flex-col items-end gap-1 text-sm">
+              <div className="flex w-56 justify-between text-ink-300">
+                <span>Subtotal</span>
+                <span>{formatMoney(quotation.subtotal)}</span>
+              </div>
+              <div className="flex w-56 justify-between text-ink-300">
+                <span>VAT ({Number(quotation.vatRate)}%)</span>
+                <span>{formatMoney(quotation.vatAmount)}</span>
+              </div>
+              <div className="flex w-56 justify-between border-t border-ink-700 pt-1 font-semibold text-cyan-accent">
+                <span>Total</span>
+                <span>{formatMoney(quotation.total)}</span>
+              </div>
+            </div>
+          </>
+        )}
       </Panel>
 
       <Panel title="Attachments">
