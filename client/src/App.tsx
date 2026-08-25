@@ -15,6 +15,7 @@ import InvoiceDetailPage from './erp/InvoiceDetailPage'
 import ExpensesPage from './erp/ExpensesPage'
 import QuotationsPage from './erp/QuotationsPage'
 import QuotationDetailPage from './erp/QuotationDetailPage'
+import QuotationFollowUpPage from './erp/QuotationFollowUpPage'
 import ContractsPage from './erp/ContractsPage'
 import HrLayout from './erp/hr/HrLayout'
 import HrOverviewPage from './erp/hr/HrOverviewPage'
@@ -92,6 +93,7 @@ function App() {
                 <Route path="expenses" element={<ExpensesPage />} />
                 <Route path="quotations" element={<QuotationsPage />} />
                 <Route path="quotations/:id" element={<QuotationDetailPage />} />
+                <Route path="follow-up" element={<QuotationFollowUpPage />} />
                 <Route path="contracts" element={<ContractsPage />} />
               </Route>
               <Route path="procurement" element={<ProcurementLayout />}>
