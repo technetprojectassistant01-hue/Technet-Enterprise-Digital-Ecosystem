@@ -263,6 +263,20 @@ requirement without either party noticing.
   generated PDF to actual PNGs for visual comparison — caught a real bug this way (`drawFooterBanner`
   drawing text past the bottom margin silently triggered PDFKit's auto-pagination, inserting a blank
   page after every page; fixed by zeroing `doc.page.margins.bottom` during that one draw call).
+- **PDF reworked again against a real issued quotation** (2026-08-25, `f43aa4a`): the 2026-08-27 rebuild
+  above was checked against a company address only, not a full real document — this pass used an actual
+  issued Technet quotation PDF the user supplied and closed several real gaps: the logo was upgraded
+  from a small icon to the full "TECHNET ENGINEERING" wordmark lockup (cropped straight from the real
+  PDF at high res via `pdf-to-png-converter` + `sharp` in `pw-check/`, since the icon and wordmark are
+  one integrated device in the real logo — not reproducible as separate PDFKit text next to a plain
+  icon); cover-letter labels (Date/Ref/To/Attn/Tel/Email) are now bold in a fixed label column instead
+  of manually spaced plain strings; the BOQ and Conditions-of-Sale tables switched from a solid
+  dark-cyan header fill with white text to the real template's pale-blue (`#daeef3`) header/title bars
+  with black text and full per-cell grid borders (`#5fb8c9`); BOQ currency moved into the column header
+  (`Unit Price (MUR)` / `Total (MUR)`) instead of repeating "MUR" on every row; and the footer banner
+  recolored to the brand's actual brighter teal (`#01bbd2`) and a closer navy (`#0d5c70`). Same
+  render-to-PNG verification method as before, this time compared page-by-page against the real
+  reference rather than eyeballing single fields.
 
 ## 11. SDD vs. actual implementation — known divergences
 
