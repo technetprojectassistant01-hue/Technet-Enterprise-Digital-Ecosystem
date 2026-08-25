@@ -25,6 +25,7 @@ const categoryTone: Record<DocumentCategory, 'neutral' | 'accent' | 'warning' | 
   HR: 'neutral',
   PROJECT: 'success',
   GENERAL: 'neutral',
+  QUOTATION: 'accent',
 }
 
 function formatSize(bytes: number) {

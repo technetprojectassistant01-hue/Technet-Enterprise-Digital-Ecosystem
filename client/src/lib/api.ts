@@ -2099,7 +2099,7 @@ export function interventionPhotoUrl(id: string, photoId: string) {
 
 // ---------- Document Management ----------
 
-export type DocumentCategory = 'CONTRACT' | 'INVOICE' | 'HR' | 'PROJECT' | 'GENERAL'
+export type DocumentCategory = 'CONTRACT' | 'INVOICE' | 'HR' | 'PROJECT' | 'GENERAL' | 'QUOTATION'
 
 export const DOCUMENT_CATEGORY_LABELS: Record<DocumentCategory, string> = {
   CONTRACT: 'Contract',
@@ -2107,6 +2107,7 @@ export const DOCUMENT_CATEGORY_LABELS: Record<DocumentCategory, string> = {
   HR: 'HR',
   PROJECT: 'Project',
   GENERAL: 'General',
+  QUOTATION: 'Quotation',
 }
 
 export interface Document {
@@ -2120,6 +2121,8 @@ export interface Document {
   project: { id: string; name: string } | null
   customerId: string | null
   customer: CustomerSummary | null
+  quotationId: string | null
+  quotation: { id: string; quotationNumber: string } | null
   uploadedBy: { id: string; name: string | null; email: string }
   createdAt: string
 }
@@ -2129,15 +2132,19 @@ export interface DocumentInput {
   category?: DocumentCategory
   projectId?: string | null
   customerId?: string | null
+  quotationId?: string | null
   fileData: string
   fileName: string
 }
 
-export function listDocuments(params: { category?: DocumentCategory; projectId?: string; customerId?: string; search?: string } = {}) {
+export function listDocuments(
+  params: { category?: DocumentCategory; projectId?: string; customerId?: string; quotationId?: string; search?: string } = {},
+) {
   const query = new URLSearchParams()
   if (params.category) query.set('category', params.category)
   if (params.projectId) query.set('projectId', params.projectId)
   if (params.customerId) query.set('customerId', params.customerId)
+  if (params.quotationId) query.set('quotationId', params.quotationId)
   if (params.search) query.set('search', params.search)
   const qs = query.toString()
   return request<{ documents: Document[] }>(`/api/documents${qs ? `?${qs}` : ''}`)
@@ -2155,6 +2162,7 @@ export interface DocumentUpdateInput {
   category?: DocumentCategory
   projectId?: string | null
   customerId?: string | null
+  quotationId?: string | null
 }
 
 export function updateDocument(id: string, input: DocumentUpdateInput) {
