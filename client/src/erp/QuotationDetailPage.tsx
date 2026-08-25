@@ -94,6 +94,7 @@ function QuotationDetailPage() {
   const [documentsLoading, setDocumentsLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [emailing, setEmailing] = useState(false)
+  const [downloading, setDownloading] = useState(false)
 
   function load() {
     if (!id) return
@@ -290,6 +291,28 @@ function QuotationDetailPage() {
     }
   }
 
+  async function handleDownloadPdf() {
+    if (!quotation) return
+    setDownloading(true)
+    try {
+      const res = await fetch(api.quotationPdfUrl(quotation.id), { credentials: 'include' })
+      if (!res.ok) throw new Error('Failed to download PDF')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${quotation.quotationNumber}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to download PDF')
+    } finally {
+      setDownloading(false)
+    }
+  }
+
   async function handleEmailCustomer() {
     if (!quotation) return
     setEmailing(true)
@@ -346,10 +369,10 @@ function QuotationDetailPage() {
         </div>
 
         <div className="flex flex-wrap gap-3">
-          <a href={api.quotationPdfUrl(quotation.id)} target="_blank" rel="noreferrer" className={secondaryButtonClass}>
+          <button type="button" onClick={handleDownloadPdf} disabled={downloading} className={secondaryButtonClass}>
             <Download className="h-4 w-4" />
-            Download PDF
-          </a>
+            {downloading ? 'Downloading…' : 'Download PDF'}
+          </button>
           <button type="button" onClick={handleEmailCustomer} disabled={emailing} className={primaryButtonClass}>
             <Mail className="h-4 w-4" />
             {emailing ? 'Preparing…' : 'Email Customer'}
