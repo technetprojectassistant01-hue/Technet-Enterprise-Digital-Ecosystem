@@ -243,6 +243,23 @@ requirement without either party noticing.
   Orders/Intervention Reports filter row (no submit button) rather than Inventory's search-button
   pattern — status/date support already existed server-side from the rework but wasn't exposed in the
   UI; text search and customer filtering are new.
+- **PDF rebuilt to match the real Technet letterhead** (added 2026-08-27, `server/src/lib/pdf/`): the
+  user supplied an actual issued quotation PDF as the reference. This surfaced a real, pre-existing
+  bug independent of styling — `company.ts`'s address was simply wrong ("Pont St Louis" instead of
+  "Avenue St Vincent de Paul, Les Pailles 11221, Mauritius"), and since `COMPANY`/`drawLetterhead` are
+  shared, this had been wrong on every Invoice PDF too, not just Quotations. Also fixed: BRN/VAT field
+  order, missing website line, ordinal date formatting ("27th August"), a dynamic "Terms of payments"
+  row on Conditions of Sale that now reads the quotation's real `paymentTerms` (previously hardcoded
+  to 60/40 regardless of what was actually selected), and the cover-letter greeting now uses
+  `contactPerson` for "Dear [FirstName]," instead of a generic "Dear Sir/Madam,". New
+  `drawBoxedItemsTable`/`drawKeyValueTable` in `shared.ts` render the BOQ and Conditions-of-Sale
+  sections as actual bordered tables (quotation-only — Invoice keeps the older
+  `drawItemsTable`/`drawTotals` pair, which still renders correctly, just not reference-matched since
+  no real invoice sample was supplied). Verification method worth remembering: this repo has no local
+  PDF rasterizer, so `npm install --no-save pdf-to-png-converter` inside `pw-check/` renders a
+  generated PDF to actual PNGs for visual comparison — caught a real bug this way (`drawFooterBanner`
+  drawing text past the bottom margin silently triggered PDFKit's auto-pagination, inserting a blank
+  page after every page; fixed by zeroing `doc.page.margins.bottom` during that one draw call).
 
 ## 11. SDD vs. actual implementation — known divergences
 
