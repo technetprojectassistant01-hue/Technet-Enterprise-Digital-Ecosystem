@@ -1,8 +1,12 @@
 import type { Prisma } from "../../generated/prisma/client";
 import { COMPANY } from "./company";
-import { LOGO_ICON_BASE64 } from "./assets/logo";
+import { LOGO_LOCKUP_BASE64 } from "./assets/logo";
 
-const LOGO_BUFFER = Buffer.from(LOGO_ICON_BASE64, "base64");
+const LOGO_BUFFER = Buffer.from(LOGO_LOCKUP_BASE64, "base64");
+/** Real aspect ratio of the cropped lockup PNG (720x406) - height = width * this. */
+const LOGO_ASPECT = 406 / 720;
+const LOGO_WIDTH = 170;
+const LOGO_HEIGHT = LOGO_WIDTH * LOGO_ASPECT;
 
 export type Money = Prisma.Decimal | number | string;
 
@@ -19,13 +23,13 @@ export function drawLetterhead(doc: PDFKit.PDFDocument, _title?: string) {
   const right = doc.page.width - doc.page.margins.right;
   const top = doc.y;
 
-  doc.image(LOGO_BUFFER, left, top, { width: 40 });
-  doc.font("Helvetica-Bold").fontSize(15).fillColor("#1a1a1a").text("TECHNET", left + 48, top - 2, { continued: true });
-  doc.fillColor("#0891b2").text(" ENGINEERING");
-  doc.font("Helvetica-Oblique").fontSize(6.5).fillColor("#555555").text(COMPANY.tagline, left + 48, top + 16);
-  doc.fillColor("#000000");
+  // Single combined image (icon + "TECHNET ENGINEERING" wordmark + tagline), cropped from the
+  // company's real issued-quotation letterhead rather than redrawn as separate text - the icon
+  // and "T" of the wordmark are one integrated device in the real logo, not reproducible with
+  // PDFKit's built-in fonts alone.
+  doc.image(LOGO_BUFFER, left, top, { width: LOGO_WIDTH });
 
-  const addrX = left + 220;
+  const addrX = left + LOGO_WIDTH + 20;
   doc.font("Helvetica-Bold").fontSize(11).fillColor("#000000").text(COMPANY.name, addrX, top, { width: right - addrX, align: "right" });
   doc.font("Helvetica").fontSize(8).fillColor("#333333");
   doc.text(COMPANY.addressLines.join(", "), addrX, doc.y, { width: right - addrX, align: "right" });
@@ -34,9 +38,7 @@ export function drawLetterhead(doc: PDFKit.PDFDocument, _title?: string) {
   doc.text(`BRN: ${COMPANY.brn}   VAT: ${COMPANY.vat}`, addrX, doc.y, { width: right - addrX, align: "right" });
   doc.fillColor("#000000");
 
-  const afterHeaderY = Math.max(doc.y, top + 55);
-  doc.moveTo(left, afterHeaderY + 6).lineTo(right, afterHeaderY + 6).strokeColor("#0891b2").lineWidth(2).stroke();
-  doc.strokeColor("#000000").lineWidth(1);
+  const afterHeaderY = Math.max(doc.y, top + LOGO_HEIGHT);
   doc.y = afterHeaderY + 16;
 }
 
@@ -50,8 +52,8 @@ export function drawFooterBanner(doc: PDFKit.PDFDocument) {
   const savedBottomMargin = doc.page.margins.bottom;
   doc.page.margins.bottom = 0;
 
-  doc.rect(0, y, pageWidth, barHeight).fill("#0f2a33");
-  doc.rect(0, y, pageWidth * 0.18, barHeight).fill("#0891b2");
+  doc.rect(0, y, pageWidth, barHeight).fill("#0d5c70");
+  doc.rect(0, y, pageWidth * 0.18, barHeight).fill("#01bbd2");
   doc
     .font("Helvetica-Bold")
     .fontSize(8)
@@ -91,18 +93,17 @@ export function drawKeyValueTable(doc: PDFKit.PDFDocument, title: string, rows: 
   }
 
   ensureSpace(30);
-  doc.rect(left, doc.y, width, 20).fill("#0891b2");
-  doc.fillColor("#ffffff").font("Helvetica-Bold").fontSize(11).text(title, left, doc.y + 5, { width, align: "center" });
-  doc.fillColor("#000000");
-  doc.y += 20;
+  doc.rect(left, doc.y, width, 22).fillAndStroke("#daeef3", "#5fb8c9");
+  doc.fillColor("#000000").font("Helvetica-Bold").fontSize(11).text(title, left, doc.y + 6, { width, align: "center", underline: true });
+  doc.y += 22;
 
   for (const row of rows) {
     const valueHeight = doc.font("Helvetica").fontSize(8).heightOfString(row.value, { width: colValue - 12 });
     const rowHeight = Math.max(valueHeight + 10, 22);
     ensureSpace(rowHeight);
     const y = doc.y;
-    doc.rect(left, y, colLabel, rowHeight).fillAndStroke("#f0f9fa", "#0891b2");
-    doc.rect(left + colLabel, y, colValue, rowHeight).stroke("#0891b2");
+    doc.rect(left, y, colLabel, rowHeight).stroke("#5fb8c9");
+    doc.rect(left + colLabel, y, colValue, rowHeight).stroke("#5fb8c9");
     doc.font("Helvetica-Bold").fontSize(8).fillColor("#000000").text(row.label, left + 6, y + 6, { width: colLabel - 12 });
     doc.font("Helvetica").fontSize(8).fillColor("#000000").text(row.value, left + colLabel + 6, y + 6, { width: colValue - 12 });
     doc.y = y + rowHeight;
@@ -198,28 +199,42 @@ export function drawBoxedItemsTable(
     }
   }
 
+  const GRID = "#5fb8c9";
+  const PALE = "#daeef3";
+  const colX = [left, left + colNo, left + colNo + colDesc, left + colNo + colDesc + colQty, left + colNo + colDesc + colQty + colUnit, right];
+
+  function vGrid(y0: number, y1: number) {
+    for (const x of colX) doc.moveTo(x, y0).lineTo(x, y1).strokeColor(GRID).lineWidth(0.75).stroke();
+  }
+
+  function formatNumber(value: Money): string {
+    return Number(value).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
   const boxStartY = doc.y;
 
   // Title bar
-  const titleHeight = refLine ? 32 : 20;
-  doc.rect(left, boxStartY, width, titleHeight).fill("#e8f7f9");
-  doc.fillColor("#000000").font("Helvetica-Bold").fontSize(10).text(title, left + 8, boxStartY + 6, { width: width - 16, align: "center" });
+  const titleHeight = refLine ? 32 : 22;
+  doc.rect(left, boxStartY, width, titleHeight).fill(PALE);
+  doc.fillColor("#000000").font("Helvetica-Bold").fontSize(10).text(title, left + 8, boxStartY + 7, { width: width - 16, align: "center" });
   if (refLine) {
-    doc.font("Helvetica").fontSize(8).text(refLine, left + 8, boxStartY + 20, { width: width - 16, align: "center" });
+    doc.font("Helvetica").fontSize(8).text(refLine, left + 8, boxStartY + 21, { width: width - 16, align: "center" });
   }
   doc.y = boxStartY + titleHeight;
 
-  // Column header row
+  // Column header row - currency unit lives in the header, not repeated on every row.
   const headerY = doc.y;
-  doc.rect(left, headerY, width, 20).fill("#0891b2");
-  doc.fillColor("#ffffff").font("Helvetica-Bold").fontSize(9);
-  doc.text("Item", left + 4, headerY + 6, { width: colNo - 4 });
-  doc.text("Description", left + colNo + 4, headerY + 6, { width: colDesc - 8 });
-  doc.text("Qty", left + colNo + colDesc, headerY + 6, { width: colQty - 4, align: "right" });
-  doc.text("Unit Price", left + colNo + colDesc + colQty, headerY + 6, { width: colUnit - 4, align: "right" });
-  doc.text("Total", left + colNo + colDesc + colQty + colUnit, headerY + 6, { width: colAmount - 4, align: "right" });
-  doc.fillColor("#000000");
-  doc.y = headerY + 20;
+  const headerHeight = 26;
+  doc.rect(left, headerY, width, headerHeight).fill(PALE);
+  doc.fillColor("#000000").font("Helvetica-Bold").fontSize(9);
+  doc.text("Item", left + 4, headerY + 9, { width: colNo - 4 });
+  doc.text("Description", left + colNo + 4, headerY + 9, { width: colDesc - 8 });
+  doc.text("Qty", left + colNo + colDesc, headerY + 9, { width: colQty - 4, align: "right" });
+  doc.text("Unit Price\n(MUR)", left + colNo + colDesc + colQty, headerY + 4, { width: colUnit - 8, align: "right" });
+  doc.text("Total\n(MUR)", left + colNo + colDesc + colQty + colUnit, headerY + 4, { width: colAmount - 8, align: "right" });
+  doc.y = headerY + headerHeight;
+  vGrid(headerY, doc.y);
+  doc.moveTo(left, headerY).lineTo(right, headerY).strokeColor(GRID).lineWidth(0.75).stroke();
 
   // Item rows
   items.forEach((item, index) => {
@@ -228,37 +243,44 @@ export function drawBoxedItemsTable(
     ensureSpace(rowHeight);
     const y = doc.y;
     doc.font("Helvetica").fontSize(9);
-    doc.text(String(index + 1).padStart(2, "0"), left + 4, y, { width: colNo - 4 });
+    doc.text(`${index + 1}.0`, left + 4, y, { width: colNo - 4 });
     doc.text(item.description, left + colNo + 4, y, { width: colDesc - 8 });
     doc.text(String(item.quantity), left + colNo + colDesc, y, { width: colQty - 4, align: "right" });
-    doc.text(formatMoney(item.unitPrice), left + colNo + colDesc + colQty, y, { width: colUnit - 4, align: "right" });
-    doc.text(formatMoney(amount), left + colNo + colDesc + colQty + colUnit, y, { width: colAmount - 4, align: "right" });
-    doc.moveTo(left, y + rowHeight).lineTo(right, y + rowHeight).strokeColor("#d0d0d0").lineWidth(0.5).stroke();
-    doc.strokeColor("#000000").lineWidth(1);
-    doc.y = y + rowHeight;
+    doc.text(formatNumber(item.unitPrice), left + colNo + colDesc + colQty, y, { width: colUnit - 8, align: "right" });
+    doc.text(formatNumber(amount), left + colNo + colDesc + colQty + colUnit, y, { width: colAmount - 8, align: "right" });
+    const nextY = y + rowHeight;
+    vGrid(y, nextY);
+    doc.moveTo(left, nextY).lineTo(right, nextY).strokeColor(GRID).lineWidth(0.75).stroke();
+    doc.y = nextY;
   });
 
-  // Totals rows, inside the same box - label cell + value cell, matching the item table's columns
+  // Totals rows, inside the same box - label cell + value cell, matching the item table's columns,
+  // shaded the same pale blue as the header to set them apart from the white item rows.
   const totalsLabelWidth = colNo + colDesc + colQty + colUnit;
 
   function totalsRow(label: string, value: string, bold: boolean) {
-    const rowH = bold ? 22 : 18;
+    const rowH = bold ? 24 : 20;
     ensureSpace(rowH);
     const y = doc.y;
-    doc.font(bold ? "Helvetica-Bold" : "Helvetica").fontSize(bold ? 10 : 9);
-    doc.text(label, left, y + (bold ? 6 : 4), { width: totalsLabelWidth - 8, align: "right" });
+    doc.rect(left, y, width, rowH).fill(PALE);
+    doc.font(bold ? "Helvetica-Bold" : "Helvetica").fontSize(bold ? 10 : 9).fillColor("#000000");
+    doc.text(label, left, y + (bold ? 7 : 5), { width: totalsLabelWidth - 8, align: "right" });
     doc.font(bold ? "Helvetica-Bold" : "Helvetica-Oblique");
-    doc.text(value, left + totalsLabelWidth, y + (bold ? 6 : 4), { width: colAmount - 8, align: "right" });
-    doc.y = y + rowH;
+    doc.text(value, left + totalsLabelWidth, y + (bold ? 7 : 5), { width: colAmount - 8, align: "right" });
+    const nextY = y + rowH;
+    doc.moveTo(left + totalsLabelWidth, y).lineTo(left + totalsLabelWidth, nextY).strokeColor(GRID).lineWidth(0.75).stroke();
+    doc.moveTo(left, nextY).lineTo(right, nextY).strokeColor(GRID).lineWidth(0.75).stroke();
+    doc.y = nextY;
   }
 
-  totalsRow("Sub Total", formatMoney(subtotal), false);
-  totalsRow(`VAT @ ${Number(vatRate)}%`, formatMoney(vatAmount), false);
-  totalsRow("TOTAL (Incl. VAT)", formatMoney(total), true);
+  totalsRow("Sub Total", formatNumber(subtotal), false);
+  totalsRow(`VAT @ ${Number(vatRate)}%`, formatNumber(vatAmount), false);
+  totalsRow("TOTAL (Incl. VAT)", formatNumber(total), true);
 
   // Outer border around the whole box (title + table + totals) - drawn last so it isn't
   // covered by any fills, spans exactly the content height just produced.
-  doc.rect(left, boxStartY, width, doc.y - boxStartY).stroke("#0891b2");
+  doc.rect(left, boxStartY, width, doc.y - boxStartY).stroke(GRID);
+  doc.fillColor("#000000");
   doc.x = left;
   doc.y += 10;
 }
