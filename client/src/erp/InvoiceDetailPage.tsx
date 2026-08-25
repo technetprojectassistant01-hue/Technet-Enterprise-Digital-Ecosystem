@@ -29,6 +29,7 @@ function InvoiceDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [nextStatus, setNextStatus] = useState<InvoiceStatus>('DRAFT')
   const [updating, setUpdating] = useState(false)
+  const [downloading, setDownloading] = useState(false)
 
   function load() {
     if (!id) return
@@ -67,6 +68,28 @@ function InvoiceDetailPage() {
       load()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to update invoice')
+    }
+  }
+
+  async function handleDownloadPdf() {
+    if (!invoice) return
+    setDownloading(true)
+    try {
+      const res = await fetch(api.invoicePdfUrl(invoice.id), { credentials: 'include' })
+      if (!res.ok) throw new Error('Failed to download PDF')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${invoice.invoiceNumber}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to download PDF')
+    } finally {
+      setDownloading(false)
     }
   }
 
@@ -120,10 +143,10 @@ function InvoiceDetailPage() {
               Mark Paid
             </button>
           )}
-          <a href={api.invoicePdfUrl(invoice.id)} target="_blank" rel="noreferrer" className={primaryButtonClass}>
+          <button type="button" onClick={handleDownloadPdf} disabled={downloading} className={primaryButtonClass}>
             <Download className="h-4 w-4" />
-            Download PDF
-          </a>
+            {downloading ? 'Downloading…' : 'Download PDF'}
+          </button>
           {canWrite && (
             <button type="button" onClick={handleDelete} className={dangerButtonClass}>
               <Trash2 className="h-4 w-4" />
