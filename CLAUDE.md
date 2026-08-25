@@ -98,6 +98,8 @@ Role groups used for gating (server `roles.ts` / client `permissions.ts`):
 
 **Customer portal auth is a separate domain, not a 9th `Role`.** Technet Connect (`/portal/*`, added 2026-08-24) does not reuse `Role`/`requireAuth`/`requireRole` at all — a `CustomerPortalUser` login gets its own cookie (`portal_token`, not `token`), its own JWT signing (`server/src/lib/portalJwt.ts`, `verifyPortalToken`) carrying a distinct `audience: "portal"` claim, and its own middleware (`requirePortalAuth`, sets `req.portalUser`, never `req.user`). This was deliberate: adding a `CUSTOMER` role into the existing enum would have meant auditing every broad allow-list (`NON_FIELD_ROLES`, etc.) across dozens of routes to make sure a customer token could never slip through. The `audience` claim is the actual enforcement point — verified in this session that a genuine staff JWT placed directly in the `portal_token` cookie is rejected outright, not just kept out by cookie-name convention.
 
+On the client, note that `AuthProvider` (staff, `client/src/context/AuthContext.tsx`) is mounted at the app root in `main.tsx`, above `<App/>` — so it runs on *every* route including `/portal/*`, even though staff and portal never share a cookie. Fixed 2026-08-25 (`32c1ccf`): its mount-time `/api/auth/me` check now short-circuits when `window.location.pathname` starts with `/portal`, since that call was guaranteed to 401 there and was pure noise. It's still mounted globally (not worth restructuring the provider tree for this), just skips the fetch on portal paths.
+
 ## 7. Technet Operations — the most actively developed area
 
 This is where nearly all recent sessions' work has concentrated. Sub-pages: Work Orders, Daily Reports, Intervention Reports, Team Attendance, Field Operations.
