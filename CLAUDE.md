@@ -168,6 +168,16 @@ linking Invoice generation to a Quotation's payment terms, is deliberately not b
 brief itself flagged it as the biggest unknown, needing its own scoping pass once Invoice's current
 shape (still zero relation to `Quotation`) is worked through. Don't assume it exists.
 
+The first build pass was checked against a *summarized* brief of the meeting, not the raw transcript
+— a 2026-08-26 re-check against the actual recording/transcript (two WhatsApp voice notes) caught one
+real gap that summary had dropped: `Quotation.contactPerson`, explicitly asked for ("Then we will
+have the contact person") and assumed to exist by the Follow-Up module ("normally we will talk to
+the contact person specified in the quotation"). Now built — pre-filled from the customer's name on
+create, editable on the Detail page, and used as the Follow-Up call log's default "spoken to."
+**Lesson**: when a summarized brief is the only source available, treat it as provisional and
+re-verify against the original recording/transcript if it's ever supplied — a summary can drop a
+requirement without either party noticing.
+
 - **Quote Request intake** (`QuotationRequest`, extended not replaced): a request can now arrive two
   ways — a customer submitting via the portal (`source: PORTAL`, auto-set, unchanged from Technet
   Connect) or staff manually logging a phone/email/referral call (`POST
