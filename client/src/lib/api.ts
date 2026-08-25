@@ -477,11 +477,15 @@ export interface QuotationInput {
   items: SalesLineItemInput[]
 }
 
-export function listQuotations(params: { status?: QuotationStatus; from?: string; to?: string } = {}) {
+export function listQuotations(
+  params: { status?: QuotationStatus; from?: string; to?: string; customerId?: string; search?: string } = {},
+) {
   const query = new URLSearchParams()
   if (params.status) query.set('status', params.status)
   if (params.from) query.set('from', params.from)
   if (params.to) query.set('to', params.to)
+  if (params.customerId) query.set('customerId', params.customerId)
+  if (params.search) query.set('search', params.search)
   const qs = query.toString()
   return request<{ quotations: Quotation[] }>(`/api/quotations${qs ? `?${qs}` : ''}`)
 }

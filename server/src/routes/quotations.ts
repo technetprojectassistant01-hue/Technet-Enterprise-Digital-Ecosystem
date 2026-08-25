@@ -140,11 +140,14 @@ async function createWithGeneratedNumber<T>(build: (quotationNumber: string) => 
 router.use(requireAuth, requireRole(...NON_FIELD_ROLES));
 
 router.get("/", async (req, res) => {
-  const { status, from, to } = req.query;
+  const { status, from, to, customerId, search } = req.query;
 
   const where: Prisma.QuotationWhereInput = {};
   if (typeof status === "string" && STATUSES.includes(status as QuotationStatus)) {
     where.status = status as QuotationStatus;
+  }
+  if (typeof customerId === "string" && customerId) {
+    where.customerId = customerId;
   }
   const fromDate = parseDateOnly(from);
   const toDate = parseDateOnly(to);
@@ -152,6 +155,14 @@ router.get("/", async (req, res) => {
     where.issuedAt = {};
     if (fromDate) where.issuedAt.gte = fromDate;
     if (toDate) where.issuedAt.lte = new Date(toDate.getTime() + 24 * 60 * 60 * 1000 - 1);
+  }
+  if (typeof search === "string" && search.trim()) {
+    where.OR = [
+      { quotationNumber: { contains: search, mode: "insensitive" } },
+      { title: { contains: search, mode: "insensitive" } },
+      { customer: { name: { contains: search, mode: "insensitive" } } },
+      { customer: { company: { contains: search, mode: "insensitive" } } },
+    ];
   }
 
   const quotations = await prisma.quotation.findMany({
