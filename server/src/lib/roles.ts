@@ -16,6 +16,9 @@ export const FINANCE_ROLES = ["ADMIN", "FINANCE_OFFICER"] as const;
 
 /** Customer registration/editing: Sales normally owns this, but Finance also needs it (billing contacts, VAT details). */
 export const CUSTOMER_MANAGE_ROLES = ["ADMIN", "SALES_OFFICER", "FINANCE_OFFICER"] as const;
+
+/** Read-only visibility into the Quote Request queue for Operations Managers, alongside Sales' full edit rights. */
+export const QUOTE_REQUEST_VIEW_ROLES = ["ADMIN", "SALES_OFFICER", "OPERATIONS_MANAGER"] as const;
 export const PROCUREMENT_ROLES = ["ADMIN", "STOREKEEPER"] as const;
 export const HR_ROLES = ["ADMIN", "HR_OFFICER"] as const;
 

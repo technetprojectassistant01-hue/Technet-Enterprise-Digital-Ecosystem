@@ -4,12 +4,42 @@ import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { isForeignKeyConstraintError, isNotFoundError, isUniqueConstraintError } from "../lib/prismaErrors";
 import { generateQuotationPdf } from "../lib/pdf/quotationPdf";
-import { SALES_ROLES, NON_FIELD_ROLES } from "../lib/roles";
+import { generateQuotationNumber } from "../lib/quotationNumber";
+import { SALES_ROLES, QUOTE_REQUEST_VIEW_ROLES, NON_FIELD_ROLES } from "../lib/roles";
 import { notifyUser } from "../lib/notifications";
 
 const router = Router();
 const STATUSES = ["DRAFT", "SENT", "ACCEPTED", "REJECTED", "EXPIRED"] as const;
 type QuotationStatus = (typeof STATUSES)[number];
+
+const PAYMENT_TERMS = ["FULL_ON_CONFIRMATION", "SPLIT_60_40_20", "SPLIT_50_50"] as const;
+type PaymentTerms = (typeof PAYMENT_TERMS)[number];
+
+const AVAILABILITY_STATUSES = ["IN_STOCK", "ORDER_PENDING"] as const;
+type AvailabilityStatus = (typeof AVAILABILITY_STATUSES)[number];
+
+const REQUEST_SOURCES = ["EMAIL", "PHONE_CALL", "REFERRER"] as const;
+const REQUEST_CATEGORIES = [
+  "NEW_EQUIPMENT_INSTALL",
+  "AC_INSTALL",
+  "PLUMBING_INSTALL",
+  "ELECTRICAL_INSTALL",
+  "SERVICING",
+  "REPAIRS",
+  "OTHER",
+] as const;
+
+export const QUOTATION_FOLLOWUP_OUTCOMES = [
+  "CALL_BACK",
+  "DECISION_NOT_YET_TAKEN",
+  "DECISION_MAKER_OUT_OF_COUNTRY",
+  "PRICE_NOT_COMPETITIVE",
+  "REVIEW_OTHER_FEATURES",
+  "REVIEW_PRICE",
+  "DELIVERY_DATE_NOT_ACCEPTED",
+  "QUOTATION_NOT_APPROVED",
+  "NOT_IN_BUDGET",
+] as const;
 
 // ACCEPTED/REJECTED/EXPIRED are terminal — without this, nothing stopped a PATCH from moving a
 // quotation back out of a decided state (e.g. REJECTED -> ACCEPTED), which is a real-record-
@@ -30,14 +60,98 @@ interface QuotationItemInput {
 
 const CUSTOMER_SELECT = { id: true, name: true, company: true, address: true, email: true, phone: true, vatNumber: true, taxNumber: true };
 
+function parseDateOnly(value: unknown): Date | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value.trim());
+  if (!match) return null;
+  const date = new Date(`${match[0]}T00:00:00.000Z`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function validateItems(items: unknown): { error: string } | { items: QuotationItemInput[] } {
+  if (!Array.isArray(items) || items.length === 0) {
+    return { error: "At least one line item is required" };
+  }
+  for (const item of items as QuotationItemInput[]) {
+    if (typeof item.description !== "string" || !item.description.trim()) {
+      return { error: "Every line item needs a description" };
+    }
+    if (!Number.isFinite(item.quantity) || item.quantity <= 0) {
+      return { error: "Every line item needs a positive quantity" };
+    }
+    if (!Number.isFinite(item.unitPrice) || item.unitPrice <= 0) {
+      return { error: "Every line item needs a positive unit price" };
+    }
+  }
+  return { items: items as QuotationItemInput[] };
+}
+
+interface QuotationExtras {
+  paymentTerms: PaymentTerms;
+  availabilityStatus: AvailabilityStatus | null;
+  orderDays: number | null;
+}
+
+function parseQuotationExtras(body: {
+  paymentTerms?: unknown;
+  availabilityStatus?: unknown;
+  orderDays?: unknown;
+}): { error: string } | QuotationExtras {
+  const paymentTerms =
+    body.paymentTerms !== undefined && body.paymentTerms !== null ? body.paymentTerms : "FULL_ON_CONFIRMATION";
+  if (!PAYMENT_TERMS.includes(paymentTerms as PaymentTerms)) {
+    return { error: "Invalid payment terms" };
+  }
+
+  if (body.availabilityStatus === undefined || body.availabilityStatus === null || body.availabilityStatus === "") {
+    return { paymentTerms: paymentTerms as PaymentTerms, availabilityStatus: null, orderDays: null };
+  }
+  if (!AVAILABILITY_STATUSES.includes(body.availabilityStatus as AvailabilityStatus)) {
+    return { error: "Invalid availability status" };
+  }
+  if (body.availabilityStatus === "ORDER_PENDING") {
+    if (!Number.isFinite(body.orderDays) || (body.orderDays as number) <= 0) {
+      return { error: "Enter how many days until the order is received" };
+    }
+    return {
+      paymentTerms: paymentTerms as PaymentTerms,
+      availabilityStatus: "ORDER_PENDING",
+      orderDays: Math.trunc(body.orderDays as number),
+    };
+  }
+  return { paymentTerms: paymentTerms as PaymentTerms, availabilityStatus: "IN_STOCK", orderDays: null };
+}
+
+/** Retries on a quotation-number collision (two near-simultaneous creates same day) - real volume
+ * here is a handful a day, so a short retry loop is simpler than a dedicated sequence table. */
+async function createWithGeneratedNumber<T>(build: (quotationNumber: string) => Promise<T>): Promise<T> {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const quotationNumber = await generateQuotationNumber();
+    try {
+      return await build(quotationNumber);
+    } catch (err) {
+      if (isUniqueConstraintError(err) && attempt < 4) continue;
+      throw err;
+    }
+  }
+  throw new Error("Failed to generate a unique quotation number");
+}
+
 router.use(requireAuth, requireRole(...NON_FIELD_ROLES));
 
 router.get("/", async (req, res) => {
-  const { status } = req.query;
+  const { status, from, to } = req.query;
 
   const where: Prisma.QuotationWhereInput = {};
   if (typeof status === "string" && STATUSES.includes(status as QuotationStatus)) {
     where.status = status as QuotationStatus;
+  }
+  const fromDate = parseDateOnly(from);
+  const toDate = parseDateOnly(to);
+  if (fromDate || toDate) {
+    where.issuedAt = {};
+    if (fromDate) where.issuedAt.gte = fromDate;
+    if (toDate) where.issuedAt.lte = new Date(toDate.getTime() + 24 * 60 * 60 * 1000 - 1);
   }
 
   const quotations = await prisma.quotation.findMany({
@@ -49,11 +163,12 @@ router.get("/", async (req, res) => {
 });
 
 /* ------------------------------------------------------------------ *
- * Quote requests (Technet Connect) - must be declared before GET /:id,
- * otherwise Express would match "quote-requests" as an :id.
+ * Quote requests (Technet Connect portal + manual staff intake) - must
+ * be declared before GET /:id, otherwise Express would match
+ * "quote-requests" as an :id.
  * ------------------------------------------------------------------ */
 
-router.get("/quote-requests", requireRole(...SALES_ROLES), async (req, res) => {
+router.get("/quote-requests", requireRole(...QUOTE_REQUEST_VIEW_ROLES), async (req, res) => {
   const { status } = req.query;
   const where: Prisma.QuotationRequestWhereInput = {};
   if (typeof status === "string" && ["PENDING", "CONVERTED", "DECLINED"].includes(status)) {
@@ -68,9 +183,80 @@ router.get("/quote-requests", requireRole(...SALES_ROLES), async (req, res) => {
   res.json({ requests });
 });
 
+/** Manual staff intake ("Client Request Form") - a call/email/referral logged before pricing exists.
+ * Distinct from the portal's own POST /api/portal/quote-requests, which always sets source=PORTAL
+ * and never reaches this route. */
+router.post("/quote-requests", requireRole(...SALES_ROLES), async (req, res) => {
+  const {
+    customerId,
+    companyName,
+    contactEmail,
+    contactPhone,
+    contactTitle,
+    otherContactName,
+    otherContactPhone,
+    source,
+    requestFor,
+    requestForOther,
+    description,
+    remarks,
+  } = req.body ?? {};
+
+  const hasCustomer = typeof customerId === "string" && customerId;
+  const hasCompanyName = typeof companyName === "string" && companyName.trim();
+  if (!hasCustomer && !hasCompanyName) {
+    return res.status(400).json({ error: "Select an existing customer or enter a company name" });
+  }
+  if (!REQUEST_SOURCES.includes(source)) {
+    return res.status(400).json({ error: "Source must be email, phone call, or referrer" });
+  }
+  if (requestFor !== undefined && requestFor !== null && requestFor !== "" && !REQUEST_CATEGORIES.includes(requestFor)) {
+    return res.status(400).json({ error: "Invalid request category" });
+  }
+  if (requestFor === "OTHER" && (typeof requestForOther !== "string" || !requestForOther.trim())) {
+    return res.status(400).json({ error: "Describe the request when choosing Other" });
+  }
+  if (typeof description !== "string" || !description.trim()) {
+    return res.status(400).json({ error: "Description is required" });
+  }
+
+  try {
+    const request = await prisma.quotationRequest.create({
+      data: {
+        customerId: hasCustomer ? customerId : null,
+        companyName: hasCustomer ? null : (companyName as string).trim(),
+        contactEmail: typeof contactEmail === "string" && contactEmail ? contactEmail : null,
+        contactPhone: typeof contactPhone === "string" && contactPhone ? contactPhone : null,
+        contactTitle: typeof contactTitle === "string" && contactTitle ? contactTitle : null,
+        otherContactName: typeof otherContactName === "string" && otherContactName ? otherContactName : null,
+        otherContactPhone: typeof otherContactPhone === "string" && otherContactPhone ? otherContactPhone : null,
+        source,
+        requestFor: requestFor || null,
+        requestForOther: requestFor === "OTHER" ? (requestForOther as string).trim() : null,
+        description: description.trim(),
+        remarks: typeof remarks === "string" && remarks.trim() ? remarks.trim() : null,
+      },
+      include: { customer: { select: CUSTOMER_SELECT } },
+    });
+    res.status(201).json({ request });
+  } catch (err) {
+    if (isForeignKeyConstraintError(err)) return res.status(400).json({ error: "Customer not found" });
+    throw err;
+  }
+});
+
 router.post("/quote-requests/:id/convert", requireRole(...SALES_ROLES), async (req, res) => {
   const id = req.params.id as string;
-  const { quotationNumber, title, vatRate, expiresAt, items } = req.body ?? {};
+  const {
+    customerId: bodyCustomerId,
+    title,
+    vatRate,
+    expiresAt,
+    items,
+    paymentTerms,
+    availabilityStatus,
+    orderDays,
+  } = req.body ?? {};
 
   const request = await prisma.quotationRequest.findUnique({ where: { id } });
   if (!request) return res.status(404).json({ error: "Quote request not found" });
@@ -78,58 +264,55 @@ router.post("/quote-requests/:id/convert", requireRole(...SALES_ROLES), async (r
     return res.status(400).json({ error: `This request was already ${request.status.toLowerCase()}` });
   }
 
-  if (typeof quotationNumber !== "string" || !quotationNumber.trim()) {
-    return res.status(400).json({ error: "Quotation number is required" });
+  const customerId = request.customerId || (typeof bodyCustomerId === "string" && bodyCustomerId ? bodyCustomerId : null);
+  if (!customerId) {
+    return res.status(400).json({ error: "This request has no linked customer yet - select or create one before converting" });
   }
+
   if (typeof title !== "string" || !title.trim()) {
     return res.status(400).json({ error: "Title is required" });
   }
   if (vatRate !== undefined && (!Number.isFinite(vatRate) || vatRate < 0)) {
     return res.status(400).json({ error: "VAT rate must be a non-negative number" });
   }
-  if (!Array.isArray(items) || items.length === 0) {
-    return res.status(400).json({ error: "At least one line item is required" });
-  }
-  for (const item of items as QuotationItemInput[]) {
-    if (typeof item.description !== "string" || !item.description.trim()) {
-      return res.status(400).json({ error: "Every line item needs a description" });
-    }
-    if (!Number.isFinite(item.quantity) || item.quantity <= 0) {
-      return res.status(400).json({ error: "Every line item needs a positive quantity" });
-    }
-    if (!Number.isFinite(item.unitPrice) || item.unitPrice <= 0) {
-      return res.status(400).json({ error: "Every line item needs a positive unit price" });
-    }
-  }
+  const itemsResult = validateItems(items);
+  if ("error" in itemsResult) return res.status(400).json({ error: itemsResult.error });
+  const extras = parseQuotationExtras({ paymentTerms, availabilityStatus, orderDays });
+  if ("error" in extras) return res.status(400).json({ error: extras.error });
 
   const rate = vatRate !== undefined ? Number(vatRate) : 15;
-  const subtotal = (items as QuotationItemInput[]).reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
+  const subtotal = itemsResult.items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
   const vatAmount = subtotal * (rate / 100);
   const total = subtotal + vatAmount;
 
   try {
-    const quotation = await prisma.quotation.create({
-      data: {
-        customerId: request.customerId,
-        quotationNumber: quotationNumber.trim(),
-        title: title.trim(),
-        status: "DRAFT",
-        vatRate: rate,
-        subtotal,
-        vatAmount,
-        total,
-        expiresAt: expiresAt ? new Date(expiresAt) : null,
-        createdById: req.user!.sub,
-        items: {
-          create: (items as QuotationItemInput[]).map((item) => ({
-            description: item.description.trim(),
-            quantity: Math.trunc(item.quantity),
-            unitPrice: item.unitPrice,
-          })),
+    const quotation = await createWithGeneratedNumber((quotationNumber) =>
+      prisma.quotation.create({
+        data: {
+          customerId,
+          quotationNumber,
+          title: title.trim(),
+          status: "DRAFT",
+          vatRate: rate,
+          subtotal,
+          vatAmount,
+          total,
+          paymentTerms: extras.paymentTerms,
+          availabilityStatus: extras.availabilityStatus,
+          orderDays: extras.orderDays,
+          expiresAt: expiresAt ? new Date(expiresAt) : null,
+          createdById: req.user!.sub,
+          items: {
+            create: itemsResult.items.map((item) => ({
+              description: item.description.trim(),
+              quantity: Math.trunc(item.quantity),
+              unitPrice: item.unitPrice,
+            })),
+          },
         },
-      },
-      include: { customer: { select: CUSTOMER_SELECT }, items: true },
-    });
+        include: { customer: { select: CUSTOMER_SELECT }, items: true },
+      }),
+    );
 
     await prisma.quotationRequest.update({
       where: { id },
@@ -138,7 +321,7 @@ router.post("/quote-requests/:id/convert", requireRole(...SALES_ROLES), async (r
 
     res.status(201).json({ quotation });
   } catch (err) {
-    if (isUniqueConstraintError(err)) return res.status(409).json({ error: "A quotation with that number already exists" });
+    if (isForeignKeyConstraintError(err)) return res.status(400).json({ error: "Customer not found" });
     throw err;
   }
 });
@@ -175,69 +358,57 @@ router.get("/:id", async (req, res) => {
 });
 
 router.post("/", requireRole(...SALES_ROLES), async (req, res) => {
-  const { customerId, quotationNumber, title, status, vatRate, expiresAt, items } = req.body ?? {};
+  const { customerId, title, vatRate, expiresAt, items, paymentTerms, availabilityStatus, orderDays } = req.body ?? {};
 
   if (typeof customerId !== "string" || !customerId) {
     return res.status(400).json({ error: "customerId is required" });
   }
-  if (typeof quotationNumber !== "string" || !quotationNumber.trim()) {
-    return res.status(400).json({ error: "Quotation number is required" });
-  }
   if (typeof title !== "string" || !title.trim()) {
     return res.status(400).json({ error: "Title is required" });
-  }
-  if (status !== undefined && !STATUSES.includes(status)) {
-    return res.status(400).json({ error: "Invalid status" });
   }
   if (vatRate !== undefined && (!Number.isFinite(vatRate) || vatRate < 0)) {
     return res.status(400).json({ error: "VAT rate must be a non-negative number" });
   }
-  if (!Array.isArray(items) || items.length === 0) {
-    return res.status(400).json({ error: "At least one line item is required" });
-  }
-  for (const item of items as QuotationItemInput[]) {
-    if (typeof item.description !== "string" || !item.description.trim()) {
-      return res.status(400).json({ error: "Every line item needs a description" });
-    }
-    if (!Number.isFinite(item.quantity) || item.quantity <= 0) {
-      return res.status(400).json({ error: "Every line item needs a positive quantity" });
-    }
-    if (!Number.isFinite(item.unitPrice) || item.unitPrice <= 0) {
-      return res.status(400).json({ error: "Every line item needs a positive unit price" });
-    }
-  }
+  const itemsResult = validateItems(items);
+  if ("error" in itemsResult) return res.status(400).json({ error: itemsResult.error });
+  const extras = parseQuotationExtras({ paymentTerms, availabilityStatus, orderDays });
+  if ("error" in extras) return res.status(400).json({ error: extras.error });
 
   const rate = vatRate !== undefined ? Number(vatRate) : 15;
-  const subtotal = (items as QuotationItemInput[]).reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
+  const subtotal = itemsResult.items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
   const vatAmount = subtotal * (rate / 100);
   const total = subtotal + vatAmount;
 
   try {
-    const quotation = await prisma.quotation.create({
-      data: {
-        customerId,
-        quotationNumber: quotationNumber.trim(),
-        title: title.trim(),
-        status: (status as QuotationStatus) || "DRAFT",
-        vatRate: rate,
-        subtotal,
-        vatAmount,
-        total,
-        expiresAt: expiresAt ? new Date(expiresAt) : null,
-        createdById: req.user!.sub,
-        items: {
-          create: (items as QuotationItemInput[]).map((item) => ({
-            description: item.description.trim(),
-            quantity: Math.trunc(item.quantity),
-            unitPrice: item.unitPrice,
-          })),
+    const quotation = await createWithGeneratedNumber((quotationNumber) =>
+      prisma.quotation.create({
+        data: {
+          customerId,
+          quotationNumber,
+          title: title.trim(),
+          status: "DRAFT",
+          vatRate: rate,
+          subtotal,
+          vatAmount,
+          total,
+          paymentTerms: extras.paymentTerms,
+          availabilityStatus: extras.availabilityStatus,
+          orderDays: extras.orderDays,
+          expiresAt: expiresAt ? new Date(expiresAt) : null,
+          createdById: req.user!.sub,
+          items: {
+            create: itemsResult.items.map((item) => ({
+              description: item.description.trim(),
+              quantity: Math.trunc(item.quantity),
+              unitPrice: item.unitPrice,
+            })),
+          },
         },
-      },
-      include: { customer: { select: CUSTOMER_SELECT }, items: true },
-    });
+        include: { customer: { select: CUSTOMER_SELECT }, items: true },
+      }),
+    );
     res.status(201).json({ quotation });
   } catch (err) {
-    if (isUniqueConstraintError(err)) return res.status(409).json({ error: "A quotation with that number already exists" });
     if (isForeignKeyConstraintError(err)) return res.status(400).json({ error: "Customer not found" });
     throw err;
   }
@@ -245,7 +416,7 @@ router.post("/", requireRole(...SALES_ROLES), async (req, res) => {
 
 router.patch("/:id", requireRole(...SALES_ROLES), async (req, res) => {
   const id = req.params.id as string;
-  const { title, status, expiresAt } = req.body ?? {};
+  const { title, status, expiresAt, poReference } = req.body ?? {};
 
   if (status !== undefined && !STATUSES.includes(status)) {
     return res.status(400).json({ error: "Invalid status" });
@@ -262,6 +433,7 @@ router.patch("/:id", requireRole(...SALES_ROLES), async (req, res) => {
   if (typeof title === "string" && title.trim()) data.title = title.trim();
   if (status !== undefined) data.status = status as QuotationStatus;
   if (expiresAt !== undefined) data.expiresAt = expiresAt ? new Date(expiresAt) : null;
+  if (poReference !== undefined) data.poReference = typeof poReference === "string" && poReference.trim() ? poReference.trim() : null;
 
   try {
     const quotation = await prisma.quotation.update({
@@ -282,6 +454,52 @@ router.patch("/:id", requireRole(...SALES_ROLES), async (req, res) => {
     if (isNotFoundError(err)) return res.status(404).json({ error: "Quotation not found" });
     throw err;
   }
+});
+
+/* ------------------------------------------------------------------ *
+ * Follow-Up of Quotation - call history chasing a client after a
+ * quotation has gone out.
+ * ------------------------------------------------------------------ */
+
+router.get("/:id/follow-ups", requireRole(...SALES_ROLES), async (req, res) => {
+  const id = req.params.id as string;
+  const followUps = await prisma.quotationFollowUp.findMany({
+    where: { quotationId: id },
+    include: { createdBy: { select: { id: true, name: true, email: true } } },
+    orderBy: { calledAt: "desc" },
+  });
+  res.json({ followUps });
+});
+
+router.post("/:id/follow-ups", requireRole(...SALES_ROLES), async (req, res) => {
+  const id = req.params.id as string;
+  const { calledAt, spokenTo, outcome, callScheduledOn } = req.body ?? {};
+
+  const quotation = await prisma.quotation.findUnique({ where: { id }, select: { id: true } });
+  if (!quotation) return res.status(404).json({ error: "Quotation not found" });
+
+  if (typeof spokenTo !== "string" || !spokenTo.trim()) {
+    return res.status(400).json({ error: "Who was spoken to is required" });
+  }
+  if (!QUOTATION_FOLLOWUP_OUTCOMES.includes(outcome)) {
+    return res.status(400).json({ error: "Invalid outcome" });
+  }
+  if (outcome === "CALL_BACK" && !callScheduledOn) {
+    return res.status(400).json({ error: "Call schedule date is required when the outcome is 'call back'" });
+  }
+
+  const followUp = await prisma.quotationFollowUp.create({
+    data: {
+      quotationId: id,
+      calledAt: calledAt ? new Date(calledAt) : undefined,
+      spokenTo: spokenTo.trim(),
+      outcome,
+      callScheduledOn: callScheduledOn ? new Date(callScheduledOn) : null,
+      createdById: req.user!.sub,
+    },
+    include: { createdBy: { select: { id: true, name: true, email: true } } },
+  });
+  res.status(201).json({ followUp });
 });
 
 router.get("/:id/pdf", async (req, res) => {
