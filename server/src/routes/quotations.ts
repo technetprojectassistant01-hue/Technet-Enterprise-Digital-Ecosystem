@@ -250,6 +250,7 @@ router.post("/quote-requests/:id/convert", requireRole(...SALES_ROLES), async (r
   const {
     customerId: bodyCustomerId,
     title,
+    contactPerson,
     vatRate,
     expiresAt,
     items,
@@ -292,6 +293,7 @@ router.post("/quote-requests/:id/convert", requireRole(...SALES_ROLES), async (r
           customerId,
           quotationNumber,
           title: title.trim(),
+          contactPerson: typeof contactPerson === "string" && contactPerson.trim() ? contactPerson.trim() : null,
           status: "DRAFT",
           vatRate: rate,
           subtotal,
@@ -358,7 +360,8 @@ router.get("/:id", async (req, res) => {
 });
 
 router.post("/", requireRole(...SALES_ROLES), async (req, res) => {
-  const { customerId, title, vatRate, expiresAt, items, paymentTerms, availabilityStatus, orderDays } = req.body ?? {};
+  const { customerId, title, contactPerson, vatRate, expiresAt, items, paymentTerms, availabilityStatus, orderDays } =
+    req.body ?? {};
 
   if (typeof customerId !== "string" || !customerId) {
     return res.status(400).json({ error: "customerId is required" });
@@ -386,6 +389,7 @@ router.post("/", requireRole(...SALES_ROLES), async (req, res) => {
           customerId,
           quotationNumber,
           title: title.trim(),
+          contactPerson: typeof contactPerson === "string" && contactPerson.trim() ? contactPerson.trim() : null,
           status: "DRAFT",
           vatRate: rate,
           subtotal,
@@ -416,7 +420,7 @@ router.post("/", requireRole(...SALES_ROLES), async (req, res) => {
 
 router.patch("/:id", requireRole(...SALES_ROLES), async (req, res) => {
   const id = req.params.id as string;
-  const { title, status, expiresAt, poReference } = req.body ?? {};
+  const { title, contactPerson, status, expiresAt, poReference } = req.body ?? {};
 
   if (status !== undefined && !STATUSES.includes(status)) {
     return res.status(400).json({ error: "Invalid status" });
@@ -431,6 +435,7 @@ router.patch("/:id", requireRole(...SALES_ROLES), async (req, res) => {
 
   const data: Prisma.QuotationUpdateInput = {};
   if (typeof title === "string" && title.trim()) data.title = title.trim();
+  if (contactPerson !== undefined) data.contactPerson = typeof contactPerson === "string" && contactPerson.trim() ? contactPerson.trim() : null;
   if (status !== undefined) data.status = status as QuotationStatus;
   if (expiresAt !== undefined) data.expiresAt = expiresAt ? new Date(expiresAt) : null;
   if (poReference !== undefined) data.poReference = typeof poReference === "string" && poReference.trim() ? poReference.trim() : null;

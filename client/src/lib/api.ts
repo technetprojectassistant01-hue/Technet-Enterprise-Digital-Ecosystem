@@ -449,6 +449,7 @@ export interface Quotation {
   customer: SalesDocumentCustomer
   quotationNumber: string
   title: string
+  contactPerson: string | null
   status: QuotationStatus
   vatRate: string
   subtotal: string
@@ -467,6 +468,7 @@ export interface Quotation {
 export interface QuotationInput {
   customerId: string
   title: string
+  contactPerson?: string
   vatRate?: number
   expiresAt?: string
   paymentTerms: PaymentTermsTemplate
@@ -497,6 +499,7 @@ export function createQuotation(input: QuotationInput) {
 
 export interface QuotationUpdateInput {
   title?: string
+  contactPerson?: string | null
   status?: QuotationStatus
   expiresAt?: string | null
   poReference?: string | null

@@ -58,6 +58,7 @@ function QuoteRequestsTab() {
   const [converting, setConverting] = useState<QuotationRequest | null>(null)
   const [convertCustomerId, setConvertCustomerId] = useState('')
   const [title, setTitle] = useState('')
+  const [contactPerson, setContactPerson] = useState('')
   const [vatRate, setVatRate] = useState('15')
   const [expiresAt, setExpiresAt] = useState('')
   const [paymentTerms, setPaymentTerms] = useState<PaymentTermsTemplate>('FULL_ON_CONFIRMATION')
@@ -132,6 +133,8 @@ function QuoteRequestsTab() {
     setConverting(r)
     setConvertCustomerId(r.customerId || customers[0]?.id || '')
     setTitle(r.description.slice(0, 60))
+    // Prefer the decision-maker if one was recorded on the request, otherwise the customer's own name.
+    setContactPerson(r.otherContactName || r.customer?.name || '')
     setVatRate('15')
     setExpiresAt('')
     setPaymentTerms('FULL_ON_CONFIRMATION')
@@ -155,6 +158,7 @@ function QuoteRequestsTab() {
       const { quotation } = await api.convertQuoteRequest(converting.id, {
         customerId: converting.customerId ? undefined : convertCustomerId,
         title,
+        contactPerson: contactPerson.trim() || undefined,
         vatRate: Number(vatRate) || 0,
         expiresAt: expiresAt || undefined,
         paymentTerms,
@@ -413,6 +417,16 @@ function QuoteRequestsTab() {
                 <input value={title} onChange={(e) => setTitle(e.target.value)} required className={`mt-2 ${inputClass}`} />
               </div>
               <div>
+                <label className={labelClass}>CONTACT PERSON</label>
+                <input
+                  value={contactPerson}
+                  onChange={(e) => setContactPerson(e.target.value)}
+                  className={`mt-2 ${inputClass}`}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
                 <label className={labelClass}>PAYMENT TERMS</label>
                 <select
                   value={paymentTerms}
@@ -426,8 +440,6 @@ function QuoteRequestsTab() {
                   ))}
                 </select>
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={labelClass}>VAT %</label>
                 <input
