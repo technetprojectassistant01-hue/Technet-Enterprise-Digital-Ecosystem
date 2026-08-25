@@ -238,6 +238,11 @@ requirement without either party noticing.
   `pdf-to-png-converter`, since no PDF rasterizer is installed locally) rather than trusting the byte
   output; this caught a real layout bug (the "Item No." header label was too wide for its column and
   wrapped, overlapping the row below) before it shipped.
+- **Quotation Registry filtering** (added 2026-08-26): search (quotation number/title/customer),
+  customer, status, and date-range filters above the table, live-filtered like the Work
+  Orders/Intervention Reports filter row (no submit button) rather than Inventory's search-button
+  pattern — status/date support already existed server-side from the rework but wasn't exposed in the
+  UI; text search and customer filtering are new.
 
 ## 11. SDD vs. actual implementation — known divergences
 
