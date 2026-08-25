@@ -1,8 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, Trash2, FileSignature, Download } from 'lucide-react'
+import { Plus, Trash2, FileSignature, Download, Search } from 'lucide-react'
 import * as api from '../lib/api'
-import type { Quotation, PaymentTermsTemplate, QuotationAvailability } from '../lib/api'
+import type { Quotation, QuotationStatus, PaymentTermsTemplate, QuotationAvailability } from '../lib/api'
 import { PAYMENT_TERMS_OPTIONS } from '../lib/api'
 import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { primaryButtonClass, secondaryButtonClass } from '../dashboard/buttonStyles'
@@ -32,6 +32,12 @@ function QuotationsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState<QuotationStatus | ''>('')
+  const [filterCustomerId, setFilterCustomerId] = useState('')
+  const [from, setFrom] = useState('')
+  const [to, setTo] = useState('')
+
   const [showCreate, setShowCreate] = useState(false)
   const [customerId, setCustomerId] = useState('')
   const [title, setTitle] = useState('')
@@ -50,13 +56,27 @@ function QuotationsPage() {
   function load() {
     setLoading(true)
     api
-      .listQuotations()
+      .listQuotations({
+        status: statusFilter || undefined,
+        customerId: filterCustomerId || undefined,
+        from: from || undefined,
+        to: to || undefined,
+        search: search || undefined,
+      })
       .then(({ quotations }) => setQuotations(quotations))
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load quotations'))
       .finally(() => setLoading(false))
   }
 
-  useEffect(load, [])
+  useEffect(load, [statusFilter, filterCustomerId, from, to, search]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function clearFilters() {
+    setSearch('')
+    setStatusFilter('')
+    setFilterCustomerId('')
+    setFrom('')
+    setTo('')
+  }
 
   function openCreate() {
     setCustomerId(customers[0]?.id || '')
@@ -227,12 +247,74 @@ function QuotationsPage() {
       </div>
 
       <Panel title="Quotation Registry">
+        <div className="mb-4 flex flex-wrap items-end gap-4">
+          <div className="flex max-w-xs flex-1 flex-col gap-1">
+            <label className={labelClass}>SEARCH</label>
+            <div className="flex items-center gap-2 rounded-md border border-ink-700 bg-ink-950 px-3 py-2">
+              <Search className="h-4 w-4 text-ink-400" />
+              <input
+                type="text"
+                placeholder="Number, title, or customer..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full bg-transparent text-sm text-ink-100 placeholder-ink-500 outline-none"
+              />
+            </div>
+          </div>
+          <div className="flex max-w-xs flex-1 flex-col gap-1">
+            <label className={labelClass}>CUSTOMER</label>
+            <select value={filterCustomerId} onChange={(e) => setFilterCustomerId(e.target.value)} className={inputClass}>
+              <option value="">All customers</option>
+              {customers.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.company || c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className={labelClass}>STATUS</label>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as QuotationStatus | '')}
+              className={inputClass}
+            >
+              <option value="">All statuses</option>
+              {(['DRAFT', 'SENT', 'ACCEPTED', 'REJECTED', 'EXPIRED'] as QuotationStatus[]).map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className={labelClass}>FROM</label>
+            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className={inputClass} />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className={labelClass}>TO</label>
+            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className={inputClass} />
+          </div>
+          {(search || filterCustomerId || statusFilter || from || to) && (
+            <button type="button" onClick={clearFilters} className="text-xs font-semibold text-ink-400 hover:text-ink-100">
+              Clear filters
+            </button>
+          )}
+        </div>
+
         {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
 
         {loading ? (
           <TableSkeleton cols={5} />
         ) : quotations.length === 0 ? (
-          <EmptyState icon={FileSignature} message="No quotations yet. Create your first quotation to get started." />
+          <EmptyState
+            icon={FileSignature}
+            message={
+              search || filterCustomerId || statusFilter || from || to
+                ? 'No quotations match these filters.'
+                : 'No quotations yet. Create your first quotation to get started.'
+            }
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
