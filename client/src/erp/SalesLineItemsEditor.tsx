@@ -1,4 +1,5 @@
 import { Plus, Trash2 } from 'lucide-react'
+import { formatMoney } from '../lib/format'
 
 export interface SalesLineItemRow {
   description: string
@@ -34,51 +35,65 @@ function SalesLineItemsEditor({
   return (
     <div className="flex flex-col gap-3">
       <label className="text-xs font-semibold tracking-widest text-ink-400">LINE ITEMS</label>
-      {items.map((row, i) => (
-        <div key={i} className="flex items-end gap-2 rounded-md border border-ink-700 bg-ink-950 p-3">
-          <div className="flex-[3]">
-            <label className={fieldLabelClass}>DESCRIPTION</label>
-            <input
-              value={row.description}
-              onChange={(e) => updateRow(i, { description: e.target.value })}
-              required
-              className={fieldInputClass}
-            />
+      {items.map((row, i) => {
+        const lineTotal = (Number(row.quantity) || 0) * (Number(row.unitPrice) || 0)
+        return (
+          <div key={i} className="rounded-md border border-ink-700 bg-ink-950 p-3">
+            <div className="flex items-start gap-2">
+              <span className="mt-1.5 w-6 shrink-0 font-mono text-[10px] text-ink-500">{String(i + 1).padStart(2, '0')}</span>
+              <div className="flex-1">
+                <label className={fieldLabelClass}>DESCRIPTION</label>
+                <textarea
+                  value={row.description}
+                  onChange={(e) => updateRow(i, { description: e.target.value })}
+                  required
+                  rows={2}
+                  placeholder="e.g. Brand X 12,000 BTU Wall-Mounted Split AC&#10;• Model: AC-12345-INV&#10;• Inverter technology (R32 gas)"
+                  className={`${fieldInputClass} resize-y`}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => removeRow(i)}
+                disabled={items.length === 1}
+                aria-label="Remove line item"
+                className="mt-6 shrink-0 text-ink-400 hover:text-red-400 disabled:opacity-30"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="mt-2 flex items-end gap-2 pl-8">
+              <div className="w-20">
+                <label className={fieldLabelClass}>QTY</label>
+                <input
+                  type="number"
+                  min={1}
+                  value={row.quantity}
+                  onChange={(e) => updateRow(i, { quantity: e.target.value })}
+                  required
+                  className={fieldInputClass}
+                />
+              </div>
+              <div className="w-28">
+                <label className={fieldLabelClass}>UNIT PRICE</label>
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={row.unitPrice}
+                  onChange={(e) => updateRow(i, { unitPrice: e.target.value })}
+                  required
+                  className={fieldInputClass}
+                />
+              </div>
+              <div className="flex-1 text-right">
+                <span className={fieldLabelClass}>TOTAL AMOUNT</span>
+                <div className="mt-1 text-sm font-semibold text-ink-100">{formatMoney(lineTotal)}</div>
+              </div>
+            </div>
           </div>
-          <div className="w-20">
-            <label className={fieldLabelClass}>QTY</label>
-            <input
-              type="number"
-              min={1}
-              value={row.quantity}
-              onChange={(e) => updateRow(i, { quantity: e.target.value })}
-              required
-              className={fieldInputClass}
-            />
-          </div>
-          <div className="w-28">
-            <label className={fieldLabelClass}>UNIT PRICE</label>
-            <input
-              type="number"
-              min={0}
-              step="0.01"
-              value={row.unitPrice}
-              onChange={(e) => updateRow(i, { unitPrice: e.target.value })}
-              required
-              className={fieldInputClass}
-            />
-          </div>
-          <button
-            type="button"
-            onClick={() => removeRow(i)}
-            disabled={items.length === 1}
-            aria-label="Remove line item"
-            className="mb-1.5 shrink-0 text-ink-400 hover:text-red-400 disabled:opacity-30"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
-        </div>
-      ))}
+        )
+      })}
       <div className="flex flex-wrap items-center gap-4">
         <button
           type="button"

@@ -371,19 +371,21 @@ function QuotationDetailPage() {
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
+                <th className="px-3 py-3 font-semibold">#</th>
                 <th className="px-3 py-3 font-semibold">DESCRIPTION</th>
                 <th className="px-3 py-3 font-semibold">QTY</th>
                 <th className="px-3 py-3 font-semibold">UNIT PRICE</th>
-                <th className="px-3 py-3 font-semibold">AMOUNT</th>
+                <th className="px-3 py-3 font-semibold">TOTAL AMOUNT</th>
               </tr>
             </thead>
             <tbody>
-              {quotation.items.map((item) => (
+              {quotation.items.map((item, i) => (
                 <tr key={item.id} className="border-b border-ink-800 last:border-0">
-                  <td className="px-3 py-3 font-medium text-ink-100">{item.description}</td>
-                  <td className="px-3 py-3 text-ink-300">{item.quantity}</td>
-                  <td className="px-3 py-3 text-ink-300">{formatMoney(item.unitPrice)}</td>
-                  <td className="px-3 py-3 text-ink-100">{formatMoney(Number(item.unitPrice) * item.quantity)}</td>
+                  <td className="px-3 py-3 align-top font-mono text-xs text-ink-500">{String(i + 1).padStart(2, '0')}</td>
+                  <td className="whitespace-pre-wrap px-3 py-3 font-medium text-ink-100">{item.description}</td>
+                  <td className="px-3 py-3 align-top text-ink-300">{item.quantity}</td>
+                  <td className="px-3 py-3 align-top text-ink-300">{formatMoney(item.unitPrice)}</td>
+                  <td className="px-3 py-3 align-top text-ink-100">{formatMoney(Number(item.unitPrice) * item.quantity)}</td>
                 </tr>
               ))}
             </tbody>
