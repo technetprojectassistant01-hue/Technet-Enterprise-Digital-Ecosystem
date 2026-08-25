@@ -58,6 +58,9 @@ function QuotationDetailPage() {
   const [poReference, setPoReference] = useState('')
   const [savingPoReference, setSavingPoReference] = useState(false)
 
+  const [contactPersonInput, setContactPersonInput] = useState('')
+  const [savingContactPerson, setSavingContactPerson] = useState(false)
+
   const [followUps, setFollowUps] = useState<QuotationFollowUp[]>([])
   const [followUpsLoading, setFollowUpsLoading] = useState(true)
   const [spokenTo, setSpokenTo] = useState('')
@@ -79,6 +82,10 @@ function QuotationDetailPage() {
       .then(({ quotation }) => {
         setQuotation(quotation)
         setPoReference(quotation.poReference || '')
+        setContactPersonInput(quotation.contactPerson || '')
+        // Default "spoken to" for the next logged call to the quotation's contact person -
+        // but only if the user hasn't already started typing a different name in.
+        setSpokenTo((prev) => prev || quotation.contactPerson || '')
       })
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load quotation'))
       .finally(() => setLoading(false))
@@ -122,6 +129,20 @@ function QuotationDetailPage() {
     }
   }
 
+  async function handleSaveContactPerson() {
+    if (!quotation) return
+    setSavingContactPerson(true)
+    try {
+      await api.updateQuotation(quotation.id, { contactPerson: contactPersonInput.trim() || null })
+      toast.success('Saved')
+      load()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to save')
+    } finally {
+      setSavingContactPerson(false)
+    }
+  }
+
   async function handleSavePoReference() {
     if (!quotation) return
     setSavingPoReference(true)
@@ -151,7 +172,7 @@ function QuotationDetailPage() {
         callScheduledOn: outcome === 'CALL_BACK' ? callScheduledOn : undefined,
       })
       toast.success('Call logged')
-      setSpokenTo('')
+      setSpokenTo(quotation?.contactPerson || '')
       setOutcome('CALL_BACK')
       setCallScheduledOn('')
       loadFollowUps()
@@ -301,6 +322,23 @@ function QuotationDetailPage() {
             {quotation.customer.phone && <div>{quotation.customer.phone}</div>}
             {quotation.customer.address && <div>{quotation.customer.address}</div>}
             {quotation.customer.vatNumber && <div>VAT: {quotation.customer.vatNumber}</div>}
+          </div>
+          <div className="mt-4 border-t border-ink-800 pt-4">
+            <label className={labelClass}>CONTACT PERSON</label>
+            <p className="mt-1 text-xs text-ink-500">Who to talk to about this quotation - defaults for logged calls below.</p>
+            <div className="mt-2 flex items-end gap-2">
+              <input
+                value={contactPersonInput}
+                onChange={(e) => setContactPersonInput(e.target.value)}
+                disabled={!canWrite}
+                className={`flex-1 ${inputClass}`}
+              />
+              {canWrite && (
+                <button type="button" onClick={handleSaveContactPerson} disabled={savingContactPerson} className={secondaryButtonClass}>
+                  {savingContactPerson ? 'Saving…' : 'Save'}
+                </button>
+              )}
+            </div>
           </div>
         </Panel>
 

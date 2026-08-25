@@ -35,6 +35,7 @@ function QuotationsPage() {
   const [showCreate, setShowCreate] = useState(false)
   const [customerId, setCustomerId] = useState('')
   const [title, setTitle] = useState('')
+  const [contactPerson, setContactPerson] = useState('')
   const [vatRate, setVatRate] = useState('15')
   const [expiresAt, setExpiresAt] = useState('')
   const [paymentTerms, setPaymentTerms] = useState<PaymentTermsTemplate>('FULL_ON_CONFIRMATION')
@@ -59,6 +60,7 @@ function QuotationsPage() {
 
   function openCreate() {
     setCustomerId(customers[0]?.id || '')
+    setContactPerson(customers[0]?.name || '')
     setTitle('')
     setVatRate('15')
     setExpiresAt('')
@@ -69,6 +71,13 @@ function QuotationsPage() {
     setItems([{ ...EMPTY_SALES_LINE_ITEM }])
     setFormError(null)
     setShowCreate(true)
+  }
+
+  function handleCustomerChange(id: string) {
+    setCustomerId(id)
+    // Pre-fill the contact person with the customer's own name - a sensible default staff can
+    // override, since the actual decision-maker sometimes differs (see the Follow-Up panel).
+    setContactPerson(customers.find((c) => c.id === id)?.name || '')
   }
 
   const liveSubtotal = items.reduce((sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0), 0)
@@ -97,6 +106,7 @@ function QuotationsPage() {
       await api.createQuotation({
         customerId,
         title,
+        contactPerson: contactPerson.trim() || undefined,
         vatRate: Number(vatRate) || 0,
         expiresAt: expiresAt || undefined,
         paymentTerms,
@@ -276,7 +286,7 @@ function QuotationsPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={labelClass}>CUSTOMER</label>
-                <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className={`mt-2 ${inputClass}`}>
+                <select value={customerId} onChange={(e) => handleCustomerChange(e.target.value)} className={`mt-2 ${inputClass}`}>
                   <option value="">Select a customer</option>
                   {customers.map((c) => (
                     <option key={c.id} value={c.id}>
@@ -289,6 +299,15 @@ function QuotationsPage() {
                 <label className={labelClass}>TITLE</label>
                 <input value={title} onChange={(e) => setTitle(e.target.value)} required className={`mt-2 ${inputClass}`} />
               </div>
+            </div>
+            <div>
+              <label className={labelClass}>CONTACT PERSON</label>
+              <input
+                value={contactPerson}
+                onChange={(e) => setContactPerson(e.target.value)}
+                placeholder="Who to talk to about this quotation"
+                className={`mt-2 ${inputClass}`}
+              />
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div>
