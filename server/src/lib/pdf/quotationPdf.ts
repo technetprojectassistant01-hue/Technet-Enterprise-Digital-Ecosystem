@@ -1,6 +1,6 @@
 import PDFDocument from "pdfkit";
-import { QUOTATION_CONDITIONS } from "./company";
-import { drawItemsTable, drawLetterhead, drawTotals, type Money } from "./shared";
+import { QUOTATION_CONDITIONS, paymentTermsDescription } from "./company";
+import { drawBoxedItemsTable, drawFooterBanner, drawKeyValueTable, drawLetterhead, ordinalDate, type Money } from "./shared";
 
 interface QuotationCustomer {
   name: string;
@@ -13,6 +13,8 @@ interface QuotationCustomer {
 export interface QuotationForPdf {
   quotationNumber: string;
   title: string;
+  contactPerson?: string | null;
+  paymentTerms: string;
   issuedAt: Date;
   vatRate: Money;
   subtotal: Money;
@@ -26,16 +28,18 @@ export function generateQuotationPdf(quotation: QuotationForPdf, signatoryName: 
   const doc = new PDFDocument({ size: "A4", margin: 50, bufferPages: true });
 
   // Page 1 — cover letter
-  const dateStr = quotation.issuedAt.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+  drawLetterhead(doc);
+  const dateStr = ordinalDate(quotation.issuedAt);
   doc.font("Helvetica").fontSize(10);
-  doc.text(`Date: ${dateStr}`);
-  doc.text(`Ref: ${quotation.quotationNumber}`);
+  doc.text(`Date:  ${dateStr}`);
+  doc.text(`Ref:   ${quotation.quotationNumber}`);
   doc.moveDown();
   doc.text("To:");
+  doc.text("The Manager");
   doc.text(quotation.customer.company || quotation.customer.name);
   if (quotation.customer.address) doc.text(quotation.customer.address);
   doc.moveDown();
-  doc.text(`Attn: ${quotation.customer.name}`);
+  if (quotation.contactPerson) doc.text(`Attn: ${quotation.contactPerson}`);
   if (quotation.customer.phone) doc.text(`Tel: ${quotation.customer.phone}`);
   if (quotation.customer.email) doc.text(`Email: ${quotation.customer.email}`);
   doc.moveDown();
@@ -45,30 +49,37 @@ export function generateQuotationPdf(quotation: QuotationForPdf, signatoryName: 
     .stroke();
   doc.moveDown();
 
-  doc.text("Dear Sir/Madam,");
+  const greetingName = quotation.contactPerson ? quotation.contactPerson.trim().split(/\s+/)[0] : null;
+  doc.text(greetingName ? `Dear ${greetingName},` : "Dear Sir/Madam,");
   doc.moveDown();
   doc.font("Helvetica-Bold").text(`Re: ${quotation.title}`);
   doc.font("Helvetica").moveDown();
   doc.text("We refer to the above and are pleased to enclose herewith our best offer as detailed in the BOQ below.");
   doc.moveDown();
-  doc.text("We trust our offer will meet your requirements and look forward to your favourable response.");
+  doc.text("Trust our offer of interest and we await your further favourable instructions.");
   doc.moveDown();
   doc.text("Thanking you and assuring you of our best attention at all times.");
   doc.moveDown(2);
-  doc.text("Yours faithfully");
+  doc.text("Yours faithfully,");
   doc.moveDown(2);
-  doc.text(`For ${signatoryName}`);
+  doc.text(signatoryName);
+  drawFooterBanner(doc);
 
   // Page 2 — BOQ
   doc.addPage();
-  drawLetterhead(doc, "QUOTATION");
-  doc.font("Helvetica-Bold").fontSize(10).text(quotation.title);
-  doc.font("Helvetica").fontSize(9).text(`Quotation Ref: ${quotation.quotationNumber}`);
-  doc.moveDown();
-  drawItemsTable(doc, quotation.items);
-  drawTotals(doc, quotation.subtotal, quotation.vatRate, quotation.vatAmount, quotation.total);
+  drawLetterhead(doc);
+  drawBoxedItemsTable(
+    doc,
+    quotation.title,
+    `Ref: ${quotation.quotationNumber}`,
+    quotation.items,
+    quotation.subtotal,
+    quotation.vatRate,
+    quotation.vatAmount,
+    quotation.total,
+  );
 
-  doc.moveDown(3);
+  doc.moveDown(2);
   doc
     .fontSize(9)
     .text(
@@ -82,15 +93,16 @@ export function generateQuotationPdf(quotation: QuotationForPdf, signatoryName: 
   doc.text("Read & Approved by", doc.page.margins.left, sigY, { width: colWidth, align: "center" });
   doc.text("Signature & Company seal", doc.page.margins.left + colWidth, sigY, { width: colWidth, align: "center" });
   doc.text("Date", doc.page.margins.left + colWidth * 2, sigY, { width: colWidth, align: "center" });
+  drawFooterBanner(doc);
 
   // Page 3 — conditions of sale
   doc.addPage();
-  drawLetterhead(doc, "CONDITIONS OF SALE");
-  for (const condition of QUOTATION_CONDITIONS) {
-    doc.font("Helvetica-Bold").fontSize(9).text(condition.label);
-    doc.font("Helvetica").fontSize(9).text(condition.value);
-    doc.moveDown();
-  }
+  drawLetterhead(doc);
+  // "Terms of payments" is inserted after Exchange Rate, matching the company's own template order.
+  const rows = [...QUOTATION_CONDITIONS];
+  rows.splice(2, 0, { label: "Terms of payments", value: paymentTermsDescription(quotation.paymentTerms) });
+  drawKeyValueTable(doc, "Conditions of Sales", rows);
+  drawFooterBanner(doc);
 
   doc.end();
   return doc;
