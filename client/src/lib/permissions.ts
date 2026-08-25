@@ -5,6 +5,8 @@ import type { Role } from './api'
 // from roles that can't use them, instead of showing a button that 403s.
 export const SALES_ROLES: readonly Role[] = ['ADMIN', 'SALES_OFFICER']
 export const FINANCE_ROLES: readonly Role[] = ['ADMIN', 'FINANCE_OFFICER']
+/** Customer registration/editing: Sales normally owns this, but Finance also needs it (billing contacts, VAT details). */
+export const CUSTOMER_MANAGE_ROLES: readonly Role[] = ['ADMIN', 'SALES_OFFICER', 'FINANCE_OFFICER']
 export const PROCUREMENT_ROLES: readonly Role[] = ['ADMIN', 'STOREKEEPER']
 export const HR_ROLES: readonly Role[] = ['ADMIN', 'HR_OFFICER']
 /** Read-only "who's around today" visibility for Operations Managers, alongside HR's full edit rights. */

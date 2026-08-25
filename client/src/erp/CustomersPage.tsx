@@ -8,7 +8,7 @@ import { downloadCsv } from '../lib/csv'
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
-import { hasRole, SALES_ROLES } from '../lib/permissions'
+import { hasRole, CUSTOMER_MANAGE_ROLES } from '../lib/permissions'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -50,7 +50,7 @@ function CustomersPage() {
   const toast = useToast()
   const confirm = useConfirm()
   const { user } = useAuth()
-  const canWrite = hasRole(user?.role, SALES_ROLES)
+  const canWrite = hasRole(user?.role, CUSTOMER_MANAGE_ROLES)
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

@@ -13,6 +13,9 @@ export type Role = (typeof ALL_ROLES)[number];
 
 export const SALES_ROLES = ["ADMIN", "SALES_OFFICER"] as const;
 export const FINANCE_ROLES = ["ADMIN", "FINANCE_OFFICER"] as const;
+
+/** Customer registration/editing: Sales normally owns this, but Finance also needs it (billing contacts, VAT details). */
+export const CUSTOMER_MANAGE_ROLES = ["ADMIN", "SALES_OFFICER", "FINANCE_OFFICER"] as const;
 export const PROCUREMENT_ROLES = ["ADMIN", "STOREKEEPER"] as const;
 export const HR_ROLES = ["ADMIN", "HR_OFFICER"] as const;
 
