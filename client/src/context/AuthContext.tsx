@@ -16,6 +16,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // Technet Connect (/portal/*) is a separate auth domain (its own cookie, see PortalAuthContext)
+    // and never has a staff session - skip the staff /api/auth/me check there entirely.
+    if (window.location.pathname.startsWith('/portal')) {
+      setLoading(false)
+      return
+    }
     api
       .fetchMe()
       .then(({ user }) => setUser(user))
