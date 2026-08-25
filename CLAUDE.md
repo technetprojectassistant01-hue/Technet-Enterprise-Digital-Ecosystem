@@ -59,11 +59,11 @@ Everyone lands on **Overview** (`/dashboard`) — as of 2026-08-19 this is real,
 |---|---|---|
 | **Technet ERP** | Built | Umbrella for Sales/Finance, Procurement, HR, Projects, Documents, Inventory |
 | — Inventory | Built | Items, stock movements |
-| — Finance | Built | Customers, Invoices (+PDF), Expenses, Quotations (+PDF), Contracts |
+| — Finance | Built | Customers, Invoices (+PDF), Quotations (+PDF, see the Quotation-rework note below), Follow-Up of Quotation, Expenses, Contracts |
 | — Procurement | Built | Suppliers, Requisitions, Purchase Orders (+PDF), goods receipt |
 | — HR | Built | Employee profiles, Leave (types/balances/requests/timesheet, public holiday calendar excluded from working-day counts — added 2026-08-20, manually maintained since several Mauritius holidays are lunar/gazette-dependent), Certifications & Training. **Attendance moved to Technet Workforce 2026-08-20** — see below. |
 | — Projects | Built | Project registry, assignments, status history |
-| — Documents | Built | File storage (DB `Bytes` column, not S3/cloud storage), categorized by Contract/Invoice/HR/Project/General |
+| — Documents | Built | File storage (DB `Bytes` column, not S3/cloud storage), categorized by Contract/Invoice/HR/Project/General/Quotation |
 | **Technet Maintenance** | Built | Assets, Maintenance Contracts, Maintenance Requests, Maintenance Schedule/Reports — built explicitly "from the SDD" per commit history |
 | **Technet Operations** | Built | Work Orders (now with a `WAITING_FOR_PARTS`/`REOPENED` lifecycle, added 2026-08-19), Daily Reports, Intervention Reports, Team Attendance, Field Operations — see §7, this is where most recent work has concentrated |
 | **Technet Workforce** | Built | Restructured 2026-08-20 per manager/stakeholder discussion, to stop ERP HR and Workforce covering the same ground. Three tabs: **Availability** (`/dashboard/workforce/availability`, default landing page) — read-only "who's available today" grouped into Available/On Leave/Absent, built on the existing manual attendance register (no real biometric attendance-machine integration exists — see §11), visible to HR **and Operations Managers** (`WORKFORCE_VIEW_ROLES`) since Operations consults it before assigning jobs, though job assignment itself stays in Operations, not Workforce. **Attendance** (moved from ERP HR — daily register + timesheets, HR-only edit rights). **Payroll** (run creation, per-employee line breakdown, net pay computation, HR-only). |
@@ -93,6 +93,8 @@ Role groups used for gating (server `roles.ts` / client `permissions.ts`):
 - `NON_FIELD_ROLES` / `FIELD_ONLY_ROLES` — as of 2026-08-13, **FIELD_TECHNICIAN and EMPLOYEE are restricted client- and server-side to Overview + Technet Operations + Technet Maintenance only**. They cannot see or hit the API for ERP/Connect/Workforce/Marketing/Insight. This was an explicit request ("everyone is not supposed to see everything") — enforced both by hiding nav items (`NavItem.hiddenFrom`) and by blocking the actual routes server-side (`requireRole(...NON_FIELD_ROLES)` prepended to 11 route files), not just cosmetically. `RoleRoute.tsx` (client) is the reusable route-level gate; `AdminRoute.tsx` is the older admin-only equivalent kept for `/dashboard/users`.
 - Various per-module role groups: `SALES_ROLES`, `FINANCE_ROLES`, `PROCUREMENT_ROLES`, `HR_ROLES`, `DOCUMENT_ROLES`.
 - `WORKFORCE_VIEW_ROLES` = ADMIN, HR_OFFICER, OPERATIONS_MANAGER — added 2026-08-20 for Technet Workforce's Availability view specifically; Attendance edit rights and Payroll stay `HR_ROLES`-only.
+- `CUSTOMER_MANAGE_ROLES` = ADMIN, SALES_OFFICER, FINANCE_OFFICER — added 2026-08-25, customer create/edit access, separate from `SALES_ROLES` since that's also used for Quotations (Finance wasn't asked to gain write access there).
+- `QUOTE_REQUEST_VIEW_ROLES` = ADMIN, SALES_OFFICER, OPERATIONS_MANAGER — added 2026-08-25, read-only visibility into the Quote Request queue for Operations Managers; creating/converting/declining stays `SALES_ROLES`-only. See §10.
 
 **Customer portal auth is a separate domain, not a 9th `Role`.** Technet Connect (`/portal/*`, added 2026-08-24) does not reuse `Role`/`requireAuth`/`requireRole` at all — a `CustomerPortalUser` login gets its own cookie (`portal_token`, not `token`), its own JWT signing (`server/src/lib/portalJwt.ts`, `verifyPortalToken`) carrying a distinct `audience: "portal"` claim, and its own middleware (`requirePortalAuth`, sets `req.portalUser`, never `req.user`). This was deliberate: adding a `CUSTOMER` role into the existing enum would have meant auditing every broad allow-list (`NON_FIELD_ROLES`, etc.) across dozens of routes to make sure a customer token could never slip through. The `audience` claim is the actual enforcement point — verified in this session that a genuine staff JWT placed directly in the `portal_token` cookie is rejected outright, not just kept out by cookie-name convention.
 
@@ -141,7 +143,7 @@ Grouped by domain (not exhaustive on fields — read the schema for that):
 
 - **Auth/Users**: `User` (role, passwordHash), `PasswordResetToken`.
 - **HR**: `Employee` (optionally linked 1:1 to a `User` via `userId` — **this link is required for GPS attendance, payroll, etc. to work for that person**; set via HR → Employees → Edit → "Linked Login"), `Certification`, `TrainingRecord`, `AttendanceRecord` (office clock-in/out, HH:MM strings, separate system from GPS `SiteAttendance`), `LeaveType`/`LeaveBalance`/`LeaveRequest`.
-- **Sales/Finance**: `Customer`, `Contract`, `Quotation`/`QuotationItem`, `Invoice`/`InvoiceItem`, `Expense`.
+- **Sales/Finance**: `Customer`, `Contract`, `Quotation`/`QuotationItem`/`QuotationFollowUp`, `QuotationRequest` (staff-logged intake or portal-submitted, converts into a `Quotation`), `Invoice`/`InvoiceItem`, `Expense`. See §10 for the 2026-08-25 quotation rework.
 - **Procurement**: `Supplier`, `PurchaseOrder`/`PurchaseOrderItem`, `PurchaseRequisition`/`PurchaseRequisitionItem`/`RequisitionStatusHistory`, `GoodsReceipt`/`GoodsReceiptItem`, `InventoryItem`, `StockMovement`.
 - **Projects/Documents**: `Project`, `ProjectAssignment`, `ProjectStatusHistory`, `Document` (bytes stored in-DB).
 - **Operations**: `WorkOrder` (+ `siteLat`/`siteLng`/`siteAddress`), `WorkOrderTechnician`, `SiteAttendance` (+ `verifications`), `SiteVerification`, `DailyWorkReport`/`DailyWorkReportTechnician`/`DailyWorkReportWorkOrder`, `InterventionReport`/`InterventionReportTechnician`/`InterventionReportPhoto`.
@@ -156,6 +158,62 @@ Grouped by domain (not exhaustive on fields — read the schema for that):
 - **Honesty constraints** (a recurring theme — don't fake capabilities that don't exist): no embedded interactive map anywhere (no Google Maps API key configured; every location is a plain `mapLink()` → `google.com/maps?q=lat,lng` URL); GPS "periodic" tracking is inherently foreground-tab-only in a browser SPA (no service worker); geocoding is a free best-effort service, not pinpoint-accurate. These limitations are meant to be surfaced explicitly to the user, not hidden.
 - **Keep the interface simple** — many of Technet's technicians are not highly technical. Prefer extending existing UI surfaces over adding new ones (see §7a — the two-check-in mistake is the cautionary example).
 - Prisma migrations: `prisma migrate dev` can hang indefinitely in this non-interactive shell environment (it waits on an interactive prompt with no stdin attached). If it hangs, kill it and instead hand-write the migration SQL file under `prisma/migrations/<timestamp>_<name>/migration.sql` following the existing folder convention, then apply with `prisma migrate deploy` (non-interactive), then `prisma generate`.
+
+## 10. Sales/Finance — Quotation intake, rework, and Follow-Up (2026-08-25)
+
+Driven by a manager-meeting brief walking through the live quotation screens field by field — saved
+to memory as `project-tede-quotation-rework-brief-20260825`. Five items; item 1 (Finance gaining
+`CUSTOMER_MANAGE_ROLES` alongside Sales/Admin — see §6) and items 2-4 below are done. **Item 5,
+linking Invoice generation to a Quotation's payment terms, is deliberately not built yet** — the
+brief itself flagged it as the biggest unknown, needing its own scoping pass once Invoice's current
+shape (still zero relation to `Quotation`) is worked through. Don't assume it exists.
+
+- **Quote Request intake** (`QuotationRequest`, extended not replaced): a request can now arrive two
+  ways — a customer submitting via the portal (`source: PORTAL`, auto-set, unchanged from Technet
+  Connect) or staff manually logging a phone/email/referral call (`POST
+  /api/quotations/quote-requests`, `SALES_ROLES`-only, new "Log a Request" modal on the Quote
+  Requests tab). Manual requests may have no linked `Customer` yet — `customerId` is nullable, with a
+  free-text `companyName` fallback; converting such a request into a real `Quotation` requires
+  supplying a `customerId` at convert time (`Quotation.customerId` itself is still required, never
+  nullable). Queue **visibility** is `QUOTE_REQUEST_VIEW_ROLES` (ADMIN, SALES_OFFICER,
+  OPERATIONS_MANAGER — Operations Managers can see it but not convert/decline), while creating,
+  converting, and declining stay `SALES_ROLES`-only.
+- **Quotation numbers are now server-generated**, not typed by staff: `Q<YYYYMMDD>-NN`, a counter
+  that resets each day (`server/src/lib/quotationNumber.ts`, `generateQuotationNumber()` + a
+  catch-and-retry loop on unique-constraint collision — no dedicated sequence table, since real
+  volume is a handful of quotations a day). The `status` field is no longer exposed on the New
+  Quotation creation screen (always starts `DRAFT`) — status is now driven from the Follow-Up panel
+  instead (see below).
+- **Payment terms** (`Quotation.paymentTerms`, enum `FULL_ON_CONFIRMATION` / `SPLIT_60_40_20` /
+  `SPLIT_50_50`) and **product-order availability** (`availabilityStatus` IN_STOCK/ORDER_PENDING +
+  `orderDays`, both nullable/optional — not applicable to pure service/install quotations) are new
+  fields, selected on the create form. Line items themselves needed **no schema change** — they were
+  already a fully generic description+qty+price row (`SalesLineItemsEditor.tsx`), so "Labor" and
+  "Transport" are just quick-add buttons pre-filling a row's description, not a new concept.
+- **Attachments**: `Document` gained an optional `quotationId` link (mirrors the existing
+  `projectId`/`customerId` pattern exactly) and a new `QUOTATION` `DocumentCategory` value. Shown on
+  the Quotation Detail page's Attachments panel, reusing the existing 15MB base64-data-URL upload
+  path — no new upload mechanism.
+- **"Email Customer"** (Quotation Detail page): downloads the PDF as a blob then opens a prefilled
+  `mailto:` link. **Deliberately not one-click send** — a `mailto:` link cannot auto-attach a file
+  from a browser for security reasons, so the UI copy states plainly that the downloaded PDF must be
+  attached manually. Don't build or describe this as automated sending.
+- **Follow-Up of Quotation** (new `QuotationFollowUp` model + panel on Quotation Detail, new
+  `/dashboard/erp/finance/follow-up` browse page): call-history log (date, who was spoken to, an
+  `outcome` — deliberately a validated free `String`, not a DB enum, since the office expects this
+  list to grow; see `QUOTATION_FOLLOWUP_OUTCOMES` in both `server/src/routes/quotations.ts` and
+  `client/src/lib/api.ts`, kept in sync manually like the role groups). The brief's
+  Approved/Not-Approved/In-Progress concept **reuses the existing `Quotation.status` enum** rather
+  than adding a duplicate field (a deliberate choice, confirmed with the user) — DRAFT/SENT both
+  display as "In Progress," ACCEPTED as "Approved," REJECTED as "Not Approved." The old generic
+  status-dropdown panel on Quotation Detail was replaced with explicit Mark as Sent / Mark Approved /
+  Mark Not Approved / Mark Expired buttons (same `PATCH` + `ALLOWED_TRANSITIONS` state machine
+  underneath — SENT can only follow DRAFT, so a quotation can't be "approved" before it's sent) plus a
+  `poReference` free-text field recording confirmation/PO receipt.
+- A real gap found and fixed during verification: converting a Quote Request used to leave the
+  Quotations tab showing a stale list (it only loads once on mount) — the new quotation was invisible
+  until a manual refresh. Fixed by navigating straight to the new quotation's own detail page after a
+  successful convert, instead of returning to the tab.
 
 ## 11. SDD vs. actual implementation — known divergences
 
