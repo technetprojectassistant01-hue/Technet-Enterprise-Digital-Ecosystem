@@ -585,6 +585,7 @@ model Quotation {
   customer           Customer               @relation(fields: [customerId], references: [id])
   quotationNumber    String                 @unique
   title              String
+  contactPerson      String?
   status             QuotationStatus        @default(DRAFT)
   vatRate            Decimal                @default(15) @db.Decimal(5, 2)
   subtotal           Decimal                @db.Decimal(14, 2)
