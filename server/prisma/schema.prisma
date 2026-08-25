@@ -94,6 +94,34 @@ enum QuotationStatus {
   EXPIRED
 }
 
+enum PaymentTermsTemplate {
+  FULL_ON_CONFIRMATION
+  SPLIT_60_40_20
+  SPLIT_50_50
+}
+
+enum QuotationAvailability {
+  IN_STOCK
+  ORDER_PENDING
+}
+
+enum RequestSource {
+  EMAIL
+  PHONE_CALL
+  REFERRER
+  PORTAL
+}
+
+enum RequestCategory {
+  NEW_EQUIPMENT_INSTALL
+  AC_INSTALL
+  PLUMBING_INSTALL
+  ELECTRICAL_INSTALL
+  SERVICING
+  REPAIRS
+  OTHER
+}
+
 enum InvoiceStatus {
   DRAFT
   SENT
@@ -130,6 +158,7 @@ enum DocumentCategory {
   HR
   PROJECT
   GENERAL
+  QUOTATION
 }
 
 enum JobCategory {
@@ -256,6 +285,7 @@ model User {
 
   customerPortalUsersGranted CustomerPortalUser[]
   quotationRequestsReviewed  QuotationRequest[]
+  quotationFollowUpsLogged   QuotationFollowUp[]
 
   notifications Notification[]
 
@@ -550,25 +580,46 @@ model Contract {
 }
 
 model Quotation {
-  id              String          @id @default(uuid())
-  customerId      String
-  customer        Customer        @relation(fields: [customerId], references: [id])
-  quotationNumber String          @unique
-  title           String
-  status          QuotationStatus @default(DRAFT)
-  vatRate         Decimal         @default(15) @db.Decimal(5, 2)
-  subtotal        Decimal         @db.Decimal(14, 2)
-  vatAmount       Decimal         @db.Decimal(14, 2)
-  total           Decimal         @db.Decimal(14, 2)
-  issuedAt        DateTime        @default(now())
-  expiresAt       DateTime?
-  createdById     String?
-  createdBy       User?           @relation("QuotationCreator", fields: [createdById], references: [id])
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+  id                 String                 @id @default(uuid())
+  customerId         String
+  customer           Customer               @relation(fields: [customerId], references: [id])
+  quotationNumber    String                 @unique
+  title              String
+  status             QuotationStatus        @default(DRAFT)
+  vatRate            Decimal                @default(15) @db.Decimal(5, 2)
+  subtotal           Decimal                @db.Decimal(14, 2)
+  vatAmount          Decimal                @db.Decimal(14, 2)
+  total              Decimal                @db.Decimal(14, 2)
+  paymentTerms       PaymentTermsTemplate   @default(FULL_ON_CONFIRMATION)
+  availabilityStatus QuotationAvailability?
+  orderDays          Int?
+  poReference        String?
+  issuedAt           DateTime               @default(now())
+  expiresAt          DateTime?
+  createdById        String?
+  createdBy          User?                  @relation("QuotationCreator", fields: [createdById], references: [id])
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
 
   items            QuotationItem[]
   quotationRequest QuotationRequest?
+  documents        Document[]
+  followUps        QuotationFollowUp[]
+}
+
+/** A logged call chasing a client after a Quotation has gone out - outcome is a validated free
+ * string, not a DB enum, since the office expects this list to keep growing. */
+model QuotationFollowUp {
+  id              String    @id @default(uuid())
+  quotationId     String
+  quotation       Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  calledAt        DateTime  @default(now())
+  spokenTo        String
+  outcome         String
+  callScheduledOn DateTime?
+  createdById     String
+  createdBy       User      @relation(fields: [createdById], references: [id])
+  createdAt       DateTime  @default(now())
 }
 
 /** Staff-granted customer login - one per Customer company for v1, not per individual contact. */
@@ -589,13 +640,24 @@ enum QuotationRequestStatus {
   DECLINED
 }
 
-/** A customer-submitted "please quote me for X" request via the portal - not a real Quotation
- * until staff converts it. */
+/** A raw, unpriced request for a quotation - either customer-submitted via the portal, or logged by
+ * staff from a phone call / email / referral before a Customer record necessarily exists. Not a
+ * real Quotation until staff converts it. */
 model QuotationRequest {
   id                   String                 @id @default(uuid())
-  customerId           String
-  customer             Customer               @relation(fields: [customerId], references: [id])
+  customerId           String?
+  customer             Customer?              @relation(fields: [customerId], references: [id])
+  companyName          String?
+  contactEmail         String?
+  contactPhone         String?
+  contactTitle         String?
+  otherContactName     String?
+  otherContactPhone    String?
+  source               RequestSource          @default(PORTAL)
+  requestFor           RequestCategory?
+  requestForOther      String?
   description          String
+  remarks              String?
   status               QuotationRequestStatus @default(PENDING)
   convertedQuotationId String?                @unique
   convertedQuotation   Quotation?             @relation(fields: [convertedQuotationId], references: [id])
@@ -862,6 +924,8 @@ model Document {
   project      Project?         @relation(fields: [projectId], references: [id])
   customerId   String?
   customer     Customer?        @relation(fields: [customerId], references: [id])
+  quotationId  String?
+  quotation    Quotation?       @relation(fields: [quotationId], references: [id])
   uploadedById String
   uploadedBy   User             @relation(fields: [uploadedById], references: [id])
   createdAt    DateTime         @default(now())
