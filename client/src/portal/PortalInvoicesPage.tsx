@@ -5,11 +5,35 @@ import type { Invoice } from '../lib/api'
 import { Panel, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { invoiceStatusTone } from '../erp/statusTones'
 import { formatMoney } from '../lib/format'
+import { useToast } from '../dashboard/ToastContext'
 
 function PortalInvoicesPage() {
+  const toast = useToast()
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [downloadingId, setDownloadingId] = useState<string | null>(null)
+
+  async function handleDownloadPdf(inv: Invoice) {
+    setDownloadingId(inv.id)
+    try {
+      const res = await fetch(api.portalInvoicePdfUrl(inv.id), { credentials: 'include' })
+      if (!res.ok) throw new Error('Failed to download PDF')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${inv.invoiceNumber}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to download PDF')
+    } finally {
+      setDownloadingId(null)
+    }
+  }
 
   useEffect(() => {
     api
@@ -56,15 +80,15 @@ function PortalInvoicesPage() {
                   <td className="px-5 py-3 text-ink-400">{new Date(inv.issueDate).toLocaleDateString()}</td>
                   <td className="px-5 py-3 text-ink-400">{inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : '—'}</td>
                   <td className="px-5 py-3">
-                    <a
-                      href={api.portalInvoicePdfUrl(inv.id)}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center gap-1.5 text-xs text-cyan-accent hover:underline"
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadPdf(inv)}
+                      disabled={downloadingId === inv.id}
+                      className="flex items-center gap-1.5 text-xs text-cyan-accent hover:underline disabled:opacity-50"
                     >
                       <Download className="h-3.5 w-3.5" />
-                      PDF
-                    </a>
+                      {downloadingId === inv.id ? 'Downloading…' : 'PDF'}
+                    </button>
                   </td>
                 </tr>
               ))}
