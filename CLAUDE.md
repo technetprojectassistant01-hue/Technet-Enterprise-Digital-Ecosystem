@@ -224,6 +224,20 @@ requirement without either party noticing.
   Quotations tab showing a stale list (it only loads once on mount) — the new quotation was invisible
   until a manual refresh. Fixed by navigating straight to the new quotation's own detail page after a
   successful convert, instead of returning to the tab.
+- **Editing a Draft quotation** (added 2026-08-26, after real user testing hit this): customer, VAT
+  rate, payment terms, availability, and line items are all editable via an "Edit" button on the Line
+  Items panel — but the server rejects changes to those specific fields once the quotation is no
+  longer `DRAFT` (title/contact person/PO reference/status stay editable regardless). `PATCH
+  /api/quotations/:id` recomputes `subtotal`/`vatAmount`/`total` server-side whenever `items` or
+  `vatRate` change, same formula as creation — the client never computes/sends totals itself.
+- **Item numbering + per-line totals** (added 2026-08-26): the line-item editor, the Quotation Detail
+  table, and the shared PDF item table (`server/src/lib/pdf/shared.ts`, also used by Invoice PDFs) all
+  show a numbered `#`/`No.` column and a computed Total Amount per row. The description field is a
+  `<textarea>`, not a single-line input, so multi-line/bulleted descriptions (model numbers, specs)
+  are supported end to end — verified by actually rendering a generated PDF to PNG (via
+  `pdf-to-png-converter`, since no PDF rasterizer is installed locally) rather than trusting the byte
+  output; this caught a real layout bug (the "Item No." header label was too wide for its column and
+  wrapped, overlapping the row below) before it shipped.
 
 ## 11. SDD vs. actual implementation — known divergences
 
