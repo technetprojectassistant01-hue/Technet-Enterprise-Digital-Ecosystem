@@ -44,7 +44,8 @@ export function drawItemsTable(doc: PDFKit.PDFDocument, items: PdfLineItem[]) {
   const left = doc.page.margins.left;
   const right = doc.page.width - doc.page.margins.right;
   const width = right - left;
-  const colDesc = width * 0.5;
+  const colNo = width * 0.06;
+  const colDesc = width * 0.44;
   const colQty = width * 0.1;
   const colUnit = width * 0.2;
   const colAmount = width * 0.2;
@@ -60,31 +61,33 @@ export function drawItemsTable(doc: PDFKit.PDFDocument, items: PdfLineItem[]) {
     const y = doc.y;
     doc.rect(left, y, width, 20).fill("#0891b2");
     doc.fillColor("#ffffff").font("Helvetica-Bold").fontSize(9);
-    doc.text("Description", left + 4, y + 6, { width: colDesc - 8 });
-    doc.text("Qty", left + colDesc, y + 6, { width: colQty - 4, align: "right" });
-    doc.text("Unit Price", left + colDesc + colQty, y + 6, { width: colUnit - 4, align: "right" });
-    doc.text("Amount", left + colDesc + colQty + colUnit, y + 6, { width: colAmount - 4, align: "right" });
+    doc.text("No.", left + 4, y + 6, { width: colNo - 4 });
+    doc.text("Description", left + colNo, y + 6, { width: colDesc - 4 });
+    doc.text("Qty", left + colNo + colDesc, y + 6, { width: colQty - 4, align: "right" });
+    doc.text("Unit Price", left + colNo + colDesc + colQty, y + 6, { width: colUnit - 4, align: "right" });
+    doc.text("Total Amount", left + colNo + colDesc + colQty + colUnit, y + 6, { width: colAmount - 4, align: "right" });
     doc.fillColor("#000000");
     doc.y = y + 24;
   }
 
   headerRow();
 
-  for (const item of items) {
+  items.forEach((item, index) => {
     const amount = Number(item.unitPrice) * item.quantity;
     const rowHeight = Math.max(doc.heightOfString(item.description, { width: colDesc - 8 }), 14) + 10;
     ensureSpace(rowHeight);
     const y = doc.y;
     doc.font("Helvetica").fontSize(9);
-    doc.text(item.description, left + 4, y, { width: colDesc - 8 });
-    doc.text(String(item.quantity), left + colDesc, y, { width: colQty - 4, align: "right" });
-    doc.text(formatMoney(item.unitPrice), left + colDesc + colQty, y, { width: colUnit - 4, align: "right" });
-    doc.text(formatMoney(amount), left + colDesc + colQty + colUnit, y, { width: colAmount - 4, align: "right" });
+    doc.text(String(index + 1).padStart(2, "0"), left + 4, y, { width: colNo - 4 });
+    doc.text(item.description, left + colNo, y, { width: colDesc - 4 });
+    doc.text(String(item.quantity), left + colNo + colDesc, y, { width: colQty - 4, align: "right" });
+    doc.text(formatMoney(item.unitPrice), left + colNo + colDesc + colQty, y, { width: colUnit - 4, align: "right" });
+    doc.text(formatMoney(amount), left + colNo + colDesc + colQty + colUnit, y, { width: colAmount - 4, align: "right" });
     const nextY = y + rowHeight;
     doc.moveTo(left, nextY - 4).lineTo(right, nextY - 4).strokeColor("#e5e5e5").lineWidth(0.5).stroke();
     doc.strokeColor("#000000").lineWidth(1);
     doc.y = nextY;
-  }
+  });
 
   doc.x = left;
   doc.y += 6;
