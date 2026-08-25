@@ -2,7 +2,8 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Plus, Trash2, FileSignature, Download } from 'lucide-react'
 import * as api from '../lib/api'
-import type { Quotation, QuotationStatus } from '../lib/api'
+import type { Quotation, PaymentTermsTemplate, QuotationAvailability } from '../lib/api'
+import { PAYMENT_TERMS_OPTIONS } from '../lib/api'
 import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { primaryButtonClass, secondaryButtonClass } from '../dashboard/buttonStyles'
 import { downloadCsv } from '../lib/csv'
@@ -10,7 +11,7 @@ import { useCustomers } from './useCustomers'
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
-import { hasRole, SALES_ROLES } from '../lib/permissions'
+import { hasRole, SALES_ROLES, QUOTE_REQUEST_VIEW_ROLES } from '../lib/permissions'
 import { quotationStatusTone as statusTone } from './statusTones'
 import { formatMoney } from '../lib/format'
 import SalesLineItemsEditor, { EMPTY_SALES_LINE_ITEM, type SalesLineItemRow } from './SalesLineItemsEditor'
@@ -25,6 +26,7 @@ function QuotationsPage() {
   const confirm = useConfirm()
   const { user } = useAuth()
   const canWrite = hasRole(user?.role, SALES_ROLES)
+  const canViewRequests = hasRole(user?.role, QUOTE_REQUEST_VIEW_ROLES)
   const customers = useCustomers()
   const [quotations, setQuotations] = useState<Quotation[]>([])
   const [loading, setLoading] = useState(true)
@@ -32,11 +34,13 @@ function QuotationsPage() {
 
   const [showCreate, setShowCreate] = useState(false)
   const [customerId, setCustomerId] = useState('')
-  const [quotationNumber, setQuotationNumber] = useState('')
   const [title, setTitle] = useState('')
-  const [status, setStatus] = useState<QuotationStatus>('DRAFT')
   const [vatRate, setVatRate] = useState('15')
   const [expiresAt, setExpiresAt] = useState('')
+  const [paymentTerms, setPaymentTerms] = useState<PaymentTermsTemplate>('FULL_ON_CONFIRMATION')
+  const [includesOrder, setIncludesOrder] = useState(false)
+  const [availabilityStatus, setAvailabilityStatus] = useState<QuotationAvailability>('IN_STOCK')
+  const [orderDays, setOrderDays] = useState('')
   const [items, setItems] = useState<SalesLineItemRow[]>([{ ...EMPTY_SALES_LINE_ITEM }])
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -55,11 +59,13 @@ function QuotationsPage() {
 
   function openCreate() {
     setCustomerId(customers[0]?.id || '')
-    setQuotationNumber('')
     setTitle('')
-    setStatus('DRAFT')
     setVatRate('15')
     setExpiresAt('')
+    setPaymentTerms('FULL_ON_CONFIRMATION')
+    setIncludesOrder(false)
+    setAvailabilityStatus('IN_STOCK')
+    setOrderDays('')
     setItems([{ ...EMPTY_SALES_LINE_ITEM }])
     setFormError(null)
     setShowCreate(true)
@@ -77,12 +83,12 @@ function QuotationsPage() {
       setFormError('Select a customer')
       return
     }
-    if (!quotationNumber.trim()) {
-      setFormError('Quotation number is required')
-      return
-    }
     if (!title.trim()) {
       setFormError('Title is required')
+      return
+    }
+    if (includesOrder && availabilityStatus === 'ORDER_PENDING' && (!orderDays.trim() || Number(orderDays) <= 0)) {
+      setFormError('Enter how many days until the order is received')
       return
     }
 
@@ -90,11 +96,12 @@ function QuotationsPage() {
     try {
       await api.createQuotation({
         customerId,
-        quotationNumber,
         title,
-        status,
         vatRate: Number(vatRate) || 0,
         expiresAt: expiresAt || undefined,
+        paymentTerms,
+        availabilityStatus: includesOrder ? availabilityStatus : null,
+        orderDays: includesOrder && availabilityStatus === 'ORDER_PENDING' ? Number(orderDays) : null,
         items: items.map((item) => ({
           description: item.description,
           quantity: Number(item.quantity),
@@ -173,7 +180,7 @@ function QuotationsPage() {
         )}
       </div>
 
-      {canWrite && (
+      {canViewRequests && (
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
@@ -279,30 +286,21 @@ function QuotationsPage() {
                 </select>
               </div>
               <div>
-                <label className={labelClass}>QUOTATION NUMBER</label>
-                <input
-                  value={quotationNumber}
-                  onChange={(e) => setQuotationNumber(e.target.value)}
-                  required
-                  className={`mt-2 ${inputClass}`}
-                />
+                <label className={labelClass}>TITLE</label>
+                <input value={title} onChange={(e) => setTitle(e.target.value)} required className={`mt-2 ${inputClass}`} />
               </div>
-            </div>
-            <div>
-              <label className={labelClass}>TITLE</label>
-              <input value={title} onChange={(e) => setTitle(e.target.value)} required className={`mt-2 ${inputClass}`} />
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <label className={labelClass}>STATUS</label>
+                <label className={labelClass}>PAYMENT TERMS</label>
                 <select
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value as QuotationStatus)}
+                  value={paymentTerms}
+                  onChange={(e) => setPaymentTerms(e.target.value as PaymentTermsTemplate)}
                   className={`mt-2 ${inputClass}`}
                 >
-                  {(['DRAFT', 'SENT', 'ACCEPTED', 'REJECTED', 'EXPIRED'] as QuotationStatus[]).map((s) => (
-                    <option key={s} value={s}>
-                      {s}
+                  {PAYMENT_TERMS_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
                     </option>
                   ))}
                 </select>
@@ -327,6 +325,40 @@ function QuotationsPage() {
                   className={`mt-2 ${inputClass}`}
                 />
               </div>
+            </div>
+
+            <div className="rounded-md border border-ink-700 px-4 py-3">
+              <label className="flex items-center gap-2 text-sm text-ink-200">
+                <input type="checkbox" checked={includesOrder} onChange={(e) => setIncludesOrder(e.target.checked)} />
+                This quotation includes a product order (not just installation/service labor)
+              </label>
+              {includesOrder && (
+                <div className="mt-3 grid grid-cols-2 gap-4">
+                  <div>
+                    <label className={labelClass}>AVAILABILITY</label>
+                    <select
+                      value={availabilityStatus}
+                      onChange={(e) => setAvailabilityStatus(e.target.value as QuotationAvailability)}
+                      className={`mt-2 ${inputClass}`}
+                    >
+                      <option value="IN_STOCK">In stock</option>
+                      <option value="ORDER_PENDING">Order to be received in...</option>
+                    </select>
+                  </div>
+                  {availabilityStatus === 'ORDER_PENDING' && (
+                    <div>
+                      <label className={labelClass}>DAYS FROM CONFIRMATION</label>
+                      <input
+                        type="number"
+                        min={1}
+                        value={orderDays}
+                        onChange={(e) => setOrderDays(e.target.value)}
+                        className={`mt-2 ${inputClass}`}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <SalesLineItemsEditor items={items} onChange={setItems} />

@@ -434,6 +434,14 @@ export function deleteExpense(id: string) {
 }
 
 export type QuotationStatus = 'DRAFT' | 'SENT' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED'
+export type PaymentTermsTemplate = 'FULL_ON_CONFIRMATION' | 'SPLIT_60_40_20' | 'SPLIT_50_50'
+export type QuotationAvailability = 'IN_STOCK' | 'ORDER_PENDING'
+
+export const PAYMENT_TERMS_OPTIONS: { value: PaymentTermsTemplate; label: string }[] = [
+  { value: 'FULL_ON_CONFIRMATION', label: '100% on confirmation of order' },
+  { value: 'SPLIT_60_40_20', label: '60% confirmation, 40% progress, 20% completion' },
+  { value: 'SPLIT_50_50', label: '50% confirmation, 50% completion' },
+]
 
 export interface Quotation {
   id: string
@@ -446,6 +454,10 @@ export interface Quotation {
   subtotal: string
   vatAmount: string
   total: string
+  paymentTerms: PaymentTermsTemplate
+  availabilityStatus: QuotationAvailability | null
+  orderDays: number | null
+  poReference: string | null
   items: SalesLineItem[]
   issuedAt: string
   expiresAt: string | null
@@ -454,17 +466,20 @@ export interface Quotation {
 
 export interface QuotationInput {
   customerId: string
-  quotationNumber: string
   title: string
   vatRate?: number
-  status?: QuotationStatus
   expiresAt?: string
+  paymentTerms: PaymentTermsTemplate
+  availabilityStatus?: QuotationAvailability | null
+  orderDays?: number | null
   items: SalesLineItemInput[]
 }
 
-export function listQuotations(params: { status?: QuotationStatus } = {}) {
+export function listQuotations(params: { status?: QuotationStatus; from?: string; to?: string } = {}) {
   const query = new URLSearchParams()
   if (params.status) query.set('status', params.status)
+  if (params.from) query.set('from', params.from)
+  if (params.to) query.set('to', params.to)
   const qs = query.toString()
   return request<{ quotations: Quotation[] }>(`/api/quotations${qs ? `?${qs}` : ''}`)
 }
@@ -484,6 +499,7 @@ export interface QuotationUpdateInput {
   title?: string
   status?: QuotationStatus
   expiresAt?: string | null
+  poReference?: string | null
 }
 
 export function updateQuotation(id: string, input: QuotationUpdateInput) {
@@ -499,6 +515,58 @@ export function deleteQuotation(id: string) {
 
 export function quotationPdfUrl(id: string) {
   return `${API_URL}/api/quotations/${id}/pdf`
+}
+
+export type QuotationFollowUpOutcome =
+  | 'CALL_BACK'
+  | 'DECISION_NOT_YET_TAKEN'
+  | 'DECISION_MAKER_OUT_OF_COUNTRY'
+  | 'PRICE_NOT_COMPETITIVE'
+  | 'REVIEW_OTHER_FEATURES'
+  | 'REVIEW_PRICE'
+  | 'DELIVERY_DATE_NOT_ACCEPTED'
+  | 'QUOTATION_NOT_APPROVED'
+  | 'NOT_IN_BUDGET'
+
+export const QUOTATION_FOLLOWUP_OUTCOMES: { value: QuotationFollowUpOutcome; label: string }[] = [
+  { value: 'CALL_BACK', label: 'To call back' },
+  { value: 'DECISION_NOT_YET_TAKEN', label: 'Decision not yet taken' },
+  { value: 'DECISION_MAKER_OUT_OF_COUNTRY', label: 'Decision maker out of the country' },
+  { value: 'PRICE_NOT_COMPETITIVE', label: 'Price not competitive' },
+  { value: 'REVIEW_OTHER_FEATURES', label: 'To review our quotation with other features' },
+  { value: 'REVIEW_PRICE', label: 'To review our quotation with regards to the price' },
+  { value: 'DELIVERY_DATE_NOT_ACCEPTED', label: 'Delivery date not accepted' },
+  { value: 'QUOTATION_NOT_APPROVED', label: 'Quotation not approved' },
+  { value: 'NOT_IN_BUDGET', label: 'Not in budget' },
+]
+
+export interface QuotationFollowUp {
+  id: string
+  quotationId: string
+  calledAt: string
+  spokenTo: string
+  outcome: QuotationFollowUpOutcome
+  callScheduledOn: string | null
+  createdBy: { id: string; name: string | null; email: string }
+  createdAt: string
+}
+
+export interface QuotationFollowUpInput {
+  calledAt?: string
+  spokenTo: string
+  outcome: QuotationFollowUpOutcome
+  callScheduledOn?: string | null
+}
+
+export function listQuotationFollowUps(quotationId: string) {
+  return request<{ followUps: QuotationFollowUp[] }>(`/api/quotations/${quotationId}/follow-ups`)
+}
+
+export function createQuotationFollowUp(quotationId: string, input: QuotationFollowUpInput) {
+  return request<{ followUp: QuotationFollowUp }>(`/api/quotations/${quotationId}/follow-ups`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
 }
 
 export type ContractStatus = 'PLANNING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
@@ -2594,16 +2662,66 @@ export function revokePortalAccess(customerId: string) {
 }
 
 export type QuotationRequestStatus = 'PENDING' | 'CONVERTED' | 'DECLINED'
+export type RequestSource = 'EMAIL' | 'PHONE_CALL' | 'REFERRER' | 'PORTAL'
+export type RequestCategory =
+  | 'NEW_EQUIPMENT_INSTALL'
+  | 'AC_INSTALL'
+  | 'PLUMBING_INSTALL'
+  | 'ELECTRICAL_INSTALL'
+  | 'SERVICING'
+  | 'REPAIRS'
+  | 'OTHER'
+
+export const REQUEST_SOURCE_OPTIONS: { value: Exclude<RequestSource, 'PORTAL'>; label: string }[] = [
+  { value: 'EMAIL', label: 'Email' },
+  { value: 'PHONE_CALL', label: 'Phone call' },
+  { value: 'REFERRER', label: 'Referrer' },
+]
+
+export const REQUEST_CATEGORY_OPTIONS: { value: RequestCategory; label: string }[] = [
+  { value: 'NEW_EQUIPMENT_INSTALL', label: 'Installation of new equipment' },
+  { value: 'AC_INSTALL', label: 'Installation of AC units' },
+  { value: 'PLUMBING_INSTALL', label: 'Installation of plumbing' },
+  { value: 'ELECTRICAL_INSTALL', label: 'Installation of electrical' },
+  { value: 'SERVICING', label: 'Servicing' },
+  { value: 'REPAIRS', label: 'Repairs' },
+  { value: 'OTHER', label: 'Other' },
+]
 
 export interface QuotationRequest {
   id: string
-  customerId: string
-  customer: SalesDocumentCustomer
+  customerId: string | null
+  customer: SalesDocumentCustomer | null
+  companyName: string | null
+  contactEmail: string | null
+  contactPhone: string | null
+  contactTitle: string | null
+  otherContactName: string | null
+  otherContactPhone: string | null
+  source: RequestSource
+  requestFor: RequestCategory | null
+  requestForOther: string | null
   description: string
+  remarks: string | null
   status: QuotationRequestStatus
   convertedQuotation: { id: string; quotationNumber: string } | null
   reviewNote: string | null
   createdAt: string
+}
+
+export interface QuotationRequestInput {
+  customerId?: string
+  companyName?: string
+  contactEmail?: string
+  contactPhone?: string
+  contactTitle?: string
+  otherContactName?: string
+  otherContactPhone?: string
+  source: Exclude<RequestSource, 'PORTAL'>
+  requestFor?: RequestCategory
+  requestForOther?: string
+  description: string
+  remarks?: string
 }
 
 export function listQuoteRequests(status?: QuotationRequestStatus) {
@@ -2611,7 +2729,14 @@ export function listQuoteRequests(status?: QuotationRequestStatus) {
   return request<{ requests: QuotationRequest[] }>(`/api/quotations/quote-requests${qs}`)
 }
 
-export function convertQuoteRequest(id: string, input: Omit<QuotationInput, 'customerId'>) {
+export function createQuoteRequest(input: QuotationRequestInput) {
+  return request<{ request: QuotationRequest }>('/api/quotations/quote-requests', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function convertQuoteRequest(id: string, input: Omit<QuotationInput, 'customerId'> & { customerId?: string }) {
   return request<{ quotation: Quotation }>(`/api/quotations/quote-requests/${id}/convert`, {
     method: 'POST',
     body: JSON.stringify(input),

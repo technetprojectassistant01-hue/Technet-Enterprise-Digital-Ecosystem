@@ -23,8 +23,8 @@ function SalesLineItemsEditor({
     onChange(items.map((row, i) => (i === index ? { ...row, ...patch } : row)))
   }
 
-  function addRow() {
-    onChange([...items, { ...EMPTY_SALES_LINE_ITEM }])
+  function addRow(description = '') {
+    onChange([...items, { ...EMPTY_SALES_LINE_ITEM, description }])
   }
 
   function removeRow(index: number) {
@@ -79,14 +79,22 @@ function SalesLineItemsEditor({
           </button>
         </div>
       ))}
-      <button
-        type="button"
-        onClick={addRow}
-        className="flex items-center gap-1.5 self-start text-xs font-semibold text-cyan-accent hover:underline"
-      >
-        <Plus className="h-3.5 w-3.5" />
-        Add line item
-      </button>
+      <div className="flex flex-wrap items-center gap-4">
+        <button
+          type="button"
+          onClick={() => addRow()}
+          className="flex items-center gap-1.5 text-xs font-semibold text-cyan-accent hover:underline"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Add line item
+        </button>
+        <button type="button" onClick={() => addRow('Labor')} className="text-xs text-ink-400 hover:text-ink-100 hover:underline">
+          + Labor
+        </button>
+        <button type="button" onClick={() => addRow('Transport')} className="text-xs text-ink-400 hover:text-ink-100 hover:underline">
+          + Transport
+        </button>
+      </div>
     </div>
   )
 }
