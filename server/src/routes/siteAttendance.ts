@@ -94,21 +94,72 @@ function monthRange(value: unknown): { start: Date; end: Date } {
 /** Team-wide view for managers: who's checked in right now, plus the given month's history (defaults to this month). */
 router.get("/", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
   const { start, end } = monthRange(req.query.month);
+  const { employeeId } = req.query;
+  const employeeFilter = typeof employeeId === "string" && employeeId ? { employeeId } : {};
 
   const [current, history] = await Promise.all([
     prisma.siteAttendance.findMany({
-      where: { checkOutAt: null },
+      where: { checkOutAt: null, ...employeeFilter },
       include: { employee: { select: EMPLOYEE_SELECT }, workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE },
       orderBy: { checkInAt: "desc" },
     }),
     prisma.siteAttendance.findMany({
-      where: { checkInAt: { gte: start, lt: end } },
+      where: { checkInAt: { gte: start, lt: end }, ...employeeFilter },
       include: { employee: { select: EMPLOYEE_SELECT }, workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE },
       orderBy: { checkInAt: "desc" },
     }),
   ]);
 
-  res.json({ current, history });
+  // Per-technician roll-up for the month, built from the same `history` rows rather than a
+  // separate query - keeps "days present" (distinct calendar days) and the on-site/outside-site
+  // verification trust counters right next to the register that already has this data.
+  const summaryByEmployee = new Map<
+    string,
+    {
+      employee: (typeof history)[number]["employee"];
+      days: Set<string>;
+      totalCheckIns: number;
+      totalHoursOnSite: number;
+      onSiteCount: number;
+      outsideSiteCount: number;
+    }
+  >();
+  for (const v of history) {
+    if (!v.employee) continue;
+    const key = v.employeeId;
+    if (!summaryByEmployee.has(key)) {
+      summaryByEmployee.set(key, {
+        employee: v.employee,
+        days: new Set(),
+        totalCheckIns: 0,
+        totalHoursOnSite: 0,
+        onSiteCount: 0,
+        outsideSiteCount: 0,
+      });
+    }
+    const entry = summaryByEmployee.get(key)!;
+    entry.days.add(v.checkInAt.toISOString().slice(0, 10));
+    entry.totalCheckIns += 1;
+    if (v.checkOutAt) {
+      entry.totalHoursOnSite += (v.checkOutAt.getTime() - v.checkInAt.getTime()) / 3_600_000;
+    }
+    for (const verification of v.verifications) {
+      if (verification.status === "ON_SITE") entry.onSiteCount += 1;
+      else if (verification.status === "OUTSIDE_SITE") entry.outsideSiteCount += 1;
+    }
+  }
+  const summary = Array.from(summaryByEmployee.values())
+    .map((s) => ({
+      employee: s.employee,
+      daysPresent: s.days.size,
+      totalCheckIns: s.totalCheckIns,
+      totalHoursOnSite: Math.round(s.totalHoursOnSite * 10) / 10,
+      onSiteCount: s.onSiteCount,
+      outsideSiteCount: s.outsideSiteCount,
+    }))
+    .sort((a, b) => b.daysPresent - a.daysPresent);
+
+  res.json({ current, history, summary });
 });
 
 // A supervisor-triggered nudge, not a live remote GPS ping: notifies the technician to open the
