@@ -10,6 +10,7 @@ import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
 import { hasRole, OPS_MANAGE_ROLES } from '../lib/permissions'
 import { useAssets } from './useAssets'
+import { useCustomers } from '../erp/useCustomers'
 import { maintenanceContractStatusTone } from './statusTones'
 
 const inputClass =
@@ -17,7 +18,6 @@ const inputClass =
 const labelClass = 'text-xs font-semibold tracking-widest text-ink-400'
 
 const FREQUENCIES: MaintenanceFrequency[] = ['MONTHLY', 'QUARTERLY', 'SEMI_ANNUAL', 'ANNUAL']
-const STATUSES: (MaintenanceContractStatus | '')[] = ['', 'ACTIVE', 'EXPIRED', 'CANCELLED']
 
 interface FormState {
   assetId: string
@@ -35,29 +35,42 @@ function ContractsPage() {
   const { user } = useAuth()
   const canWrite = hasRole(user?.role, OPS_MANAGE_ROLES)
   const assets = useAssets()
+  const customers = useCustomers()
   const [contracts, setContracts] = useState<MaintenanceContract[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [status, setStatus] = useState<MaintenanceContractStatus | ''>('')
+  const [customerFilter, setCustomerFilter] = useState('')
+  const [frequencyFilter, setFrequencyFilter] = useState<MaintenanceFrequency | ''>('')
+  const [expiringSoonOnly, setExpiringSoonOnly] = useState(false)
 
   const [showCreate, setShowCreate] = useState(false)
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
-  function load(statusValue = status) {
+  function load() {
     setLoading(true)
     api
-      .listMaintenanceContracts({ status: statusValue || undefined })
+      .listMaintenanceContracts({
+        status: status || undefined,
+        customerId: customerFilter || undefined,
+        frequency: frequencyFilter || undefined,
+        expiringSoon: expiringSoonOnly || undefined,
+      })
       .then(({ contracts }) => setContracts(contracts))
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load contracts'))
       .finally(() => setLoading(false))
   }
 
-  useEffect(() => {
-    load('')
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  useEffect(load, [status, customerFilter, frequencyFilter, expiringSoonOnly]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function clearFilters() {
+    setStatus('')
+    setCustomerFilter('')
+    setFrequencyFilter('')
+    setExpiringSoonOnly(false)
+  }
 
   function openCreate() {
     setForm({ ...EMPTY_FORM, assetId: assets[0]?.id || '' })
@@ -172,22 +185,60 @@ function ContractsPage() {
       </div>
 
       <Panel title="Contract Ledger">
-        <div className="mb-4 flex flex-wrap gap-2">
-          {STATUSES.map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => {
-                setStatus(s)
-                load(s)
-              }}
-              className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
-                status === s ? 'bg-cyan-accent text-ink-950' : 'bg-ink-800 text-ink-300 hover:bg-ink-700'
-              }`}
+        <div className="mb-4 flex flex-wrap items-end gap-4">
+          <div className="flex max-w-xs flex-1 flex-col gap-1">
+            <label className={labelClass}>CUSTOMER</label>
+            <select value={customerFilter} onChange={(e) => setCustomerFilter(e.target.value)} className={inputClass}>
+              <option value="">All customers</option>
+              {customers.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.company || c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className={labelClass}>STATUS</label>
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value as MaintenanceContractStatus | '')}
+              className={inputClass}
             >
-              {s || 'All'}
+              <option value="">All statuses</option>
+              <option value="ACTIVE">ACTIVE</option>
+              <option value="EXPIRED">EXPIRED</option>
+              <option value="CANCELLED">CANCELLED</option>
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className={labelClass}>FREQUENCY</label>
+            <select
+              value={frequencyFilter}
+              onChange={(e) => setFrequencyFilter(e.target.value as MaintenanceFrequency | '')}
+              className={inputClass}
+            >
+              <option value="">All frequencies</option>
+              {FREQUENCIES.map((f) => (
+                <option key={f} value={f}>
+                  {f.replace('_', ' ')}
+                </option>
+              ))}
+            </select>
+          </div>
+          <label className="flex items-center gap-2 pb-2.5 text-sm text-ink-200">
+            <input
+              type="checkbox"
+              checked={expiringSoonOnly}
+              onChange={(e) => setExpiringSoonOnly(e.target.checked)}
+              className="accent-cyan-accent"
+            />
+            Expiring within 30 days
+          </label>
+          {(status || customerFilter || frequencyFilter || expiringSoonOnly) && (
+            <button type="button" onClick={clearFilters} className="text-xs font-semibold text-ink-400 hover:text-ink-100">
+              Clear filters
             </button>
-          ))}
+          )}
         </div>
 
         {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
