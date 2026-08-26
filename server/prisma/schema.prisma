@@ -283,6 +283,9 @@ model User {
 
   quotationsCreated Quotation[] @relation("QuotationCreator")
 
+  marketingCampaignsCreated MarketingCampaign[] @relation("MarketingCampaignCreator")
+  marketingPostsCreated     MarketingPost[]     @relation("MarketingPostCreator")
+
   customerPortalUsersGranted CustomerPortalUser[]
   quotationRequestsReviewed  QuotationRequest[]
   quotationFollowUpsLogged   QuotationFollowUp[]
@@ -1301,4 +1304,46 @@ model Notification {
 
   @@index([userId, readAt])
   @@index([userId, createdAt])
+}
+
+enum MarketingPostStatus {
+  PLANNED
+  POSTED
+  CANCELLED
+}
+
+/// Phase 1 only: no AI drafting, no auto-publish. Marketing plans posts here and marks them
+/// Posted by hand after publishing elsewhere themselves.
+model MarketingCampaign {
+  id          String    @id @default(uuid())
+  name        String
+  description String?
+  startDate   DateTime?
+  endDate     DateTime?
+  createdById String?
+  createdBy   User?     @relation("MarketingCampaignCreator", fields: [createdById], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  posts MarketingPost[]
+}
+
+/// platform is a validated free string (not a DB enum) - same pattern as
+/// QuotationFollowUp.outcome - since the office may want to add platforms later.
+model MarketingPost {
+  id            String              @id @default(uuid())
+  campaignId    String
+  campaign      MarketingCampaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  title         String
+  platform      String
+  copy          String?
+  scheduledDate DateTime
+  status        MarketingPostStatus @default(PLANNED)
+  postedAt      DateTime?
+  createdById   String?
+  createdBy     User?               @relation("MarketingPostCreator", fields: [createdById], references: [id])
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@index([scheduledDate])
 }
