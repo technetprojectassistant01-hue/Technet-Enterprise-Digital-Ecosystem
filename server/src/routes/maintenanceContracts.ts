@@ -33,7 +33,7 @@ router.use(requireAuth);
 router.use(requireRole(...OPS_SUBMIT_ROLES));
 
 router.get("/", async (req, res) => {
-  const { assetId, status, expiringSoon } = req.query;
+  const { assetId, status, expiringSoon, customerId, frequency } = req.query;
 
   const where: Prisma.MaintenanceContractWhereInput = {};
   if (typeof assetId === "string" && assetId) {
@@ -47,6 +47,12 @@ router.get("/", async (req, res) => {
     in30Days.setDate(in30Days.getDate() + 30);
     where.expiryDate = { lte: in30Days };
     where.status = "ACTIVE";
+  }
+  if (typeof customerId === "string" && customerId) {
+    where.asset = { customerId };
+  }
+  if (typeof frequency === "string" && FREQUENCIES.includes(frequency as Frequency)) {
+    where.frequency = frequency as Frequency;
   }
 
   const contracts = await prisma.maintenanceContract.findMany({

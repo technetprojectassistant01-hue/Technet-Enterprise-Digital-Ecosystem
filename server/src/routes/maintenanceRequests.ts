@@ -32,6 +32,14 @@ const ASSET_SELECT = {
 const REQUESTER_SELECT = { id: true, name: true, email: true };
 const EMPLOYEE_SELECT = { id: true, firstName: true, lastName: true, position: true };
 
+function parseDateOnly(value: unknown): Date | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value.trim());
+  if (!match) return null;
+  const date = new Date(`${match[0]}T00:00:00.000Z`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 function withRequestNumber<T extends { sequenceNumber: number; asset: { sequenceNumber: number } }>(request: T) {
   return {
     ...request,
@@ -44,7 +52,7 @@ router.use(requireAuth);
 router.use(requireRole(...OPS_SUBMIT_ROLES));
 
 router.get("/", async (req, res) => {
-  const { status, assetId } = req.query;
+  const { status, assetId, customerId, priority, from, to } = req.query;
 
   const where: Prisma.MaintenanceRequestWhereInput = {};
   if (typeof status === "string" && STATUSES.includes(status as Status)) {
@@ -52,6 +60,19 @@ router.get("/", async (req, res) => {
   }
   if (typeof assetId === "string" && assetId) {
     where.assetId = assetId;
+  }
+  if (typeof customerId === "string" && customerId) {
+    where.asset = { customerId };
+  }
+  if (typeof priority === "string" && PRIORITIES.includes(priority as Priority)) {
+    where.priority = priority as Priority;
+  }
+  const fromDate = parseDateOnly(from);
+  const toDate = parseDateOnly(to);
+  if (fromDate || toDate) {
+    where.createdAt = {};
+    if (fromDate) where.createdAt.gte = fromDate;
+    if (toDate) where.createdAt.lte = new Date(toDate.getTime() + 24 * 60 * 60 * 1000 - 1);
   }
 
   const requests = await prisma.maintenanceRequest.findMany({
