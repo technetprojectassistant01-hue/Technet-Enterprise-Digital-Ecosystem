@@ -6,41 +6,29 @@ import { isUniqueConstraintError, isForeignKeyConstraintError, isNotFoundError }
 import { HR_ROLES } from "../lib/roles";
 import { notifyEmployee } from "../lib/notifications";
 import { workingDaysBetween } from "../lib/workingDays";
+import {
+  parseDateOnly,
+  decimal,
+  holidaysBetween,
+  leaveRequestInclude as requestInclude,
+  LeaveValidationError,
+  LeaveClashError,
+  createLeaveRequestRecord,
+  cancelLeaveRequestRecord,
+  syncEmploymentStatuses,
+  todayUtc,
+} from "../lib/leaveRequests";
 
 const router = Router();
 
-// Leave data is HR-only: every route requires an admin or HR officer.
+// Leave data is HR-only: every route requires an admin or HR officer. Self-service leave
+// requests (an employee requesting their own leave) live in myLeave.ts instead - a separate
+// router with no role restriction beyond having a linked employee, sharing the business logic
+// in lib/leaveRequests.ts rather than duplicating it.
 router.use(requireAuth, requireRole(...HR_ROLES));
 
 const REQUEST_STATUSES = ["PENDING", "APPROVED", "REJECTED", "CANCELLED"] as const;
 type RequestStatus = (typeof REQUEST_STATUSES)[number];
-
-/** Parses a YYYY-MM-DD string into a UTC midnight Date, so no timezone shifts the day. */
-function parseDateOnly(value: unknown): Date | null {
-  if (typeof value !== "string" || !value.trim()) return null;
-  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value.trim());
-  if (!match) return null;
-  const date = new Date(`${match[1]}-${match[2]}-${match[3]}T00:00:00.000Z`);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
-function todayUtc(): Date {
-  const now = new Date();
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-}
-
-function decimal(value: number | string): Prisma.Decimal {
-  return new Prisma.Decimal(value);
-}
-
-/** The set of public holiday dates (as "YYYY-MM-DD") falling within [start, end], for excluding from working-day counts. */
-async function holidaysBetween(start: Date, end: Date): Promise<Set<string>> {
-  const holidays = await prisma.publicHoliday.findMany({
-    where: { date: { gte: start, lte: end } },
-    select: { date: true },
-  });
-  return new Set(holidays.map((h) => h.date.toISOString().slice(0, 10)));
-}
 
 class BalanceExceededError extends Error {
   constructor(
@@ -56,12 +44,6 @@ function optionalString(value: unknown): string | null {
   const trimmed = value.trim();
   return trimmed ? trimmed : null;
 }
-
-const requestInclude = {
-  employee: { select: { id: true, firstName: true, lastName: true, employeeCode: true, department: true } },
-  leaveType: { select: { id: true, name: true, code: true, paid: true } },
-  reviewedBy: { select: { id: true, name: true, email: true } },
-} satisfies Prisma.LeaveRequestInclude;
 
 /* ------------------------------------------------------------------ *
  * Leave types
@@ -315,76 +297,27 @@ router.get("/requests/:id", async (req, res) => {
 });
 
 router.post("/requests", async (req, res) => {
-  const { employeeId, leaveTypeId, reason, halfDay } = req.body ?? {};
+  const { employeeId, leaveTypeId, reason, halfDay, startDate, endDate, days } = req.body ?? {};
 
   if (typeof employeeId !== "string" || !employeeId) {
     return res.status(400).json({ error: "Employee is required" });
   }
-  if (typeof leaveTypeId !== "string" || !leaveTypeId) {
-    return res.status(400).json({ error: "Leave type is required" });
-  }
-
-  const startDate = parseDateOnly(req.body?.startDate);
-  const endDate = parseDateOnly(req.body?.endDate);
-  if (!startDate || !endDate) {
-    return res.status(400).json({ error: "Start and end dates are required" });
-  }
-  if (endDate < startDate) {
-    return res.status(400).json({ error: "End date cannot be before the start date" });
-  }
-
-  const isHalfDay = halfDay === true;
-  if (isHalfDay && startDate.getTime() !== endDate.getTime()) {
-    return res.status(400).json({ error: "A half day must start and end on the same date" });
-  }
-
-  // The caller may override the computed figure (e.g. to exclude a public holiday).
-  let days: number;
-  if (req.body?.days !== undefined && req.body.days !== "") {
-    days = Number(req.body.days);
-    if (!Number.isFinite(days) || days <= 0) {
-      return res.status(400).json({ error: "Days must be greater than zero" });
-    }
-  } else {
-    days = isHalfDay ? 0.5 : workingDaysBetween(startDate, endDate, await holidaysBetween(startDate, endDate));
-  }
-
-  if (days <= 0) {
-    return res.status(400).json({ error: "That range contains no working days" });
-  }
-
-  const clash = await prisma.leaveRequest.findFirst({
-    where: {
-      employeeId,
-      status: { in: ["PENDING", "APPROVED"] },
-      startDate: { lte: endDate },
-      endDate: { gte: startDate },
-    },
-    include: { leaveType: { select: { name: true } } },
-  });
-
-  if (clash) {
-    return res.status(409).json({
-      error: `This overlaps an existing ${clash.status.toLowerCase()} ${clash.leaveType.name} request`,
-    });
-  }
 
   try {
-    const request = await prisma.leaveRequest.create({
-      data: {
-        employeeId,
-        leaveTypeId,
-        startDate,
-        endDate,
-        days: decimal(days),
-        halfDay: isHalfDay,
-        reason: optionalString(reason),
-        createdById: req.user?.sub ?? null,
-      },
-      include: requestInclude,
+    const request = await createLeaveRequestRecord({
+      employeeId,
+      leaveTypeId,
+      startDateRaw: startDate,
+      endDateRaw: endDate,
+      halfDayRaw: halfDay,
+      reasonRaw: reason,
+      daysRaw: days,
+      createdById: req.user?.sub ?? null,
     });
     res.status(201).json({ request });
   } catch (err) {
+    if (err instanceof LeaveValidationError) return res.status(err.status).json({ error: err.message });
+    if (err instanceof LeaveClashError) return res.status(409).json({ error: err.message });
     if (isForeignKeyConstraintError(err)) {
       return res.status(400).json({ error: "Unknown employee or leave type" });
     }
@@ -551,51 +484,17 @@ router.post("/requests/:id/reject", async (req, res) => {
 /** Cancelling an approved request hands the days back to the balance. */
 router.post("/requests/:id/cancel", async (req, res) => {
   const id = req.params.id as string;
-  const request = await prisma.leaveRequest.findUnique({ where: { id } });
-  if (!request) return res.status(404).json({ error: "Leave request not found" });
-  if (request.status === "CANCELLED" || request.status === "REJECTED") {
-    return res.status(409).json({ error: `Request is already ${request.status.toLowerCase()}` });
+  const result = await cancelLeaveRequestRecord(id, {
+    reviewerId: req.user?.sub ?? null,
+    note: optionalString(req.body?.note),
+  });
+  if (result.error === "not_found") return res.status(404).json({ error: "Leave request not found" });
+  if (result.error === "already_final") {
+    return res.status(409).json({ error: `Request is already ${result.status.toLowerCase()}` });
   }
 
-  const wasApproved = request.status === "APPROVED";
-  const year = request.startDate.getUTCFullYear();
-
-  const updated = await prisma.$transaction(async (tx) => {
-    if (wasApproved) {
-      const balance = await tx.leaveBalance.findUnique({
-        where: {
-          employeeId_leaveTypeId_year: {
-            employeeId: request.employeeId,
-            leaveTypeId: request.leaveTypeId,
-            year,
-          },
-        },
-      });
-
-      if (balance) {
-        // Never let a refund push used days below zero.
-        const refunded = balance.usedDays.minus(request.days);
-        await tx.leaveBalance.update({
-          where: { id: balance.id },
-          data: { usedDays: refunded.lessThan(0) ? decimal(0) : refunded },
-        });
-      }
-    }
-
-    return tx.leaveRequest.update({
-      where: { id },
-      data: {
-        status: "CANCELLED",
-        reviewedById: req.user?.sub ?? null,
-        reviewedAt: new Date(),
-        reviewNote: optionalString(req.body?.note),
-      },
-      include: requestInclude,
-    });
-  });
-
   await syncEmploymentStatuses();
-  res.json({ request: updated });
+  res.json({ request: result.request });
 });
 
 router.delete("/requests/:id", async (req, res) => {
@@ -612,40 +511,6 @@ router.delete("/requests/:id", async (req, res) => {
 /* ------------------------------------------------------------------ *
  * Status sync + summary
  * ------------------------------------------------------------------ */
-
-/**
- * Flips employees between ACTIVE and ON_LEAVE based on approved leave covering
- * today. Terminated employees are never touched. Called after approvals and
- * cancellations, and on demand from the HR overview.
- */
-async function syncEmploymentStatuses(): Promise<{ onLeave: number; returned: number }> {
-  const today = todayUtc();
-
-  const onLeaveToday = await prisma.leaveRequest.findMany({
-    where: { status: "APPROVED", startDate: { lte: today }, endDate: { gte: today } },
-    select: { employeeId: true },
-  });
-
-  const onLeaveIds = [...new Set(onLeaveToday.map((r) => r.employeeId))];
-
-  const onLeave =
-    onLeaveIds.length === 0
-      ? { count: 0 }
-      : await prisma.employee.updateMany({
-          where: { id: { in: onLeaveIds }, employmentStatus: "ACTIVE" },
-          data: { employmentStatus: "ON_LEAVE" },
-        });
-
-  const returned = await prisma.employee.updateMany({
-    where: {
-      employmentStatus: "ON_LEAVE",
-      ...(onLeaveIds.length > 0 ? { id: { notIn: onLeaveIds } } : {}),
-    },
-    data: { employmentStatus: "ACTIVE" },
-  });
-
-  return { onLeave: onLeave.count, returned: returned.count };
-}
 
 router.post("/sync-statuses", async (_req, res) => {
   const result = await syncEmploymentStatuses();
