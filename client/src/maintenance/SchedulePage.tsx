@@ -11,13 +11,12 @@ import { useAuth } from '../context/AuthContext'
 import { hasRole, OPS_MANAGE_ROLES } from '../lib/permissions'
 import { useMaintenanceContracts } from './useMaintenanceContracts'
 import { useEmployees } from '../erp/useEmployees'
+import { useCustomers } from '../erp/useCustomers'
 import { scheduleStatusTone } from './statusTones'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
 const labelClass = 'text-xs font-semibold tracking-widest text-ink-400'
-
-const STATUS_FILTERS: (MaintenanceScheduleStatus | '')[] = ['', 'SCHEDULED', 'COMPLETED', 'CANCELLED']
 
 interface FormState {
   contractId: string
@@ -33,29 +32,42 @@ function SchedulePage() {
   const canWrite = hasRole(user?.role, OPS_MANAGE_ROLES)
   const contracts = useMaintenanceContracts()
   const employees = useEmployees()
+  const customers = useCustomers()
   const [schedules, setSchedules] = useState<MaintenanceSchedule[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [status, setStatus] = useState<MaintenanceScheduleStatus | ''>('')
+  const [customerFilter, setCustomerFilter] = useState('')
+  const [from, setFrom] = useState('')
+  const [to, setTo] = useState('')
 
   const [showCreate, setShowCreate] = useState(false)
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
-  function load(statusValue = status) {
+  function load() {
     setLoading(true)
     api
-      .listMaintenanceSchedules({ status: statusValue || undefined })
+      .listMaintenanceSchedules({
+        status: status || undefined,
+        customerId: customerFilter || undefined,
+        from: from || undefined,
+        to: to || undefined,
+      })
       .then(({ schedules }) => setSchedules(schedules))
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load schedule'))
       .finally(() => setLoading(false))
   }
 
-  useEffect(() => {
-    load('')
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  useEffect(load, [status, customerFilter, from, to]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function clearFilters() {
+    setStatus('')
+    setCustomerFilter('')
+    setFrom('')
+    setTo('')
+  }
 
   function openCreate() {
     setForm({ ...EMPTY_FORM, contractId: contracts[0]?.id || '' })
@@ -147,28 +159,50 @@ function SchedulePage() {
       <StatCard label="UPCOMING VISITS" value={scheduledCount} icon={CalendarClock} />
 
       <Panel title="Visit Ledger">
-        <div className="mb-4 flex flex-wrap gap-2">
-          {STATUS_FILTERS.map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => {
-                setStatus(s)
-                load(s)
-              }}
-              className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
-                status === s ? 'bg-cyan-accent text-ink-950' : 'bg-ink-800 text-ink-300 hover:bg-ink-700'
-              }`}
+        <div className="mb-4 flex flex-wrap items-end gap-4">
+          <div className="flex max-w-xs flex-1 flex-col gap-1">
+            <label className={labelClass}>CUSTOMER</label>
+            <select value={customerFilter} onChange={(e) => setCustomerFilter(e.target.value)} className={inputClass}>
+              <option value="">All customers</option>
+              {customers.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.company || c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className={labelClass}>STATUS</label>
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value as MaintenanceScheduleStatus | '')}
+              className={inputClass}
             >
-              {s || 'All'}
+              <option value="">All statuses</option>
+              <option value="SCHEDULED">SCHEDULED</option>
+              <option value="COMPLETED">COMPLETED</option>
+              <option value="CANCELLED">CANCELLED</option>
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className={labelClass}>FROM</label>
+            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className={inputClass} />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className={labelClass}>TO</label>
+            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className={inputClass} />
+          </div>
+          {(status || customerFilter || from || to) && (
+            <button type="button" onClick={clearFilters} className="text-xs font-semibold text-ink-400 hover:text-ink-100">
+              Clear filters
             </button>
-          ))}
+          )}
         </div>
 
         {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
 
         {loading ? (
-          <TableSkeleton cols={6} />
+          <TableSkeleton cols={7} />
         ) : schedules.length === 0 ? (
           <EmptyState icon={CalendarClock} message="No visits match these filters." />
         ) : (
@@ -179,6 +213,7 @@ function SchedulePage() {
                   <th className="px-3 py-3 font-semibold">DATE</th>
                   <th className="px-3 py-3 font-semibold">TYPE</th>
                   <th className="px-3 py-3 font-semibold">ASSET</th>
+                  <th className="px-3 py-3 font-semibold">CUSTOMER</th>
                   <th className="px-3 py-3 font-semibold">TECHNICIANS</th>
                   <th className="px-3 py-3 font-semibold">STATUS</th>
                   <th className="px-3 py-3" />
@@ -192,6 +227,9 @@ function SchedulePage() {
                       <td className="px-3 py-3 text-ink-100">{s.scheduledDate.slice(0, 10)}</td>
                       <td className="px-3 py-3 text-ink-300">{s.contract ? 'Preventive' : 'Corrective'}</td>
                       <td className="px-3 py-3 font-mono text-ink-300">{assetRef?.assetNumber || '—'}</td>
+                      <td className="px-3 py-3 text-ink-300">
+                        {assetRef?.customer ? assetRef.customer.company || assetRef.customer.name : '—'}
+                      </td>
                       <td className="px-3 py-3 text-ink-300">
                         {s.technicians.length === 0
                           ? '—'

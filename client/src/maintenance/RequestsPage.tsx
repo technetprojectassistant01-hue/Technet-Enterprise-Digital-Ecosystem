@@ -11,6 +11,7 @@ import { useAuth } from '../context/AuthContext'
 import { hasRole, OPS_MANAGE_ROLES } from '../lib/permissions'
 import { useAssets } from './useAssets'
 import { useEmployees } from '../erp/useEmployees'
+import { useCustomers } from '../erp/useCustomers'
 import { requestPriorityTone, requestStatusTone } from './statusTones'
 
 const inputClass =
@@ -18,7 +19,6 @@ const inputClass =
 const labelClass = 'text-xs font-semibold tracking-widest text-ink-400'
 
 const PRIORITIES: MaintenanceRequestPriority[] = ['LOW', 'MEDIUM', 'HIGH', 'URGENT']
-const STATUS_FILTERS: (MaintenanceRequestStatus | '')[] = ['', 'SUBMITTED', 'SCHEDULED', 'COMPLETED', 'CANCELLED']
 
 interface FormState {
   assetId: string
@@ -35,10 +35,15 @@ function RequestsPage() {
   const canWrite = hasRole(user?.role, OPS_MANAGE_ROLES)
   const assets = useAssets()
   const employees = useEmployees()
+  const customers = useCustomers()
   const [requests, setRequests] = useState<MaintenanceRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [status, setStatus] = useState<MaintenanceRequestStatus | ''>('')
+  const [customerFilter, setCustomerFilter] = useState('')
+  const [priorityFilter, setPriorityFilter] = useState<MaintenanceRequestPriority | ''>('')
+  const [from, setFrom] = useState('')
+  const [to, setTo] = useState('')
 
   const [showCreate, setShowCreate] = useState(false)
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
@@ -51,19 +56,30 @@ function RequestsPage() {
   const [scheduleError, setScheduleError] = useState<string | null>(null)
   const [scheduleSubmitting, setScheduleSubmitting] = useState(false)
 
-  function load(statusValue = status) {
+  function load() {
     setLoading(true)
     api
-      .listMaintenanceRequests({ status: statusValue || undefined })
+      .listMaintenanceRequests({
+        status: status || undefined,
+        customerId: customerFilter || undefined,
+        priority: priorityFilter || undefined,
+        from: from || undefined,
+        to: to || undefined,
+      })
       .then(({ requests }) => setRequests(requests))
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load requests'))
       .finally(() => setLoading(false))
   }
 
-  useEffect(() => {
-    load('')
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  useEffect(load, [status, customerFilter, priorityFilter, from, to]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function clearFilters() {
+    setStatus('')
+    setCustomerFilter('')
+    setPriorityFilter('')
+    setFrom('')
+    setTo('')
+  }
 
   function openCreate() {
     setForm({ ...EMPTY_FORM, assetId: assets[0]?.id || '' })
@@ -200,28 +216,66 @@ function RequestsPage() {
       </div>
 
       <Panel title="Request Queue">
-        <div className="mb-4 flex flex-wrap gap-2">
-          {STATUS_FILTERS.map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => {
-                setStatus(s)
-                load(s)
-              }}
-              className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
-                status === s ? 'bg-cyan-accent text-ink-950' : 'bg-ink-800 text-ink-300 hover:bg-ink-700'
-              }`}
+        <div className="mb-4 flex flex-wrap items-end gap-4">
+          <div className="flex max-w-xs flex-1 flex-col gap-1">
+            <label className={labelClass}>CUSTOMER</label>
+            <select value={customerFilter} onChange={(e) => setCustomerFilter(e.target.value)} className={inputClass}>
+              <option value="">All customers</option>
+              {customers.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.company || c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className={labelClass}>STATUS</label>
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value as MaintenanceRequestStatus | '')}
+              className={inputClass}
             >
-              {s || 'All'}
+              <option value="">All statuses</option>
+              <option value="SUBMITTED">SUBMITTED</option>
+              <option value="SCHEDULED">SCHEDULED</option>
+              <option value="COMPLETED">COMPLETED</option>
+              <option value="CANCELLED">CANCELLED</option>
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className={labelClass}>PRIORITY</label>
+            <select
+              value={priorityFilter}
+              onChange={(e) => setPriorityFilter(e.target.value as MaintenanceRequestPriority | '')}
+              className={inputClass}
+            >
+              <option value="">All priorities</option>
+              {PRIORITIES.map((p) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className={labelClass}>FROM</label>
+            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className={inputClass} />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className={labelClass}>TO</label>
+            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className={inputClass} />
+          </div>
+          {(status || customerFilter || priorityFilter || from || to) && (
+            <button type="button" onClick={clearFilters} className="text-xs font-semibold text-ink-400 hover:text-ink-100">
+              Clear filters
             </button>
-          ))}
+          )}
         </div>
 
         {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
 
         {loading ? (
-          <TableSkeleton cols={7} />
+          <TableSkeleton cols={8} />
         ) : requests.length === 0 ? (
           <EmptyState icon={AlertTriangle} message="No maintenance requests match these filters." />
         ) : (
@@ -231,6 +285,7 @@ function RequestsPage() {
                 <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
                   <th className="px-3 py-3 font-semibold">REQUEST #</th>
                   <th className="px-3 py-3 font-semibold">ASSET</th>
+                  <th className="px-3 py-3 font-semibold">CUSTOMER</th>
                   <th className="px-3 py-3 font-semibold">DESCRIPTION</th>
                   <th className="px-3 py-3 font-semibold">PRIORITY</th>
                   <th className="px-3 py-3 font-semibold">STATUS</th>
@@ -242,6 +297,7 @@ function RequestsPage() {
                   <tr key={r.id} className="border-b border-ink-800 last:border-0">
                     <td className="px-3 py-3 font-mono font-medium text-ink-100">{r.requestNumber}</td>
                     <td className="px-3 py-3 font-mono text-ink-300">{r.asset.assetNumber}</td>
+                    <td className="px-3 py-3 text-ink-300">{r.asset.customer.company || r.asset.customer.name}</td>
                     <td className="px-3 py-3 max-w-xs truncate text-ink-300" title={r.description}>
                       {r.description}
                     </td>
