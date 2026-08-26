@@ -61,7 +61,7 @@ Everyone lands on **Overview** (`/dashboard`) — as of 2026-08-19 this is real,
 | — Inventory | Built | Items, stock movements |
 | — Finance | Built | Customers, Invoices (+PDF), Quotations (+PDF, see the Quotation-rework note below), Follow-Up of Quotation, Expenses, Contracts |
 | — Procurement | Built | Suppliers, Requisitions, Purchase Orders (+PDF), goods receipt |
-| — HR | Built | Employee profiles, Leave (types/balances/requests/timesheet, public holiday calendar excluded from working-day counts — added 2026-08-20, manually maintained since several Mauritius holidays are lunar/gazette-dependent), Certifications & Training. **Attendance moved to Technet Workforce 2026-08-20** — see below. |
+| — HR | Built | Employee profiles, Leave (types/balances/requests/timesheet, public holiday calendar excluded from working-day counts — added 2026-08-20, manually maintained since several Mauritius holidays are lunar/gazette-dependent), Certifications & Training. **Attendance moved to Technet Workforce 2026-08-20** — see below. Self-service leave requests for employees added 2026-08-26 — see §10b. |
 | — Projects | Built | Project registry, assignments, status history |
 | — Documents | Built | File storage (DB `Bytes` column, not S3/cloud storage), categorized by Contract/Invoice/HR/Project/General/Quotation |
 | **Technet Maintenance** | Built | Assets, Maintenance Contracts, Maintenance Requests, Maintenance Schedule/Reports — built explicitly "from the SDD" per commit history |
@@ -351,6 +351,52 @@ has — Phase 1 statuses have no downstream side effects to guard against yet, s
 permissive. Explicitly **not built**: any AI drafting/review step, real publishing/analytics, a
 calendar-grid UI, and no new marketing-specific notification triggers (Phase 1 has no approval step
 or deadline logic that obviously warrants one yet).
+
+## 10b. Self-service leave requests for employees (2026-08-26)
+
+Previously the entire `/api/leave` router (`server/src/routes/leave.ts`) was `HR_ROLES`-only — HR
+picked an employee from a dropdown and logged a request *for* them. `EMPLOYEE`/`FIELD_TECHNICIAN`
+couldn't even reach the HR Leave page (blocked by `NON_FIELD_ROLES`). Added genuine self-service:
+an employee submits and can withdraw their own request; HR still reviews/approves it exactly as
+before, unchanged.
+
+- **Shared business logic extracted first**: `server/src/lib/leaveRequests.ts` now holds
+  `createLeaveRequestRecord`/`cancelLeaveRequestRecord` (validation, clash detection, the
+  balance-refund-on-cancel transaction) plus `parseDateOnly`/`holidaysBetween`/`leaveRequestInclude`/
+  `syncEmploymentStatuses`, all moved out of `leave.ts` as a pure extraction (HR-facing
+  behavior/responses unchanged). Both the HR route and the new self-service route call the same
+  functions, so clash-detection and balance-refund logic can't quietly drift apart between the two
+  entry points.
+- **New router** `server/src/routes/myLeave.ts`, mounted at `/api/my-leave`. `requireAuth` only —
+  deliberately **no role restriction**, since taking leave isn't tied to any specific role (an HR
+  Officer needs to request their own leave too, not just field staff). Every route resolves the
+  caller's own `Employee` via `prisma.employee.findUnique({ where: { userId: req.user!.sub } })`,
+  403 "No employee record is linked to your account" if unlinked — same helper pattern and message
+  already established in `siteAttendance.ts`, reused verbatim for consistency.
+- **Scope is deliberately create + cancel(withdraw) only, no edit-in-place** — matches this project's
+  established anti-over-engineering bias; withdrawing and resubmitting covers mistake-correction
+  without a second edit code path to validate. Cancelling only works while `status === PENDING`
+  (`restrictToEmployeeId` on `cancelLeaveRequestRecord` also enforces ownership — 404, not 403, if a
+  request isn't the caller's own, matching the "don't reveal existence" pattern used elsewhere).
+- Submitting notifies HR (`notifyRoles(HR_ROLES, "LEAVE_REQUEST_SUBMITTED", ...)`, new
+  `NotificationType` value + migration `20260826100000_leave_request_submitted_notification`) — same
+  "something needs review" pattern as requisitions/quotations/maintenance requests.
+- **Client**: new top-level page `client/src/MyLeavePage.tsx` (alongside `SettingsPage.tsx`, not
+  nested under ERP) at `/dashboard/my-leave`, added to `App.tsx` **outside** the
+  `<RoleRoute blockedRoles={FIELD_ONLY_ROLES}>` wrapper so field-only roles can reach it, and to
+  `nav.ts`'s `MAIN_NAV` right after Overview with no `hiddenFrom` — visible to every role. Guards on
+  `!user?.employeeId` with the same "contact HR" `EmptyState` used elsewhere for unlinked accounts.
+- **Verified 2026-08-26**: server logic via a disposable scratch script (HR flow regression, self-
+  service create/list/cancel, HR notification fires, unlinked-user 403) and the full browser flow via
+  Playwright (submit → PENDING badge → withdraw → CANCELLED badge, toast confirmations). The first
+  Playwright pass showed the withdraw step failing (status stuck on PENDING) — turned out to be a
+  **test-script false negative**, not an app bug: the script used a fixed `waitForTimeout` after
+  submitting, but the create `POST` sometimes takes longer than that on a cold Neon connection (see
+  §9's Neon cold-start note), so the later assertions raced ahead of the request actually landing.
+  Fixed by waiting on the actual network response (`page.waitForResponse`) instead of a fixed delay;
+  re-run passed cleanly. **Lesson for next time**: any Playwright check against this app that follows
+  a create/submit action should wait for the real response, not a fixed timeout — a fixed delay that
+  "usually" works will intermittently produce a false FAIL on a cold connection.
 
 ## 11. SDD vs. actual implementation — known divergences
 
