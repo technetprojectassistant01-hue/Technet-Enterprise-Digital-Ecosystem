@@ -34,17 +34,18 @@ export function generateQuotationPdf(quotation: QuotationForPdf, signatoryName: 
   const dateStr = ordinalDate(quotation.issuedAt);
 
   // Bold label / plain value pairs in a fixed-width label column, matching the real letterhead
-  // template rather than plain "Label: value" strings.
+  // template rather than plain "Label: value" strings. Font size (12pt) and label column width
+  // (36pt) taken directly from the real reference PDF's own text layout, not eyeballed.
   const labelX = doc.page.margins.left;
-  const valueX = labelX + 42;
+  const valueX = labelX + 36;
   const valueWidth = doc.page.width - doc.page.margins.right - valueX;
   function labelRow(label: string, value: string) {
     const y = doc.y;
-    doc.font("Body-Bold").fontSize(10).text(label, labelX, y);
-    doc.font("Body").fontSize(10).text(value, valueX, y, { width: valueWidth });
+    doc.font("Body-Bold").fontSize(12).text(label, labelX, y);
+    doc.font("Body").fontSize(12).text(value, valueX, y, { width: valueWidth });
   }
   function indentedLine(value: string) {
-    doc.font("Body").fontSize(10).text(value, valueX, doc.y, { width: valueWidth });
+    doc.font("Body").fontSize(12).text(value, valueX, doc.y, { width: valueWidth });
   }
 
   labelRow("Date:", dateStr);
@@ -64,6 +65,7 @@ export function generateQuotationPdf(quotation: QuotationForPdf, signatoryName: 
     .stroke();
   doc.moveDown();
 
+  doc.fontSize(12);
   const greetingName = quotation.contactPerson ? quotation.contactPerson.trim().split(/\s+/)[0] : null;
   doc.text(greetingName ? `Dear ${greetingName},` : "Dear Sir/Madam,");
   doc.moveDown();
@@ -96,7 +98,8 @@ export function generateQuotationPdf(quotation: QuotationForPdf, signatoryName: 
 
   doc.moveDown(2);
   doc
-    .fontSize(9)
+    .font("Body")
+    .fontSize(10)
     .text(
       "I/We hereby approve the above quotation and authorise the company to proceed with the delivery & invoice accordingly.",
     );
@@ -104,7 +107,7 @@ export function generateQuotationPdf(quotation: QuotationForPdf, signatoryName: 
 
   const colWidth = (doc.page.width - doc.page.margins.left - doc.page.margins.right) / 3;
   const sigY = doc.y;
-  doc.fontSize(8);
+  doc.font("Body").fontSize(10);
   doc.text("Read & Approved by", doc.page.margins.left, sigY, { width: colWidth, align: "center" });
   doc.text("Signature & Company seal", doc.page.margins.left + colWidth, sigY, { width: colWidth, align: "center" });
   doc.text("Date", doc.page.margins.left + colWidth * 2, sigY, { width: colWidth, align: "center" });
