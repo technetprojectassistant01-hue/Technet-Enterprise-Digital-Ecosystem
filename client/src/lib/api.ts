@@ -2838,3 +2838,120 @@ export function portalQuotationPdfUrl(id: string) {
 export function portalInvoicePdfUrl(id: string) {
   return `${API_URL}/api/portal/invoices/${id}/pdf`
 }
+
+// ---- Technet Digital Marketing (Phase 1: campaigns + content calendar, no AI, no auto-publish) ----
+
+export type MarketingPlatform = 'LinkedIn' | 'Facebook' | 'Instagram' | 'Other'
+export const MARKETING_PLATFORMS: MarketingPlatform[] = ['LinkedIn', 'Facebook', 'Instagram', 'Other']
+
+export type MarketingPostStatus = 'PLANNED' | 'POSTED' | 'CANCELLED'
+
+export interface MarketingCampaign {
+  id: string
+  name: string
+  description: string | null
+  startDate: string | null
+  endDate: string | null
+  createdBy: { id: string; name: string | null; email: string } | null
+  createdAt: string
+  updatedAt: string
+  _count?: { posts: number }
+  posts?: MarketingPost[]
+}
+
+export interface MarketingPost {
+  id: string
+  campaignId: string
+  campaign?: { id: string; name: string }
+  title: string
+  platform: MarketingPlatform
+  copy: string | null
+  scheduledDate: string
+  status: MarketingPostStatus
+  postedAt: string | null
+  createdAt: string
+}
+
+export interface MarketingCampaignInput {
+  name: string
+  description?: string
+  startDate?: string
+  endDate?: string
+}
+
+export interface MarketingPostInput {
+  title: string
+  platform: MarketingPlatform
+  copy?: string
+  scheduledDate: string
+}
+
+export function listMarketingCampaigns(params: { search?: string } = {}) {
+  const query = new URLSearchParams()
+  if (params.search) query.set('search', params.search)
+  const qs = query.toString()
+  return request<{ campaigns: MarketingCampaign[] }>(`/api/marketing/campaigns${qs ? `?${qs}` : ''}`)
+}
+
+export function getMarketingCampaign(id: string) {
+  return request<{ campaign: MarketingCampaign }>(`/api/marketing/campaigns/${id}`)
+}
+
+export function createMarketingCampaign(input: MarketingCampaignInput) {
+  return request<{ campaign: MarketingCampaign }>('/api/marketing/campaigns', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function updateMarketingCampaign(id: string, input: Partial<MarketingCampaignInput>) {
+  return request<{ campaign: MarketingCampaign }>(`/api/marketing/campaigns/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
+}
+
+export function deleteMarketingCampaign(id: string) {
+  return request<null>(`/api/marketing/campaigns/${id}`, { method: 'DELETE' })
+}
+
+export function createMarketingPost(campaignId: string, input: MarketingPostInput) {
+  return request<{ post: MarketingPost }>(`/api/marketing/campaigns/${campaignId}/posts`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function updateMarketingPost(id: string, input: Partial<MarketingPostInput> & { status?: MarketingPostStatus }) {
+  return request<{ post: MarketingPost }>(`/api/marketing/posts/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
+}
+
+export function markMarketingPostPosted(id: string) {
+  return request<{ post: MarketingPost }>(`/api/marketing/posts/${id}/mark-posted`, { method: 'POST' })
+}
+
+export function deleteMarketingPost(id: string) {
+  return request<null>(`/api/marketing/posts/${id}`, { method: 'DELETE' })
+}
+
+export function listMarketingPosts(
+  params: {
+    from?: string
+    to?: string
+    status?: MarketingPostStatus
+    platform?: MarketingPlatform
+    campaignId?: string
+  } = {},
+) {
+  const query = new URLSearchParams()
+  if (params.from) query.set('from', params.from)
+  if (params.to) query.set('to', params.to)
+  if (params.status) query.set('status', params.status)
+  if (params.platform) query.set('platform', params.platform)
+  if (params.campaignId) query.set('campaignId', params.campaignId)
+  const qs = query.toString()
+  return request<{ posts: MarketingPost[] }>(`/api/marketing/posts${qs ? `?${qs}` : ''}`)
+}
