@@ -37,6 +37,7 @@ import portalAuthRouter from "./routes/portalAuth";
 import portalRouter from "./routes/portal";
 import notificationsRouter from "./routes/notifications";
 import marketingRouter from "./routes/marketing";
+import myLeaveRouter from "./routes/myLeave";
 import { requireAuth, requireRole } from "./middleware/auth";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 
@@ -97,6 +98,7 @@ app.use("/api/portal-auth", portalAuthRouter);
 app.use("/api/portal", portalRouter);
 app.use("/api/notifications", notificationsRouter);
 app.use("/api/marketing", marketingRouter);
+app.use("/api/my-leave", myLeaveRouter);
 
 app.get("/api/admin/ping", requireAuth, requireRole("ADMIN"), (_req, res) => {
   res.json({ ok: true, message: "You have admin access" });
