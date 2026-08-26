@@ -12,12 +12,29 @@ import {
   Receipt,
   UserCheck,
   PackageX,
+  FolderKanban,
+  ClipboardList,
+  ShoppingCart,
 } from 'lucide-react'
 import * as api from './lib/api'
-import type { InventoryItem, Customer, Invoice, Expense, Quotation, Contract } from './lib/api'
+import type {
+  InventoryItem,
+  Customer,
+  Invoice,
+  Expense,
+  Quotation,
+  Contract,
+  Project,
+  Requisition,
+  PurchaseOrder,
+  Document as ErpDocument,
+  Employee,
+} from './lib/api'
 import { Panel, StatCard, BarChart, Badge, EmptyState, TableSkeleton } from './dashboard/ui'
-import { contractStatusTone } from './erp/statusTones'
+import { contractStatusTone, projectStatusTone } from './erp/statusTones'
 import { formatMoney } from './lib/format'
+import { useAuth } from './context/AuthContext'
+import { hasRole, HR_ROLES } from './lib/permissions'
 
 const PIPELINE_STEPS = [
   { label: 'CUSTOMERS', icon: UserPlus },
@@ -38,13 +55,27 @@ function timeAgo(iso: string) {
   return `${Math.floor(hours / 24)}d ago`
 }
 
+function formatDate(iso: string | null) {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
 function TechnetErpPage() {
+  const { user } = useAuth()
+  const canSeeHr = hasRole(user?.role, HR_ROLES)
+
   const [inventory, setInventory] = useState<InventoryItem[] | null>(null)
   const [customers, setCustomers] = useState<Customer[] | null>(null)
   const [invoices, setInvoices] = useState<Invoice[] | null>(null)
   const [expenses, setExpenses] = useState<Expense[] | null>(null)
   const [quotations, setQuotations] = useState<Quotation[] | null>(null)
   const [contracts, setContracts] = useState<Contract[] | null>(null)
+  const [projects, setProjects] = useState<Project[] | null>(null)
+  const [requisitions, setRequisitions] = useState<Requisition[] | null>(null)
+  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[] | null>(null)
+  const [documents, setDocuments] = useState<ErpDocument[] | null>(null)
+  const [employees, setEmployees] = useState<Employee[] | null>(null)
+  const [pendingLeaveCount, setPendingLeaveCount] = useState<number | null>(null)
 
   useEffect(() => {
     api.listInventory().then(({ items }) => setInventory(items)).catch(() => setInventory([]))
@@ -53,7 +84,19 @@ function TechnetErpPage() {
     api.listExpenses().then(({ expenses }) => setExpenses(expenses)).catch(() => setExpenses([]))
     api.listQuotations().then(({ quotations }) => setQuotations(quotations)).catch(() => setQuotations([]))
     api.listContracts().then(({ contracts }) => setContracts(contracts)).catch(() => setContracts([]))
+    api.listProjects().then(({ projects }) => setProjects(projects)).catch(() => setProjects([]))
+    api.listRequisitions().then(({ requisitions }) => setRequisitions(requisitions)).catch(() => setRequisitions([]))
+    api.listPurchaseOrders().then(({ purchaseOrders }) => setPurchaseOrders(purchaseOrders)).catch(() => setPurchaseOrders([]))
+    api.listDocuments().then(({ documents }) => setDocuments(documents)).catch(() => setDocuments([]))
+    api.listEmployees().then(({ employees }) => setEmployees(employees)).catch(() => setEmployees([]))
   }, [])
+
+  // Leave data is HR_ROLES-only server-side (unlike everything else this page reads) - only
+  // fetch it when the viewer can actually see it, same gate HrOverviewPage.tsx uses.
+  useEffect(() => {
+    if (!canSeeHr) return
+    api.getLeaveSummary().then(({ pendingCount }) => setPendingLeaveCount(pendingCount)).catch(() => setPendingLeaveCount(0))
+  }, [canSeeHr])
 
   const lowStockItems = (inventory ?? []).filter((i) => i.quantity <= i.minStockLevel)
 
@@ -95,6 +138,15 @@ function TechnetErpPage() {
 
   const activeContracts = (contracts ?? []).filter((c) => c.status !== 'COMPLETED' && c.status !== 'CANCELLED')
 
+  const activeProjects = (projects ?? []).filter(
+    (p) => p.status !== 'COMPLETED' && p.status !== 'CLOSED' && p.status !== 'CANCELLED',
+  )
+  const pendingRequisitions = (requisitions ?? []).filter((r) => r.status === 'SUBMITTED')
+  const openPurchaseOrders = (purchaseOrders ?? []).filter(
+    (po) => po.status === 'DRAFT' || po.status === 'SENT' || po.status === 'PARTIALLY_RECEIVED',
+  )
+  const activeHeadcount = (employees ?? []).filter((e) => e.employmentStatus !== 'TERMINATED')
+
   const activity = [
     ...(customers ?? []).map((c) => ({
       icon: UserCheck,
@@ -124,11 +176,48 @@ function TechnetErpPage() {
       detail: `${item.name} Low · ${timeAgo(item.updatedAt)}`,
       at: item.updatedAt,
     })),
+    ...(requisitions ?? []).map((r) => ({
+      icon: ClipboardList,
+      tone: 'default' as const,
+      title: `Requisition ${r.requisitionNumber} Submitted`,
+      detail: `${r.project?.name || 'No project'} · ${timeAgo(r.createdAt)}`,
+      at: r.createdAt,
+    })),
+    ...(purchaseOrders ?? []).map((po) => ({
+      icon: ShoppingCart,
+      tone: 'default' as const,
+      title: `Purchase Order ${po.poNumber} Created`,
+      detail: `${po.supplier.name} · ${formatMoney(po.totalAmount)} · ${timeAgo(po.createdAt)}`,
+      at: po.createdAt,
+    })),
+    ...(projects ?? []).map((p) => ({
+      icon: FolderKanban,
+      tone: 'default' as const,
+      title: `Project "${p.name}" Created`,
+      detail: `${p.customer?.company || p.customer?.name || 'No customer'} · ${timeAgo(p.createdAt)}`,
+      at: p.createdAt,
+    })),
+    ...(documents ?? []).map((d) => ({
+      icon: FileText,
+      tone: 'default' as const,
+      title: `Document "${d.title}" Uploaded`,
+      detail: `${d.uploadedBy.name || d.uploadedBy.email} · ${timeAgo(d.createdAt)}`,
+      at: d.createdAt,
+    })),
   ]
     .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
     .slice(0, 5)
 
-  const loaded = customers !== null && invoices !== null && expenses !== null && quotations !== null && contracts !== null
+  const loaded =
+    customers !== null &&
+    invoices !== null &&
+    expenses !== null &&
+    quotations !== null &&
+    contracts !== null &&
+    projects !== null &&
+    requisitions !== null &&
+    purchaseOrders !== null &&
+    documents !== null
 
   return (
     <div className="flex flex-col gap-6">
@@ -183,6 +272,36 @@ function TechnetErpPage() {
             deltaTone="warning"
           />
         </Link>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <Link to="/dashboard/erp/projects" className="block">
+          <StatCard label="ACTIVE PROJECTS" value={projects === null ? '—' : activeProjects.length} />
+        </Link>
+        <Link to="/dashboard/erp/procurement/requisitions" className="block">
+          <StatCard
+            label="PENDING REQUISITIONS"
+            value={requisitions === null ? '—' : pendingRequisitions.length}
+            delta={requisitions !== null && pendingRequisitions.length > 0 ? 'Needs approval' : undefined}
+            deltaTone="warning"
+          />
+        </Link>
+        <Link to="/dashboard/erp/procurement/purchase-orders" className="block">
+          <StatCard label="OPEN PURCHASE ORDERS" value={purchaseOrders === null ? '—' : openPurchaseOrders.length} />
+        </Link>
+        <Link to="/dashboard/erp/hr/employees" className="block">
+          <StatCard label="ACTIVE HEADCOUNT" value={employees === null ? '—' : activeHeadcount.length} />
+        </Link>
+        {canSeeHr && (
+          <Link to="/dashboard/erp/hr/leave" className="block">
+            <StatCard
+              label="LEAVE PENDING APPROVAL"
+              value={pendingLeaveCount === null ? '—' : pendingLeaveCount}
+              delta={pendingLeaveCount !== null && pendingLeaveCount > 0 ? 'Needs approval' : undefined}
+              deltaTone="warning"
+            />
+          </Link>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -297,6 +416,90 @@ function TechnetErpPage() {
                   <div className="mt-1 flex items-center justify-between text-xs text-ink-400">
                     <span>SKU: {item.sku}</span>
                     <span>Min: {item.minStockLevel}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Panel>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <Panel
+          className="lg:col-span-2"
+          title="Active Projects"
+          icon={FolderKanban}
+          action={
+            <Link
+              to="/dashboard/erp/projects"
+              className="text-xs font-semibold text-cyan-accent hover:underline"
+            >
+              View All &gt;
+            </Link>
+          }
+        >
+          {projects === null ? (
+            <TableSkeleton rows={3} cols={4} />
+          ) : activeProjects.length === 0 ? (
+            <EmptyState icon={FolderKanban} message="No active projects." />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="text-[11px] tracking-widest text-ink-400">
+                    <th className="pb-3 font-semibold">PROJECT</th>
+                    <th className="pb-3 font-semibold">CUSTOMER</th>
+                    <th className="pb-3 font-semibold">STATUS</th>
+                    <th className="pb-3 font-semibold">BUDGET</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...activeProjects]
+                    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+                    .slice(0, 5)
+                    .map((p) => (
+                      <tr key={p.id} className="border-t border-ink-800">
+                        <td className="py-3 text-ink-100">{p.name}</td>
+                        <td className="py-3 text-ink-300">{p.customer?.company || p.customer?.name || '—'}</td>
+                        <td className="py-3">
+                          <Badge tone={projectStatusTone[p.status]}>{p.status.replace('_', ' ')}</Badge>
+                        </td>
+                        <td className="py-3 font-medium text-ink-100">{p.budget ? formatMoney(p.budget) : '—'}</td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Panel>
+
+        <Panel
+          title="Requisitions Awaiting Approval"
+          icon={ClipboardList}
+          action={
+            <Link
+              to="/dashboard/erp/procurement/requisitions"
+              className="text-xs font-semibold text-cyan-accent hover:underline"
+            >
+              View All &gt;
+            </Link>
+          }
+        >
+          {requisitions === null ? (
+            <TableSkeleton rows={3} cols={2} />
+          ) : pendingRequisitions.length === 0 ? (
+            <EmptyState icon={ClipboardList} message="Nothing waiting for approval." />
+          ) : (
+            <div className="flex flex-col gap-3">
+              {pendingRequisitions.slice(0, 5).map((r) => (
+                <div key={r.id} className="rounded-lg bg-ink-800 px-4 py-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-sm font-medium text-ink-100">{r.requisitionNumber}</span>
+                    <span className="shrink-0 text-xs text-ink-400">{r.items.length} item{r.items.length === 1 ? '' : 's'}</span>
+                  </div>
+                  <div className="mt-1 flex items-center justify-between text-xs text-ink-400">
+                    <span>{r.project?.name || 'No project'}</span>
+                    <span>Needed {formatDate(r.neededByDate)}</span>
                   </div>
                 </div>
               ))}
