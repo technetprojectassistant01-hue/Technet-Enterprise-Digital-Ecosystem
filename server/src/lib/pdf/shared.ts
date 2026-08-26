@@ -1,12 +1,29 @@
 import type { Prisma } from "../../generated/prisma/client";
 import { COMPANY } from "./company";
 import { LOGO_LOCKUP_BASE64 } from "./assets/logo";
+import {
+  CARLITO_REGULAR_BASE64,
+  CARLITO_BOLD_BASE64,
+  CARLITO_ITALIC_BASE64,
+  CARLITO_BOLDITALIC_BASE64,
+} from "./assets/fonts";
 
 const LOGO_BUFFER = Buffer.from(LOGO_LOCKUP_BASE64, "base64");
 /** Real aspect ratio of the cropped lockup PNG (720x406) - height = width * this. */
 const LOGO_ASPECT = 406 / 720;
 const LOGO_WIDTH = 170;
 const LOGO_HEIGHT = LOGO_WIDTH * LOGO_ASPECT;
+
+/** Carlito is metrically-compatible, openly-licensed stand-in for Calibri - the actual font
+ * embedded in every real Technet-issued quotation/invoice (confirmed by inspecting the fonts
+ * embedded in a real reference PDF the user supplied). Calibri itself is a proprietary Microsoft
+ * font with no redistributable file, so it can't be embedded directly. Call once per document. */
+export function registerBrandFonts(doc: PDFKit.PDFDocument) {
+  doc.registerFont("Body", Buffer.from(CARLITO_REGULAR_BASE64, "base64"));
+  doc.registerFont("Body-Bold", Buffer.from(CARLITO_BOLD_BASE64, "base64"));
+  doc.registerFont("Body-Italic", Buffer.from(CARLITO_ITALIC_BASE64, "base64"));
+  doc.registerFont("Body-BoldItalic", Buffer.from(CARLITO_BOLDITALIC_BASE64, "base64"));
+}
 
 export type Money = Prisma.Decimal | number | string;
 
@@ -30,8 +47,8 @@ export function drawLetterhead(doc: PDFKit.PDFDocument, _title?: string) {
   doc.image(LOGO_BUFFER, left, top, { width: LOGO_WIDTH });
 
   const addrX = left + LOGO_WIDTH + 20;
-  doc.font("Helvetica-Bold").fontSize(11).fillColor("#000000").text(COMPANY.name, addrX, top, { width: right - addrX, align: "right" });
-  doc.font("Helvetica").fontSize(8).fillColor("#333333");
+  doc.font("Body-Bold").fontSize(11).fillColor("#000000").text(COMPANY.name, addrX, top, { width: right - addrX, align: "right" });
+  doc.font("Body").fontSize(8).fillColor("#333333");
   doc.text(COMPANY.addressLines.join(", "), addrX, doc.y, { width: right - addrX, align: "right" });
   doc.text(`Tel: ${COMPANY.tel}  Fax: ${COMPANY.fax}`, addrX, doc.y, { width: right - addrX, align: "right" });
   doc.text(`E: ${COMPANY.email} | ${COMPANY.website}`, addrX, doc.y, { width: right - addrX, align: "right" });
@@ -55,7 +72,7 @@ export function drawFooterBanner(doc: PDFKit.PDFDocument) {
   doc.rect(0, y, pageWidth, barHeight).fill("#0d5c70");
   doc.rect(0, y, pageWidth * 0.18, barHeight).fill("#01bbd2");
   doc
-    .font("Helvetica-Bold")
+    .font("Body-Bold")
     .fontSize(8)
     .fillColor("#ffffff")
     .text("Building Services  |  ELV & Security  |  Engineering Solutions", 0, y + 7, { width: pageWidth - 20, align: "right" });
@@ -94,18 +111,18 @@ export function drawKeyValueTable(doc: PDFKit.PDFDocument, title: string, rows: 
 
   ensureSpace(30);
   doc.rect(left, doc.y, width, 22).fillAndStroke("#daeef3", "#5fb8c9");
-  doc.fillColor("#000000").font("Helvetica-Bold").fontSize(11).text(title, left, doc.y + 6, { width, align: "center", underline: true });
+  doc.fillColor("#000000").font("Body-Bold").fontSize(11).text(title, left, doc.y + 6, { width, align: "center", underline: true });
   doc.y += 22;
 
   for (const row of rows) {
-    const valueHeight = doc.font("Helvetica").fontSize(8).heightOfString(row.value, { width: colValue - 12 });
+    const valueHeight = doc.font("Body").fontSize(8).heightOfString(row.value, { width: colValue - 12 });
     const rowHeight = Math.max(valueHeight + 10, 22);
     ensureSpace(rowHeight);
     const y = doc.y;
     doc.rect(left, y, colLabel, rowHeight).stroke("#5fb8c9");
     doc.rect(left + colLabel, y, colValue, rowHeight).stroke("#5fb8c9");
-    doc.font("Helvetica-Bold").fontSize(8).fillColor("#000000").text(row.label, left + 6, y + 6, { width: colLabel - 12 });
-    doc.font("Helvetica").fontSize(8).fillColor("#000000").text(row.value, left + colLabel + 6, y + 6, { width: colValue - 12 });
+    doc.font("Body-Bold").fontSize(8).fillColor("#000000").text(row.label, left + 6, y + 6, { width: colLabel - 12 });
+    doc.font("Body").fontSize(8).fillColor("#000000").text(row.value, left + colLabel + 6, y + 6, { width: colValue - 12 });
     doc.y = y + rowHeight;
   }
   doc.x = left;
@@ -137,7 +154,7 @@ export function drawItemsTable(doc: PDFKit.PDFDocument, items: PdfLineItem[]) {
   function headerRow() {
     const y = doc.y;
     doc.rect(left, y, width, 20).fill("#0891b2");
-    doc.fillColor("#ffffff").font("Helvetica-Bold").fontSize(9);
+    doc.fillColor("#ffffff").font("Body-Bold").fontSize(9);
     doc.text("No.", left + 4, y + 6, { width: colNo - 4 });
     doc.text("Description", left + colNo, y + 6, { width: colDesc - 4 });
     doc.text("Qty", left + colNo + colDesc, y + 6, { width: colQty - 4, align: "right" });
@@ -154,7 +171,7 @@ export function drawItemsTable(doc: PDFKit.PDFDocument, items: PdfLineItem[]) {
     const rowHeight = Math.max(doc.heightOfString(item.description, { width: colDesc - 8 }), 14) + 10;
     ensureSpace(rowHeight);
     const y = doc.y;
-    doc.font("Helvetica").fontSize(9);
+    doc.font("Body").fontSize(9);
     doc.text(String(index + 1).padStart(2, "0"), left + 4, y, { width: colNo - 4 });
     doc.text(item.description, left + colNo, y, { width: colDesc - 4 });
     doc.text(String(item.quantity), left + colNo + colDesc, y, { width: colQty - 4, align: "right" });
@@ -216,9 +233,9 @@ export function drawBoxedItemsTable(
   // Title bar
   const titleHeight = refLine ? 32 : 22;
   doc.rect(left, boxStartY, width, titleHeight).fill(PALE);
-  doc.fillColor("#000000").font("Helvetica-Bold").fontSize(10).text(title, left + 8, boxStartY + 7, { width: width - 16, align: "center" });
+  doc.fillColor("#000000").font("Body-Bold").fontSize(10).text(title, left + 8, boxStartY + 7, { width: width - 16, align: "center" });
   if (refLine) {
-    doc.font("Helvetica").fontSize(8).text(refLine, left + 8, boxStartY + 21, { width: width - 16, align: "center" });
+    doc.font("Body").fontSize(8).text(refLine, left + 8, boxStartY + 21, { width: width - 16, align: "center" });
   }
   doc.y = boxStartY + titleHeight;
 
@@ -226,7 +243,7 @@ export function drawBoxedItemsTable(
   const headerY = doc.y;
   const headerHeight = 26;
   doc.rect(left, headerY, width, headerHeight).fill(PALE);
-  doc.fillColor("#000000").font("Helvetica-Bold").fontSize(9);
+  doc.fillColor("#000000").font("Body-Bold").fontSize(9);
   doc.text("Item", left + 4, headerY + 9, { width: colNo - 4 });
   doc.text("Description", left + colNo + 4, headerY + 9, { width: colDesc - 8 });
   doc.text("Qty", left + colNo + colDesc, headerY + 9, { width: colQty - 4, align: "right" });
@@ -239,10 +256,10 @@ export function drawBoxedItemsTable(
   // Item rows
   items.forEach((item, index) => {
     const amount = Number(item.unitPrice) * item.quantity;
-    const rowHeight = Math.max(doc.font("Helvetica").fontSize(9).heightOfString(item.description, { width: colDesc - 8 }), 12) + 10;
+    const rowHeight = Math.max(doc.font("Body").fontSize(9).heightOfString(item.description, { width: colDesc - 8 }), 12) + 10;
     ensureSpace(rowHeight);
     const y = doc.y;
-    doc.font("Helvetica").fontSize(9);
+    doc.font("Body").fontSize(9);
     doc.text(`${index + 1}.0`, left + 4, y, { width: colNo - 4 });
     doc.text(item.description, left + colNo + 4, y, { width: colDesc - 8 });
     doc.text(String(item.quantity), left + colNo + colDesc, y, { width: colQty - 4, align: "right" });
@@ -263,9 +280,9 @@ export function drawBoxedItemsTable(
     ensureSpace(rowH);
     const y = doc.y;
     doc.rect(left, y, width, rowH).fill(PALE);
-    doc.font(bold ? "Helvetica-Bold" : "Helvetica").fontSize(bold ? 10 : 9).fillColor("#000000");
+    doc.font(bold ? "Body-Bold" : "Body").fontSize(bold ? 10 : 9).fillColor("#000000");
     doc.text(label, left, y + (bold ? 7 : 5), { width: totalsLabelWidth - 8, align: "right" });
-    doc.font(bold ? "Helvetica-Bold" : "Helvetica-Oblique");
+    doc.font(bold ? "Body-Bold" : "Body-Italic");
     doc.text(value, left + totalsLabelWidth, y + (bold ? 7 : 5), { width: colAmount - 8, align: "right" });
     const nextY = y + rowH;
     doc.moveTo(left + totalsLabelWidth, y).lineTo(left + totalsLabelWidth, nextY).strokeColor(GRID).lineWidth(0.75).stroke();
@@ -303,7 +320,7 @@ export function drawTotals(
   }
 
   function line(label: string, value: string, bold = false) {
-    doc.font(bold ? "Helvetica-Bold" : "Helvetica").fontSize(bold ? 11 : 9);
+    doc.font(bold ? "Body-Bold" : "Body").fontSize(bold ? 11 : 9);
     doc.text(label, left, y, { width: boxWidth * 0.5 });
     doc.text(value, left + boxWidth * 0.5, y, { width: boxWidth * 0.5, align: "right" });
     y += bold ? 20 : 16;
