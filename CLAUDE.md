@@ -136,6 +136,8 @@ Intervention Reports, Work Orders, and Daily Reports all support `from`/`to` dat
 
 Pattern to reuse if asked to add more filters anywhere: a `parseDateOnly()` helper per route file (regex-matches `YYYY-MM-DD`, inclusive end-of-day via `+24h - 1ms`), a `Filters` state object or individual `useState`s on the client wired to a `load()` call in a `useEffect`, and a filter row (`label` + `select`/`input[type=date]`) above the table inside the existing `Panel`.
 
+Same pattern applied to the **Asset Registry** (2026-08-26, `dd8d288`/`734dfba`): Customer, Status, and Category filters (search broadened to also match `location`, not just name/serial). One thing worth remembering for any filter whose options come from the data itself (not a fixed enum) — Category here is a free string, not an enum, so its dropdown options are derived from a **separate, one-time unfiltered fetch** on mount, not from the currently-filtered `assets` list. Deriving options from the filtered list creates a real bug: picking a category narrows the list to just that category, which then narrows the dropdown down to just the one option left visible, hiding every other choice from the user.
+
 ### 7d. Evidence capture
 
 `InterventionReport` (the existing "inspection report" record — customer, equipment, fault description, action taken, technician report, signature, attachment) was extended rather than replaced: `PhotoKind` enum gained `BEFORE`/`AFTER` (alongside existing `EQUIPMENT`/`WORK_DONE`), plus a `materialsUsed` text field.
