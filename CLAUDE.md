@@ -115,6 +115,8 @@ While checked in and linked to a geofenced work order: a 10-minute foreground-on
 
 Manager visibility: **Team Attendance** (`OPS_MANAGE_ROLES`, shows everyone's daily check-ins with linked work order + status if any) and **Field Operations** (`OPS_MANAGE_ROLES`, focused view of just the work-order-linked sessions — who's in the field, time on site, last verified location, exit-event history).
 
+Team Attendance gained a **per-technician filter and monthly summary** (2026-08-26, `2418e54`/`a1b485f`): `GET /api/site-attendance` takes an optional `employeeId` (filters both the live "currently checked in" list and the month's history) and now also returns a `summary` array — one row per technician for the selected month (days present, total check-ins, hours on site, on-site vs. outside-site verification counts), computed by grouping the same `history` rows already being fetched rather than a separate query. The on-site/outside-site counters exist specifically because trust in field technicians' whereabouts is the whole reason this GPS system was built (see §1) — a manager scanning for a high outside-site count is the actual use case.
+
 **A second, work-order-specific check-in flow was briefly built (2026-08-13) then fully retired the same day** after the user caught that it was the wrong shape — the trust/tracking features were supposed to extend the *existing* daily check-in, not add a competing one on the Work Order Detail page. `WorkOrderDetailPage.tsx` is now purely read-only for attendance (status badge + Site Attendance table). **If asked to touch check-in behavior again: do not add check-in controls to the work order page.** Everything belongs on `AttendanceWidget.tsx`.
 
 ### 7b. Site locations — address search, not coordinates (2026-08-14)
