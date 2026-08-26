@@ -4,6 +4,7 @@ import ForgotPassword from './ForgotPassword'
 import ResetPassword from './ResetPassword'
 import Dashboard from './Dashboard'
 import DashboardHome from './DashboardHome'
+import MyLeavePage from './MyLeavePage'
 import ErpLayout from './erp/ErpLayout'
 import TechnetErpPage from './TechnetErpPage'
 import InventoryPage from './erp/InventoryPage'
@@ -83,6 +84,7 @@ function App() {
       <Route element={<ProtectedRoute />}>
         <Route path="/dashboard" element={<Dashboard />}>
           <Route index element={<DashboardHome />} />
+          <Route path="my-leave" element={<MyLeavePage />} />
           <Route element={<RoleRoute blockedRoles={FIELD_ONLY_ROLES} />}>
             <Route path="erp" element={<ErpLayout />}>
               <Route index element={<TechnetErpPage />} />
