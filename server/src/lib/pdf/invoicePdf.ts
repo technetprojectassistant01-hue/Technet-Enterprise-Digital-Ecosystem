@@ -1,6 +1,6 @@
 import PDFDocument from "pdfkit";
 import { INVOICE_CONDITIONS } from "./company";
-import { drawItemsTable, drawLetterhead, drawTotals, type Money } from "./shared";
+import { drawItemsTable, drawLetterhead, drawTotals, registerBrandFonts, type Money } from "./shared";
 
 interface InvoiceCustomer {
   name: string;
@@ -25,6 +25,8 @@ export interface InvoiceForPdf {
 
 export function generateInvoicePdf(invoice: InvoiceForPdf): PDFKit.PDFDocument {
   const doc = new PDFDocument({ size: "A4", margin: 50, bufferPages: true });
+  registerBrandFonts(doc);
+  doc.font("Body");
 
   drawLetterhead(doc, "VAT INVOICE");
 
@@ -36,8 +38,8 @@ export function generateInvoicePdf(invoice: InvoiceForPdf): PDFKit.PDFDocument {
   // "Invoice To" box
   const toBoxWidth = (right - left) * 0.55;
   doc.rect(left, boxTop, toBoxWidth, boxHeight).stroke();
-  doc.font("Helvetica-Bold").fontSize(9).text("Invoice To", left + 8, boxTop + 6);
-  doc.font("Helvetica").fontSize(9);
+  doc.font("Body-Bold").fontSize(9).text("Invoice To", left + 8, boxTop + 6);
+  doc.font("Body").fontSize(9);
   doc.text(invoice.customer.company || invoice.customer.name, left + 8, boxTop + 20, { width: toBoxWidth - 16 });
   if (invoice.customer.address) doc.text(invoice.customer.address, left + 8, doc.y, { width: toBoxWidth - 16 });
   const taxLine = [
@@ -58,10 +60,10 @@ export function generateInvoicePdf(invoice: InvoiceForPdf): PDFKit.PDFDocument {
     const y = boxTop + idx * rowH;
     doc.rect(detailX, y, detailWidth / 2, rowH).stroke();
     doc.rect(detailX + detailWidth / 2, y, detailWidth / 2, rowH).stroke();
-    doc.font("Helvetica-Bold").fontSize(7);
+    doc.font("Body-Bold").fontSize(7);
     doc.text(label1, detailX + 4, y + 4);
     doc.text(label2, detailX + detailWidth / 2 + 4, y + 4);
-    doc.font("Helvetica").fontSize(9);
+    doc.font("Body").fontSize(9);
     doc.text(val1, detailX + 4, y + 14, { width: detailWidth / 2 - 8 });
     doc.text(val2, detailX + detailWidth / 2 + 4, y + 14, { width: detailWidth / 2 - 8 });
   }
@@ -74,8 +76,8 @@ export function generateInvoicePdf(invoice: InvoiceForPdf): PDFKit.PDFDocument {
   drawTotals(doc, invoice.subtotal, invoice.vatRate, invoice.vatAmount, invoice.total);
 
   doc.moveDown(2);
-  doc.font("Helvetica-Bold").fontSize(9).text("Conditions of Sale");
-  doc.font("Helvetica").fontSize(8);
+  doc.font("Body-Bold").fontSize(9).text("Conditions of Sale");
+  doc.font("Body").fontSize(8);
   for (const condition of INVOICE_CONDITIONS) {
     doc.text(`•  ${condition}`, { width: (right - left) * 0.62 });
     doc.moveDown(0.3);

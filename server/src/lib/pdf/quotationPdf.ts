@@ -1,6 +1,6 @@
 import PDFDocument from "pdfkit";
 import { QUOTATION_CONDITIONS, paymentTermsDescription } from "./company";
-import { drawBoxedItemsTable, drawFooterBanner, drawKeyValueTable, drawLetterhead, ordinalDate, type Money } from "./shared";
+import { drawBoxedItemsTable, drawFooterBanner, drawKeyValueTable, drawLetterhead, ordinalDate, registerBrandFonts, type Money } from "./shared";
 
 interface QuotationCustomer {
   name: string;
@@ -26,6 +26,8 @@ export interface QuotationForPdf {
 
 export function generateQuotationPdf(quotation: QuotationForPdf, signatoryName: string): PDFKit.PDFDocument {
   const doc = new PDFDocument({ size: "A4", margin: 50, bufferPages: true });
+  registerBrandFonts(doc);
+  doc.font("Body");
 
   // Page 1 — cover letter
   drawLetterhead(doc);
@@ -38,11 +40,11 @@ export function generateQuotationPdf(quotation: QuotationForPdf, signatoryName: 
   const valueWidth = doc.page.width - doc.page.margins.right - valueX;
   function labelRow(label: string, value: string) {
     const y = doc.y;
-    doc.font("Helvetica-Bold").fontSize(10).text(label, labelX, y);
-    doc.font("Helvetica").fontSize(10).text(value, valueX, y, { width: valueWidth });
+    doc.font("Body-Bold").fontSize(10).text(label, labelX, y);
+    doc.font("Body").fontSize(10).text(value, valueX, y, { width: valueWidth });
   }
   function indentedLine(value: string) {
-    doc.font("Helvetica").fontSize(10).text(value, valueX, doc.y, { width: valueWidth });
+    doc.font("Body").fontSize(10).text(value, valueX, doc.y, { width: valueWidth });
   }
 
   labelRow("Date:", dateStr);
@@ -65,8 +67,8 @@ export function generateQuotationPdf(quotation: QuotationForPdf, signatoryName: 
   const greetingName = quotation.contactPerson ? quotation.contactPerson.trim().split(/\s+/)[0] : null;
   doc.text(greetingName ? `Dear ${greetingName},` : "Dear Sir/Madam,");
   doc.moveDown();
-  doc.font("Helvetica-Bold").text(`Re: ${quotation.title}`);
-  doc.font("Helvetica").moveDown();
+  doc.font("Body-Bold").text(`Re: ${quotation.title}`);
+  doc.font("Body").moveDown();
   doc.text("We refer to the above and are pleased to enclose herewith our best offer as detailed in the BOQ below.");
   doc.moveDown();
   doc.text("Trust our offer of interest and we await your further favourable instructions.");
