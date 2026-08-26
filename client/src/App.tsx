@@ -1,5 +1,4 @@
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
-import { Megaphone } from 'lucide-react'
 import Login from './Login'
 import ForgotPassword from './ForgotPassword'
 import ResetPassword from './ResetPassword'
@@ -53,7 +52,10 @@ import AvailabilityTab from './workforce/AvailabilityTab'
 import AttendancePage from './workforce/AttendancePage'
 import PayrollPage from './workforce/PayrollPage'
 import PayrollDetailPage from './workforce/PayrollDetailPage'
-import ModuleStub from './dashboard/ModuleStub'
+import MarketingLayout from './marketing/MarketingLayout'
+import CampaignsPage from './marketing/CampaignsPage'
+import CampaignDetailPage from './marketing/CampaignDetailPage'
+import ContentCalendarPage from './marketing/ContentCalendarPage'
 import ConnectInfoPage from './ConnectInfoPage'
 import SecurityPage from './SecurityPage'
 import { PortalAuthProvider } from './portal/PortalAuthContext'
@@ -147,10 +149,12 @@ function App() {
             <Route path="payroll/:id" element={<PayrollDetailPage />} />
           </Route>
           <Route element={<RoleRoute blockedRoles={FIELD_ONLY_ROLES} />}>
-            <Route
-              path="marketing"
-              element={<ModuleStub title="Technet Digital Marketing" icon={Megaphone} />}
-            />
+            <Route path="marketing" element={<MarketingLayout />}>
+              <Route index element={<Navigate to="campaigns" replace />} />
+              <Route path="campaigns" element={<CampaignsPage />} />
+              <Route path="campaigns/:id" element={<CampaignDetailPage />} />
+              <Route path="calendar" element={<ContentCalendarPage />} />
+            </Route>
           </Route>
           <Route path="security" element={<SecurityPage />} />
           <Route path="settings" element={<SettingsPage />} />
