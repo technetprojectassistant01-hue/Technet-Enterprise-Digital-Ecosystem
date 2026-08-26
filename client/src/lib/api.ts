@@ -2430,11 +2430,21 @@ export function deleteAsset(id: string) {
   return request<null>(`/api/maintenance-assets/${id}`, { method: 'DELETE' })
 }
 
-export function listMaintenanceContracts(params: { assetId?: string; status?: MaintenanceContractStatus; expiringSoon?: boolean } = {}) {
+export function listMaintenanceContracts(
+  params: {
+    assetId?: string
+    status?: MaintenanceContractStatus
+    expiringSoon?: boolean
+    customerId?: string
+    frequency?: MaintenanceFrequency
+  } = {},
+) {
   const query = new URLSearchParams()
   if (params.assetId) query.set('assetId', params.assetId)
   if (params.status) query.set('status', params.status)
   if (params.expiringSoon) query.set('expiringSoon', 'true')
+  if (params.customerId) query.set('customerId', params.customerId)
+  if (params.frequency) query.set('frequency', params.frequency)
   const qs = query.toString()
   return request<{ contracts: MaintenanceContract[] }>(`/api/maintenance-contracts${qs ? `?${qs}` : ''}`)
 }
@@ -2461,10 +2471,23 @@ export function deleteMaintenanceContract(id: string) {
   return request<null>(`/api/maintenance-contracts/${id}`, { method: 'DELETE' })
 }
 
-export function listMaintenanceRequests(params: { status?: MaintenanceRequestStatus; assetId?: string } = {}) {
+export function listMaintenanceRequests(
+  params: {
+    status?: MaintenanceRequestStatus
+    assetId?: string
+    customerId?: string
+    priority?: MaintenanceRequestPriority
+    from?: string
+    to?: string
+  } = {},
+) {
   const query = new URLSearchParams()
   if (params.status) query.set('status', params.status)
   if (params.assetId) query.set('assetId', params.assetId)
+  if (params.customerId) query.set('customerId', params.customerId)
+  if (params.priority) query.set('priority', params.priority)
+  if (params.from) query.set('from', params.from)
+  if (params.to) query.set('to', params.to)
   const qs = query.toString()
   return request<{ requests: MaintenanceRequest[] }>(`/api/maintenance-requests${qs ? `?${qs}` : ''}`)
 }
@@ -2495,11 +2518,23 @@ export function deleteMaintenanceRequest(id: string) {
   return request<null>(`/api/maintenance-requests/${id}`, { method: 'DELETE' })
 }
 
-export function listMaintenanceSchedules(params: { status?: MaintenanceScheduleStatus; technicianId?: string; contractId?: string } = {}) {
+export function listMaintenanceSchedules(
+  params: {
+    status?: MaintenanceScheduleStatus
+    technicianId?: string
+    contractId?: string
+    customerId?: string
+    from?: string
+    to?: string
+  } = {},
+) {
   const query = new URLSearchParams()
   if (params.status) query.set('status', params.status)
   if (params.technicianId) query.set('technicianId', params.technicianId)
   if (params.contractId) query.set('contractId', params.contractId)
+  if (params.customerId) query.set('customerId', params.customerId)
+  if (params.from) query.set('from', params.from)
+  if (params.to) query.set('to', params.to)
   const qs = query.toString()
   return request<{ schedules: MaintenanceSchedule[] }>(`/api/maintenance-schedules${qs ? `?${qs}` : ''}`)
 }
