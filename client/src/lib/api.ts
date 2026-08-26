@@ -984,6 +984,51 @@ export function syncLeaveStatuses() {
 }
 
 /* ---------------------------------------------------------------- *
+ * Self-service leave (an employee requesting their own leave) -
+ * mirrors the HR-entry functions above but hits /api/my-leave, which
+ * resolves the employee from the logged-in user rather than taking
+ * employeeId as input.
+ * ---------------------------------------------------------------- */
+
+export interface MyLeaveRequestInput {
+  leaveTypeId: string
+  startDate: string
+  endDate: string
+  days?: string
+  halfDay?: boolean
+  reason?: string
+}
+
+export function getMyLeaveTypes() {
+  return request<{ leaveTypes: LeaveType[] }>('/api/my-leave/leave-types')
+}
+
+export function getMyLeaveBalances(year?: number) {
+  const qs = year ? `?year=${year}` : ''
+  return request<{ balances: LeaveBalance[] }>(`/api/my-leave/balances${qs}`)
+}
+
+export function listMyLeaveRequests() {
+  return request<{ requests: LeaveRequest[] }>('/api/my-leave/requests')
+}
+
+export function getMyLeaveWorkingDays(startDate: string, endDate: string) {
+  const query = new URLSearchParams({ startDate, endDate })
+  return request<{ days: number }>(`/api/my-leave/requests/working-days?${query.toString()}`)
+}
+
+export function createMyLeaveRequest(input: MyLeaveRequestInput) {
+  return request<{ request: LeaveRequest }>('/api/my-leave/requests', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function cancelMyLeaveRequest(id: string) {
+  return request<{ request: LeaveRequest }>(`/api/my-leave/requests/${id}/cancel`, { method: 'POST' })
+}
+
+/* ---------------------------------------------------------------- *
  * Attendance
  * ---------------------------------------------------------------- */
 
