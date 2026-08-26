@@ -1,12 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, Lock, MapPin } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Lock, MapPin, Users } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import * as api from '../lib/api'
-import type { SiteAttendanceWithEmployee } from '../lib/api'
+import type { SiteAttendanceWithEmployee, TechnicianAttendanceSummary } from '../lib/api'
 import { Panel, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { useAuth } from '../context/AuthContext'
 import { hasRole, OPS_MANAGE_ROLES } from '../lib/permissions'
 import { mapLink } from '../lib/geolocation'
+import { useEmployees } from '../erp/useEmployees'
+
+const inputClass =
+  'rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
+const labelClass = 'text-xs font-semibold tracking-widest text-ink-400'
 
 function siteStatusTone(status: 'ON_SITE' | 'OUTSIDE_SITE' | 'UNVERIFIED') {
   if (status === 'ON_SITE') return 'success' as const
@@ -58,10 +63,13 @@ function formatTime(value: string): string {
 function TeamAttendancePage() {
   const { user } = useAuth()
   const canAccess = hasRole(user?.role, OPS_MANAGE_ROLES)
+  const employees = useEmployees()
 
   const [month, setMonth] = useState(currentMonth())
+  const [employeeFilter, setEmployeeFilter] = useState('')
   const [current, setCurrent] = useState<SiteAttendanceWithEmployee[]>([])
   const [history, setHistory] = useState<SiteAttendanceWithEmployee[]>([])
+  const [summary, setSummary] = useState<TechnicianAttendanceSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -69,14 +77,15 @@ function TeamAttendancePage() {
     if (!canAccess) return
     setLoading(true)
     api
-      .listTeamAttendance({ month })
-      .then(({ current, history }) => {
+      .listTeamAttendance({ month, employeeId: employeeFilter || undefined })
+      .then(({ current, history, summary }) => {
         setCurrent(current)
         setHistory(history)
+        setSummary(summary)
       })
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load attendance'))
       .finally(() => setLoading(false))
-  }, [canAccess, month])
+  }, [canAccess, month, employeeFilter])
 
   const groupedByDay = useMemo(() => {
     const map = new Map<string, SiteAttendanceWithEmployee[]>()
@@ -154,6 +163,54 @@ function TeamAttendancePage() {
         )}
       </Panel>
 
+      <Panel title="Attendance Summary" icon={Users}>
+        <p className="mb-4 text-sm text-ink-300">
+          Per-technician totals for {formatMonth(month)}, including how often each check-in verified as on-site vs.
+          outside the job site.
+        </p>
+        {loading ? (
+          <TableSkeleton rows={4} cols={5} />
+        ) : summary.length === 0 ? (
+          <p className="text-sm text-ink-400">No check-ins recorded for {formatMonth(month)}.</p>
+        ) : (
+          <div className="overflow-x-auto rounded-lg border border-ink-800">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
+                  <th className="px-3 py-2 font-semibold">TECHNICIAN</th>
+                  <th className="px-3 py-2 font-semibold">DAYS PRESENT</th>
+                  <th className="px-3 py-2 font-semibold">CHECK-INS</th>
+                  <th className="px-3 py-2 font-semibold">HOURS ON SITE</th>
+                  <th className="px-3 py-2 font-semibold">ON-SITE VERIFIED</th>
+                  <th className="px-3 py-2 font-semibold">OUTSIDE SITE</th>
+                </tr>
+              </thead>
+              <tbody>
+                {summary.map((s) => (
+                  <tr key={s.employee.id} className="border-b border-ink-800 last:border-0">
+                    <td className="px-3 py-2 text-ink-100">
+                      {s.employee.firstName} {s.employee.lastName}
+                      {s.employee.position && <span className="text-ink-500"> · {s.employee.position}</span>}
+                    </td>
+                    <td className="px-3 py-2 text-ink-300">{s.daysPresent}</td>
+                    <td className="px-3 py-2 text-ink-300">{s.totalCheckIns}</td>
+                    <td className="px-3 py-2 text-ink-300">{s.totalHoursOnSite}</td>
+                    <td className="px-3 py-2 text-emerald-400">{s.onSiteCount}</td>
+                    <td className="px-3 py-2">
+                      {s.outsideSiteCount > 0 ? (
+                        <span className="font-medium text-amber-400">{s.outsideSiteCount}</span>
+                      ) : (
+                        <span className="text-ink-500">0</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Panel>
+
       <Panel title="Attendance Register">
         <div className="mb-5 flex flex-wrap items-center gap-3">
           <button
@@ -180,6 +237,26 @@ function TeamAttendancePage() {
               className="text-sm text-ink-300 hover:text-ink-100"
             >
               This Month
+            </button>
+          )}
+          <div className="ml-auto flex flex-col gap-1">
+            <label className={labelClass}>TECHNICIAN</label>
+            <select value={employeeFilter} onChange={(e) => setEmployeeFilter(e.target.value)} className={inputClass}>
+              <option value="">All technicians</option>
+              {employees.map((emp) => (
+                <option key={emp.id} value={emp.id}>
+                  {emp.firstName} {emp.lastName}
+                </option>
+              ))}
+            </select>
+          </div>
+          {employeeFilter && (
+            <button
+              type="button"
+              onClick={() => setEmployeeFilter('')}
+              className="text-xs font-semibold text-ink-400 hover:text-ink-100"
+            >
+              Clear filter
             </button>
           )}
         </div>
