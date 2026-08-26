@@ -1823,13 +1823,25 @@ export function requestLocationVerification(siteAttendanceId: string) {
   return request<{ ok: true }>(`/api/site-attendance/${siteAttendanceId}/request-verification`, { method: 'POST' })
 }
 
-export function listTeamAttendance(params: { month?: string } = {}) {
+export interface TechnicianAttendanceSummary {
+  employee: EmployeeSummary
+  daysPresent: number
+  totalCheckIns: number
+  totalHoursOnSite: number
+  onSiteCount: number
+  outsideSiteCount: number
+}
+
+export function listTeamAttendance(params: { month?: string; employeeId?: string } = {}) {
   const query = new URLSearchParams()
   if (params.month) query.set('month', params.month)
+  if (params.employeeId) query.set('employeeId', params.employeeId)
   const qs = query.toString()
-  return request<{ current: SiteAttendanceWithEmployee[]; history: SiteAttendanceWithEmployee[] }>(
-    `/api/site-attendance${qs ? `?${qs}` : ''}`,
-  )
+  return request<{
+    current: SiteAttendanceWithEmployee[]
+    history: SiteAttendanceWithEmployee[]
+    summary: TechnicianAttendanceSummary[]
+  }>(`/api/site-attendance${qs ? `?${qs}` : ''}`)
 }
 
 export function checkInAttendance(coords: { lat: number; lng: number; note?: string }) {
