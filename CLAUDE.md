@@ -277,6 +277,19 @@ requirement without either party noticing.
   recolored to the brand's actual brighter teal (`#01bbd2`) and a closer navy (`#0d5c70`). Same
   render-to-PNG verification method as before, this time compared page-by-page against the real
   reference rather than eyeballing single fields.
+- **Real font embedded** (2026-08-26, `86cb3d0`): after the rework above, the user said it still didn't
+  look right and pointed at the reference again — inspecting the reference PDF's own embedded fonts
+  (via `pypdf`, reading each page's `/Resources/Font/*/BaseFont`) showed every real Technet
+  quotation/invoice is set in **Calibri**, not Helvetica. Calibri is a proprietary Microsoft font with
+  no redistributable file, so **Carlito** (a metrically-compatible, SIL-OFL-licensed drop-in fetched
+  from Google Fonts as WOFF) is embedded instead via `registerBrandFonts(doc)` in `shared.ts`
+  (`server/src/lib/pdf/assets/fonts.ts`, same base64-in-a-.ts-file pattern as the logo), registered as
+  `"Body"`/`"Body-Bold"`/`"Body-Italic"`/`"Body-BoldItalic"` and called once per document in both
+  `generateQuotationPdf` and `generateInvoicePdf` — every `Helvetica*` reference across the three PDF
+  files now uses these. **Lesson for any future "make it match a real document" task**: check the
+  reference file's actual embedded fonts before assuming a visual color/spacing rework is sufficient —
+  font family is often the dominant fidelity gap and is easy to miss when only comparing rendered
+  screenshots rather than inspecting the PDF's own internal structure.
 
 ## 11. SDD vs. actual implementation — known divergences
 
