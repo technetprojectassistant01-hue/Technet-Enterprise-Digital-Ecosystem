@@ -398,6 +398,29 @@ before, unchanged.
   a create/submit action should wait for the real response, not a fixed timeout — a fixed delay that
   "usually" works will intermittently produce a false FAIL on a cold connection.
 
+## 10c. ERP Overview reflects the whole ERP umbrella, not just Finance+Inventory (2026-08-26)
+
+Don't confuse this with the top-level dashboard Overview (`/dashboard`, §5's intro) — this is the
+**ERP-scoped** landing page, `/dashboard/erp` ("Engineering Dashboard", `client/src/TechnetErpPage.tsx`).
+It previously only showed Finance/Sales (customers, quotations, invoices, contracts) and Inventory
+(low stock) — Procurement, HR, Projects, and Documents are all fully built modules but were invisible
+here, even though the page is meant to represent the whole **Technet ERP** umbrella (§5). Extended to
+pull real data from all of them: a second stat-card row (Active Projects, Pending Requisitions, Open
+Purchase Orders, Active Headcount), an Active Projects table + Requisitions Awaiting Approval panel,
+and Recent Activity now also surfaces requisition submissions, PO creation, project creation, and
+document uploads (previously only customers/invoices/quotations/low-stock).
+
+**RBAC finding worth remembering for future dashboard work**: every list/GET route this page reads is
+gated only at the broad `NON_FIELD_ROLES` level (the same gate that protects reaching `/dashboard/erp`
+at all) — narrower groups like `FINANCE_ROLES`/`PROCUREMENT_ROLES` only restrict *writes*, not reads.
+This was already true of the original page (a Storekeeper could always see Finance revenue here
+without a role check) and turned out to also be true of Procurement/Projects/Documents/Employees, so
+none of the new data needed new role-gating. **The one exception**: `leave.ts` (and `certifications.ts`,
+not used here) really is `HR_ROLES`-only server-side even for reads, so the one new leave-derived card
+("Leave Pending Approval") is fetched only when `hasRole(user?.role, HR_ROLES)`, the same client-side
+gate `client/src/erp/hr/HrOverviewPage.tsx` already uses — non-HR roles simply don't get that 9th
+stat card, no error, no placeholder.
+
 ## 11. SDD vs. actual implementation — known divergences
 
 The SDD (see §1) describes a *proposed* design from an internship research effort; this repo is the real, independently-evolved implementation. Treat the SDD as background/rationale, not a spec to conform to. Known gaps, as of 2026-08-19:
