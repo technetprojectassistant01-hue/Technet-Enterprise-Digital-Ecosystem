@@ -11,6 +11,7 @@ import type {
   ReportStatus,
   LeaveRequestStatus,
   AttendanceStatus,
+  MarketingPostStatus,
 } from '../lib/api'
 
 export const contractStatusTone: Record<ContractStatus, BadgeTone> = {
@@ -107,4 +108,10 @@ export const reportStatusTone: Record<ReportStatus, BadgeTone> = {
   SUBMITTED: 'warning',
   APPROVED: 'success',
   REJECTED: 'danger',
+}
+
+export const marketingPostStatusTone: Record<MarketingPostStatus, BadgeTone> = {
+  PLANNED: 'neutral',
+  POSTED: 'success',
+  CANCELLED: 'danger',
 }
