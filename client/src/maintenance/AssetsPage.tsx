@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Search, Plus, Pencil, Trash2, Box, Download } from 'lucide-react'
 import * as api from '../lib/api'
-import type { Asset } from '../lib/api'
+import type { Asset, AssetStatus } from '../lib/api'
 import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { primaryButtonClass, secondaryButtonClass } from '../dashboard/buttonStyles'
 import { downloadCsv } from '../lib/csv'
@@ -49,6 +49,12 @@ function AssetsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  const [customerFilter, setCustomerFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState<AssetStatus | ''>('')
+  const [categoryFilter, setCategoryFilter] = useState('')
+  // Populated once from an unfiltered load, independent of the filtered `assets` list below - so
+  // picking a category doesn't shrink the dropdown down to just the one category left visible.
+  const [categoryOptions, setCategoryOptions] = useState<string[]>([])
 
   const [editing, setEditing] = useState<Asset | null>(null)
   const [showCreate, setShowCreate] = useState(false)
@@ -56,19 +62,35 @@ function AssetsPage() {
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
-  function load(searchValue = search) {
+  function load() {
     setLoading(true)
     api
-      .listAssets({ search: searchValue || undefined })
+      .listAssets({
+        search: search || undefined,
+        customerId: customerFilter || undefined,
+        status: statusFilter || undefined,
+        category: categoryFilter || undefined,
+      })
       .then(({ assets }) => setAssets(assets))
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load assets'))
       .finally(() => setLoading(false))
   }
 
+  useEffect(load, [search, customerFilter, statusFilter, categoryFilter]) // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
-    load('')
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    api.listAssets().then(({ assets }) => {
+      const categories = Array.from(new Set(assets.map((a) => a.category).filter((c): c is string => !!c)))
+      setCategoryOptions(categories.sort())
+    })
   }, [])
+
+  function clearFilters() {
+    setSearch('')
+    setCustomerFilter('')
+    setStatusFilter('')
+    setCategoryFilter('')
+  }
 
   function openCreate() {
     setForm({ ...EMPTY_FORM, customerId: customers[0]?.id || '' })
@@ -200,16 +222,61 @@ function AssetsPage() {
       </div>
 
       <Panel title="Asset Ledger">
-        <div className="mb-4 flex flex-1 max-w-sm items-center gap-2 rounded-md border border-ink-700 bg-ink-950 px-3 py-2">
-          <Search className="h-4 w-4 text-ink-400" />
-          <input
-            type="text"
-            placeholder="Search by name or serial number..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && load(search)}
-            className="w-full bg-transparent text-sm text-ink-100 placeholder-ink-500 outline-none"
-          />
+        <div className="mb-4 flex flex-wrap items-end gap-4">
+          <div className="flex max-w-xs flex-1 flex-col gap-1">
+            <label className={labelClass}>SEARCH</label>
+            <div className="flex items-center gap-2 rounded-md border border-ink-700 bg-ink-950 px-3 py-2">
+              <Search className="h-4 w-4 text-ink-400" />
+              <input
+                type="text"
+                placeholder="Name, serial number, or location..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full bg-transparent text-sm text-ink-100 placeholder-ink-500 outline-none"
+              />
+            </div>
+          </div>
+          <div className="flex max-w-xs flex-1 flex-col gap-1">
+            <label className={labelClass}>CUSTOMER</label>
+            <select value={customerFilter} onChange={(e) => setCustomerFilter(e.target.value)} className={inputClass}>
+              <option value="">All customers</option>
+              {customers.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.company || c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className={labelClass}>STATUS</label>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as AssetStatus | '')}
+              className={inputClass}
+            >
+              <option value="">All statuses</option>
+              <option value="ACTIVE">ACTIVE</option>
+              <option value="DECOMMISSIONED">DECOMMISSIONED</option>
+            </select>
+          </div>
+          {categoryOptions.length > 0 && (
+            <div className="flex flex-col gap-1">
+              <label className={labelClass}>CATEGORY</label>
+              <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className={inputClass}>
+                <option value="">All categories</option>
+                {categoryOptions.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          {(search || customerFilter || statusFilter || categoryFilter) && (
+            <button type="button" onClick={clearFilters} className="text-xs font-semibold text-ink-400 hover:text-ink-100">
+              Clear filters
+            </button>
+          )}
         </div>
 
         {error && <p className="mb-3 text-sm text-red-400">{error}</p>}

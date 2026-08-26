@@ -2396,11 +2396,14 @@ export interface AssetDetail extends Asset {
   schedules: AssetHistorySchedule[]
 }
 
-export function listAssets(params: { search?: string; customerId?: string; status?: AssetStatus } = {}) {
+export function listAssets(
+  params: { search?: string; customerId?: string; status?: AssetStatus; category?: string } = {},
+) {
   const query = new URLSearchParams()
   if (params.search) query.set('search', params.search)
   if (params.customerId) query.set('customerId', params.customerId)
   if (params.status) query.set('status', params.status)
+  if (params.category) query.set('category', params.category)
   const qs = query.toString()
   return request<{ assets: Asset[] }>(`/api/maintenance-assets${qs ? `?${qs}` : ''}`)
 }
