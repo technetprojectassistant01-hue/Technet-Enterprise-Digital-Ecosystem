@@ -68,7 +68,7 @@ Everyone lands on **Overview** (`/dashboard`) — as of 2026-08-19 this is real,
 | **Technet Operations** | Built | Work Orders (now with a `WAITING_FOR_PARTS`/`REOPENED` lifecycle, added 2026-08-19), Daily Reports, Intervention Reports, Team Attendance, Field Operations — see §7, this is where most recent work has concentrated |
 | **Technet Workforce** | Built | Restructured 2026-08-20 per manager/stakeholder discussion, to stop ERP HR and Workforce covering the same ground. Three tabs: **Availability** (`/dashboard/workforce/availability`, default landing page) — read-only "who's available today" grouped into Available/On Leave/Absent, built on the existing manual attendance register (no real biometric attendance-machine integration exists — see §11), visible to HR **and Operations Managers** (`WORKFORCE_VIEW_ROLES`) since Operations consults it before assigning jobs, though job assignment itself stays in Operations, not Workforce. **Attendance** (moved from ERP HR — daily register + timesheets, HR-only edit rights). **Payroll** (run creation, per-employee line breakdown, net pay computation, HR-only). |
 | **Technet Connect** | **Built** (2026-08-24) | Customer self-service portal at `/portal/*` — a fully separate auth domain from staff, not the internal `Role` enum (see §6). Customers view their own quotations/invoices (SENT+ only, drafts hidden) with PDF download, track job/work-order status (customer-safe field subset — no GPS, no technician names), and submit quote requests. Staff grants/resets/revokes portal access from the Customers page (`/dashboard/erp/finance/customers`), and manages incoming requests from a new "Quote Requests" tab on the Quotations page, converting one into a real draft `Quotation`. No self-registration — staff-granted only. |
-| **Technet Digital Marketing** | **Stub only** | Meant for campaign creation, AI content generation, scheduling/analytics per the flowchart — not started |
+| **Technet Digital Marketing** | **Built — Phase 1 only** (2026-08-26) | `/dashboard/marketing` — Campaigns (`MarketingCampaign`) and a flat, filterable Content Calendar across all campaigns' `MarketingPost`s (title/platform/copy/scheduled date/status). Deliberately no AI, no auto-publish, no real platform integrations (Phases 2/3 of a 3-phase scoping plan — see §10a) — Marketing plans posts here and marks them Posted by hand after publishing elsewhere themselves. Gated to `MARKETING_ROLES` (ADMIN + SALES_OFFICER — no confirmed real owner yet, see §6). |
 | **Technet Insight** | **Built** (2026-08-19) | Read-only executive KPI dashboard (`/dashboard/insight`) — revenue, active projects/work orders, overdue invoices, open maintenance requests, low stock, technicians on site. **ADMIN-only** (no Managing Director role exists — see §11) |
 | **Security** (System nav) | **Built** (2026-08-24) | `/dashboard/security` — "My Account" tab (any authenticated user: their own recent login history, `SecurityEvent` model) + "Audit Log" tab (ADMIN-only: company-wide, filterable by event type/date, paginated). Scoped to genuinely security-relevant events only (login success/fail, password change/reset, user create/role-change/delete) — deliberately not a general change-history log across every ERP record. Also added a "Reset Password" action to User Management (`/dashboard/users`), which was already a supported API capability but never exposed in the UI. |
 | Settings, User Management | Built | Admin-only user management (`/dashboard/users`), self-service password change |
@@ -95,6 +95,7 @@ Role groups used for gating (server `roles.ts` / client `permissions.ts`):
 - `WORKFORCE_VIEW_ROLES` = ADMIN, HR_OFFICER, OPERATIONS_MANAGER — added 2026-08-20 for Technet Workforce's Availability view specifically; Attendance edit rights and Payroll stay `HR_ROLES`-only.
 - `CUSTOMER_MANAGE_ROLES` = ADMIN, SALES_OFFICER, FINANCE_OFFICER — added 2026-08-25, customer create/edit access, separate from `SALES_ROLES` since that's also used for Quotations (Finance wasn't asked to gain write access there).
 - `QUOTE_REQUEST_VIEW_ROLES` = ADMIN, SALES_OFFICER, OPERATIONS_MANAGER — added 2026-08-25, read-only visibility into the Quote Request queue for Operations Managers; creating/converting/declining stays `SALES_ROLES`-only. See §10.
+- `MARKETING_ROLES` = ADMIN, SALES_OFFICER — added 2026-08-26 for Technet Digital Marketing Phase 1. No Technet stakeholder has confirmed who owns marketing yet, so this defaults to Sales as the closest adjacent function, same pragmatic pattern as `CUSTOMER_MANAGE_ROLES`. Read access is broader (`NON_FIELD_ROLES`, same as the rest of ERP-ish modules); only writes are gated to `MARKETING_ROLES`. See §10a.
 
 **Customer portal auth is a separate domain, not a 9th `Role`.** Technet Connect (`/portal/*`, added 2026-08-24) does not reuse `Role`/`requireAuth`/`requireRole` at all — a `CustomerPortalUser` login gets its own cookie (`portal_token`, not `token`), its own JWT signing (`server/src/lib/portalJwt.ts`, `verifyPortalToken`) carrying a distinct `audience: "portal"` claim, and its own middleware (`requirePortalAuth`, sets `req.portalUser`, never `req.user`). This was deliberate: adding a `CUSTOMER` role into the existing enum would have meant auditing every broad allow-list (`NON_FIELD_ROLES`, etc.) across dozens of routes to make sure a customer token could never slip through. The `audience` claim is the actual enforcement point — verified in this session that a genuine staff JWT placed directly in the `portal_token` cookie is rejected outright, not just kept out by cookie-name convention.
 
@@ -151,6 +152,7 @@ Grouped by domain (not exhaustive on fields — read the schema for that):
 - **Operations**: `WorkOrder` (+ `siteLat`/`siteLng`/`siteAddress`), `WorkOrderTechnician`, `SiteAttendance` (+ `verifications`), `SiteVerification`, `DailyWorkReport`/`DailyWorkReportTechnician`/`DailyWorkReportWorkOrder`, `InterventionReport`/`InterventionReportTechnician`/`InterventionReportPhoto`.
 - **Maintenance**: `Asset`, `MaintenanceContract`, `MaintenanceRequest`, `MaintenanceSchedule`/`MaintenanceScheduleTechnician`, `MaintenanceReport`.
 - **Workforce**: `PayrollRun`, `PayrollLine`.
+- **Marketing**: `MarketingCampaign`, `MarketingPost` — Phase 1 only, see §10a.
 
 ## 9. Working conventions (important — established through explicit user correction)
 
@@ -307,13 +309,50 @@ requirement without either party noticing.
   touching layout code a second time; a visual screenshot comparison alone under-detects size and
   alignment drift that's obvious once you have the actual numbers.
 
+## 10a. Technet Digital Marketing — Phase 1 (2026-08-26)
+
+Went from stub to built. Unlike every other module, no real manager conversation has happened for
+this one yet — an earlier scoping pass (published as an artifact, not in this repo) recommended
+building it in three phases, cheapest first, and this covers **Phase 1 only**: `MarketingCampaign`
+→ many `MarketingPost` (title, platform, copy, scheduled date, status `PLANNED`/`POSTED`/`CANCELLED`).
+No AI drafting, no auto-publish, no real platform integrations (LinkedIn/Facebook/etc. OAuth) —
+Marketing plans posts here and marks them `POSTED` by hand (`POST /api/marketing/posts/:id/mark-posted`,
+server-set `postedAt` so the audit timestamp isn't client-suppliable) after publishing elsewhere
+themselves, same as they do today. Two decisions were confirmed with the user before building rather
+than assumed:
+
+- **Role ownership** (`MARKETING_ROLES` = ADMIN, SALES_OFFICER — see §6): nobody at Technet has
+  confirmed who owns marketing. Defaulted to Sales as the closest adjacent function, same pragmatic
+  pattern as `CUSTOMER_MANAGE_ROLES`. Deliberately a role-*group* array, not a new `Role` enum value —
+  trivially widened later without the broad-allow-list audit a real new role would require (§6).
+  Enforced two layers deep: `MarketingLayout.tsx` does an in-component `hasRole(user?.role,
+  MARKETING_ROLES)` allow-list check (renders the same "This module isn't available for your role."
+  `EmptyState` as `RoleRoute`, just inverted allow-vs-block logic) *inside* the existing outer
+  `<RoleRoute blockedRoles={FIELD_ONLY_ROLES}>` wrapper in `App.tsx` — read access is the broader
+  `NON_FIELD_ROLES` server-side (consistent with every other ERP-ish module), only writes are gated to
+  `MARKETING_ROLES`.
+- **Content Calendar UI**: a plain filterable table (date range/status/platform — same pattern as
+  Daily Reports/Intervention Reports), *not* a calendar-grid widget. Matches this project's own
+  "don't over-engineer at low volume" philosophy (originally the Operations Manager's stated
+  build philosophy for a different feature, see §13's intro). Explicitly commented in
+  `ContentCalendarPage.tsx` so a future session doesn't "helpfully" rebuild it as a real grid.
+
+`platform` is a validated free string (`MARKETING_PLATFORMS` in `server/src/routes/marketing.ts`,
+kept in sync with the client manually, same pattern as `QUOTATION_FOLLOWUP_OUTCOMES`), not a DB enum,
+since the office may want to add platforms later without a migration. `status` *is* a real enum — a
+small, stable, closed set the app logic depends on. No `ALLOWED_TRANSITIONS` table like `Quotation`
+has — Phase 1 statuses have no downstream side effects to guard against yet, so transitions stay
+permissive. Explicitly **not built**: any AI drafting/review step, real publishing/analytics, a
+calendar-grid UI, and no new marketing-specific notification triggers (Phase 1 has no approval step
+or deadline logic that obviously warrants one yet).
+
 ## 11. SDD vs. actual implementation — known divergences
 
 The SDD (see §1) describes a *proposed* design from an internship research effort; this repo is the real, independently-evolved implementation. Treat the SDD as background/rationale, not a spec to conform to. Known gaps, as of 2026-08-19:
 
 - **Backend/auth**: SDD proposes JWT + OAuth 2.0, Redis caching, AWS S3/Azure Blob for documents, Google Maps API for GPS, 8 separate PostgreSQL schemas. Actual: JWT-only in an httpOnly cookie (no OAuth 2.0, no Redis), documents stored as DB `Bytes` columns (not cloud storage), free OpenStreetMap Nominatim for geocoding (not Google Maps — a deliberate cost tradeoff, see [[feedback-geocoding-provider-choice]]), and a single default Postgres schema (not split by domain).
 - **Mobile**: SDD proposes a React Native mobile app for technicians (struck through/crossed out in the SDD's own tech stack table on p.28-29, suggesting it was already being deprioritized during the SDD's own authoring). Actual: no native/React Native app exists — field technicians use the responsive web client.
-- **AI features**: SDD describes an AI quotation assistant and AI-assisted marketing content generation via OpenAI/Azure OpenAI. Actual: no AI integration exists yet; Technet Digital Marketing is a stub.
+- **AI features**: SDD describes an AI quotation assistant and AI-assisted marketing content generation via OpenAI/Azure OpenAI. Actual: no AI integration exists yet anywhere in the app. Technet Digital Marketing's Phase 1 (campaigns + content calendar, see §10a) is now built, but deliberately has no AI — that's Phase 2, not yet started.
 - **Email-based quotation intake**: SDD describes parsing inbound customer emails into quotation requests (§2.7.1, §5.14.1) as a deliberate channel alongside the portal, with indicative per-email costs discussed. Not implemented, and not planned — Technet Connect (built 2026-08-24, see §5) covers portal-submitted quote requests only, a simpler form-based flow, not inbound email parsing.
 - **Attendance machine integration**: SDD's Workforce module centers on syncing the existing facial-recognition attendance machine. Actual: "Attendance Sync" is still a decorative stub tile; office attendance is a separate manual `AttendanceRecord` HR feature, distinct from the GPS-based `SiteAttendance` system that Operations actually uses (see §7a) — the SDD's Attendance Sync and this repo's GPS site attendance are two different things with similar names, don't conflate them.
 - **RBAC granularity**: SDD's role list (Chapter 1, 6) includes Managing Director as a distinct role from Administrator, plus a Customer role. Actual `Role` enum (§6 above) has no separate Managing Director role — ADMIN covers that ground. Customer auth does now exist (built 2026-08-24) but deliberately as its own separate domain rather than a value in the internal `Role` enum — see §6.
