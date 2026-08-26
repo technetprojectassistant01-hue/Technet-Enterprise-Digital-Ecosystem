@@ -109,20 +109,22 @@ export function drawKeyValueTable(doc: PDFKit.PDFDocument, title: string, rows: 
     }
   }
 
-  ensureSpace(30);
-  doc.rect(left, doc.y, width, 22).fillAndStroke("#daeef3", "#5fb8c9");
-  doc.fillColor("#000000").font("Body-Bold").fontSize(11).text(title, left, doc.y + 6, { width, align: "center", underline: true });
-  doc.y += 22;
+  // Title/body font sizes (14pt / 10pt) taken directly from the real reference PDF's own text
+  // layout, not eyeballed.
+  ensureSpace(34);
+  doc.rect(left, doc.y, width, 26).fillAndStroke("#daeef3", "#5fb8c9");
+  doc.fillColor("#000000").font("Body-Bold").fontSize(14).text(title, left, doc.y + 6, { width, align: "center", underline: true });
+  doc.y += 26;
 
   for (const row of rows) {
-    const valueHeight = doc.font("Body").fontSize(8).heightOfString(row.value, { width: colValue - 12 });
-    const rowHeight = Math.max(valueHeight + 10, 22);
+    const valueHeight = doc.font("Body").fontSize(10).heightOfString(row.value, { width: colValue - 12 });
+    const rowHeight = Math.max(valueHeight + 8, 24);
     ensureSpace(rowHeight);
     const y = doc.y;
     doc.rect(left, y, colLabel, rowHeight).stroke("#5fb8c9");
     doc.rect(left + colLabel, y, colValue, rowHeight).stroke("#5fb8c9");
-    doc.font("Body-Bold").fontSize(8).fillColor("#000000").text(row.label, left + 6, y + 6, { width: colLabel - 12 });
-    doc.font("Body").fontSize(8).fillColor("#000000").text(row.value, left + colLabel + 6, y + 6, { width: colValue - 12 });
+    doc.font("Body-Bold").fontSize(10).fillColor("#000000").text(row.label, left + 6, y + 6, { width: colLabel - 12 });
+    doc.font("Body").fontSize(10).fillColor("#000000").text(row.value, left + colLabel + 6, y + 6, { width: colValue - 12 });
     doc.y = y + rowHeight;
   }
   doc.x = left;
@@ -203,11 +205,16 @@ export function drawBoxedItemsTable(
   const left = doc.page.margins.left;
   const right = doc.page.width - doc.page.margins.right;
   const width = right - left;
-  const colNo = width * 0.06;
-  const colDesc = width * 0.44;
-  const colQty = width * 0.1;
-  const colUnit = width * 0.2;
+  // Column proportions and font size (11pt) measured directly off the real reference PDF's own
+  // text/cell coordinates (via pdfminer), not eyeballed - the Description column in particular is
+  // considerably wider, and Qty considerably narrower, than the earlier visual-only guess.
+  const colNo = width * 0.077;
+  const colDesc = width * 0.523;
+  const colQty = width * 0.065;
+  const colUnit = width * 0.149;
   const colAmount = width - colNo - colDesc - colQty - colUnit;
+  const FONT_SIZE = 11;
+  const LINE_HEIGHT = FONT_SIZE * 1.2;
 
   function ensureSpace(rowHeight: number) {
     if (doc.y + rowHeight > doc.page.height - doc.page.margins.bottom) {
@@ -230,41 +237,44 @@ export function drawBoxedItemsTable(
 
   const boxStartY = doc.y;
 
-  // Title bar
-  const titleHeight = refLine ? 32 : 22;
+  // Title bar - 14pt title / 11pt ref line, matching the real document.
+  const titleHeight = refLine ? 38 : 26;
   doc.rect(left, boxStartY, width, titleHeight).fill(PALE);
-  doc.fillColor("#000000").font("Body-Bold").fontSize(10).text(title, left + 8, boxStartY + 7, { width: width - 16, align: "center" });
+  doc.fillColor("#000000").font("Body-Bold").fontSize(14).text(title, left + 8, boxStartY + 8, { width: width - 16, align: "center" });
   if (refLine) {
-    doc.font("Body").fontSize(8).text(refLine, left + 8, boxStartY + 21, { width: width - 16, align: "center" });
+    doc.font("Body").fontSize(11).text(refLine, left + 8, boxStartY + 26, { width: width - 16, align: "center" });
   }
   doc.y = boxStartY + titleHeight;
 
-  // Column header row - currency unit lives in the header, not repeated on every row.
+  // Column header row - currency unit lives in the header, not repeated on every row. Every
+  // header label is center-aligned within its column, matching the real document exactly.
   const headerY = doc.y;
-  const headerHeight = 26;
+  const headerHeight = 30;
   doc.rect(left, headerY, width, headerHeight).fill(PALE);
-  doc.fillColor("#000000").font("Body-Bold").fontSize(9);
-  doc.text("Item", left + 4, headerY + 9, { width: colNo - 4 });
-  doc.text("Description", left + colNo + 4, headerY + 9, { width: colDesc - 8 });
-  doc.text("Qty", left + colNo + colDesc, headerY + 9, { width: colQty - 4, align: "right" });
-  doc.text("Unit Price\n(MUR)", left + colNo + colDesc + colQty, headerY + 4, { width: colUnit - 8, align: "right" });
-  doc.text("Total\n(MUR)", left + colNo + colDesc + colQty + colUnit, headerY + 4, { width: colAmount - 8, align: "right" });
+  doc.fillColor("#000000").font("Body-Bold").fontSize(FONT_SIZE);
+  doc.text("Item", left, headerY + 9, { width: colNo, align: "center" });
+  doc.text("Description", left + colNo, headerY + 9, { width: colDesc, align: "center" });
+  doc.text("Qty", left + colNo + colDesc, headerY + 9, { width: colQty, align: "center" });
+  doc.text("Unit Price\n(MUR)", left + colNo + colDesc + colQty, headerY + 4, { width: colUnit, align: "center" });
+  doc.text("Total\n(MUR)", left + colNo + colDesc + colQty + colUnit, headerY + 4, { width: colAmount, align: "center" });
   doc.y = headerY + headerHeight;
   vGrid(headerY, doc.y);
   doc.moveTo(left, headerY).lineTo(right, headerY).strokeColor(GRID).lineWidth(0.75).stroke();
 
-  // Item rows
+  // Item rows - Item/Qty/Unit Price/Total are vertically centered against a multi-line
+  // Description, matching the real document's table (a plain Word-table default), not top-aligned.
   items.forEach((item, index) => {
     const amount = Number(item.unitPrice) * item.quantity;
-    const rowHeight = Math.max(doc.font("Body").fontSize(9).heightOfString(item.description, { width: colDesc - 8 }), 12) + 10;
+    const rowHeight = Math.max(doc.font("Body").fontSize(FONT_SIZE).heightOfString(item.description, { width: colDesc - 8 }), LINE_HEIGHT) + 6;
     ensureSpace(rowHeight);
     const y = doc.y;
-    doc.font("Body").fontSize(9);
-    doc.text(`${index + 1}.0`, left + 4, y, { width: colNo - 4 });
-    doc.text(item.description, left + colNo + 4, y, { width: colDesc - 8 });
-    doc.text(String(item.quantity), left + colNo + colDesc, y, { width: colQty - 4, align: "right" });
-    doc.text(formatNumber(item.unitPrice), left + colNo + colDesc + colQty, y, { width: colUnit - 8, align: "right" });
-    doc.text(formatNumber(amount), left + colNo + colDesc + colQty + colUnit, y, { width: colAmount - 8, align: "right" });
+    const centerY = y + (rowHeight - LINE_HEIGHT) / 2;
+    doc.font("Body").fontSize(FONT_SIZE);
+    doc.text(`${index + 1}.0`, left + 4, centerY, { width: colNo - 4 });
+    doc.text(item.description, left + colNo + 4, y + 3, { width: colDesc - 8 });
+    doc.text(String(item.quantity), left + colNo + colDesc, centerY, { width: colQty, align: "center" });
+    doc.text(formatNumber(item.unitPrice), left + colNo + colDesc + colQty, centerY, { width: colUnit - 4, align: "right" });
+    doc.text(formatNumber(amount), left + colNo + colDesc + colQty + colUnit, centerY, { width: colAmount - 4, align: "right" });
     const nextY = y + rowHeight;
     vGrid(y, nextY);
     doc.moveTo(left, nextY).lineTo(right, nextY).strokeColor(GRID).lineWidth(0.75).stroke();
@@ -276,14 +286,14 @@ export function drawBoxedItemsTable(
   const totalsLabelWidth = colNo + colDesc + colQty + colUnit;
 
   function totalsRow(label: string, value: string, bold: boolean) {
-    const rowH = bold ? 24 : 20;
+    const rowH = bold ? 22 : 19;
     ensureSpace(rowH);
     const y = doc.y;
     doc.rect(left, y, width, rowH).fill(PALE);
-    doc.font(bold ? "Body-Bold" : "Body").fontSize(bold ? 10 : 9).fillColor("#000000");
-    doc.text(label, left, y + (bold ? 7 : 5), { width: totalsLabelWidth - 8, align: "right" });
+    doc.font(bold ? "Body-Bold" : "Body").fontSize(FONT_SIZE).fillColor("#000000");
+    doc.text(label, left, y + (bold ? 6 : 4), { width: totalsLabelWidth - 8, align: "right" });
     doc.font(bold ? "Body-Bold" : "Body-Italic");
-    doc.text(value, left + totalsLabelWidth, y + (bold ? 7 : 5), { width: colAmount - 8, align: "right" });
+    doc.text(value, left + totalsLabelWidth, y + (bold ? 6 : 4), { width: colAmount - 4, align: "right" });
     const nextY = y + rowH;
     doc.moveTo(left + totalsLabelWidth, y).lineTo(left + totalsLabelWidth, nextY).strokeColor(GRID).lineWidth(0.75).stroke();
     doc.moveTo(left, nextY).lineTo(right, nextY).strokeColor(GRID).lineWidth(0.75).stroke();
