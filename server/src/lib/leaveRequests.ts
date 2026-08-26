@@ -188,7 +188,7 @@ export async function cancelLeaveRequestRecord(id: string, opts: CancelLeaveRequ
   return { request: updated };
 }
 
-function todayUtc(): Date {
+export function todayUtc(): Date {
   const now = new Date();
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 }
