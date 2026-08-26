@@ -290,6 +290,22 @@ requirement without either party noticing.
   reference file's actual embedded fonts before assuming a visual color/spacing rework is sufficient —
   font family is often the dominant fidelity gap and is easy to miss when only comparing rendered
   screenshots rather than inspecting the PDF's own internal structure.
+- **Exact sizes/alignment matched against the reference** (2026-08-26, `0007909`): even with the
+  right font family, colors, and rough layout, the user said it still didn't look "exactly" like the
+  reference — because font *sizes* and cell *alignment* were still eyeballed guesses, not measured.
+  Fixed by extracting the real numbers straight out of the reference PDF's internal layout with
+  `pdfminer.six` (`pip install pdfminer.six`, then `extract_pages()` walking `LTTextLine`/`LTChar` for
+  each run's actual font size and x/y position, and `LTRect` for each table cell's actual boundary) —
+  a level below `pypdf`'s font-name-only introspection used in the previous fix. Found: cover letter
+  body is 12pt (was guessed at 10pt), BOQ table is 11pt (was 9pt) with a title at 14pt (was 10pt), BOQ
+  column proportions are 7.7/52.3/6.5/14.9/18.9% not 6/44/10/20/20% (Description is meaningfully wider,
+  Qty meaningfully narrower), BOQ header labels are center-aligned not left/right, and Item/Qty/Unit
+  Price/Total are vertically centered against a multi-line Description rather than top-aligned (a
+  plain Word-table default). Conditions of Sales is 10pt body / 14pt title (was 8pt/11pt). **Lesson,
+  sharper than the previous one**: for a "match this reference exactly" ask, don't stop at fixing the
+  font family — pull the reference's real font sizes and cell coordinates via `pdfminer.six` before
+  touching layout code a second time; a visual screenshot comparison alone under-detects size and
+  alignment drift that's obvious once you have the actual numbers.
 
 ## 11. SDD vs. actual implementation — known divergences
 
