@@ -49,6 +49,7 @@ export interface NavItem {
 
 export const MAIN_NAV: NavItem[] = [
   { label: 'Overview', to: '/dashboard', icon: LayoutGrid, end: true },
+  { label: 'My Leave', to: '/dashboard/my-leave', icon: CalendarDays },
   {
     label: 'Technet ERP',
     to: '/dashboard/erp',
