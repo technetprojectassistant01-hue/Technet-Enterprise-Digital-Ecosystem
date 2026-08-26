@@ -22,13 +22,14 @@ router.use(requireAuth);
 router.use(requireRole(...OPS_SUBMIT_ROLES));
 
 router.get("/", async (req, res) => {
-  const { search, customerId, status } = req.query;
+  const { search, customerId, status, category } = req.query;
 
   const where: Prisma.AssetWhereInput = {};
   if (typeof search === "string" && search.trim()) {
     where.OR = [
       { name: { contains: search, mode: "insensitive" } },
       { serialNumber: { contains: search, mode: "insensitive" } },
+      { location: { contains: search, mode: "insensitive" } },
     ];
   }
   if (typeof customerId === "string" && customerId) {
@@ -36,6 +37,9 @@ router.get("/", async (req, res) => {
   }
   if (typeof status === "string" && STATUSES.includes(status as Status)) {
     where.status = status as Status;
+  }
+  if (typeof category === "string" && category) {
+    where.category = { equals: category, mode: "insensitive" };
   }
 
   const assets = await prisma.asset.findMany({
