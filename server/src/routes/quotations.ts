@@ -20,6 +20,10 @@ const DEFAULT_PAYMENT_TERM_LABELS = ["Confirmation", "Progress", "Completion", "
 const AVAILABILITY_STATUSES = ["IN_STOCK", "ORDER_PENDING"] as const;
 type AvailabilityStatus = (typeof AVAILABILITY_STATUSES)[number];
 
+// Internal-only categorization, never printed in the PDF. Small fixed starter list per the
+// manager's brief - a linked product/model lookup is explicitly deferred, not built here.
+export const PRODUCT_LINE_OPTIONS = ["Air Conditioning Unit", "Plumbing", "Electrical", "Tools", "Other"] as const;
+
 // Office procedure: every incoming request must be acknowledged (not necessarily fully quoted)
 // within this many hours of being logged. Kept as one named constant rather than a stored setting -
 // this app has no general admin-settings system yet, and the manager only needs a one-line code
@@ -97,6 +101,14 @@ function validateItems(items: unknown): { error: string } | { items: QuotationIt
 interface QuotationExtras {
   availabilityStatus: AvailabilityStatus | null;
   orderDays: number | null;
+}
+
+function parseProductLine(value: unknown): { error: string } | { productLine: string | null } {
+  if (value === undefined || value === null || value === "") return { productLine: null };
+  if (typeof value !== "string" || !PRODUCT_LINE_OPTIONS.includes(value as (typeof PRODUCT_LINE_OPTIONS)[number])) {
+    return { error: "Invalid product line" };
+  }
+  return { productLine: value };
 }
 
 function parseValidityDays(value: unknown): { error: string } | { validityDays: number } {
@@ -493,8 +505,18 @@ router.get("/:id", async (req, res) => {
 });
 
 router.post("/", requireRole(...SALES_ROLES), async (req, res) => {
-  const { customerId, title, contactPerson, vatRate, validityDays, items, paymentTermsLines, availabilityStatus, orderDays } =
-    req.body ?? {};
+  const {
+    customerId,
+    title,
+    productLine,
+    contactPerson,
+    vatRate,
+    validityDays,
+    items,
+    paymentTermsLines,
+    availabilityStatus,
+    orderDays,
+  } = req.body ?? {};
 
   if (typeof customerId !== "string" || !customerId) {
     return res.status(400).json({ error: "customerId is required" });
@@ -513,6 +535,8 @@ router.post("/", requireRole(...SALES_ROLES), async (req, res) => {
   if ("error" in paymentResult) return res.status(400).json({ error: paymentResult.error });
   const validity = parseValidityDays(validityDays);
   if ("error" in validity) return res.status(400).json({ error: validity.error });
+  const productLineResult = parseProductLine(productLine);
+  if ("error" in productLineResult) return res.status(400).json({ error: productLineResult.error });
 
   const rate = vatRate !== undefined ? Number(vatRate) : 15;
   const subtotal = itemsResult.items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
@@ -526,6 +550,7 @@ router.post("/", requireRole(...SALES_ROLES), async (req, res) => {
           customerId,
           quotationNumber,
           title: title.trim(),
+          productLine: productLineResult.productLine,
           contactPerson: typeof contactPerson === "string" && contactPerson.trim() ? contactPerson.trim() : null,
           status: "DRAFT",
           vatRate: rate,
@@ -561,6 +586,7 @@ router.patch("/:id", requireRole(...SALES_ROLES), async (req, res) => {
   const id = req.params.id as string;
   const {
     title,
+    productLine,
     contactPerson,
     status,
     validityDays,
@@ -602,6 +628,11 @@ router.patch("/:id", requireRole(...SALES_ROLES), async (req, res) => {
 
   const data: Prisma.QuotationUpdateInput = {};
   if (typeof title === "string" && title.trim()) data.title = title.trim();
+  if (productLine !== undefined) {
+    const productLineResult = parseProductLine(productLine);
+    if ("error" in productLineResult) return res.status(400).json({ error: productLineResult.error });
+    data.productLine = productLineResult.productLine;
+  }
   if (contactPerson !== undefined) data.contactPerson = typeof contactPerson === "string" && contactPerson.trim() ? contactPerson.trim() : null;
   if (status !== undefined) data.status = status as QuotationStatus;
   if (validityDays !== undefined) {

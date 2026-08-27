@@ -583,6 +583,10 @@ model Quotation {
   customer           Customer               @relation(fields: [customerId], references: [id])
   quotationNumber    String                 @unique
   title              String
+  /** Internal-only background categorization (Air Conditioning Unit, Plumbing, etc.) - never
+   * printed in the PDF. A future autocomplete/lookup against a real product database is deferred
+   * ("not now" - the manager was explicit this is forward-looking, not a request to build today). */
+  productLine        String?
   contactPerson      String?
   status             QuotationStatus        @default(DRAFT)
   vatRate            Decimal                @default(15) @db.Decimal(5, 2)
