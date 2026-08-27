@@ -463,7 +463,7 @@ export interface Quotation {
   poReference: string | null
   items: SalesLineItem[]
   issuedAt: string
-  expiresAt: string | null
+  validityDays: number
   createdAt: string
 }
 
@@ -472,7 +472,7 @@ export interface QuotationInput {
   title: string
   contactPerson?: string
   vatRate?: number
-  expiresAt?: string
+  validityDays?: number
   paymentTermsLines: PaymentTermsLine[]
   availabilityStatus?: QuotationAvailability | null
   orderDays?: number | null
@@ -507,11 +507,11 @@ export interface QuotationUpdateInput {
   title?: string
   contactPerson?: string | null
   status?: QuotationStatus
-  expiresAt?: string | null
   poReference?: string | null
   // Draft-only fields - the server rejects these once the quotation has been sent.
   customerId?: string
   vatRate?: number
+  validityDays?: number
   paymentTermsLines?: PaymentTermsLine[]
   availabilityStatus?: QuotationAvailability | null
   orderDays?: number | null

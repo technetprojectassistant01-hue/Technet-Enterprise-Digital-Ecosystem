@@ -111,7 +111,7 @@ function QuoteRequestsTab() {
   const [title, setTitle] = useState('')
   const [contactPerson, setContactPerson] = useState('')
   const [vatRate, setVatRate] = useState('15')
-  const [expiresAt, setExpiresAt] = useState('')
+  const [validityDays, setValidityDays] = useState('15')
   const [paymentTermsLines, setPaymentTermsLines] = useState<PaymentTermsLine[]>([{ ...EMPTY_PAYMENT_TERMS_LINE }])
   const [items, setItems] = useState<SalesLineItemRow[]>([{ ...EMPTY_SALES_LINE_ITEM }])
   const [formError, setFormError] = useState<string | null>(null)
@@ -205,7 +205,7 @@ function QuoteRequestsTab() {
     // Prefer the decision-maker if one was recorded on the request, otherwise the customer's own name.
     setContactPerson(r.otherContactName || r.customer?.name || '')
     setVatRate('15')
-    setExpiresAt('')
+    setValidityDays('15')
     setPaymentTermsLines([{ ...EMPTY_PAYMENT_TERMS_LINE }])
     setItems([{ ...EMPTY_SALES_LINE_ITEM }])
     setFormError(null)
@@ -231,7 +231,7 @@ function QuoteRequestsTab() {
         title,
         contactPerson: contactPerson.trim() || undefined,
         vatRate: Number(vatRate) || 0,
-        expiresAt: expiresAt || undefined,
+        validityDays: Number(validityDays) || undefined,
         paymentTermsLines,
         items: items.map((item) => ({
           description: item.description,
@@ -633,11 +633,12 @@ function QuoteRequestsTab() {
                 />
               </div>
               <div>
-                <label className={labelClass}>EXPIRES</label>
+                <label className={labelClass}>VALIDITY (DAYS)</label>
                 <input
-                  type="date"
-                  value={expiresAt}
-                  onChange={(e) => setExpiresAt(e.target.value)}
+                  type="number"
+                  min={1}
+                  value={validityDays}
+                  onChange={(e) => setValidityDays(e.target.value)}
                   className={`mt-2 ${inputClass}`}
                 />
               </div>

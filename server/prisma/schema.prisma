@@ -593,7 +593,10 @@ model Quotation {
   orderDays          Int?
   poReference        String?
   issuedAt           DateTime               @default(now())
-  expiresAt          DateTime?
+  /** How many days the quoted prices stay valid from issuedAt, not an absolute expiry date -
+   * exchange-rate risk means "valid for a period" is what the office actually communicates.
+   * Default 15 matches what every historical quotation already prints in its PDF. */
+  validityDays       Int                    @default(15)
   createdById        String?
   createdBy          User?                  @relation("QuotationCreator", fields: [createdById], references: [id])
   createdAt          DateTime               @default(now())
