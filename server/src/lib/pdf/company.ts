@@ -24,13 +24,12 @@ export const INVOICE_CONDITIONS = [
   "THE WARRANTY IS VOID IF THE EQUIPMENT IS/ARE ALTERED OR TAMPERED / IMPROPERLY REPAIRED OR SERVICED BY ANY OTHER THAN TECHNET ENGINEERING SERVICE TEAM.",
 ];
 
-/** Terms of payments is deliberately excluded here - it's now driven per-quotation by the actual
- * selected PaymentTermsTemplate (see quotationPdf.ts), not a fixed default. */
+/** Terms of payments and Validity are deliberately excluded here - both are driven per-quotation
+ * (paymentTermsLines, validityDays respectively - see quotationPdf.ts), not fixed defaults. */
 export const QUOTATION_CONDITIONS: { label: string; value: string }[] = [
   { label: "Prices", value: "Inclusive of custom duties where applicable but exclusive of VAT." },
   { label: "Exchange Rate", value: "Not Applicable" },
   { label: "Delivery period", value: "+/- 3 days" },
-  { label: "Validity", value: "15 Calendar days" },
   {
     label: "Responsibility",
     value:

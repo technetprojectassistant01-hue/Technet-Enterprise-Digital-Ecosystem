@@ -374,7 +374,8 @@ function QuotationDetailPage() {
           </div>
           <p className="mt-1 text-sm text-ink-300">
             {quotation.title} · {quotation.customer.company || quotation.customer.name}
-            {quotation.expiresAt && ` · Expires ${quotation.expiresAt.slice(0, 10)}`}
+            {' · Valid for '}
+            {quotation.validityDays} day{quotation.validityDays === 1 ? '' : 's'} from issue
           </p>
         </div>
 

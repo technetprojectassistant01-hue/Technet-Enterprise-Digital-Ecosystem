@@ -15,6 +15,7 @@ export interface QuotationForPdf {
   title: string;
   contactPerson?: string | null;
   paymentTermsLines: { label: string; percentage: Money }[];
+  validityDays: number;
   issuedAt: Date;
   vatRate: Money;
   subtotal: Money;
@@ -116,9 +117,11 @@ export function generateQuotationPdf(quotation: QuotationForPdf, signatoryName: 
   // Page 3 — conditions of sale
   doc.addPage();
   drawLetterhead(doc);
-  // "Terms of payments" is inserted after Exchange Rate, matching the company's own template order.
+  // "Terms of payments" and "Validity" are inserted after Exchange Rate/Delivery period respectively,
+  // matching the company's own template order - both are per-quotation, not fixed defaults.
   const rows = [...QUOTATION_CONDITIONS];
   rows.splice(2, 0, { label: "Terms of payments", value: paymentTermsDescription(quotation.paymentTermsLines) });
+  rows.splice(4, 0, { label: "Validity", value: `${quotation.validityDays} Calendar days` });
   drawKeyValueTable(doc, "Conditions of Sales", rows);
   drawFooterBanner(doc);
 

@@ -99,6 +99,14 @@ interface QuotationExtras {
   orderDays: number | null;
 }
 
+function parseValidityDays(value: unknown): { error: string } | { validityDays: number } {
+  if (value === undefined || value === null || value === "") return { validityDays: 15 };
+  if (!Number.isFinite(value) || (value as number) <= 0) {
+    return { error: "Validity must be a positive number of days" };
+  }
+  return { validityDays: Math.trunc(value as number) };
+}
+
 function parseAvailability(body: { availabilityStatus?: unknown; orderDays?: unknown }): { error: string } | QuotationExtras {
   if (body.availabilityStatus === undefined || body.availabilityStatus === null || body.availabilityStatus === "") {
     return { availabilityStatus: null, orderDays: null };
@@ -320,7 +328,7 @@ router.post("/quote-requests/:id/convert", requireRole(...SALES_ROLES), async (r
     title,
     contactPerson,
     vatRate,
-    expiresAt,
+    validityDays,
     items,
     paymentTermsLines,
     availabilityStatus,
@@ -350,6 +358,8 @@ router.post("/quote-requests/:id/convert", requireRole(...SALES_ROLES), async (r
   if ("error" in availability) return res.status(400).json({ error: availability.error });
   const paymentResult = await parsePaymentTermsLines(paymentTermsLines, req.user!.role === "ADMIN");
   if ("error" in paymentResult) return res.status(400).json({ error: paymentResult.error });
+  const validity = parseValidityDays(validityDays);
+  if ("error" in validity) return res.status(400).json({ error: validity.error });
 
   const rate = vatRate !== undefined ? Number(vatRate) : 15;
   const subtotal = itemsResult.items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
@@ -371,7 +381,7 @@ router.post("/quote-requests/:id/convert", requireRole(...SALES_ROLES), async (r
           total,
           availabilityStatus: availability.availabilityStatus,
           orderDays: availability.orderDays,
-          expiresAt: expiresAt ? new Date(expiresAt) : null,
+          validityDays: validity.validityDays,
           createdById: req.user!.sub,
           items: {
             create: itemsResult.items.map((item) => ({
@@ -483,7 +493,7 @@ router.get("/:id", async (req, res) => {
 });
 
 router.post("/", requireRole(...SALES_ROLES), async (req, res) => {
-  const { customerId, title, contactPerson, vatRate, expiresAt, items, paymentTermsLines, availabilityStatus, orderDays } =
+  const { customerId, title, contactPerson, vatRate, validityDays, items, paymentTermsLines, availabilityStatus, orderDays } =
     req.body ?? {};
 
   if (typeof customerId !== "string" || !customerId) {
@@ -501,6 +511,8 @@ router.post("/", requireRole(...SALES_ROLES), async (req, res) => {
   if ("error" in availability) return res.status(400).json({ error: availability.error });
   const paymentResult = await parsePaymentTermsLines(paymentTermsLines, req.user!.role === "ADMIN");
   if ("error" in paymentResult) return res.status(400).json({ error: paymentResult.error });
+  const validity = parseValidityDays(validityDays);
+  if ("error" in validity) return res.status(400).json({ error: validity.error });
 
   const rate = vatRate !== undefined ? Number(vatRate) : 15;
   const subtotal = itemsResult.items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
@@ -522,7 +534,7 @@ router.post("/", requireRole(...SALES_ROLES), async (req, res) => {
           total,
           availabilityStatus: availability.availabilityStatus,
           orderDays: availability.orderDays,
-          expiresAt: expiresAt ? new Date(expiresAt) : null,
+          validityDays: validity.validityDays,
           createdById: req.user!.sub,
           items: {
             create: itemsResult.items.map((item) => ({
@@ -551,7 +563,7 @@ router.patch("/:id", requireRole(...SALES_ROLES), async (req, res) => {
     title,
     contactPerson,
     status,
-    expiresAt,
+    validityDays,
     poReference,
     customerId,
     vatRate,
@@ -578,6 +590,7 @@ router.patch("/:id", requireRole(...SALES_ROLES), async (req, res) => {
     customerId !== undefined ||
     vatRate !== undefined ||
     paymentTermsLines !== undefined ||
+    validityDays !== undefined ||
     availabilityStatus !== undefined ||
     orderDays !== undefined ||
     items !== undefined;
@@ -591,7 +604,11 @@ router.patch("/:id", requireRole(...SALES_ROLES), async (req, res) => {
   if (typeof title === "string" && title.trim()) data.title = title.trim();
   if (contactPerson !== undefined) data.contactPerson = typeof contactPerson === "string" && contactPerson.trim() ? contactPerson.trim() : null;
   if (status !== undefined) data.status = status as QuotationStatus;
-  if (expiresAt !== undefined) data.expiresAt = expiresAt ? new Date(expiresAt) : null;
+  if (validityDays !== undefined) {
+    const validity = parseValidityDays(validityDays);
+    if ("error" in validity) return res.status(400).json({ error: validity.error });
+    data.validityDays = validity.validityDays;
+  }
   if (poReference !== undefined) data.poReference = typeof poReference === "string" && poReference.trim() ? poReference.trim() : null;
   if (customerId !== undefined) {
     if (typeof customerId !== "string" || !customerId) return res.status(400).json({ error: "customerId is required" });

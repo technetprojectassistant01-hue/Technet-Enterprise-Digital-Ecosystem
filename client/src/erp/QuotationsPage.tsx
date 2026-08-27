@@ -46,7 +46,7 @@ function QuotationsPage() {
   const [title, setTitle] = useState('')
   const [contactPerson, setContactPerson] = useState('')
   const [vatRate, setVatRate] = useState('15')
-  const [expiresAt, setExpiresAt] = useState('')
+  const [validityDays, setValidityDays] = useState('15')
   const [paymentTermsLines, setPaymentTermsLines] = useState<PaymentTermsLine[]>([{ ...EMPTY_PAYMENT_TERMS_LINE }])
   const [includesOrder, setIncludesOrder] = useState(false)
   const [availabilityStatus, setAvailabilityStatus] = useState<QuotationAvailability>('IN_STOCK')
@@ -86,7 +86,7 @@ function QuotationsPage() {
     setContactPerson(customers[0]?.name || '')
     setTitle('')
     setVatRate('15')
-    setExpiresAt('')
+    setValidityDays('15')
     setPaymentTermsLines([{ ...EMPTY_PAYMENT_TERMS_LINE }])
     setIncludesOrder(false)
     setAvailabilityStatus('IN_STOCK')
@@ -136,7 +136,7 @@ function QuotationsPage() {
         title,
         contactPerson: contactPerson.trim() || undefined,
         vatRate: Number(vatRate) || 0,
-        expiresAt: expiresAt || undefined,
+        validityDays: Number(validityDays) || undefined,
         paymentTermsLines,
         availabilityStatus: includesOrder ? availabilityStatus : null,
         orderDays: includesOrder && availabilityStatus === 'ORDER_PENDING' ? Number(orderDays) : null,
@@ -412,11 +412,12 @@ function QuotationsPage() {
                 />
               </div>
               <div>
-                <label className={labelClass}>EXPIRES</label>
+                <label className={labelClass}>VALIDITY (DAYS)</label>
                 <input
-                  type="date"
-                  value={expiresAt}
-                  onChange={(e) => setExpiresAt(e.target.value)}
+                  type="number"
+                  min={1}
+                  value={validityDays}
+                  onChange={(e) => setValidityDays(e.target.value)}
                   className={`mt-2 ${inputClass}`}
                 />
               </div>
