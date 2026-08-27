@@ -1,3 +1,5 @@
+import type { Money } from "./shared";
+
 export const COMPANY = {
   name: "Technet Engineering",
   addressLines: ["Avenue St Vincent de Paul", "Les Pailles 11221, Mauritius"],
@@ -48,18 +50,9 @@ export const QUOTATION_CONDITIONS: { label: string; value: string }[] = [
   { label: "Exclusions", value: "Cable Ways: n/a\nMasonry Works: n/a\nExternal Works: n/a" },
 ];
 
-/** Human-readable rendering of a Quotation's paymentTerms enum, for the Conditions of Sale page. */
-export function paymentTermsDescription(paymentTerms: string): string {
-  const schedule = (() => {
-    switch (paymentTerms) {
-      case "SPLIT_60_40_20":
-        return "60% Upon Order confirmation\n40% On Installation & Testing\n20% Upon Completion";
-      case "SPLIT_50_50":
-        return "50% Upon Order confirmation\n50% On Installation & Testing";
-      case "FULL_ON_CONFIRMATION":
-      default:
-        return "100% Upon Order confirmation";
-    }
-  })();
+/** Renders a Quotation's arbitrary label+percentage payment-terms lines for the Conditions of Sale
+ * page - replaces the old fixed 3-preset enum, which only ever produced one of three sentences. */
+export function paymentTermsDescription(lines: { label: string; percentage: Money }[]): string {
+  const schedule = lines.map((l) => `${Number(l.percentage)}% ${l.label}`).join("\n");
   return `${schedule}\n\nAll equipment delivered will remain the property of Technet Engineering Ltd until full payment is effected.`;
 }

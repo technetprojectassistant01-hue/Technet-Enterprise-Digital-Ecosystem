@@ -2,12 +2,12 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Plus, Trash2, FileSignature, Download, Search } from 'lucide-react'
 import * as api from '../lib/api'
-import type { Quotation, QuotationStatus, PaymentTermsTemplate, QuotationAvailability } from '../lib/api'
-import { PAYMENT_TERMS_OPTIONS } from '../lib/api'
+import type { Quotation, QuotationStatus, PaymentTermsLine, QuotationAvailability } from '../lib/api'
 import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { primaryButtonClass, secondaryButtonClass } from '../dashboard/buttonStyles'
 import { downloadCsv } from '../lib/csv'
 import { useCustomers } from './useCustomers'
+import { usePaymentTermLabels } from './usePaymentTermLabels'
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
@@ -15,6 +15,7 @@ import { hasRole, SALES_ROLES, QUOTE_REQUEST_VIEW_ROLES } from '../lib/permissio
 import { quotationStatusTone as statusTone } from './statusTones'
 import { formatMoney } from '../lib/format'
 import SalesLineItemsEditor, { EMPTY_SALES_LINE_ITEM, type SalesLineItemRow } from './SalesLineItemsEditor'
+import PaymentTermsLinesEditor, { EMPTY_PAYMENT_TERMS_LINE } from './PaymentTermsLinesEditor'
 import QuoteRequestsTab from './QuoteRequestsTab'
 
 const inputClass =
@@ -27,7 +28,9 @@ function QuotationsPage() {
   const { user } = useAuth()
   const canWrite = hasRole(user?.role, SALES_ROLES)
   const canViewRequests = hasRole(user?.role, QUOTE_REQUEST_VIEW_ROLES)
+  const isAdmin = user?.role === 'ADMIN'
   const customers = useCustomers()
+  const paymentTermLabels = usePaymentTermLabels()
   const [quotations, setQuotations] = useState<Quotation[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -44,7 +47,7 @@ function QuotationsPage() {
   const [contactPerson, setContactPerson] = useState('')
   const [vatRate, setVatRate] = useState('15')
   const [expiresAt, setExpiresAt] = useState('')
-  const [paymentTerms, setPaymentTerms] = useState<PaymentTermsTemplate>('FULL_ON_CONFIRMATION')
+  const [paymentTermsLines, setPaymentTermsLines] = useState<PaymentTermsLine[]>([{ ...EMPTY_PAYMENT_TERMS_LINE }])
   const [includesOrder, setIncludesOrder] = useState(false)
   const [availabilityStatus, setAvailabilityStatus] = useState<QuotationAvailability>('IN_STOCK')
   const [orderDays, setOrderDays] = useState('')
@@ -84,7 +87,7 @@ function QuotationsPage() {
     setTitle('')
     setVatRate('15')
     setExpiresAt('')
-    setPaymentTerms('FULL_ON_CONFIRMATION')
+    setPaymentTermsLines([{ ...EMPTY_PAYMENT_TERMS_LINE }])
     setIncludesOrder(false)
     setAvailabilityStatus('IN_STOCK')
     setOrderDays('')
@@ -120,6 +123,11 @@ function QuotationsPage() {
       setFormError('Enter how many days until the order is received')
       return
     }
+    const paymentTotal = paymentTermsLines.reduce((sum, l) => sum + (Number(l.percentage) || 0), 0)
+    if (Math.round(paymentTotal * 100) !== 10000) {
+      setFormError('Payment terms percentages must sum to 100')
+      return
+    }
 
     setSubmitting(true)
     try {
@@ -129,7 +137,7 @@ function QuotationsPage() {
         contactPerson: contactPerson.trim() || undefined,
         vatRate: Number(vatRate) || 0,
         expiresAt: expiresAt || undefined,
-        paymentTerms,
+        paymentTermsLines,
         availabilityStatus: includesOrder ? availabilityStatus : null,
         orderDays: includesOrder && availabilityStatus === 'ORDER_PENDING' ? Number(orderDays) : null,
         items: items.map((item) => ({
@@ -391,21 +399,7 @@ function QuotationsPage() {
                 className={`mt-2 ${inputClass}`}
               />
             </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <label className={labelClass}>PAYMENT TERMS</label>
-                <select
-                  value={paymentTerms}
-                  onChange={(e) => setPaymentTerms(e.target.value as PaymentTermsTemplate)}
-                  className={`mt-2 ${inputClass}`}
-                >
-                  {PAYMENT_TERMS_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={labelClass}>VAT %</label>
                 <input
@@ -427,6 +421,13 @@ function QuotationsPage() {
                 />
               </div>
             </div>
+
+            <PaymentTermsLinesEditor
+              lines={paymentTermsLines}
+              onChange={setPaymentTermsLines}
+              knownLabels={paymentTermLabels}
+              isAdmin={isAdmin}
+            />
 
             <div className="rounded-md border border-ink-700 px-4 py-3">
               <label className="flex items-center gap-2 text-sm text-ink-200">

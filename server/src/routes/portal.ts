@@ -32,7 +32,7 @@ router.get("/quotations/:id/pdf", async (req, res) => {
   // stops a customer from guessing another customer's quotation id and downloading their PDF.
   const quotation = await prisma.quotation.findFirst({
     where: { id, customerId: req.portalUser!.customerId, status: { in: QUOTATION_VISIBLE_STATUSES } },
-    include: { customer: { select: CUSTOMER_SELECT }, items: true },
+    include: { customer: { select: CUSTOMER_SELECT }, items: true, paymentTermsLines: { orderBy: { sortOrder: "asc" } } },
   });
   if (!quotation) return res.status(404).json({ error: "Quotation not found" });
 
