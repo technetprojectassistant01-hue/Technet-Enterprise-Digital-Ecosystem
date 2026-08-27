@@ -198,7 +198,7 @@ function QuotationDetailPage() {
       await api.updateQuotation(quotation.id, {
         customerId: editCustomerId,
         vatRate: Number(editVatRate) || 0,
-        paymentTermsLines: editPaymentTermsLines,
+        paymentTermsLines: editPaymentTermsLines.map((l) => ({ label: l.label, percentage: Number(l.percentage) })),
         availabilityStatus: editIncludesOrder ? editAvailabilityStatus : null,
         orderDays: editIncludesOrder && editAvailabilityStatus === 'ORDER_PENDING' ? Number(editOrderDays) : null,
         items: editItems.map((item) => ({
@@ -525,6 +525,11 @@ function QuotationDetailPage() {
           )
         }
       >
+        {canWrite && quotation.status === 'DRAFT' && !editingItems && (
+          <p className="mb-3 text-xs text-ink-500">
+            Draft - click Edit to change the customer, terms, or line items.
+          </p>
+        )}
         {editingItems ? (
           <form onSubmit={handleSaveItems} className="flex flex-col gap-4">
             <div className="grid grid-cols-2 gap-4">

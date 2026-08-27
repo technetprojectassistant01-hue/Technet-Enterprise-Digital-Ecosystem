@@ -446,6 +446,13 @@ export interface PaymentTermsLine {
   percentage: string
 }
 
+/** Write-side shape - percentage must be a real number over the wire, unlike the string the
+ * server returns on read (it serializes the underlying Decimal as a string, matching vatRate etc). */
+export interface PaymentTermsLineInput {
+  label: string
+  percentage: number
+}
+
 export function getPaymentTermLabels() {
   return request<{ labels: string[] }>('/api/quotations/payment-term-labels')
 }
@@ -480,7 +487,7 @@ export interface QuotationInput {
   contactPerson?: string
   vatRate?: number
   validityDays?: number
-  paymentTermsLines: PaymentTermsLine[]
+  paymentTermsLines: PaymentTermsLineInput[]
   availabilityStatus?: QuotationAvailability | null
   orderDays?: number | null
   items: SalesLineItemInput[]
@@ -520,7 +527,7 @@ export interface QuotationUpdateInput {
   customerId?: string
   vatRate?: number
   validityDays?: number
-  paymentTermsLines?: PaymentTermsLine[]
+  paymentTermsLines?: PaymentTermsLineInput[]
   availabilityStatus?: QuotationAvailability | null
   orderDays?: number | null
   items?: SalesLineItemInput[]

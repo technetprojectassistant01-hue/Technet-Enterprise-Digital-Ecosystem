@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Plus, Trash2, FileSignature, Download, Search } from 'lucide-react'
 import * as api from '../lib/api'
 import type { Quotation, QuotationStatus, PaymentTermsLine, QuotationAvailability } from '../lib/api'
@@ -25,6 +25,7 @@ const labelClass = 'text-xs font-semibold tracking-widest text-ink-400'
 
 function QuotationsPage() {
   const toast = useToast()
+  const navigate = useNavigate()
   const confirm = useConfirm()
   const { user } = useAuth()
   const canWrite = hasRole(user?.role, SALES_ROLES)
@@ -134,14 +135,14 @@ function QuotationsPage() {
 
     setSubmitting(true)
     try {
-      await api.createQuotation({
+      const { quotation } = await api.createQuotation({
         customerId,
         title,
         productLine: productLine || undefined,
         contactPerson: contactPerson.trim() || undefined,
         vatRate: Number(vatRate) || 0,
         validityDays: Number(validityDays) || undefined,
-        paymentTermsLines,
+        paymentTermsLines: paymentTermsLines.map((l) => ({ label: l.label, percentage: Number(l.percentage) })),
         availabilityStatus: includesOrder ? availabilityStatus : null,
         orderDays: includesOrder && availabilityStatus === 'ORDER_PENDING' ? Number(orderDays) : null,
         items: items.map((item) => ({
@@ -150,9 +151,11 @@ function QuotationsPage() {
           unitPrice: Number(item.unitPrice),
         })),
       })
-      toast.success('Quotation created')
+      toast.success('Quotation saved as draft - you can keep editing it from here')
       setShowCreate(false)
-      load()
+      // Jump straight to the new quotation instead of leaving the user on the list to hunt for
+      // it - same fix already applied to the quote-request conversion flow.
+      navigate(`/dashboard/erp/finance/quotations/${quotation.id}`)
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Failed to create quotation')
     } finally {

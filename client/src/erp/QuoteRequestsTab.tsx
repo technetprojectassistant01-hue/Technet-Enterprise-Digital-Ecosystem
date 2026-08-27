@@ -232,7 +232,7 @@ function QuoteRequestsTab() {
         contactPerson: contactPerson.trim() || undefined,
         vatRate: Number(vatRate) || 0,
         validityDays: Number(validityDays) || undefined,
-        paymentTermsLines,
+        paymentTermsLines: paymentTermsLines.map((l) => ({ label: l.label, percentage: Number(l.percentage) })),
         items: items.map((item) => ({
           description: item.description,
           quantity: Number(item.quantity),
