@@ -18,6 +18,12 @@ type PaymentTerms = (typeof PAYMENT_TERMS)[number];
 const AVAILABILITY_STATUSES = ["IN_STOCK", "ORDER_PENDING"] as const;
 type AvailabilityStatus = (typeof AVAILABILITY_STATUSES)[number];
 
+// Office procedure: every incoming request must be acknowledged (not necessarily fully quoted)
+// within this many hours of being logged. Kept as one named constant rather than a stored setting -
+// this app has no general admin-settings system yet, and the manager only needs a one-line code
+// change if this number changes again, not a UI.
+const QUOTE_REQUEST_SLA_HOURS = 24;
+
 const REQUEST_SOURCES = ["EMAIL", "PHONE_CALL", "REFERRER"] as const;
 const REQUEST_CATEGORIES = [
   "NEW_EQUIPMENT_INSTALL",
@@ -180,18 +186,27 @@ router.get("/", async (req, res) => {
  * ------------------------------------------------------------------ */
 
 router.get("/quote-requests", requireRole(...QUOTE_REQUEST_VIEW_ROLES), async (req, res) => {
-  const { status } = req.query;
+  const { status, loggedById } = req.query;
   const where: Prisma.QuotationRequestWhereInput = {};
   if (typeof status === "string" && ["PENDING", "CONVERTED", "DECLINED"].includes(status)) {
     where.status = status as "PENDING" | "CONVERTED" | "DECLINED";
   }
+  if (loggedById === "unassigned") {
+    where.loggedById = null;
+  } else if (typeof loggedById === "string" && loggedById) {
+    where.loggedById = loggedById;
+  }
 
   const requests = await prisma.quotationRequest.findMany({
     where,
-    include: { customer: { select: CUSTOMER_SELECT }, convertedQuotation: { select: { id: true, quotationNumber: true } } },
+    include: {
+      customer: { select: CUSTOMER_SELECT },
+      convertedQuotation: { select: { id: true, quotationNumber: true } },
+      loggedBy: { select: { id: true, name: true, email: true } },
+    },
     orderBy: { createdAt: "desc" },
   });
-  res.json({ requests });
+  res.json({ requests, slaHours: QUOTE_REQUEST_SLA_HOURS });
 });
 
 /** Manual staff intake ("Client Request Form") - a call/email/referral logged before pricing exists.
@@ -246,8 +261,9 @@ router.post("/quote-requests", requireRole(...SALES_ROLES), async (req, res) => 
         requestForOther: requestFor === "OTHER" ? (requestForOther as string).trim() : null,
         description: description.trim(),
         remarks: typeof remarks === "string" && remarks.trim() ? remarks.trim() : null,
+        loggedById: req.user!.sub,
       },
-      include: { customer: { select: CUSTOMER_SELECT } },
+      include: { customer: { select: CUSTOMER_SELECT }, loggedBy: { select: { id: true, name: true, email: true } } },
     });
     res.status(201).json({ request });
   } catch (err) {
@@ -356,6 +372,57 @@ router.post("/quote-requests/:id/decline", requireRole(...SALES_ROLES), async (r
       reviewedById: req.user!.sub,
       reviewNote: typeof note === "string" && note.trim() ? note.trim() : null,
     },
+  });
+  res.json({ request: updated });
+});
+
+/** Free-text "what's happening right now" note - lets whoever's handling a request explain its
+ * current state without management having to call and ask. */
+router.patch("/quote-requests/:id/note", requireRole(...SALES_ROLES), async (req, res) => {
+  const id = req.params.id as string;
+  const { note } = req.body ?? {};
+  if (typeof note !== "string") {
+    return res.status(400).json({ error: "Note is required" });
+  }
+
+  const request = await prisma.quotationRequest.findUnique({ where: { id } });
+  if (!request) return res.status(404).json({ error: "Quote request not found" });
+  if (request.status !== "PENDING") {
+    return res.status(400).json({ error: `This request was already ${request.status.toLowerCase()}` });
+  }
+
+  const updated = await prisma.quotationRequest.update({
+    where: { id },
+    data: { statusNote: note.trim() || null },
+  });
+  res.json({ request: updated });
+});
+
+/** The acknowledgement-email step (distinct from emailing the finished quotation): a short "we've
+ * received your request" email, draftable and saveable before it's actually sent. Sending it
+ * satisfies the 24h SLA even when the priced quotation itself will take longer. */
+router.patch("/quote-requests/:id/acknowledgement", requireRole(...SALES_ROLES), async (req, res) => {
+  const id = req.params.id as string;
+  const { body, action } = req.body ?? {};
+  if (typeof body !== "string" || !body.trim()) {
+    return res.status(400).json({ error: "Acknowledgement email body is required" });
+  }
+  if (action !== "draft" && action !== "send") {
+    return res.status(400).json({ error: "Action must be draft or send" });
+  }
+
+  const request = await prisma.quotationRequest.findUnique({ where: { id } });
+  if (!request) return res.status(404).json({ error: "Quote request not found" });
+  if (request.status !== "PENDING") {
+    return res.status(400).json({ error: `This request was already ${request.status.toLowerCase()}` });
+  }
+
+  const updated = await prisma.quotationRequest.update({
+    where: { id },
+    data:
+      action === "send"
+        ? { ackEmailBody: body.trim(), acknowledgedAt: new Date() }
+        : { ackEmailBody: body.trim(), ackDraftSavedAt: new Date() },
   });
   res.json({ request: updated });
 });

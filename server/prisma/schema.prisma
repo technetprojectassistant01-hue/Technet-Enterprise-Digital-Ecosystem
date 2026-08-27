@@ -287,7 +287,8 @@ model User {
   marketingPostsCreated     MarketingPost[]     @relation("MarketingPostCreator")
 
   customerPortalUsersGranted CustomerPortalUser[]
-  quotationRequestsReviewed  QuotationRequest[]
+  quotationRequestsReviewed  QuotationRequest[] @relation("QuotationRequestReviewer")
+  quotationRequestsLogged    QuotationRequest[] @relation("QuotationRequestLogger")
   quotationFollowUpsLogged   QuotationFollowUp[]
 
   notifications Notification[]
@@ -666,8 +667,19 @@ model QuotationRequest {
   convertedQuotationId String?                @unique
   convertedQuotation   Quotation?             @relation(fields: [convertedQuotationId], references: [id])
   reviewedById         String?
-  reviewedBy           User?                  @relation(fields: [reviewedById], references: [id])
+  reviewedBy           User?                  @relation("QuotationRequestReviewer", fields: [reviewedById], references: [id])
   reviewNote           String?
+  /** Who took the call/logged the request - set automatically at creation, not user-entered.
+   * Null for portal-submitted requests, since no staff member "answered" those. */
+  loggedById           String?
+  loggedBy             User?                  @relation("QuotationRequestLogger", fields: [loggedById], references: [id])
+  /** Free-text "what's happening right now" note, editable anytime while PENDING - lets management
+   * see why a request is still pending without having to call whoever's handling it. */
+  statusNote           String?
+  /** The acknowledgement email step: draft first, send later, satisfies the 24h SLA once sent. */
+  ackEmailBody         String?
+  ackDraftSavedAt      DateTime?
+  acknowledgedAt       DateTime?
   createdAt            DateTime               @default(now())
 }
 
