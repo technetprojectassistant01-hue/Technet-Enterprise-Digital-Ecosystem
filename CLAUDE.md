@@ -185,6 +185,19 @@ Grouped by domain (not exhaustive on fields — read the schema for that):
   For any new numeric field reachable from a form, run the Playwright check against the real form, not
   just a raw-fetch script with hand-typed correct types.
 - **PDF/file download buttons must use fetch-with-credentials + blob, never a plain cross-origin `<a href target="_blank">`** (fixed 2026-08-25 across Quotation PDF, Invoice PDF, and both Technet Connect portal PDF links — `c303302`, `93633f1`, `4814a1e`, `5bc9272`). Root cause: prod auth cookies are `SameSite=None; Partitioned` (see §3/§6), and a Partitioned cookie set while the top-level browsing context is the client origin is *not* sent on a direct top-level navigation to the server's own origin (that creates a different partition). A plain link straight to the API 401s in prod even though the user is logged in. `fetch(url, { credentials: 'include' })` from inside the client page keeps the top-level context on the client origin, so the cookie is sent correctly — then build a blob URL and trigger the save via a synthetic `<a>` click. Apply this pattern to any *new* download/export button that hits the API directly.
+- **Customer portal login must match email case-insensitively and trim both fields** (fixed
+  2026-08-27, `server/src/routes/portalAuth.ts`). Symptom reported by the user: "customer uses their
+  password once or twice then it says invalid email or password" — the portal login lookup was an
+  exact-match `findUnique({ where: { email } })` with no trimming, even though the grant endpoint
+  (`customers.ts`) already trims the email at write time. A customer typing their own email in a
+  different casing than what staff had on file, or a stray space from copy-pasting the shared
+  credentials, silently failed the lookup and returned the exact same generic "Invalid email or
+  password" as a genuinely wrong password — indistinguishable to the customer, and the reason staff
+  kept having to revoke and re-grant access instead of the original credentials just working. Fixed
+  by matching email via `mode: "insensitive"` + `.trim()`, trimming the submitted password before
+  `bcrypt.compare` (safe — the generated password's base64url alphabet never contains whitespace),
+  and lowercasing new emails at grant time going forward. No prior code was silently resetting the
+  password on its own — checked every write site to `CustomerPortalUser.passwordHash` first.
 
 ## 10. Sales/Finance — Quotation intake, rework, and Follow-Up (2026-08-25)
 
