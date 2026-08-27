@@ -2823,6 +2823,11 @@ export interface QuotationRequest {
   status: QuotationRequestStatus
   convertedQuotation: { id: string; quotationNumber: string } | null
   reviewNote: string | null
+  loggedBy: { id: string; name: string | null; email: string } | null
+  statusNote: string | null
+  ackEmailBody: string | null
+  ackDraftSavedAt: string | null
+  acknowledgedAt: string | null
   createdAt: string
 }
 
@@ -2841,9 +2846,14 @@ export interface QuotationRequestInput {
   remarks?: string
 }
 
-export function listQuoteRequests(status?: QuotationRequestStatus) {
-  const qs = status ? `?status=${status}` : ''
-  return request<{ requests: QuotationRequest[] }>(`/api/quotations/quote-requests${qs}`)
+export function listQuoteRequests(params: { status?: QuotationRequestStatus; loggedById?: string } = {}) {
+  const query = new URLSearchParams()
+  if (params.status) query.set('status', params.status)
+  if (params.loggedById) query.set('loggedById', params.loggedById)
+  const qs = query.toString()
+  return request<{ requests: QuotationRequest[]; slaHours: number }>(
+    `/api/quotations/quote-requests${qs ? `?${qs}` : ''}`,
+  )
 }
 
 export function createQuoteRequest(input: QuotationRequestInput) {
@@ -2864,6 +2874,20 @@ export function declineQuoteRequest(id: string, note?: string) {
   return request<{ request: QuotationRequest }>(`/api/quotations/quote-requests/${id}/decline`, {
     method: 'POST',
     body: JSON.stringify({ note }),
+  })
+}
+
+export function setQuoteRequestNote(id: string, note: string) {
+  return request<{ request: QuotationRequest }>(`/api/quotations/quote-requests/${id}/note`, {
+    method: 'PATCH',
+    body: JSON.stringify({ note }),
+  })
+}
+
+export function saveQuoteRequestAcknowledgement(id: string, body: string, action: 'draft' | 'send') {
+  return request<{ request: QuotationRequest }>(`/api/quotations/quote-requests/${id}/acknowledgement`, {
+    method: 'PATCH',
+    body: JSON.stringify({ body, action }),
   })
 }
 

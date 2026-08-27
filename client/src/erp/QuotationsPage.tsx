@@ -228,7 +228,7 @@ function QuotationsPage() {
               view === 'requests' ? 'bg-cyan-accent/10 text-cyan-accent' : 'text-ink-300 hover:bg-ink-800 hover:text-ink-100'
             }`}
           >
-            Quote Requests
+            Call Log
           </button>
         </div>
       )}
