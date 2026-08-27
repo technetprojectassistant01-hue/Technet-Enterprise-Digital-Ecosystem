@@ -26,15 +26,24 @@ router.post("/login", async (req, res) => {
     return res.status(400).json({ error: "Email and password are required" });
   }
 
-  const portalUser = await prisma.customerPortalUser.findUnique({
-    where: { email },
+  // Case-insensitive + trimmed: the email is stored exactly as staff typed it when granting
+  // access (see customers.ts), but a customer logging in later will naturally type/autofill
+  // their own email in whatever casing is habitual for them, or pick up a stray space from a
+  // copy-paste. An exact-match lookup silently fails in that case with the same generic
+  // "Invalid email or password" as a genuinely wrong password - indistinguishable to the
+  // customer, and the actual root cause of repeated "the password stops working" reports.
+  const portalUser = await prisma.customerPortalUser.findFirst({
+    where: { email: { equals: email.trim(), mode: "insensitive" } },
     include: { customer: { select: { id: true, name: true, company: true } } },
   });
   if (!portalUser) {
     return res.status(401).json({ error: "Invalid email or password" });
   }
 
-  const valid = await bcrypt.compare(password, portalUser.passwordHash);
+  // The generated password itself never contains whitespace (base64url alphabet), so trimming
+  // the submitted value is always safe and guards against a stray leading/trailing space picked
+  // up when the customer copy-pastes it from a text/WhatsApp/email message.
+  const valid = await bcrypt.compare(password.trim(), portalUser.passwordHash);
   if (!valid) {
     return res.status(401).json({ error: "Invalid email or password" });
   }
