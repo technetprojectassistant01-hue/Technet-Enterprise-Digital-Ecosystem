@@ -10,7 +10,7 @@ import type {
   PaymentTermsLine,
   QuotationAvailability,
 } from '../lib/api'
-import { QUOTATION_FOLLOWUP_OUTCOMES } from '../lib/api'
+import { QUOTATION_FOLLOWUP_OUTCOMES, PRODUCT_LINE_OPTIONS } from '../lib/api'
 import { Panel, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { primaryButtonClass, secondaryButtonClass, dangerButtonClass } from '../dashboard/buttonStyles'
 import { useToast } from '../dashboard/ToastContext'
@@ -86,6 +86,9 @@ function QuotationDetailPage() {
   const [contactPersonInput, setContactPersonInput] = useState('')
   const [savingContactPerson, setSavingContactPerson] = useState(false)
 
+  const [productLineInput, setProductLineInput] = useState('')
+  const [savingProductLine, setSavingProductLine] = useState(false)
+
   const [followUps, setFollowUps] = useState<QuotationFollowUp[]>([])
   const [followUpsLoading, setFollowUpsLoading] = useState(true)
   const [spokenTo, setSpokenTo] = useState('')
@@ -109,6 +112,7 @@ function QuotationDetailPage() {
         setQuotation(quotation)
         setPoReference(quotation.poReference || '')
         setContactPersonInput(quotation.contactPerson || '')
+        setProductLineInput(quotation.productLine || '')
         // Default "spoken to" for the next logged call to the quotation's contact person -
         // but only if the user hasn't already started typing a different name in.
         setSpokenTo((prev) => prev || quotation.contactPerson || '')
@@ -224,6 +228,20 @@ function QuotationDetailPage() {
       toast.error(err instanceof Error ? err.message : 'Failed to save')
     } finally {
       setSavingContactPerson(false)
+    }
+  }
+
+  async function handleSaveProductLine() {
+    if (!quotation) return
+    setSavingProductLine(true)
+    try {
+      await api.updateQuotation(quotation.id, { productLine: productLineInput || null })
+      toast.success('Saved')
+      load()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to save')
+    } finally {
+      setSavingProductLine(false)
     }
   }
 
@@ -443,6 +461,29 @@ function QuotationDetailPage() {
               {canWrite && (
                 <button type="button" onClick={handleSaveContactPerson} disabled={savingContactPerson} className={secondaryButtonClass}>
                   {savingContactPerson ? 'Saving…' : 'Save'}
+                </button>
+              )}
+            </div>
+          </div>
+          <div className="mt-4 border-t border-ink-800 pt-4">
+            <label className={labelClass}>PRODUCT LINE (internal only)</label>
+            <div className="mt-2 flex items-end gap-2">
+              <select
+                value={productLineInput}
+                onChange={(e) => setProductLineInput(e.target.value)}
+                disabled={!canWrite}
+                className={`flex-1 ${inputClass}`}
+              >
+                <option value="">Not specified</option>
+                {PRODUCT_LINE_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+              {canWrite && (
+                <button type="button" onClick={handleSaveProductLine} disabled={savingProductLine} className={secondaryButtonClass}>
+                  {savingProductLine ? 'Saving…' : 'Save'}
                 </button>
               )}
             </div>

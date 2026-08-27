@@ -436,6 +436,11 @@ export function deleteExpense(id: string) {
 export type QuotationStatus = 'DRAFT' | 'SENT' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED'
 export type QuotationAvailability = 'IN_STOCK' | 'ORDER_PENDING'
 
+// Internal-only categorization, never printed in the PDF - kept in sync manually with
+// PRODUCT_LINE_OPTIONS in server/src/routes/quotations.ts, same pattern as REQUEST_CATEGORY_OPTIONS.
+export const PRODUCT_LINE_OPTIONS = ['Air Conditioning Unit', 'Plumbing', 'Electrical', 'Tools', 'Other'] as const
+export type ProductLine = (typeof PRODUCT_LINE_OPTIONS)[number]
+
 export interface PaymentTermsLine {
   label: string
   percentage: string
@@ -451,6 +456,7 @@ export interface Quotation {
   customer: SalesDocumentCustomer
   quotationNumber: string
   title: string
+  productLine: string | null
   contactPerson: string | null
   status: QuotationStatus
   vatRate: string
@@ -470,6 +476,7 @@ export interface Quotation {
 export interface QuotationInput {
   customerId: string
   title: string
+  productLine?: string
   contactPerson?: string
   vatRate?: number
   validityDays?: number
@@ -505,6 +512,7 @@ export function createQuotation(input: QuotationInput) {
 
 export interface QuotationUpdateInput {
   title?: string
+  productLine?: string | null
   contactPerson?: string | null
   status?: QuotationStatus
   poReference?: string | null

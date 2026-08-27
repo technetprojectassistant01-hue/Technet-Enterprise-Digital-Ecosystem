@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Plus, Trash2, FileSignature, Download, Search } from 'lucide-react'
 import * as api from '../lib/api'
 import type { Quotation, QuotationStatus, PaymentTermsLine, QuotationAvailability } from '../lib/api'
+import { PRODUCT_LINE_OPTIONS } from '../lib/api'
 import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { primaryButtonClass, secondaryButtonClass } from '../dashboard/buttonStyles'
 import { downloadCsv } from '../lib/csv'
@@ -44,6 +45,7 @@ function QuotationsPage() {
   const [showCreate, setShowCreate] = useState(false)
   const [customerId, setCustomerId] = useState('')
   const [title, setTitle] = useState('')
+  const [productLine, setProductLine] = useState('')
   const [contactPerson, setContactPerson] = useState('')
   const [vatRate, setVatRate] = useState('15')
   const [validityDays, setValidityDays] = useState('15')
@@ -85,6 +87,7 @@ function QuotationsPage() {
     setCustomerId(customers[0]?.id || '')
     setContactPerson(customers[0]?.name || '')
     setTitle('')
+    setProductLine('')
     setVatRate('15')
     setValidityDays('15')
     setPaymentTermsLines([{ ...EMPTY_PAYMENT_TERMS_LINE }])
@@ -134,6 +137,7 @@ function QuotationsPage() {
       await api.createQuotation({
         customerId,
         title,
+        productLine: productLine || undefined,
         contactPerson: contactPerson.trim() || undefined,
         vatRate: Number(vatRate) || 0,
         validityDays: Number(validityDays) || undefined,
@@ -389,6 +393,17 @@ function QuotationsPage() {
                 <label className={labelClass}>TITLE</label>
                 <input value={title} onChange={(e) => setTitle(e.target.value)} required className={`mt-2 ${inputClass}`} />
               </div>
+            </div>
+            <div>
+              <label className={labelClass}>PRODUCT LINE (internal only, not shown on the PDF)</label>
+              <select value={productLine} onChange={(e) => setProductLine(e.target.value)} className={`mt-2 ${inputClass}`}>
+                <option value="">Not specified</option>
+                {PRODUCT_LINE_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <label className={labelClass}>CONTACT PERSON</label>
