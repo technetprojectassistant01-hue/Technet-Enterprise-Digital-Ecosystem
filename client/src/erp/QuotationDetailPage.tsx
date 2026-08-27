@@ -7,10 +7,10 @@ import type {
   QuotationFollowUp,
   QuotationFollowUpOutcome,
   Document,
-  PaymentTermsTemplate,
+  PaymentTermsLine,
   QuotationAvailability,
 } from '../lib/api'
-import { QUOTATION_FOLLOWUP_OUTCOMES, PAYMENT_TERMS_OPTIONS } from '../lib/api'
+import { QUOTATION_FOLLOWUP_OUTCOMES } from '../lib/api'
 import { Panel, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { primaryButtonClass, secondaryButtonClass, dangerButtonClass } from '../dashboard/buttonStyles'
 import { useToast } from '../dashboard/ToastContext'
@@ -20,7 +20,9 @@ import { hasRole, SALES_ROLES } from '../lib/permissions'
 import { quotationStatusTone } from './statusTones'
 import { formatMoney } from '../lib/format'
 import { useCustomers } from './useCustomers'
+import { usePaymentTermLabels } from './usePaymentTermLabels'
 import SalesLineItemsEditor, { EMPTY_SALES_LINE_ITEM, type SalesLineItemRow } from './SalesLineItemsEditor'
+import PaymentTermsLinesEditor, { EMPTY_PAYMENT_TERMS_LINE } from './PaymentTermsLinesEditor'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -58,7 +60,9 @@ function QuotationDetailPage() {
   const confirm = useConfirm()
   const { user } = useAuth()
   const canWrite = hasRole(user?.role, SALES_ROLES)
+  const isAdmin = user?.role === 'ADMIN'
   const customers = useCustomers()
+  const paymentTermLabels = usePaymentTermLabels()
 
   const [quotation, setQuotation] = useState<Quotation | null>(null)
   const [loading, setLoading] = useState(true)
@@ -68,7 +72,7 @@ function QuotationDetailPage() {
   const [editingItems, setEditingItems] = useState(false)
   const [editCustomerId, setEditCustomerId] = useState('')
   const [editVatRate, setEditVatRate] = useState('15')
-  const [editPaymentTerms, setEditPaymentTerms] = useState<PaymentTermsTemplate>('FULL_ON_CONFIRMATION')
+  const [editPaymentTermsLines, setEditPaymentTermsLines] = useState<PaymentTermsLine[]>([{ ...EMPTY_PAYMENT_TERMS_LINE }])
   const [editIncludesOrder, setEditIncludesOrder] = useState(false)
   const [editAvailabilityStatus, setEditAvailabilityStatus] = useState<QuotationAvailability>('IN_STOCK')
   const [editOrderDays, setEditOrderDays] = useState('')
@@ -155,7 +159,9 @@ function QuotationDetailPage() {
     if (!quotation) return
     setEditCustomerId(quotation.customerId)
     setEditVatRate(String(Number(quotation.vatRate)))
-    setEditPaymentTerms(quotation.paymentTerms)
+    setEditPaymentTermsLines(
+      quotation.paymentTermsLines.length > 0 ? quotation.paymentTermsLines : [{ ...EMPTY_PAYMENT_TERMS_LINE }],
+    )
     setEditIncludesOrder(!!quotation.availabilityStatus)
     setEditAvailabilityStatus(quotation.availabilityStatus || 'IN_STOCK')
     setEditOrderDays(quotation.orderDays ? String(quotation.orderDays) : '')
@@ -178,13 +184,17 @@ function QuotationDetailPage() {
     if (editIncludesOrder && editAvailabilityStatus === 'ORDER_PENDING' && (!editOrderDays.trim() || Number(editOrderDays) <= 0)) {
       return setEditError('Enter how many days until the order is received')
     }
+    const editPaymentTotal = editPaymentTermsLines.reduce((sum, l) => sum + (Number(l.percentage) || 0), 0)
+    if (Math.round(editPaymentTotal * 100) !== 10000) {
+      return setEditError('Payment terms percentages must sum to 100')
+    }
 
     setSavingItems(true)
     try {
       await api.updateQuotation(quotation.id, {
         customerId: editCustomerId,
         vatRate: Number(editVatRate) || 0,
-        paymentTerms: editPaymentTerms,
+        paymentTermsLines: editPaymentTermsLines,
         availabilityStatus: editIncludesOrder ? editAvailabilityStatus : null,
         orderDays: editIncludesOrder && editAvailabilityStatus === 'ORDER_PENDING' ? Number(editOrderDays) : null,
         items: editItems.map((item) => ({
@@ -443,9 +453,7 @@ function QuotationDetailPage() {
             <div>
               <span className="text-xs font-semibold tracking-widest text-ink-500">PAYMENT TERMS</span>
               <p className="mt-1 text-ink-200">
-                {quotation.paymentTerms === 'FULL_ON_CONFIRMATION' && '100% on confirmation of order'}
-                {quotation.paymentTerms === 'SPLIT_60_40_20' && '60% confirmation, 40% progress, 20% completion'}
-                {quotation.paymentTerms === 'SPLIT_50_50' && '50% confirmation, 50% completion'}
+                {quotation.paymentTermsLines.map((l) => `${l.label} ${l.percentage}%`).join(', ')}
               </p>
             </div>
             {quotation.availabilityStatus && (
@@ -489,32 +497,25 @@ function QuotationDetailPage() {
                   ))}
                 </select>
               </div>
-              <div>
-                <label className={labelClass}>PAYMENT TERMS</label>
-                <select
-                  value={editPaymentTerms}
-                  onChange={(e) => setEditPaymentTerms(e.target.value as PaymentTermsTemplate)}
+              <div className="max-w-[200px]">
+                <label className={labelClass}>VAT %</label>
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={editVatRate}
+                  onChange={(e) => setEditVatRate(e.target.value)}
                   className={`mt-2 ${inputClass}`}
-                >
-                  {PAYMENT_TERMS_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
             </div>
-            <div className="max-w-[200px]">
-              <label className={labelClass}>VAT %</label>
-              <input
-                type="number"
-                min={0}
-                step="0.01"
-                value={editVatRate}
-                onChange={(e) => setEditVatRate(e.target.value)}
-                className={`mt-2 ${inputClass}`}
-              />
-            </div>
+
+            <PaymentTermsLinesEditor
+              lines={editPaymentTermsLines}
+              onChange={setEditPaymentTermsLines}
+              knownLabels={paymentTermLabels}
+              isAdmin={isAdmin}
+            />
 
             <div className="rounded-md border border-ink-700 px-4 py-3">
               <label className="flex items-center gap-2 text-sm text-ink-200">

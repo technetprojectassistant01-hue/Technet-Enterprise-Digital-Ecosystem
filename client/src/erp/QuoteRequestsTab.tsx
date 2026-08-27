@@ -1,16 +1,18 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { FileSignature, Plus, Mail } from 'lucide-react'
 import * as api from '../lib/api'
-import type { QuotationRequest, RequestSource, RequestCategory, PaymentTermsTemplate } from '../lib/api'
-import { REQUEST_SOURCE_OPTIONS, REQUEST_CATEGORY_OPTIONS, PAYMENT_TERMS_OPTIONS } from '../lib/api'
+import type { QuotationRequest, RequestSource, RequestCategory, PaymentTermsLine } from '../lib/api'
+import { REQUEST_SOURCE_OPTIONS, REQUEST_CATEGORY_OPTIONS } from '../lib/api'
 import { Panel, Modal, Badge, EmptyState, TableSkeleton, type BadgeTone } from '../dashboard/ui'
 import { primaryButtonClass, secondaryButtonClass } from '../dashboard/buttonStyles'
 import { useToast } from '../dashboard/ToastContext'
 import { useAuth } from '../context/AuthContext'
 import { hasRole, SALES_ROLES } from '../lib/permissions'
 import { useCustomers } from './useCustomers'
+import { usePaymentTermLabels } from './usePaymentTermLabels'
 import { formatMoney } from '../lib/format'
 import SalesLineItemsEditor, { EMPTY_SALES_LINE_ITEM, type SalesLineItemRow } from './SalesLineItemsEditor'
+import PaymentTermsLinesEditor, { EMPTY_PAYMENT_TERMS_LINE } from './PaymentTermsLinesEditor'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -58,7 +60,9 @@ function QuoteRequestsTab() {
   const toast = useToast()
   const { user } = useAuth()
   const canManage = hasRole(user?.role, SALES_ROLES)
+  const isAdmin = user?.role === 'ADMIN'
   const customers = useCustomers()
+  const paymentTermLabels = usePaymentTermLabels()
   const [requests, setRequests] = useState<QuotationRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [slaHours, setSlaHours] = useState(24)
@@ -108,7 +112,7 @@ function QuoteRequestsTab() {
   const [contactPerson, setContactPerson] = useState('')
   const [vatRate, setVatRate] = useState('15')
   const [expiresAt, setExpiresAt] = useState('')
-  const [paymentTerms, setPaymentTerms] = useState<PaymentTermsTemplate>('FULL_ON_CONFIRMATION')
+  const [paymentTermsLines, setPaymentTermsLines] = useState<PaymentTermsLine[]>([{ ...EMPTY_PAYMENT_TERMS_LINE }])
   const [items, setItems] = useState<SalesLineItemRow[]>([{ ...EMPTY_SALES_LINE_ITEM }])
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -202,7 +206,7 @@ function QuoteRequestsTab() {
     setContactPerson(r.otherContactName || r.customer?.name || '')
     setVatRate('15')
     setExpiresAt('')
-    setPaymentTerms('FULL_ON_CONFIRMATION')
+    setPaymentTermsLines([{ ...EMPTY_PAYMENT_TERMS_LINE }])
     setItems([{ ...EMPTY_SALES_LINE_ITEM }])
     setFormError(null)
   }
@@ -217,6 +221,8 @@ function QuoteRequestsTab() {
     if (!converting) return
     if (!converting.customerId && !convertCustomerId) return setFormError('Select a customer for this request')
     if (!title.trim()) return setFormError('Title is required')
+    const paymentTotal = paymentTermsLines.reduce((sum, l) => sum + (Number(l.percentage) || 0), 0)
+    if (Math.round(paymentTotal * 100) !== 10000) return setFormError('Payment terms percentages must sum to 100')
 
     setSubmitting(true)
     try {
@@ -226,7 +232,7 @@ function QuoteRequestsTab() {
         contactPerson: contactPerson.trim() || undefined,
         vatRate: Number(vatRate) || 0,
         expiresAt: expiresAt || undefined,
-        paymentTerms,
+        paymentTermsLines,
         items: items.map((item) => ({
           description: item.description,
           quantity: Number(item.quantity),
@@ -614,21 +620,7 @@ function QuoteRequestsTab() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <label className={labelClass}>PAYMENT TERMS</label>
-                <select
-                  value={paymentTerms}
-                  onChange={(e) => setPaymentTerms(e.target.value as PaymentTermsTemplate)}
-                  className={`mt-2 ${inputClass}`}
-                >
-                  {PAYMENT_TERMS_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={labelClass}>VAT %</label>
                 <input
@@ -650,6 +642,13 @@ function QuoteRequestsTab() {
                 />
               </div>
             </div>
+
+            <PaymentTermsLinesEditor
+              lines={paymentTermsLines}
+              onChange={setPaymentTermsLines}
+              knownLabels={paymentTermLabels}
+              isAdmin={isAdmin}
+            />
 
             <SalesLineItemsEditor items={items} onChange={setItems} />
 

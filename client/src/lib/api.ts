@@ -434,14 +434,16 @@ export function deleteExpense(id: string) {
 }
 
 export type QuotationStatus = 'DRAFT' | 'SENT' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED'
-export type PaymentTermsTemplate = 'FULL_ON_CONFIRMATION' | 'SPLIT_60_40_20' | 'SPLIT_50_50'
 export type QuotationAvailability = 'IN_STOCK' | 'ORDER_PENDING'
 
-export const PAYMENT_TERMS_OPTIONS: { value: PaymentTermsTemplate; label: string }[] = [
-  { value: 'FULL_ON_CONFIRMATION', label: '100% on confirmation of order' },
-  { value: 'SPLIT_60_40_20', label: '60% confirmation, 40% progress, 20% completion' },
-  { value: 'SPLIT_50_50', label: '50% confirmation, 50% completion' },
-]
+export interface PaymentTermsLine {
+  label: string
+  percentage: string
+}
+
+export function getPaymentTermLabels() {
+  return request<{ labels: string[] }>('/api/quotations/payment-term-labels')
+}
 
 export interface Quotation {
   id: string
@@ -455,7 +457,7 @@ export interface Quotation {
   subtotal: string
   vatAmount: string
   total: string
-  paymentTerms: PaymentTermsTemplate
+  paymentTermsLines: PaymentTermsLine[]
   availabilityStatus: QuotationAvailability | null
   orderDays: number | null
   poReference: string | null
@@ -471,7 +473,7 @@ export interface QuotationInput {
   contactPerson?: string
   vatRate?: number
   expiresAt?: string
-  paymentTerms: PaymentTermsTemplate
+  paymentTermsLines: PaymentTermsLine[]
   availabilityStatus?: QuotationAvailability | null
   orderDays?: number | null
   items: SalesLineItemInput[]
@@ -510,7 +512,7 @@ export interface QuotationUpdateInput {
   // Draft-only fields - the server rejects these once the quotation has been sent.
   customerId?: string
   vatRate?: number
-  paymentTerms?: PaymentTermsTemplate
+  paymentTermsLines?: PaymentTermsLine[]
   availabilityStatus?: QuotationAvailability | null
   orderDays?: number | null
   items?: SalesLineItemInput[]

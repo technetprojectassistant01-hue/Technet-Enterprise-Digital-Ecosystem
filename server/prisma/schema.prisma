@@ -94,12 +94,6 @@ enum QuotationStatus {
   EXPIRED
 }
 
-enum PaymentTermsTemplate {
-  FULL_ON_CONFIRMATION
-  SPLIT_60_40_20
-  SPLIT_50_50
-}
-
 enum QuotationAvailability {
   IN_STOCK
   ORDER_PENDING
@@ -595,7 +589,6 @@ model Quotation {
   subtotal           Decimal                @db.Decimal(14, 2)
   vatAmount          Decimal                @db.Decimal(14, 2)
   total              Decimal                @db.Decimal(14, 2)
-  paymentTerms       PaymentTermsTemplate   @default(FULL_ON_CONFIRMATION)
   availabilityStatus QuotationAvailability?
   orderDays          Int?
   poReference        String?
@@ -606,10 +599,24 @@ model Quotation {
   createdAt          DateTime               @default(now())
   updatedAt          DateTime               @updatedAt
 
-  items            QuotationItem[]
-  quotationRequest QuotationRequest?
-  documents        Document[]
-  followUps        QuotationFollowUp[]
+  items             QuotationItem[]
+  paymentTermsLines QuotationPaymentTermsLine[]
+  quotationRequest  QuotationRequest?
+  documents         Document[]
+  followUps         QuotationFollowUp[]
+}
+
+/** Arbitrary label+percentage payment-terms splits, replacing the old 3-fixed-preset enum -
+ * percentages across a quotation's lines must sum to 100. New labels can only be introduced by
+ * ADMIN (validated in the route, not the schema) - everyday quotation creation picks from labels
+ * already used elsewhere, to avoid free-text drift in this data ("AC" vs "Ac" vs "A/C"). */
+model QuotationPaymentTermsLine {
+  id          String    @id @default(uuid())
+  quotationId String
+  quotation   Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  label       String
+  percentage  Decimal   @db.Decimal(5, 2)
+  sortOrder   Int       @default(0)
 }
 
 /** A logged call chasing a client after a Quotation has gone out - outcome is a validated free

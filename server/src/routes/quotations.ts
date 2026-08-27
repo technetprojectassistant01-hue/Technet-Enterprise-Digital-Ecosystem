@@ -12,8 +12,10 @@ const router = Router();
 const STATUSES = ["DRAFT", "SENT", "ACCEPTED", "REJECTED", "EXPIRED"] as const;
 type QuotationStatus = (typeof STATUSES)[number];
 
-const PAYMENT_TERMS = ["FULL_ON_CONFIRMATION", "SPLIT_60_40_20", "SPLIT_50_50"] as const;
-type PaymentTerms = (typeof PAYMENT_TERMS)[number];
+// Floor list so the label dropdown isn't empty before any quotation has been created with the new
+// line-based payment terms - the real "known labels" set is this, unioned with whatever's already
+// been used (see GET /payment-term-labels).
+const DEFAULT_PAYMENT_TERM_LABELS = ["Confirmation", "Progress", "Completion", "Delivery"] as const;
 
 const AVAILABILITY_STATUSES = ["IN_STOCK", "ORDER_PENDING"] as const;
 type AvailabilityStatus = (typeof AVAILABILITY_STATUSES)[number];
@@ -93,24 +95,13 @@ function validateItems(items: unknown): { error: string } | { items: QuotationIt
 }
 
 interface QuotationExtras {
-  paymentTerms: PaymentTerms;
   availabilityStatus: AvailabilityStatus | null;
   orderDays: number | null;
 }
 
-function parseQuotationExtras(body: {
-  paymentTerms?: unknown;
-  availabilityStatus?: unknown;
-  orderDays?: unknown;
-}): { error: string } | QuotationExtras {
-  const paymentTerms =
-    body.paymentTerms !== undefined && body.paymentTerms !== null ? body.paymentTerms : "FULL_ON_CONFIRMATION";
-  if (!PAYMENT_TERMS.includes(paymentTerms as PaymentTerms)) {
-    return { error: "Invalid payment terms" };
-  }
-
+function parseAvailability(body: { availabilityStatus?: unknown; orderDays?: unknown }): { error: string } | QuotationExtras {
   if (body.availabilityStatus === undefined || body.availabilityStatus === null || body.availabilityStatus === "") {
-    return { paymentTerms: paymentTerms as PaymentTerms, availabilityStatus: null, orderDays: null };
+    return { availabilityStatus: null, orderDays: null };
   }
   if (!AVAILABILITY_STATUSES.includes(body.availabilityStatus as AvailabilityStatus)) {
     return { error: "Invalid availability status" };
@@ -119,13 +110,58 @@ function parseQuotationExtras(body: {
     if (!Number.isFinite(body.orderDays) || (body.orderDays as number) <= 0) {
       return { error: "Enter how many days until the order is received" };
     }
-    return {
-      paymentTerms: paymentTerms as PaymentTerms,
-      availabilityStatus: "ORDER_PENDING",
-      orderDays: Math.trunc(body.orderDays as number),
-    };
+    return { availabilityStatus: "ORDER_PENDING", orderDays: Math.trunc(body.orderDays as number) };
   }
-  return { paymentTerms: paymentTerms as PaymentTerms, availabilityStatus: "IN_STOCK", orderDays: null };
+  return { availabilityStatus: "IN_STOCK", orderDays: null };
+}
+
+interface PaymentTermsLineInput {
+  label: string;
+  percentage: number;
+}
+
+/** Percentages must sum to exactly 100. A label that isn't already in use anywhere (this
+ * quotation's known-labels set) can only be introduced by ADMIN - everyday quotation creation
+ * picks from previously-used labels, avoiding free-text drift ("AC" vs "Ac" vs "A/C") in data the
+ * office will eventually want to report on. */
+async function parsePaymentTermsLines(
+  lines: unknown,
+  isAdmin: boolean,
+): Promise<{ error: string } | { lines: PaymentTermsLineInput[] }> {
+  if (!Array.isArray(lines) || lines.length === 0) {
+    return { error: "At least one payment terms line is required" };
+  }
+  const parsed: PaymentTermsLineInput[] = [];
+  for (const line of lines as { label?: unknown; percentage?: unknown }[]) {
+    if (typeof line.label !== "string" || !line.label.trim()) {
+      return { error: "Every payment terms line needs a label" };
+    }
+    if (!Number.isFinite(line.percentage) || (line.percentage as number) <= 0) {
+      return { error: "Every payment terms line needs a positive percentage" };
+    }
+    parsed.push({ label: line.label.trim(), percentage: line.percentage as number });
+  }
+  const total = parsed.reduce((sum, l) => sum + l.percentage, 0);
+  if (Math.round(total * 100) !== 10000) {
+    return { error: `Payment terms percentages must sum to 100 (currently ${total})` };
+  }
+
+  if (!isAdmin) {
+    const known = await knownPaymentTermLabels();
+    const unknown = parsed.find((l) => !known.has(l.label));
+    if (unknown) {
+      return {
+        error: `Only an Admin can add a new payment terms label ("${unknown.label}") - pick an existing one or ask an Admin to add it`,
+      };
+    }
+  }
+
+  return { lines: parsed };
+}
+
+async function knownPaymentTermLabels(): Promise<Set<string>> {
+  const rows = await prisma.quotationPaymentTermsLine.findMany({ distinct: ["label"], select: { label: true } });
+  return new Set([...DEFAULT_PAYMENT_TERM_LABELS, ...rows.map((r) => r.label)]);
 }
 
 /** Retries on a quotation-number collision (two near-simultaneous creates same day) - real volume
@@ -173,10 +209,15 @@ router.get("/", async (req, res) => {
 
   const quotations = await prisma.quotation.findMany({
     where,
-    include: { customer: { select: CUSTOMER_SELECT }, items: true },
+    include: { customer: { select: CUSTOMER_SELECT }, items: true, paymentTermsLines: { orderBy: { sortOrder: "asc" } } },
     orderBy: { issuedAt: "desc" },
   });
   res.json({ quotations });
+});
+
+router.get("/payment-term-labels", async (_req, res) => {
+  const labels = await knownPaymentTermLabels();
+  res.json({ labels: [...labels].sort() });
 });
 
 /* ------------------------------------------------------------------ *
@@ -281,7 +322,7 @@ router.post("/quote-requests/:id/convert", requireRole(...SALES_ROLES), async (r
     vatRate,
     expiresAt,
     items,
-    paymentTerms,
+    paymentTermsLines,
     availabilityStatus,
     orderDays,
   } = req.body ?? {};
@@ -305,8 +346,10 @@ router.post("/quote-requests/:id/convert", requireRole(...SALES_ROLES), async (r
   }
   const itemsResult = validateItems(items);
   if ("error" in itemsResult) return res.status(400).json({ error: itemsResult.error });
-  const extras = parseQuotationExtras({ paymentTerms, availabilityStatus, orderDays });
-  if ("error" in extras) return res.status(400).json({ error: extras.error });
+  const availability = parseAvailability({ availabilityStatus, orderDays });
+  if ("error" in availability) return res.status(400).json({ error: availability.error });
+  const paymentResult = await parsePaymentTermsLines(paymentTermsLines, req.user!.role === "ADMIN");
+  if ("error" in paymentResult) return res.status(400).json({ error: paymentResult.error });
 
   const rate = vatRate !== undefined ? Number(vatRate) : 15;
   const subtotal = itemsResult.items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
@@ -326,9 +369,8 @@ router.post("/quote-requests/:id/convert", requireRole(...SALES_ROLES), async (r
           subtotal,
           vatAmount,
           total,
-          paymentTerms: extras.paymentTerms,
-          availabilityStatus: extras.availabilityStatus,
-          orderDays: extras.orderDays,
+          availabilityStatus: availability.availabilityStatus,
+          orderDays: availability.orderDays,
           expiresAt: expiresAt ? new Date(expiresAt) : null,
           createdById: req.user!.sub,
           items: {
@@ -338,8 +380,11 @@ router.post("/quote-requests/:id/convert", requireRole(...SALES_ROLES), async (r
               unitPrice: item.unitPrice,
             })),
           },
+          paymentTermsLines: {
+            create: paymentResult.lines.map((line, i) => ({ label: line.label, percentage: line.percentage, sortOrder: i })),
+          },
         },
-        include: { customer: { select: CUSTOMER_SELECT }, items: true },
+        include: { customer: { select: CUSTOMER_SELECT }, items: true, paymentTermsLines: { orderBy: { sortOrder: "asc" } } },
       }),
     );
 
@@ -431,14 +476,14 @@ router.get("/:id", async (req, res) => {
   const id = req.params.id as string;
   const quotation = await prisma.quotation.findUnique({
     where: { id },
-    include: { customer: { select: CUSTOMER_SELECT }, items: true },
+    include: { customer: { select: CUSTOMER_SELECT }, items: true, paymentTermsLines: { orderBy: { sortOrder: "asc" } } },
   });
   if (!quotation) return res.status(404).json({ error: "Quotation not found" });
   res.json({ quotation });
 });
 
 router.post("/", requireRole(...SALES_ROLES), async (req, res) => {
-  const { customerId, title, contactPerson, vatRate, expiresAt, items, paymentTerms, availabilityStatus, orderDays } =
+  const { customerId, title, contactPerson, vatRate, expiresAt, items, paymentTermsLines, availabilityStatus, orderDays } =
     req.body ?? {};
 
   if (typeof customerId !== "string" || !customerId) {
@@ -452,8 +497,10 @@ router.post("/", requireRole(...SALES_ROLES), async (req, res) => {
   }
   const itemsResult = validateItems(items);
   if ("error" in itemsResult) return res.status(400).json({ error: itemsResult.error });
-  const extras = parseQuotationExtras({ paymentTerms, availabilityStatus, orderDays });
-  if ("error" in extras) return res.status(400).json({ error: extras.error });
+  const availability = parseAvailability({ availabilityStatus, orderDays });
+  if ("error" in availability) return res.status(400).json({ error: availability.error });
+  const paymentResult = await parsePaymentTermsLines(paymentTermsLines, req.user!.role === "ADMIN");
+  if ("error" in paymentResult) return res.status(400).json({ error: paymentResult.error });
 
   const rate = vatRate !== undefined ? Number(vatRate) : 15;
   const subtotal = itemsResult.items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
@@ -473,9 +520,8 @@ router.post("/", requireRole(...SALES_ROLES), async (req, res) => {
           subtotal,
           vatAmount,
           total,
-          paymentTerms: extras.paymentTerms,
-          availabilityStatus: extras.availabilityStatus,
-          orderDays: extras.orderDays,
+          availabilityStatus: availability.availabilityStatus,
+          orderDays: availability.orderDays,
           expiresAt: expiresAt ? new Date(expiresAt) : null,
           createdById: req.user!.sub,
           items: {
@@ -485,8 +531,11 @@ router.post("/", requireRole(...SALES_ROLES), async (req, res) => {
               unitPrice: item.unitPrice,
             })),
           },
+          paymentTermsLines: {
+            create: paymentResult.lines.map((line, i) => ({ label: line.label, percentage: line.percentage, sortOrder: i })),
+          },
         },
-        include: { customer: { select: CUSTOMER_SELECT }, items: true },
+        include: { customer: { select: CUSTOMER_SELECT }, items: true, paymentTermsLines: { orderBy: { sortOrder: "asc" } } },
       }),
     );
     res.status(201).json({ quotation });
@@ -506,7 +555,7 @@ router.patch("/:id", requireRole(...SALES_ROLES), async (req, res) => {
     poReference,
     customerId,
     vatRate,
-    paymentTerms,
+    paymentTermsLines,
     availabilityStatus,
     orderDays,
     items,
@@ -528,7 +577,7 @@ router.patch("/:id", requireRole(...SALES_ROLES), async (req, res) => {
   const editingDraftOnlyFields =
     customerId !== undefined ||
     vatRate !== undefined ||
-    paymentTerms !== undefined ||
+    paymentTermsLines !== undefined ||
     availabilityStatus !== undefined ||
     orderDays !== undefined ||
     items !== undefined;
@@ -555,12 +604,21 @@ router.patch("/:id", requireRole(...SALES_ROLES), async (req, res) => {
     if ("error" in itemsResult) return res.status(400).json({ error: itemsResult.error });
     newItems = itemsResult.items;
   }
-  if (paymentTerms !== undefined || availabilityStatus !== undefined || orderDays !== undefined) {
-    const extras = parseQuotationExtras({ paymentTerms, availabilityStatus, orderDays });
-    if ("error" in extras) return res.status(400).json({ error: extras.error });
-    data.paymentTerms = extras.paymentTerms;
-    data.availabilityStatus = extras.availabilityStatus;
-    data.orderDays = extras.orderDays;
+  if (availabilityStatus !== undefined || orderDays !== undefined) {
+    const availability = parseAvailability({ availabilityStatus, orderDays });
+    if ("error" in availability) return res.status(400).json({ error: availability.error });
+    data.availabilityStatus = availability.availabilityStatus;
+    data.orderDays = availability.orderDays;
+  }
+  let newPaymentTermsLines: PaymentTermsLineInput[] | undefined;
+  if (paymentTermsLines !== undefined) {
+    const paymentResult = await parsePaymentTermsLines(paymentTermsLines, req.user!.role === "ADMIN");
+    if ("error" in paymentResult) return res.status(400).json({ error: paymentResult.error });
+    newPaymentTermsLines = paymentResult.lines;
+    data.paymentTermsLines = {
+      deleteMany: {},
+      create: newPaymentTermsLines.map((line, i) => ({ label: line.label, percentage: line.percentage, sortOrder: i })),
+    };
   }
   if (vatRate !== undefined && (!Number.isFinite(vatRate) || vatRate < 0)) {
     return res.status(400).json({ error: "VAT rate must be a non-negative number" });
@@ -594,7 +652,7 @@ router.patch("/:id", requireRole(...SALES_ROLES), async (req, res) => {
     const quotation = await prisma.quotation.update({
       where: { id },
       data,
-      include: { customer: { select: CUSTOMER_SELECT }, items: true },
+      include: { customer: { select: CUSTOMER_SELECT }, items: true, paymentTermsLines: { orderBy: { sortOrder: "asc" } } },
     });
     if (quotation.createdById && (status === "ACCEPTED" || status === "REJECTED")) {
       await notifyUser(
@@ -660,13 +718,16 @@ router.post("/:id/follow-ups", requireRole(...SALES_ROLES), async (req, res) => 
 
 router.get("/:id/pdf", async (req, res) => {
   const id = req.params.id as string;
-  const quotation = await prisma.quotation.findUnique({
-    where: { id },
-    include: { customer: { select: CUSTOMER_SELECT }, items: true },
-  });
+  // Independent lookups - no need to await them sequentially.
+  const [quotation, author] = await Promise.all([
+    prisma.quotation.findUnique({
+      where: { id },
+      include: { customer: { select: CUSTOMER_SELECT }, items: true, paymentTermsLines: { orderBy: { sortOrder: "asc" } } },
+    }),
+    prisma.user.findUnique({ where: { id: req.user!.sub }, select: { name: true, email: true } }),
+  ]);
   if (!quotation) return res.status(404).json({ error: "Quotation not found" });
 
-  const author = await prisma.user.findUnique({ where: { id: req.user!.sub }, select: { name: true, email: true } });
   const signatoryName = author?.name || author?.email || "Technet Engineering Ltd";
 
   const doc = generateQuotationPdf(quotation, signatoryName);

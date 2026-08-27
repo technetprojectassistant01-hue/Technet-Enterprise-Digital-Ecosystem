@@ -14,7 +14,7 @@ export interface QuotationForPdf {
   quotationNumber: string;
   title: string;
   contactPerson?: string | null;
-  paymentTerms: string;
+  paymentTermsLines: { label: string; percentage: Money }[];
   issuedAt: Date;
   vatRate: Money;
   subtotal: Money;
@@ -118,7 +118,7 @@ export function generateQuotationPdf(quotation: QuotationForPdf, signatoryName: 
   drawLetterhead(doc);
   // "Terms of payments" is inserted after Exchange Rate, matching the company's own template order.
   const rows = [...QUOTATION_CONDITIONS];
-  rows.splice(2, 0, { label: "Terms of payments", value: paymentTermsDescription(quotation.paymentTerms) });
+  rows.splice(2, 0, { label: "Terms of payments", value: paymentTermsDescription(quotation.paymentTermsLines) });
   drawKeyValueTable(doc, "Conditions of Sales", rows);
   drawFooterBanner(doc);
 
