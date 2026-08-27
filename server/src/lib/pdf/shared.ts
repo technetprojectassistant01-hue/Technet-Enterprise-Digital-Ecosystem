@@ -14,15 +14,22 @@ const LOGO_ASPECT = 406 / 720;
 const LOGO_WIDTH = 170;
 const LOGO_HEIGHT = LOGO_WIDTH * LOGO_ASPECT;
 
+// Decoded once at module load, same as LOGO_BUFFER above - registerBrandFonts() used to re-decode
+// all 4 base64 strings on every single PDF request, which is pure waste since the bytes never change.
+const CARLITO_REGULAR_BUFFER = Buffer.from(CARLITO_REGULAR_BASE64, "base64");
+const CARLITO_BOLD_BUFFER = Buffer.from(CARLITO_BOLD_BASE64, "base64");
+const CARLITO_ITALIC_BUFFER = Buffer.from(CARLITO_ITALIC_BASE64, "base64");
+const CARLITO_BOLDITALIC_BUFFER = Buffer.from(CARLITO_BOLDITALIC_BASE64, "base64");
+
 /** Carlito is metrically-compatible, openly-licensed stand-in for Calibri - the actual font
  * embedded in every real Technet-issued quotation/invoice (confirmed by inspecting the fonts
  * embedded in a real reference PDF the user supplied). Calibri itself is a proprietary Microsoft
  * font with no redistributable file, so it can't be embedded directly. Call once per document. */
 export function registerBrandFonts(doc: PDFKit.PDFDocument) {
-  doc.registerFont("Body", Buffer.from(CARLITO_REGULAR_BASE64, "base64"));
-  doc.registerFont("Body-Bold", Buffer.from(CARLITO_BOLD_BASE64, "base64"));
-  doc.registerFont("Body-Italic", Buffer.from(CARLITO_ITALIC_BASE64, "base64"));
-  doc.registerFont("Body-BoldItalic", Buffer.from(CARLITO_BOLDITALIC_BASE64, "base64"));
+  doc.registerFont("Body", CARLITO_REGULAR_BUFFER);
+  doc.registerFont("Body-Bold", CARLITO_BOLD_BUFFER);
+  doc.registerFont("Body-Italic", CARLITO_ITALIC_BUFFER);
+  doc.registerFont("Body-BoldItalic", CARLITO_BOLDITALIC_BUFFER);
 }
 
 export type Money = Prisma.Decimal | number | string;
