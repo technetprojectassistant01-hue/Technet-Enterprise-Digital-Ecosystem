@@ -125,7 +125,9 @@ router.post("/:id/portal-access", requireRole(...CUSTOMER_MANAGE_ROLES), async (
   const customer = await prisma.customer.findUnique({ where: { id }, select: { email: true } });
   if (!customer) return res.status(404).json({ error: "Customer not found" });
 
-  const portalEmail = typeof email === "string" && email.trim() ? email.trim() : customer.email;
+  // Lowercased at rest so future logins (matched case-insensitively, see portalAuth.ts) can
+  // never collide with a second grant differing from this one only by casing.
+  const portalEmail = (typeof email === "string" && email.trim() ? email.trim() : customer.email)?.toLowerCase();
   if (!portalEmail) {
     return res.status(400).json({ error: "An email is required (this customer has none on file)" });
   }
