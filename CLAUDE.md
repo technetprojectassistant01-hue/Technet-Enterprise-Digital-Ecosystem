@@ -59,7 +59,7 @@ Everyone lands on **Overview** (`/dashboard`) — as of 2026-08-19 this is real,
 |---|---|---|
 | **Technet ERP** | Built | Umbrella for Sales/Finance, Procurement, HR, Projects, Documents, Inventory |
 | — Inventory | Built | Items, stock movements |
-| — Finance | Built | Customers, Invoices (+PDF), Quotations (+PDF, see the Quotation-rework note below), Follow-Up of Quotation, Expenses, Contracts |
+| — Finance | Built | Customers, Invoices (+PDF), Quotations (+PDF, see the Quotation-rework note below, and §10d for the 2026-08-27 Call Log/payment-terms/validity/Product Line addendum), Follow-Up of Quotation, Expenses, Contracts |
 | — Procurement | Built | Suppliers, Requisitions, Purchase Orders (+PDF), goods receipt |
 | — HR | Built | Employee profiles, Leave (types/balances/requests/timesheet, public holiday calendar excluded from working-day counts — added 2026-08-20, manually maintained since several Mauritius holidays are lunar/gazette-dependent), Certifications & Training. **Attendance moved to Technet Workforce 2026-08-20** — see below. Self-service leave requests for employees added 2026-08-26 — see §10b. |
 | — Projects | Built | Project registry, assignments, status history |
@@ -168,6 +168,22 @@ Grouped by domain (not exhaustive on fields — read the schema for that):
 - **Honesty constraints** (a recurring theme — don't fake capabilities that don't exist): no embedded interactive map anywhere (no Google Maps API key configured; every location is a plain `mapLink()` → `google.com/maps?q=lat,lng` URL); GPS "periodic" tracking is inherently foreground-tab-only in a browser SPA (no service worker); geocoding is a free best-effort service, not pinpoint-accurate. These limitations are meant to be surfaced explicitly to the user, not hidden.
 - **Keep the interface simple** — many of Technet's technicians are not highly technical. Prefer extending existing UI surfaces over adding new ones (see §7a — the two-check-in mistake is the cautionary example).
 - Prisma migrations: `prisma migrate dev` can hang indefinitely in this non-interactive shell environment (it waits on an interactive prompt with no stdin attached). If it hangs, kill it and instead hand-write the migration SQL file under `prisma/migrations/<timestamp>_<name>/migration.sql` following the existing folder convention, then apply with `prisma migrate deploy` (non-interactive), then `prisma generate`.
+- **Client typecheck**: `client/tsconfig.json` is a TypeScript project-references root (`"files":
+  []`, references to `tsconfig.app.json`/`tsconfig.node.json`). Plain `npx tsc --noEmit` from
+  `client/` checks *nothing* and silently reports zero errors regardless of real type errors — it
+  only validates the reference graph. Always use `npx tsc -b --noEmit` (matches `package.json`'s own
+  `"build": "tsc -b && vite build"`). Discovered 2026-08-27 when a plain `tsc --noEmit` reported clean
+  after removing an exported type that two other files still imported. `server/tsconfig.json` is a
+  normal single-project config — plain `tsc --noEmit` there is unaffected and fine.
+- **A raw-fetch scratch script isn't sufficient verification for a new client-facing numeric field**:
+  a scratch script hand-typing a real JS number (e.g. `percentage: 60`) will pass even if the actual
+  client code never converts its controlled `<input>`'s string value before sending it — TypeScript
+  won't catch this either if the field is typed `string` end-to-end. Found 2026-08-27: the payment-
+  terms-lines rework's percentage field was silently rejected by every real submission from the New
+  Quotation screen (`Number.isFinite()` doesn't coerce strings) despite the scratch script and `tsc -b`
+  both passing clean. Only a real Playwright run that fills the actual form and submits it caught it.
+  For any new numeric field reachable from a form, run the Playwright check against the real form, not
+  just a raw-fetch script with hand-typed correct types.
 - **PDF/file download buttons must use fetch-with-credentials + blob, never a plain cross-origin `<a href target="_blank">`** (fixed 2026-08-25 across Quotation PDF, Invoice PDF, and both Technet Connect portal PDF links — `c303302`, `93633f1`, `4814a1e`, `5bc9272`). Root cause: prod auth cookies are `SameSite=None; Partitioned` (see §3/§6), and a Partitioned cookie set while the top-level browsing context is the client origin is *not* sent on a direct top-level navigation to the server's own origin (that creates a different partition). A plain link straight to the API 401s in prod even though the user is logged in. `fetch(url, { credentials: 'include' })` from inside the client page keeps the top-level context on the client origin, so the cookie is sent correctly — then build a blob URL and trigger the save via a synthetic `<a>` click. Apply this pattern to any *new* download/export button that hits the API directly.
 
 ## 10. Sales/Finance — Quotation intake, rework, and Follow-Up (2026-08-25)
@@ -420,6 +436,71 @@ not used here) really is `HR_ROLES`-only server-side even for reads, so the one 
 ("Leave Pending Approval") is fetched only when `hasRole(user?.role, HR_ROLES)`, the same client-side
 gate `client/src/erp/hr/HrOverviewPage.tsx` already uses — non-HR roles simply don't get that 9th
 stat card, no error, no placeholder.
+
+## 10d. Quotation walkthrough addendum — Call Log, payment terms, validity, Product Line (2026-08-27)
+
+A live walkthrough of the quotation screens (manager + two staff, one new to the process) produced a
+follow-up brief to §10. Cross-checked against the **full meeting transcript**, not just a summary, per
+the lesson in §10's own intro — confirmed nothing was dropped and caught one addition (per-call
+accountability) the written brief's paraphrase didn't fully capture. Ground-truth check before
+building: the manager saying the Quote Request screen "doesn't exist" was inaccurate — it's fully
+built (§10) — what was actually missing was the SLA/acknowledgement/note layer described below.
+
+- **Call Log** (the Quote Requests tab, relabeled to match how the manager actually refers to it —
+  route/component/API names unchanged, display-only rename in `QuotationsPage.tsx`/
+  `QuoteRequestsTab.tsx`): `QuotationRequest` gained `loggedById` (auto-set from `req.user!.sub` at
+  creation, not user-entered — null for portal-submitted requests since no staff member "answered"
+  those; filterable via a staff dropdown, same unfiltered-options-fetch pattern as Assets' Category
+  filter, §7c), `statusNote` (free-text, editable anytime while `PENDING`, visible inline on the list
+  so a manager checking after-hours doesn't have to call and ask why something's pending), and the
+  acknowledgement-email trio `ackEmailBody`/`ackDraftSavedAt`/`acknowledgedAt` (a pre-filled template,
+  Save Draft vs Send — Send both persists `acknowledgedAt` and reuses the existing `mailto:` handoff
+  pattern from `QuotationDetailPage.tsx`'s "Email Customer", since this app has no real backend email
+  sending anywhere). The 24h response SLA has **no stored deadline** — it's computed at read time
+  (`createdAt + QUOTE_REQUEST_SLA_HOURS`, a named constant in `quotations.ts`, not a settings-table
+  value — confirmed with the user rather than building this app's first general admin-settings system
+  for one number). Overdue = `status === 'PENDING' && !acknowledgedAt && past the deadline` —
+  converting or declining a request already counts as "responding," independent of acknowledgement.
+  No cron/notification was added for the overdue flag; it's read-only, matching this app's existing
+  "computed on view" pattern (§7a's certification-expiry logic) rather than new infrastructure.
+- **Payment terms**: replaced the old fixed 3-preset enum (100% / 60-40-20 / 50-50) entirely with a
+  repeatable `QuotationPaymentTermsLine` table (label + percentage, must sum to 100) — the manager's
+  own example ("what if there is another split and it does not appear in the dropdown") made a fixed
+  set of presets untenable. Migration backfills every existing quotation's enum value into equivalent
+  rows before dropping the column/enum. Label control resolves an open question the manager raised
+  and explicitly did not settle himself (data-quality risk of free-typed labels vs. wanting to move
+  fast) — **confirmed with the user**: everyday quotation creation picks from previously-used labels
+  (a floor list unioned with whatever's already in the DB, no separate lookup table), only `ADMIN` can
+  introduce a genuinely new one. The PDF's "Terms of payments" row now lists each line instead of one
+  of three fixed sentences (`paymentTermsDescription()` in `company.ts` reworked accordingly).
+- **"Expires" → "Validity"**: the on-screen date field and the PDF's static "Validity: 15 Calendar
+  days" text were two disconnected things — confirmed by grep, the PDF never actually read the
+  `expiresAt` field at all. Replaced with `validityDays Int @default(15)` (a real duration, not an
+  absolute date — FX risk is why the office thinks in "valid for a period," not an expiry date; 15
+  preserves what every historical quotation already prints). The PDF's Validity row now reads it.
+- **Product Line**: new `Quotation.productLine` (nullable string, small fixed allow-list — Air
+  Conditioning Unit/Plumbing/Electrical/Tools/Other), internal-only, **never** rendered in the PDF.
+  `Title` was deliberately left untouched — the manager floated renaming/repurposing it mid-meeting,
+  then walked it back once reminded Title is what actually appears in the printed quotation. The
+  linked product/model autocomplete this field is meant to eventually power is **explicitly deferred**
+  ("not now... just for the sake of conversation, at the back of your mind" — the manager's own
+  words) — don't build the lookup/autocomplete without being asked again.
+- **Small fixes**: `registerBrandFonts()` in `shared.ts` was re-decoding all 4 base64 Carlito font
+  strings on every single PDF request — now module-level constants like `LOGO_BUFFER` already was.
+  `GET /:id/pdf`'s two independent DB lookups (quotation, signatory user) switched from sequential
+  `await`s to `Promise.all`. Both are real, small wins — the dominant contributor to the "PDF takes
+  time to download" complaint is almost certainly Neon cold-start latency (§9), an existing accepted
+  tradeoff elsewhere in this app, not fixed in this pass. **Logo swap is still outstanding** — blocked
+  on the user supplying the current logo file; do it as a quick follow-up once received.
+- **Post-save navigation**: saving a new quotation used to just close the modal and silently reload
+  the list. Now navigates straight to the new quotation's detail page (same fix already applied to the
+  quote-request conversion flow) with a toast that says "saved as draft," and the Draft-only Edit
+  button on Line Items gets a one-line hint explaining its actual scope (customer/terms/items, not
+  just line items).
+- **A real bug this work surfaced, not a test artifact** — see §9's new bullets on `tsc -b` and why a
+  raw-fetch scratch script isn't sufficient for a new numeric field: the payment-terms percentage was
+  silently rejected on every real submission until caught by an actual Playwright run against the real
+  form.
 
 ## 11. SDD vs. actual implementation — known divergences
 
