@@ -28,6 +28,21 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
   )
 }
 
+// Opening the full-size photo in a new tab can't be a plain <a href target="_blank"> the way the
+// thumbnail <img> below safely can - an <img src> is a same-partition subresource fetch (the auth
+// cookie is sent fine), but a brand-new top-level tab lands in a partition keyed to the *server's*
+// origin, where a SameSite=None; Partitioned cookie set under the client's origin isn't visible
+// (see CLAUDE.md §9). Fetch with the cookie, then open the resulting blob instead.
+async function openPhotoFullSize(reportId: string, photoId: string) {
+  const res = await fetch(api.interventionPhotoUrl(reportId, photoId), { credentials: 'include' })
+  if (!res.ok) return
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  window.open(url, '_blank', 'noopener,noreferrer')
+  // Revoke once the new tab has had a chance to load the blob URL, not immediately.
+  setTimeout(() => URL.revokeObjectURL(url), 30_000)
+}
+
 function PhotoGrid({ reportId, photos, kind, label }: { reportId: string; photos: InterventionReport['photos']; kind: PhotoKind; label: string }) {
   const filtered = photos.filter((p) => p.kind === kind)
   return (
@@ -38,13 +53,13 @@ function PhotoGrid({ reportId, photos, kind, label }: { reportId: string; photos
       ) : (
         <div className="mt-2 flex flex-wrap gap-3">
           {filtered.map((p) => (
-            <a key={p.id} href={api.interventionPhotoUrl(reportId, p.id)} target="_blank" rel="noreferrer">
+            <button key={p.id} type="button" onClick={() => openPhotoFullSize(reportId, p.id)} aria-label={`View ${p.fileName}`}>
               <img
                 src={api.interventionPhotoUrl(reportId, p.id)}
                 alt={p.fileName}
                 className="h-24 w-24 rounded-md border border-ink-700 object-cover hover:border-cyan-accent"
               />
-            </a>
+            </button>
           ))}
         </div>
       )}
@@ -63,6 +78,7 @@ function InterventionReportDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [actioning, setActioning] = useState(false)
+  const [downloadingAttachment, setDownloadingAttachment] = useState(false)
 
   const [linkWorkOrderId, setLinkWorkOrderId] = useState('')
   const [reminderChoice, setReminderChoice] = useState<ReminderInterval | ''>('')
@@ -142,6 +158,30 @@ function InterventionReportDetailPage() {
       toast.error(err instanceof Error ? err.message : 'Failed to update reminder')
     } finally {
       setActioning(false)
+    }
+  }
+
+  // Cross-origin cookie download - can't be a plain <a href target="_blank"> (prod auth cookies
+  // are SameSite=None; Partitioned, not sent on a direct top-level navigation - see CLAUDE.md §9).
+  async function handleDownloadAttachment() {
+    if (!report?.attachmentFileName) return
+    setDownloadingAttachment(true)
+    try {
+      const res = await fetch(api.interventionAttachmentUrl(report.id), { credentials: 'include' })
+      if (!res.ok) throw new Error('Failed to download attachment')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = report.attachmentFileName
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to download attachment')
+    } finally {
+      setDownloadingAttachment(false)
     }
   }
 
@@ -368,15 +408,15 @@ function InterventionReportDetailPage() {
           {report.attachmentFileName && (
             <div>
               <div className={fieldLabelClass}>SIGNED SHEET</div>
-              <a
-                href={api.interventionAttachmentUrl(report.id)}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-2 flex w-fit items-center gap-2 rounded-md border border-ink-700 px-3 py-2 text-sm text-cyan-accent hover:bg-ink-800"
+              <button
+                type="button"
+                onClick={handleDownloadAttachment}
+                disabled={downloadingAttachment}
+                className="mt-2 flex w-fit items-center gap-2 rounded-md border border-ink-700 px-3 py-2 text-sm text-cyan-accent hover:bg-ink-800 disabled:opacity-50"
               >
                 <Download className="h-4 w-4" />
-                {report.attachmentFileName}
-              </a>
+                {downloadingAttachment ? 'Downloading…' : report.attachmentFileName}
+              </button>
             </div>
           )}
         </div>
