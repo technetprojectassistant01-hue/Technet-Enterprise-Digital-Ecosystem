@@ -54,6 +54,7 @@ function DocumentsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [categoryFilter, setCategoryFilter] = useState<DocumentCategory | ''>('')
+  const [downloadingId, setDownloadingId] = useState<string | null>(null)
 
   const [showUpload, setShowUpload] = useState(false)
   const [title, setTitle] = useState('')
@@ -136,6 +137,31 @@ function DocumentsPage() {
       setFormError(err instanceof Error ? err.message : 'Failed to upload document')
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  // Cross-origin cookie download - can't be a plain <a href target="_blank"> (prod auth cookies
+  // are SameSite=None; Partitioned, which aren't sent on a direct top-level navigation). See
+  // CLAUDE.md §9's "PDF/file download buttons" note - same fix already applied to every PDF
+  // download in the app, just missed here since documents aren't PDF-only.
+  async function handleDownload(doc: Document) {
+    setDownloadingId(doc.id)
+    try {
+      const res = await fetch(api.documentDownloadUrl(doc.id), { credentials: 'include' })
+      if (!res.ok) throw new Error('Failed to download document')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = doc.fileName
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to download document')
+    } finally {
+      setDownloadingId(null)
     }
   }
 
@@ -245,15 +271,15 @@ function DocumentsPage() {
                     </td>
                     <td className="px-3 py-3">
                       <div className="flex items-center justify-end gap-3 text-ink-400">
-                        <a
-                          href={api.documentDownloadUrl(doc.id)}
-                          target="_blank"
-                          rel="noreferrer"
+                        <button
+                          type="button"
+                          onClick={() => handleDownload(doc)}
+                          disabled={downloadingId === doc.id}
                           aria-label="Download document"
-                          className="hover:text-cyan-accent"
+                          className="hover:text-cyan-accent disabled:opacity-50"
                         >
                           <Download className="h-4 w-4" />
-                        </a>
+                        </button>
                         {canWrite && (
                           <button type="button" onClick={() => handleDelete(doc)} aria-label="Delete document" className="hover:text-red-400">
                             <Trash2 className="h-4 w-4" />
