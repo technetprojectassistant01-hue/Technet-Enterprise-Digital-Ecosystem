@@ -40,6 +40,7 @@ import marketingRouter from "./routes/marketing";
 import myLeaveRouter from "./routes/myLeave";
 import { requireAuth, requireRole } from "./middleware/auth";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
+import { startDbKeepWarm } from "./lib/keepWarm";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -109,4 +110,5 @@ app.use(errorHandler);
 
 app.listen(PORT, () => {
   console.log(`Server listening on http://localhost:${PORT}`);
+  startDbKeepWarm();
 });
