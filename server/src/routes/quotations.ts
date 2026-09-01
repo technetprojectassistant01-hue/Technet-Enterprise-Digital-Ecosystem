@@ -80,7 +80,7 @@ function parseDateOnly(value: unknown): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-function validateItems(items: unknown): { error: string } | { items: QuotationItemInput[] } {
+export function validateItems(items: unknown): { error: string } | { items: QuotationItemInput[] } {
   if (!Array.isArray(items) || items.length === 0) {
     return { error: "At least one line item is required" };
   }
@@ -103,7 +103,7 @@ interface QuotationExtras {
   orderDays: number | null;
 }
 
-function parseProductLine(value: unknown): { error: string } | { productLine: string | null } {
+export function parseProductLine(value: unknown): { error: string } | { productLine: string | null } {
   if (value === undefined || value === null || value === "") return { productLine: null };
   if (typeof value !== "string" || !PRODUCT_LINE_OPTIONS.includes(value as (typeof PRODUCT_LINE_OPTIONS)[number])) {
     return { error: "Invalid product line" };
@@ -111,7 +111,7 @@ function parseProductLine(value: unknown): { error: string } | { productLine: st
   return { productLine: value };
 }
 
-function parseValidityDays(value: unknown): { error: string } | { validityDays: number } {
+export function parseValidityDays(value: unknown): { error: string } | { validityDays: number } {
   if (value === undefined || value === null || value === "") return { validityDays: 15 };
   if (!Number.isFinite(value) || (value as number) <= 0) {
     return { error: "Validity must be a positive number of days" };
@@ -119,7 +119,7 @@ function parseValidityDays(value: unknown): { error: string } | { validityDays: 
   return { validityDays: Math.trunc(value as number) };
 }
 
-function parseAvailability(body: { availabilityStatus?: unknown; orderDays?: unknown }): { error: string } | QuotationExtras {
+export function parseAvailability(body: { availabilityStatus?: unknown; orderDays?: unknown }): { error: string } | QuotationExtras {
   if (body.availabilityStatus === undefined || body.availabilityStatus === null || body.availabilityStatus === "") {
     return { availabilityStatus: null, orderDays: null };
   }
@@ -140,14 +140,13 @@ interface PaymentTermsLineInput {
   percentage: number;
 }
 
-/** Percentages must sum to exactly 100. A label that isn't already in use anywhere (this
- * quotation's known-labels set) can only be introduced by ADMIN - everyday quotation creation
- * picks from previously-used labels, avoiding free-text drift ("AC" vs "Ac" vs "A/C") in data the
- * office will eventually want to report on. */
-async function parsePaymentTermsLines(
+/** Pure shape + arithmetic validation of the payment-terms lines, split out from the DB-touching
+ * admin-label check below so it can be unit-tested. `Number.isFinite` does NOT coerce strings, so a
+ * form that sends `percentage: "60"` instead of `60` is rejected here - that exact bug shipped once
+ * (see CLAUDE.md §9) because a raw-fetch scratch script hand-typed real numbers and missed it. */
+export function validatePaymentTermsLines(
   lines: unknown,
-  isAdmin: boolean,
-): Promise<{ error: string } | { lines: PaymentTermsLineInput[] }> {
+): { error: string } | { lines: PaymentTermsLineInput[] } {
   if (!Array.isArray(lines) || lines.length === 0) {
     return { error: "At least one payment terms line is required" };
   }
@@ -165,6 +164,19 @@ async function parsePaymentTermsLines(
   if (Math.round(total * 100) !== 10000) {
     return { error: `Payment terms percentages must sum to 100 (currently ${total})` };
   }
+  return { lines: parsed };
+}
+
+/** Full validation: the pure checks above, then - for non-admins only - a DB lookup rejecting any
+ * label that isn't already in use anywhere. Everyday quotation creation picks from previously-used
+ * labels, avoiding free-text drift ("AC" vs "Ac" vs "A/C") in data the office will report on. */
+async function parsePaymentTermsLines(
+  lines: unknown,
+  isAdmin: boolean,
+): Promise<{ error: string } | { lines: PaymentTermsLineInput[] }> {
+  const shape = validatePaymentTermsLines(lines);
+  if ("error" in shape) return shape;
+  const parsed = shape.lines;
 
   if (!isAdmin) {
     const known = await knownPaymentTermLabels();
