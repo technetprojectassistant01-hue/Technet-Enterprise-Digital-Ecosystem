@@ -266,6 +266,7 @@ model User {
   attendanceRecorded AttendanceRecord[] @relation("AttendanceRecorder")
 
   passwordResetTokens PasswordResetToken[]
+  pushSubscriptions   PushSubscription[]
 
   maintenanceContractsCreated MaintenanceContract[] @relation("MaintenanceContractCreator")
   maintenanceRequestsMade     MaintenanceRequest[]  @relation("MaintenanceRequestRequester")
@@ -319,6 +320,29 @@ model SecurityEvent {
   @@index([type])
   @@index([createdAt])
   @@index([actorUserId])
+}
+
+/**
+ * A browser's Web Push subscription, so the server can reach a technician's device when the app
+ * is closed. One row per browser/device, not per user - somebody with a phone and a desktop has
+ * two, and both should get the morning check-in reminder.
+ *
+ * `endpoint` is the push service's URL for that device and is what identifies it, hence unique:
+ * re-subscribing the same browser must update the existing row rather than pile up duplicates.
+ * Subscriptions expire or are revoked silently, so a send that comes back 404/410 means the row
+ * is dead and should be deleted (see lib/push.ts).
+ */
+model PushSubscription {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 model PasswordResetToken {
