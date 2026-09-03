@@ -1898,6 +1898,8 @@ export interface TechnicianAttendanceSummary {
   daysPresent: number
   totalCheckIns: number
   totalHoursOnSite: number
+  /** Both legs of every trip in the period, already summed server-side. */
+  totalTransportCost: number
   onSiteCount: number
   outsideSiteCount: number
 }
