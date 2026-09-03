@@ -273,8 +273,12 @@ router.patch("/:id", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
       const existing = await prisma.workOrderTechnician.findMany({ where: { workOrderId: id }, select: { employeeId: true } });
       const existingIds = new Set(existing.map((t) => t.employeeId));
       newlyAssignedTechIds = techIds.filter((employeeId) => !existingIds.has(employeeId));
-      await prisma.workOrderTechnician.deleteMany({ where: { workOrderId: id } });
-      data.technicians = { create: techIds.map((employeeId) => ({ employeeId })) };
+      // Clear and re-add inside the same nested write, so the whole swap rides on the update's
+      // own transaction. A separate deleteMany beforehand is not rolled back when the update
+      // then fails - a single bad technician id would strip every technician off the work order
+      // and still return an error. Same deleteMany-plus-create shape quotations.ts uses for its
+      // line items and payment-terms lines.
+      data.technicians = { deleteMany: {}, create: techIds.map((employeeId) => ({ employeeId })) };
     }
 
     const workOrder = await prisma.workOrder.update({
