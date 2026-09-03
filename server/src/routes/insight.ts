@@ -40,7 +40,7 @@ router.get("/summary", async (_req, res) => {
     prisma.invoice.aggregate({ _sum: { total: true }, where: overdueWhere }),
     prisma.maintenanceRequest.count({ where: { status: { in: ["SUBMITTED", "SCHEDULED"] } } }),
     // Office check-ins (no linked work order) shouldn't count as "on site" here.
-    prisma.siteAttendance.count({ where: { checkOutAt: null, workOrderId: { not: null } } }),
+    prisma.siteAttendance.count({ where: { checkOutAt: null } }),
     prisma.inventoryItem.findMany({ select: { quantity: true, minStockLevel: true } }),
   ]);
 

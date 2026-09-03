@@ -1020,6 +1020,10 @@ model SiteAttendance {
   checkInDeclaredTime  String?
   /** Travel cost for the trip out, in MUR. Optional - not every visit has one. */
   checkInTransportCost Decimal? @db.Decimal(10, 2)
+  /** Whether checkInNote resolved to somewhere near the GPS fix. Advisory only, never blocking. */
+  checkInLocationMatch          LocationMatch?
+  /** How far the typed place sat from the GPS fix, when it could be resolved at all. */
+  checkInLocationDistanceMeters Int?
 
   /** Server-set on check-out, alongside the GPS fix - both are required to close a session. */
   checkOutAt   DateTime?
@@ -1032,6 +1036,8 @@ model SiteAttendance {
   checkOutDeclaredTime  String?
   /** Travel cost for the return trip, in MUR. */
   checkOutTransportCost Decimal? @db.Decimal(10, 2)
+  checkOutLocationMatch          LocationMatch?
+  checkOutLocationDistanceMeters Int?
 
   verifications SiteVerification[]
 
@@ -1042,6 +1048,17 @@ model SiteAttendance {
 enum SiteVerificationStatus {
   ON_SITE
   OUTSIDE_SITE
+}
+
+/** Whether the place a technician typed matches where their GPS put them.
+ *
+ * UNCHECKABLE is the common case and is NOT a suspicion: free text like "Office" or "Closed
+ * early" has no coordinates to compare against, and OpenStreetMap does not resolve business
+ * names either (see CLAUDE.md §7b). Only a resolvable place name can be checked at all. */
+enum LocationMatch {
+  MATCHED
+  MISMATCH
+  UNCHECKABLE
 }
 
 model SiteVerification {

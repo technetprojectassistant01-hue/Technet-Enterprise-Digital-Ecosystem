@@ -5,6 +5,7 @@ import { OPS_MANAGE_ROLES, OPS_SUBMIT_ROLES } from "../lib/roles";
 import { distanceMeters, SITE_GEOFENCE_RADIUS_METERS } from "../lib/geo";
 import { notifyEmployee } from "../lib/notifications";
 import { parseClockTime } from "../lib/clockTime";
+import { checkLocationAgainstGps } from "../lib/locationMatch";
 
 const router = Router();
 
@@ -59,56 +60,6 @@ export function parseDeclaredTime(value: unknown): { value: string | null } | { 
   const parsed = parseClockTime(value);
   if (!parsed) return { error: "Time must be in HH:MM format" };
   return { value: parsed };
-}
-
-/**
- * Among several same-day candidate work orders for one technician, prefers whichever's site is
- * physically closest to where they're actually checking in — recency alone can pick the wrong job
- * (e.g. an earlier job left open) and silently geofence against the wrong site all day.
- */
-function pickClosestBySite<T extends { siteLat: unknown; siteLng: unknown }>(
-  candidates: T[],
-  coords?: { lat: number; lng: number } | null,
-): T | null {
-  if (!coords) return null;
-  let best: T | null = null;
-  let bestDistance = Infinity;
-  for (const candidate of candidates) {
-    if (candidate.siteLat == null || candidate.siteLng == null) continue;
-    const distance = distanceMeters(coords.lat, coords.lng, Number(candidate.siteLat), Number(candidate.siteLng));
-    if (distance < bestDistance) {
-      best = candidate;
-      bestDistance = distance;
-    }
-  }
-  return best;
-}
-
-/** The work order this employee is actively on right now, if any — used to auto-link and geofence daily check-in. */
-async function findCurrentWorkOrder(employeeId: string, coords?: { lat: number; lng: number } | null) {
-  const inProgress = await prisma.workOrder.findMany({
-    where: { status: { in: ["IN_PROGRESS", "WAITING_FOR_PARTS"] }, technicians: { some: { employeeId } } },
-    orderBy: { updatedAt: "desc" },
-  });
-  if (inProgress.length > 0) {
-    return pickClosestBySite(inProgress, coords) ?? inProgress[0];
-  }
-
-  const todayStart = new Date();
-  todayStart.setUTCHours(0, 0, 0, 0);
-  const todayEnd = new Date(todayStart);
-  todayEnd.setUTCDate(todayEnd.getUTCDate() + 1);
-
-  const scheduledToday = await prisma.workOrder.findMany({
-    where: {
-      status: "SCHEDULED",
-      technicians: { some: { employeeId } },
-      scheduledDate: { gte: todayStart, lt: todayEnd },
-    },
-    orderBy: { scheduledDate: "asc" },
-  });
-  if (scheduledToday.length === 0) return null;
-  return pickClosestBySite(scheduledToday, coords) ?? scheduledToday[0];
 }
 
 /** [start, end) bounds for a "YYYY-MM" month string, falling back to the current UTC month. */
@@ -280,32 +231,19 @@ router.post("/check-in", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
   });
   if (openVisit) return res.status(400).json({ error: "You are already checked in" });
 
-  // Site location is resolved from a typed address, which is only ever approximate — being far
-  // from it is recorded and shown to managers, never used to block a technician from working.
-  const currentWorkOrder = await findCurrentWorkOrder(employee.id, coords);
-  const initialVerification =
-    currentWorkOrder?.siteLat != null && currentWorkOrder.siteLng != null
-      ? (() => {
-          const distance = distanceMeters(coords.lat, coords.lng, Number(currentWorkOrder.siteLat), Number(currentWorkOrder.siteLng));
-          return {
-            lat: coords.lat,
-            lng: coords.lng,
-            distanceMeters: Math.round(distance),
-            status: distance <= SITE_GEOFENCE_RADIUS_METERS ? ("ON_SITE" as const) : ("OUTSIDE_SITE" as const),
-          };
-        })()
-      : null;
+  // Advisory only, and it never blocks: a technician checks in successfully whatever this says.
+  const locationCheck = await checkLocationAgainstGps(note, coords);
 
   const siteAttendance = await prisma.siteAttendance.create({
     data: {
       employeeId: employee.id,
-      workOrderId: currentWorkOrder?.id ?? null,
       checkInLat: coords.lat,
       checkInLng: coords.lng,
       checkInNote: note,
       checkInDeclaredTime: declaredTime.value,
       checkInTransportCost: transportCost.value,
-      verifications: initialVerification ? { create: initialVerification } : undefined,
+      checkInLocationMatch: locationCheck.match,
+      checkInLocationDistanceMeters: locationCheck.distanceMeters,
     },
     include: { workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE },
   });
@@ -329,15 +267,20 @@ router.post("/check-out", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => 
   });
   if (!openVisit) return res.status(404).json({ error: "You are not currently checked in" });
 
+  const checkOutNote = parseNote(req.body);
+  const locationCheck = await checkLocationAgainstGps(checkOutNote, coords);
+
   const siteAttendance = await prisma.siteAttendance.update({
     where: { id: openVisit.id },
     data: {
       checkOutAt: new Date(),
       checkOutLat: coords.lat,
       checkOutLng: coords.lng,
-      checkOutNote: parseNote(req.body),
+      checkOutNote,
       checkOutDeclaredTime: declaredTime.value,
       checkOutTransportCost: transportCost.value,
+      checkOutLocationMatch: locationCheck.match,
+      checkOutLocationDistanceMeters: locationCheck.distanceMeters,
     },
     include: { workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE },
   });
