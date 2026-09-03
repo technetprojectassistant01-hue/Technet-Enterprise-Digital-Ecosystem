@@ -122,9 +122,33 @@ function monthRange(value: unknown): { start: Date; end: Date } {
   return { start, end };
 }
 
+/** Parses "YYYY-MM-DD" to UTC midnight - same convention as every other filter in this codebase. */
+function parseDateOnly(value: unknown): Date | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value.trim());
+  if (!match) return null;
+  const date = new Date(`${match[1]}-${match[2]}-${match[3]}T00:00:00.000Z`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+/**
+ * An explicit from/to day range wins over `month` when both days are supplied. A week is the
+ * point of this - and a week regularly straddles a month boundary, which the month-only version
+ * could never express. `to` is inclusive of that whole day, so the exclusive end is the next
+ * midnight. Falls back to the month behaviour so existing callers are unaffected.
+ */
+function reportRange(query: Record<string, unknown>): { start: Date; end: Date } {
+  const from = parseDateOnly(query.from);
+  const to = parseDateOnly(query.to);
+  if (from && to && to >= from) {
+    return { start: from, end: new Date(to.getTime() + 24 * 60 * 60 * 1000) };
+  }
+  return monthRange(query.month);
+}
+
 /** Team-wide view for managers: who's checked in right now, plus the given month's history (defaults to this month). */
 router.get("/", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
-  const { start, end } = monthRange(req.query.month);
+  const { start, end } = reportRange(req.query as Record<string, unknown>);
   const { employeeId } = req.query;
   const employeeFilter = typeof employeeId === "string" && employeeId ? { employeeId } : {};
 
