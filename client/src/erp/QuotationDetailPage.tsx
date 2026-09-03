@@ -102,6 +102,7 @@ function QuotationDetailPage() {
   const [uploading, setUploading] = useState(false)
   const [emailing, setEmailing] = useState(false)
   const [downloading, setDownloading] = useState(false)
+  const [downloadingAttachmentId, setDownloadingAttachmentId] = useState<string | null>(null)
 
   function load() {
     if (!id) return
@@ -316,6 +317,30 @@ function QuotationDetailPage() {
       loadDocuments()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to delete attachment')
+    }
+  }
+
+  // Cross-origin cookie download - can't be a plain <a href target="_blank"> (prod auth cookies
+  // are SameSite=None; Partitioned, which aren't sent on a direct top-level navigation). Same
+  // fix as DocumentsPage's handleDownload; see CLAUDE.md §9's "PDF/file download buttons" note.
+  async function handleDownloadAttachment(doc: Document) {
+    setDownloadingAttachmentId(doc.id)
+    try {
+      const res = await fetch(api.documentDownloadUrl(doc.id), { credentials: 'include' })
+      if (!res.ok) throw new Error('Failed to download attachment')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = doc.fileName
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to download attachment')
+    } finally {
+      setDownloadingAttachmentId(null)
     }
   }
 
@@ -664,14 +689,15 @@ function QuotationDetailPage() {
           <ul className="flex flex-col gap-2">
             {documents.map((doc) => (
               <li key={doc.id} className="flex items-center justify-between rounded-md bg-ink-800 px-3 py-2 text-sm">
-                <a
-                  href={api.documentDownloadUrl(doc.id)}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-ink-100 hover:text-cyan-accent hover:underline"
+                <button
+                  type="button"
+                  onClick={() => handleDownloadAttachment(doc)}
+                  disabled={downloadingAttachmentId === doc.id}
+                  className="text-left text-ink-100 hover:text-cyan-accent hover:underline disabled:opacity-60"
                 >
                   {doc.title} <span className="text-ink-500">({formatSize(doc.sizeBytes)})</span>
-                </a>
+                  {downloadingAttachmentId === doc.id && <span className="text-ink-500"> · downloading…</span>}
+                </button>
                 {canWrite && (
                   <button type="button" onClick={() => handleDeleteAttachment(doc)} className="text-ink-400 hover:text-red-400">
                     <Trash2 className="h-4 w-4" />
