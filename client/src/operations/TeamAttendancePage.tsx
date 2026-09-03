@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, Lock, MapPin, Users } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Download, Lock, MapPin, Users } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import * as api from '../lib/api'
 import type { SiteAttendanceWithEmployee, TechnicianAttendanceSummary } from '../lib/api'
@@ -9,6 +9,8 @@ import { hasRole, OPS_MANAGE_ROLES } from '../lib/permissions'
 import { mapLink } from '../lib/geolocation'
 import { statedTimeSuffix, totalTransportCost } from '../lib/siteAttendance'
 import { formatMoney } from '../lib/format'
+import { downloadCsv } from '../lib/csv'
+import { secondaryButtonClass } from '../dashboard/buttonStyles'
 import { useEmployees } from '../erp/useEmployees'
 
 const inputClass =
@@ -62,12 +64,47 @@ function formatTime(value: string): string {
   return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
+/** Weeks run Monday to Sunday. Returns the Monday of the week containing `date`, as "YYYY-MM-DD". */
+function mondayOf(date: Date): string {
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()))
+  const weekday = d.getUTCDay() // 0 = Sunday
+  d.setUTCDate(d.getUTCDate() - (weekday === 0 ? 6 : weekday - 1))
+  return d.toISOString().slice(0, 10)
+}
+
+function addDays(day: string, days: number): string {
+  const d = new Date(`${day}T00:00:00.000Z`)
+  d.setUTCDate(d.getUTCDate() + days)
+  return d.toISOString().slice(0, 10)
+}
+
+function formatDayShort(day: string): string {
+  return new Date(`${day}T00:00:00.000Z`).toLocaleDateString(undefined, {
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'UTC',
+  })
+}
+
+function formatWeek(weekStart: string): string {
+  return `${formatDayShort(weekStart)} – ${formatDayShort(addDays(weekStart, 6))}`
+}
+
+/** Elapsed time on site, blank while a session is still open. */
+function hoursOnSite(v: SiteAttendanceWithEmployee): string {
+  if (!v.checkOutAt) return ''
+  const hours = (new Date(v.checkOutAt).getTime() - new Date(v.checkInAt).getTime()) / 3_600_000
+  return hours.toFixed(2)
+}
+
 function TeamAttendancePage() {
   const { user } = useAuth()
   const canAccess = hasRole(user?.role, OPS_MANAGE_ROLES)
   const employees = useEmployees()
 
   const [month, setMonth] = useState(currentMonth())
+  const [period, setPeriod] = useState<'month' | 'week'>('month')
+  const [weekStart, setWeekStart] = useState(() => mondayOf(new Date()))
   const [employeeFilter, setEmployeeFilter] = useState('')
   const [current, setCurrent] = useState<SiteAttendanceWithEmployee[]>([])
   const [history, setHistory] = useState<SiteAttendanceWithEmployee[]>([])
@@ -79,7 +116,11 @@ function TeamAttendancePage() {
     if (!canAccess) return
     setLoading(true)
     api
-      .listTeamAttendance({ month, employeeId: employeeFilter || undefined })
+      .listTeamAttendance(
+        period === 'week'
+          ? { from: weekStart, to: addDays(weekStart, 6), employeeId: employeeFilter || undefined }
+          : { month, employeeId: employeeFilter || undefined },
+      )
       .then(({ current, history, summary }) => {
         setCurrent(current)
         setHistory(history)
@@ -87,7 +128,50 @@ function TeamAttendancePage() {
       })
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load attendance'))
       .finally(() => setLoading(false))
-  }, [canAccess, month, employeeFilter])
+  }, [canAccess, period, month, weekStart, employeeFilter])
+
+  /**
+   * CSV rather than a real .xlsx: it opens straight in Excel, and the app already exports Work
+   * Orders and Intervention Reports this way. A true .xlsx would mean pulling in a spreadsheet
+   * library for formatting we have not been asked for.
+   *
+   * Exports whatever period is on screen, so "end of the week" is: switch to Week, then Export.
+   * Both the stated time and the recorded one are included side by side - the sheet should carry
+   * the same distinction the app does, not collapse it into a single number.
+   */
+  function exportCsv() {
+    const label = period === 'week' ? `${weekStart}_to_${addDays(weekStart, 6)}` : month
+    downloadCsv(
+      `attendance-${label}`,
+      [
+        { header: 'Date', accessor: (v: SiteAttendanceWithEmployee) => v.checkInAt.slice(0, 10) },
+        {
+          header: 'Technician',
+          accessor: (v: SiteAttendanceWithEmployee) => `${v.employee?.firstName ?? ''} ${v.employee?.lastName ?? ''}`.trim(),
+        },
+        { header: 'Work Order', accessor: (v: SiteAttendanceWithEmployee) => v.workOrder?.workOrderNumber ?? '' },
+        { header: 'Time In (stated)', accessor: (v: SiteAttendanceWithEmployee) => v.checkInDeclaredTime ?? '' },
+        { header: 'Check-In Recorded', accessor: (v: SiteAttendanceWithEmployee) => formatTime(v.checkInAt) },
+        { header: 'Check-In Location', accessor: (v: SiteAttendanceWithEmployee) => v.checkInNote ?? '' },
+        { header: 'Time Out (stated)', accessor: (v: SiteAttendanceWithEmployee) => v.checkOutDeclaredTime ?? '' },
+        {
+          header: 'Check-Out Recorded',
+          accessor: (v: SiteAttendanceWithEmployee) => (v.checkOutAt ? formatTime(v.checkOutAt) : ''),
+        },
+        { header: 'Check-Out Location', accessor: (v: SiteAttendanceWithEmployee) => v.checkOutNote ?? '' },
+        { header: 'Hours On Site', accessor: (v: SiteAttendanceWithEmployee) => hoursOnSite(v) },
+        {
+          header: 'Transport (MUR)',
+          accessor: (v: SiteAttendanceWithEmployee) =>
+            totalTransportCost(v) > 0 ? totalTransportCost(v).toFixed(2) : '',
+        },
+      ],
+      history,
+    )
+  }
+
+  /** What the summary and empty states call the period on screen - a week or a month. */
+  const periodLabel = period === 'week' ? `${formatWeek(weekStart)} ${weekStart.slice(0, 4)}` : formatMonth(month)
 
   const groupedByDay = useMemo(() => {
     const map = new Map<string, SiteAttendanceWithEmployee[]>()
@@ -167,13 +251,13 @@ function TeamAttendancePage() {
 
       <Panel title="Attendance Summary" icon={Users}>
         <p className="mb-4 text-sm text-ink-300">
-          Per-technician totals for {formatMonth(month)}, including how often each check-in verified as on-site vs.
+          Per-technician totals for {periodLabel}, including how often each check-in verified as on-site vs.
           outside the job site.
         </p>
         {loading ? (
           <TableSkeleton rows={4} cols={5} />
         ) : summary.length === 0 ? (
-          <p className="text-sm text-ink-400">No check-ins recorded for {formatMonth(month)}.</p>
+          <p className="text-sm text-ink-400">No check-ins recorded for {periodLabel}.</p>
         ) : (
           <div className="overflow-x-auto rounded-lg border border-ink-800">
             <table className="w-full text-left text-sm">
@@ -219,24 +303,54 @@ function TeamAttendancePage() {
 
       <Panel title="Attendance Register">
         <div className="mb-5 flex flex-wrap items-center gap-3">
+          <div className="flex overflow-hidden rounded-md border border-ink-600">
+            {(['month', 'week'] as const).map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setPeriod(p)}
+                className={`px-3 py-1.5 text-sm capitalize transition ${
+                  period === p ? 'bg-cyan-accent text-ink-950' : 'text-ink-300 hover:text-ink-100'
+                }`}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
+
           <button
             type="button"
-            onClick={() => setMonth((m) => shiftMonth(m, -1))}
-            aria-label="Previous month"
+            onClick={() =>
+              period === 'week' ? setWeekStart((w) => addDays(w, -7)) : setMonth((m) => shiftMonth(m, -1))
+            }
+            aria-label={period === 'week' ? 'Previous week' : 'Previous month'}
             className="rounded-md border border-ink-600 p-2 text-ink-300 hover:text-ink-100"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
-          <span className="min-w-[9rem] text-sm font-medium text-ink-100">{formatMonth(month)}</span>
+          <span className="min-w-[9rem] text-sm font-medium text-ink-100">
+            {period === 'week' ? formatWeek(weekStart) : formatMonth(month)}
+          </span>
           <button
             type="button"
-            onClick={() => setMonth((m) => shiftMonth(m, 1))}
-            aria-label="Next month"
+            onClick={() =>
+              period === 'week' ? setWeekStart((w) => addDays(w, 7)) : setMonth((m) => shiftMonth(m, 1))
+            }
+            aria-label={period === 'week' ? 'Next week' : 'Next month'}
             className="rounded-md border border-ink-600 p-2 text-ink-300 hover:text-ink-100"
           >
             <ChevronRight className="h-4 w-4" />
           </button>
-          {month !== currentMonth() && (
+          {period === 'week' && weekStart !== mondayOf(new Date()) && (
+            <button
+              type="button"
+              onClick={() => setWeekStart(mondayOf(new Date()))}
+              className="text-sm text-ink-300 hover:text-ink-100"
+            >
+              This Week
+            </button>
+          )}
+          {period === 'month' && month !== currentMonth() && (
             <button
               type="button"
               onClick={() => setMonth(currentMonth())}
@@ -245,6 +359,15 @@ function TeamAttendancePage() {
               This Month
             </button>
           )}
+          <button
+            type="button"
+            onClick={exportCsv}
+            disabled={history.length === 0}
+            className={`${secondaryButtonClass} disabled:opacity-50`}
+          >
+            <Download className="h-4 w-4" />
+            Export {period === 'week' ? 'Week' : 'Month'}
+          </button>
           <div className="ml-auto flex flex-col gap-1">
             <label className={labelClass}>TECHNICIAN</label>
             <select value={employeeFilter} onChange={(e) => setEmployeeFilter(e.target.value)} className={inputClass}>
@@ -270,7 +393,7 @@ function TeamAttendancePage() {
         {loading ? (
           <TableSkeleton rows={6} cols={4} />
         ) : groupedByDay.length === 0 ? (
-          <p className="text-sm text-ink-400">No check-ins recorded for {formatMonth(month)}.</p>
+          <p className="text-sm text-ink-400">No check-ins recorded for {periodLabel}.</p>
         ) : (
           <div className="flex flex-col gap-6">
             {groupedByDay.map(([day, entries]) => (
