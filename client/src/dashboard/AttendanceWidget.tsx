@@ -4,6 +4,8 @@ import * as api from '../lib/api'
 import type { SiteAttendance, SiteExitReason } from '../lib/api'
 import { SITE_EXIT_REASON_LABELS } from '../lib/api'
 import { getPosition, mapLink } from '../lib/geolocation'
+import { clockOf, currentClockTime, statedTimeSuffix, totalTransportCost } from '../lib/siteAttendance'
+import { formatMoney } from '../lib/format'
 import { Panel, Badge } from './ui'
 import { primaryButtonClass, secondaryButtonClass } from './buttonStyles'
 import { useToast } from './ToastContext'
@@ -14,30 +16,6 @@ const EXIT_REASONS = Object.keys(SITE_EXIT_REASON_LABELS) as SiteExitReason[]
 const noteInputClass =
   'rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
 const fieldLabelClass = 'text-xs font-semibold tracking-widest text-ink-400'
-
-/** Local wall-clock "HH:MM". Built from date parts, not toLocaleTimeString, so it can be compared
- * against a stored declared time without locale formatting getting in the way. */
-function clockOf(date: Date): string {
-  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
-}
-
-/** The format both <input type="time"> and the server expect. */
-function currentClockTime(): string {
-  return clockOf(new Date())
-}
-
-/**
- * The technician's stated time, shown only when it differs from what the server recorded.
- * Repeating a matching value is noise; a mismatch is the thing worth seeing.
- */
-function statedTimeSuffix(declared: string | null, actualIso: string | null): string {
-  if (!declared || !actualIso) return ''
-  return declared === clockOf(new Date(actualIso)) ? '' : ` (stated ${declared})`
-}
-
-function totalTransportCost(visit: SiteAttendance): number {
-  return Number(visit.checkInTransportCost ?? 0) + Number(visit.checkOutTransportCost ?? 0)
-}
 
 function siteStatusTone(status: 'ON_SITE' | 'OUTSIDE_SITE' | 'UNVERIFIED') {
   if (status === 'ON_SITE') return 'success' as const
@@ -208,7 +186,7 @@ function AttendanceWidget() {
                 {statedTimeSuffix(current.checkInDeclaredTime, current.checkInAt)}
                 {current.checkInNote && <span className="text-ink-400"> · {current.checkInNote}</span>}
                 {Number(current.checkInTransportCost ?? 0) > 0 && (
-                  <span className="text-ink-400"> · transport Rs {Number(current.checkInTransportCost).toFixed(2)}</span>
+                  <span className="text-ink-400"> · transport {formatMoney(Number(current.checkInTransportCost))}</span>
                 )}
                 {current.workOrder && (
                   <span className="text-ink-400"> · {current.workOrder.workOrderNumber} — {current.workOrder.title}</span>
@@ -348,7 +326,7 @@ function AttendanceWidget() {
                 </a>
                 <span className="flex items-center gap-2">
                   {totalTransportCost(v) > 0 && (
-                    <span className="text-ink-300">Rs {totalTransportCost(v).toFixed(2)}</span>
+                    <span className="text-ink-300">{formatMoney(totalTransportCost(v))}</span>
                   )}
                   {v.checkOutAt ? (
                     <a
