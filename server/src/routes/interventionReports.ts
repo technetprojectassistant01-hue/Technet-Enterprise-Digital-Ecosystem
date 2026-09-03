@@ -389,8 +389,19 @@ router.post("/", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
       select: { id: true, workOrderId: true, workCompleted: true },
     });
 
+    // Closing the job off the back of a "work completed" report is the intended shortcut, but it
+    // has to respect WorkOrder's own terminal states - this path bypasses the PATCH route where
+    // ALLOWED_TRANSITIONS is enforced. Without the status guard, filing a report against a
+    // CANCELLED work order silently brought it back to life as COMPLETED. Guarded in the where
+    // clause rather than a read-then-write so there's no race between the check and the update.
     if (created.workOrderId && created.workCompleted) {
-      await prisma.workOrder.update({ where: { id: created.workOrderId }, data: { status: "COMPLETED" } });
+      await prisma.workOrder.updateMany({
+        where: {
+          id: created.workOrderId,
+          status: { in: ["SCHEDULED", "IN_PROGRESS", "WAITING_FOR_PARTS", "REOPENED"] },
+        },
+        data: { status: "COMPLETED" },
+      });
     }
 
     const interventionReport = await prisma.interventionReport.findUnique({
