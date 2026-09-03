@@ -183,6 +183,7 @@ function TeamAttendancePage() {
                   <th className="px-3 py-2 font-semibold">DAYS PRESENT</th>
                   <th className="px-3 py-2 font-semibold">CHECK-INS</th>
                   <th className="px-3 py-2 font-semibold">HOURS ON SITE</th>
+                  <th className="px-3 py-2 font-semibold">TRANSPORT</th>
                   <th className="px-3 py-2 font-semibold">ON-SITE VERIFIED</th>
                   <th className="px-3 py-2 font-semibold">OUTSIDE SITE</th>
                 </tr>
@@ -197,6 +198,9 @@ function TeamAttendancePage() {
                     <td className="px-3 py-2 text-ink-300">{s.daysPresent}</td>
                     <td className="px-3 py-2 text-ink-300">{s.totalCheckIns}</td>
                     <td className="px-3 py-2 text-ink-300">{s.totalHoursOnSite}</td>
+                    <td className="px-3 py-2 text-ink-300">
+                      {s.totalTransportCost > 0 ? formatMoney(s.totalTransportCost) : <span className="text-ink-500">—</span>}
+                    </td>
                     <td className="px-3 py-2 text-emerald-400">{s.onSiteCount}</td>
                     <td className="px-3 py-2">
                       {s.outsideSiteCount > 0 ? (

@@ -151,6 +151,7 @@ router.get("/", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
       days: Set<string>;
       totalCheckIns: number;
       totalHoursOnSite: number;
+      totalTransportCost: number;
       onSiteCount: number;
       outsideSiteCount: number;
     }
@@ -164,6 +165,7 @@ router.get("/", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
         days: new Set(),
         totalCheckIns: 0,
         totalHoursOnSite: 0,
+        totalTransportCost: 0,
         onSiteCount: 0,
         outsideSiteCount: 0,
       });
@@ -171,6 +173,8 @@ router.get("/", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
     const entry = summaryByEmployee.get(key)!;
     entry.days.add(v.checkInAt.toISOString().slice(0, 10));
     entry.totalCheckIns += 1;
+    // Both legs of the trip. Decimal columns come back as Prisma.Decimal, hence the Number().
+    entry.totalTransportCost += Number(v.checkInTransportCost ?? 0) + Number(v.checkOutTransportCost ?? 0);
     if (v.checkOutAt) {
       entry.totalHoursOnSite += (v.checkOutAt.getTime() - v.checkInAt.getTime()) / 3_600_000;
     }
@@ -185,6 +189,7 @@ router.get("/", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
       daysPresent: s.days.size,
       totalCheckIns: s.totalCheckIns,
       totalHoursOnSite: Math.round(s.totalHoursOnSite * 10) / 10,
+      totalTransportCost: Math.round(s.totalTransportCost * 100) / 100,
       onSiteCount: s.onSiteCount,
       outsideSiteCount: s.outsideSiteCount,
     }))
