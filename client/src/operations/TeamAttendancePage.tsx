@@ -7,6 +7,8 @@ import { Panel, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { useAuth } from '../context/AuthContext'
 import { hasRole, OPS_MANAGE_ROLES } from '../lib/permissions'
 import { mapLink } from '../lib/geolocation'
+import { statedTimeSuffix, totalTransportCost } from '../lib/siteAttendance'
+import { formatMoney } from '../lib/format'
 import { useEmployees } from '../erp/useEmployees'
 
 const inputClass =
@@ -280,6 +282,7 @@ function TeamAttendancePage() {
                         <th className="px-3 py-2 font-semibold">WORK ORDER</th>
                         <th className="px-3 py-2 font-semibold">CHECK-IN</th>
                         <th className="px-3 py-2 font-semibold">CHECK-OUT</th>
+                        <th className="px-3 py-2 font-semibold">TRANSPORT</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -300,6 +303,7 @@ function TeamAttendancePage() {
                             >
                               <MapPin className="h-3.5 w-3.5" />
                               {formatTime(v.checkInAt)}
+                              {statedTimeSuffix(v.checkInDeclaredTime, v.checkInAt)}
                               {v.checkInNote && <span> · {v.checkInNote}</span>}
                             </a>
                           </td>
@@ -313,11 +317,15 @@ function TeamAttendancePage() {
                               >
                                 <MapPin className="h-3.5 w-3.5" />
                                 {formatTime(v.checkOutAt)}
+                                {statedTimeSuffix(v.checkOutDeclaredTime, v.checkOutAt)}
                                 {v.checkOutNote && <span> · {v.checkOutNote}</span>}
                               </a>
                             ) : (
                               <span className="text-ink-500">Still checked in</span>
                             )}
+                          </td>
+                          <td className="px-3 py-2 text-ink-300">
+                            {totalTransportCost(v) > 0 ? formatMoney(totalTransportCost(v)) : <span className="text-ink-500">—</span>}
                           </td>
                         </tr>
                       ))}
