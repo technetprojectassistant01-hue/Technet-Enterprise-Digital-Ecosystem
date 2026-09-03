@@ -127,8 +127,7 @@ router.get("/", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
       totalCheckIns: number;
       totalHoursOnSite: number;
       totalTransportCost: number;
-      onSiteCount: number;
-      outsideSiteCount: number;
+      locationMismatchCount: number;
     }
   >();
   for (const v of history) {
@@ -141,8 +140,7 @@ router.get("/", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
         totalCheckIns: 0,
         totalHoursOnSite: 0,
         totalTransportCost: 0,
-        onSiteCount: 0,
-        outsideSiteCount: 0,
+        locationMismatchCount: 0,
       });
     }
     const entry = summaryByEmployee.get(key)!;
@@ -153,10 +151,10 @@ router.get("/", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
     if (v.checkOutAt) {
       entry.totalHoursOnSite += (v.checkOutAt.getTime() - v.checkInAt.getTime()) / 3_600_000;
     }
-    for (const verification of v.verifications) {
-      if (verification.status === "ON_SITE") entry.onSiteCount += 1;
-      else if (verification.status === "OUTSIDE_SITE") entry.outsideSiteCount += 1;
-    }
+    // Only outright mismatches are counted. UNCHECKABLE is the ordinary result for text like
+    // "Office" and carries no meaning, so folding it in here would make honest weeks look bad.
+    if (v.checkInLocationMatch === "MISMATCH") entry.locationMismatchCount += 1;
+    if (v.checkOutLocationMatch === "MISMATCH") entry.locationMismatchCount += 1;
   }
   const summary = Array.from(summaryByEmployee.values())
     .map((s) => ({
@@ -165,8 +163,7 @@ router.get("/", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
       totalCheckIns: s.totalCheckIns,
       totalHoursOnSite: Math.round(s.totalHoursOnSite * 10) / 10,
       totalTransportCost: Math.round(s.totalTransportCost * 100) / 100,
-      onSiteCount: s.onSiteCount,
-      outsideSiteCount: s.outsideSiteCount,
+      locationMismatchCount: s.locationMismatchCount,
     }))
     .sort((a, b) => b.daysPresent - a.daysPresent);
 

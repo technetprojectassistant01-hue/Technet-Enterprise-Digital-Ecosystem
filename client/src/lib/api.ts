@@ -1724,6 +1724,13 @@ export interface WorkOrder {
 }
 
 export type SiteVerificationStatus = 'ON_SITE' | 'OUTSIDE_SITE'
+
+/**
+ * Whether the place a technician typed matches where their GPS put them.
+ * UNCHECKABLE is the common case and is NOT suspicion - free text like "Office" has no
+ * coordinates to compare against, and business names don't resolve either.
+ */
+export type LocationMatch = 'MATCHED' | 'MISMATCH' | 'UNCHECKABLE'
 export type SiteExitReason = 'MATERIALS' | 'ANOTHER_SITE' | 'SUPERVISOR_INSTRUCTION' | 'EMERGENCY' | 'OTHER'
 
 export const SITE_EXIT_REASON_LABELS: Record<SiteExitReason, string> = {
@@ -1769,6 +1776,10 @@ export interface SiteAttendance {
   checkInNote: string | null
   /** Arrival time as typed, "HH:MM". Sits beside checkInAt rather than replacing it. */
   checkInDeclaredTime: string | null
+  /** Whether checkInNote resolved near the GPS fix. UNCHECKABLE means the text had no
+   * coordinates to compare against - the normal result for "Office", and not a red flag. */
+  checkInLocationMatch: LocationMatch | null
+  checkInLocationDistanceMeters: number | null
   /** Travel cost for the trip out, in MUR. Decimal, so it arrives as a string. */
   checkInTransportCost: string | null
   checkOutAt: string | null
@@ -1777,6 +1788,8 @@ export interface SiteAttendance {
   checkOutNote: string | null
   checkOutDeclaredTime: string | null
   checkOutTransportCost: string | null
+  checkOutLocationMatch: LocationMatch | null
+  checkOutLocationDistanceMeters: number | null
   verifications: SiteVerification[]
 }
 
@@ -1900,8 +1913,9 @@ export interface TechnicianAttendanceSummary {
   totalHoursOnSite: number
   /** Both legs of every trip in the period, already summed server-side. */
   totalTransportCost: number
-  onSiteCount: number
-  outsideSiteCount: number
+  /** Check-ins/outs where the typed place resolved somewhere far from the GPS fix. Excludes
+   * UNCHECKABLE, which is the ordinary outcome for text like "Office" and means nothing. */
+  locationMismatchCount: number
 }
 
 /** `from`/`to` are inclusive "YYYY-MM-DD" days and win over `month` when both are given - a week

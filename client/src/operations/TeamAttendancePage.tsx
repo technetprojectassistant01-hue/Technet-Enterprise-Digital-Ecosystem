@@ -7,7 +7,7 @@ import { Panel, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { useAuth } from '../context/AuthContext'
 import { hasRole, OPS_MANAGE_ROLES } from '../lib/permissions'
 import { mapLink } from '../lib/geolocation'
-import { statedTimeSuffix, totalTransportCost } from '../lib/siteAttendance'
+import { hasLocationMismatch, locationMismatchLabel, statedTimeSuffix, totalTransportCost } from '../lib/siteAttendance'
 import { formatMoney } from '../lib/format'
 import { downloadCsv } from '../lib/csv'
 import { secondaryButtonClass } from '../dashboard/buttonStyles'
@@ -165,6 +165,16 @@ function TeamAttendancePage() {
           accessor: (v: SiteAttendanceWithEmployee) =>
             totalTransportCost(v) > 0 ? totalTransportCost(v).toFixed(2) : '',
         },
+        {
+          header: 'Location Flag',
+          accessor: (v: SiteAttendanceWithEmployee) =>
+            [
+              locationMismatchLabel(v.checkInLocationMatch, v.checkInLocationDistanceMeters),
+              locationMismatchLabel(v.checkOutLocationMatch, v.checkOutLocationDistanceMeters),
+            ]
+              .filter(Boolean)
+              .join('; '),
+        },
       ],
       history,
     )
@@ -251,8 +261,9 @@ function TeamAttendancePage() {
 
       <Panel title="Attendance Summary" icon={Users}>
         <p className="mb-4 text-sm text-ink-300">
-          Per-technician totals for {periodLabel}, including how often each check-in verified as on-site vs.
-          outside the job site.
+          Per-technician totals for {periodLabel}. A location flag means the place they typed
+          resolved somewhere far from their GPS fix — it only catches gross mismatches across the
+          island, and text with no map location (like "Office") is never flagged.
         </p>
         {loading ? (
           <TableSkeleton rows={4} cols={5} />
@@ -268,8 +279,7 @@ function TeamAttendancePage() {
                   <th className="px-3 py-2 font-semibold">CHECK-INS</th>
                   <th className="px-3 py-2 font-semibold">HOURS ON SITE</th>
                   <th className="px-3 py-2 font-semibold">TRANSPORT</th>
-                  <th className="px-3 py-2 font-semibold">ON-SITE VERIFIED</th>
-                  <th className="px-3 py-2 font-semibold">OUTSIDE SITE</th>
+                  <th className="px-3 py-2 font-semibold">LOCATION FLAGS</th>
                 </tr>
               </thead>
               <tbody>
@@ -285,10 +295,9 @@ function TeamAttendancePage() {
                     <td className="px-3 py-2 text-ink-300">
                       {s.totalTransportCost > 0 ? formatMoney(s.totalTransportCost) : <span className="text-ink-500">—</span>}
                     </td>
-                    <td className="px-3 py-2 text-emerald-400">{s.onSiteCount}</td>
                     <td className="px-3 py-2">
-                      {s.outsideSiteCount > 0 ? (
-                        <span className="font-medium text-amber-400">{s.outsideSiteCount}</span>
+                      {s.locationMismatchCount > 0 ? (
+                        <span className="font-medium text-amber-400">{s.locationMismatchCount}</span>
                       ) : (
                         <span className="text-ink-500">0</span>
                       )}
@@ -414,7 +423,12 @@ function TeamAttendancePage() {
                     </thead>
                     <tbody>
                       {entries.map((v) => (
-                        <tr key={v.id} className="border-b border-ink-800 last:border-0">
+                        <tr
+                          key={v.id}
+                          className={`border-b border-ink-800 last:border-0 ${
+                            hasLocationMismatch(v) ? 'bg-amber-400/5' : ''
+                          }`}
+                        >
                           <td className="px-3 py-2 text-ink-100">
                             {v.employee?.firstName} {v.employee?.lastName}
                           </td>
@@ -433,6 +447,11 @@ function TeamAttendancePage() {
                               {statedTimeSuffix(v.checkInDeclaredTime, v.checkInAt)}
                               {v.checkInNote && <span> · {v.checkInNote}</span>}
                             </a>
+                            {locationMismatchLabel(v.checkInLocationMatch, v.checkInLocationDistanceMeters) && (
+                              <span className="mt-0.5 block text-[11px] font-medium text-amber-400">
+                                ⚠ {locationMismatchLabel(v.checkInLocationMatch, v.checkInLocationDistanceMeters)}
+                              </span>
+                            )}
                           </td>
                           <td className="px-3 py-2 text-ink-300">
                             {v.checkOutAt && v.checkOutLat && v.checkOutLng ? (
@@ -449,6 +468,11 @@ function TeamAttendancePage() {
                               </a>
                             ) : (
                               <span className="text-ink-500">Still checked in</span>
+                            )}
+                            {locationMismatchLabel(v.checkOutLocationMatch, v.checkOutLocationDistanceMeters) && (
+                              <span className="mt-0.5 block text-[11px] font-medium text-amber-400">
+                                ⚠ {locationMismatchLabel(v.checkOutLocationMatch, v.checkOutLocationDistanceMeters)}
+                              </span>
                             )}
                           </td>
                           <td className="px-3 py-2 text-ink-300">

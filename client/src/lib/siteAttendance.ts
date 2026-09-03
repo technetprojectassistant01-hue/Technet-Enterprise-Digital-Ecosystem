@@ -1,4 +1,4 @@
-import type { SiteAttendance } from './api'
+import type { LocationMatch, SiteAttendance } from './api'
 
 /**
  * Helpers shared by the technician's own AttendanceWidget and the manager-facing Team Attendance
@@ -31,4 +31,27 @@ export function statedTimeSuffix(declared: string | null, actualIso: string | nu
 /** Both legs of the trip added together. Decimal columns arrive as strings, hence the Number(). */
 export function totalTransportCost(visit: Pick<SiteAttendance, 'checkInTransportCost' | 'checkOutTransportCost'>): number {
   return Number(visit.checkInTransportCost ?? 0) + Number(visit.checkOutTransportCost ?? 0)
+}
+
+/**
+ * How far off a typed location was, in words. Only ever rendered for a real MISMATCH.
+ *
+ * MATCHED and UNCHECKABLE both render as nothing on purpose. UNCHECKABLE is the ordinary result
+ * for text like "Office" - there was simply nothing to compare against - and showing a marker
+ * for it would read as doubt about somebody who did nothing wrong.
+ */
+export function locationMismatchLabel(
+  match: LocationMatch | null,
+  distanceMeters: number | null,
+): string | null {
+  if (match !== 'MISMATCH' || distanceMeters === null) return null
+  const km = distanceMeters / 1000
+  return `${km < 10 ? km.toFixed(1) : Math.round(km)} km from stated`
+}
+
+/** True when either leg of a visit was flagged. Used to tint a row for a manager scanning a list. */
+export function hasLocationMismatch(
+  visit: Pick<SiteAttendance, 'checkInLocationMatch' | 'checkOutLocationMatch'>,
+): boolean {
+  return visit.checkInLocationMatch === 'MISMATCH' || visit.checkOutLocationMatch === 'MISMATCH'
 }
