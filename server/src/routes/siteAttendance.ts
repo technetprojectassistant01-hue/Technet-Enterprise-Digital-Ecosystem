@@ -4,6 +4,7 @@ import { requireAuth, requireRole } from "../middleware/auth";
 import { OPS_MANAGE_ROLES, OPS_SUBMIT_ROLES } from "../lib/roles";
 import { distanceMeters, SITE_GEOFENCE_RADIUS_METERS } from "../lib/geo";
 import { notifyEmployee } from "../lib/notifications";
+import { parseClockTime } from "../lib/clockTime";
 
 const router = Router();
 
@@ -28,6 +29,36 @@ function parseCoords(body: unknown): { lat: number; lng: number } | null {
 function parseNote(body: unknown): string | null {
   const note = (body as { note?: unknown } | null)?.note;
   return typeof note === "string" && note.trim() ? note.trim().slice(0, 200) : null;
+}
+
+/** Upper bound on a single leg's travel cost - a sanity guard against a fat-fingered entry, not a policy. */
+const MAX_TRANSPORT_COST = 100_000;
+
+/**
+ * Travel cost for one leg, in MUR. Absent/blank is a valid answer ("if applicable"), so this
+ * returns a tri-state: `{ value }` for a usable number including none, `{ error }` for junk.
+ * Accepts a numeric string as well as a number - the form sends `e.target.value`, and
+ * `Number.isFinite("250")` is false, which is exactly how the quotation payment-terms percentage
+ * silently failed every real submission once already (CLAUDE.md §9). The client converts too;
+ * this is the belt to that pair of braces.
+ */
+export function parseTransportCost(value: unknown): { value: number | null } | { error: string } {
+  if (value === undefined || value === null || value === "") return { value: null };
+  const amount = typeof value === "string" ? Number(value.trim()) : value;
+  if (typeof amount !== "number" || !Number.isFinite(amount)) {
+    return { error: "Transport cost must be a number" };
+  }
+  if (amount < 0) return { error: "Transport cost cannot be negative" };
+  if (amount > MAX_TRANSPORT_COST) return { error: `Transport cost looks wrong - keep it under ${MAX_TRANSPORT_COST}` };
+  return { value: Math.round(amount * 100) / 100 };
+}
+
+/** The typed arrival/departure time. Optional, but rejected outright if present and unparseable. */
+export function parseDeclaredTime(value: unknown): { value: string | null } | { error: string } {
+  if (value === undefined || value === null || value === "") return { value: null };
+  const parsed = parseClockTime(value);
+  if (!parsed) return { error: "Time must be in HH:MM format" };
+  return { value: parsed };
 }
 
 /**
@@ -202,7 +233,12 @@ router.post("/check-in", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
   const coords = parseCoords(req.body);
   if (!coords) return res.status(400).json({ error: "A valid lat and lng are required" });
   const note = parseNote(req.body);
-  if (!note) return res.status(400).json({ error: "A location note is required to check in" });
+  if (!note) return res.status(400).json({ error: "A location is required to check in" });
+
+  const declaredTime = parseDeclaredTime((req.body as { timeIn?: unknown })?.timeIn);
+  if ("error" in declaredTime) return res.status(400).json({ error: declaredTime.error });
+  const transportCost = parseTransportCost((req.body as { transportCost?: unknown })?.transportCost);
+  if ("error" in transportCost) return res.status(400).json({ error: transportCost.error });
 
   const employee = await prisma.employee.findUnique({ where: { userId: req.user!.sub } });
   if (!employee) return res.status(403).json({ error: "No employee record is linked to your account" });
@@ -235,6 +271,8 @@ router.post("/check-in", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
       checkInLat: coords.lat,
       checkInLng: coords.lng,
       checkInNote: note,
+      checkInDeclaredTime: declaredTime.value,
+      checkInTransportCost: transportCost.value,
       verifications: initialVerification ? { create: initialVerification } : undefined,
     },
     include: { workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE },
@@ -245,6 +283,11 @@ router.post("/check-in", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
 router.post("/check-out", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
   const coords = parseCoords(req.body);
   if (!coords) return res.status(400).json({ error: "A valid lat and lng are required" });
+
+  const declaredTime = parseDeclaredTime((req.body as { timeOut?: unknown })?.timeOut);
+  if ("error" in declaredTime) return res.status(400).json({ error: declaredTime.error });
+  const transportCost = parseTransportCost((req.body as { transportCost?: unknown })?.transportCost);
+  if ("error" in transportCost) return res.status(400).json({ error: transportCost.error });
 
   const employee = await prisma.employee.findUnique({ where: { userId: req.user!.sub } });
   if (!employee) return res.status(403).json({ error: "No employee record is linked to your account" });
@@ -261,6 +304,8 @@ router.post("/check-out", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => 
       checkOutLat: coords.lat,
       checkOutLng: coords.lng,
       checkOutNote: parseNote(req.body),
+      checkOutDeclaredTime: declaredTime.value,
+      checkOutTransportCost: transportCost.value,
     },
     include: { workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE },
   });
