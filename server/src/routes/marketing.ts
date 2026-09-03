@@ -2,7 +2,7 @@ import { Router } from "express";
 import { Prisma } from "../generated/prisma/client";
 import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
-import { isNotFoundError } from "../lib/prismaErrors";
+import { isForeignKeyConstraintError, isNotFoundError } from "../lib/prismaErrors";
 import { MARKETING_ROLES, NON_FIELD_ROLES } from "../lib/roles";
 
 const router = Router();
@@ -145,7 +145,12 @@ router.post("/campaigns/:campaignId/posts", requireRole(...MARKETING_ROLES), asy
     });
     res.status(201).json({ post });
   } catch (err) {
-    if (isNotFoundError(err)) return res.status(404).json({ error: "Campaign not found" });
+    // A create against a missing campaign raises a foreign-key violation, not P2025 - the
+    // isNotFoundError check alone never matched, so this fell through to the generic handler
+    // and answered 409 "This action conflicts with related records" for a plain bad id.
+    if (isNotFoundError(err) || isForeignKeyConstraintError(err)) {
+      return res.status(404).json({ error: "Campaign not found" });
+    }
     throw err;
   }
 });
