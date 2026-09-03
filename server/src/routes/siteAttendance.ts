@@ -198,17 +198,20 @@ router.get("/", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
   res.json({ current, history, summary });
 });
 
-// A supervisor-triggered nudge, not a live remote GPS ping: notifies the technician to open the
-// app and tap "Verify My Location" themselves. True push-to-device would need new infrastructure
+// A supervisor-triggered nudge, not a live remote GPS ping: it asks the technician to open the
+// app, and the widget then verifies on mount. True push-to-device would need new infrastructure
 // (a push subscription); this reuses the existing notification system for a cheap, honest version.
+// The message deliberately doesn't mention location - the technician's own widget no longer
+// surfaces the tracking back at them, so telling them to "verify your location" here would
+// reintroduce exactly what that change removed.
 router.post("/:id/request-verification", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
   const id = req.params.id as string;
   const session = await prisma.siteAttendance.findUnique({ where: { id }, select: { employeeId: true, checkOutAt: true } });
   if (!session) return res.status(404).json({ error: "Site attendance session not found" });
   if (session.checkOutAt) return res.status(400).json({ error: "This technician has already checked out" });
 
-  await notifyEmployee(session.employeeId, "LOCATION_CHECK_REQUESTED", "A supervisor asked you to verify your location", {
-    message: "Open My Attendance and tap Verify My Location.",
+  await notifyEmployee(session.employeeId, "LOCATION_CHECK_REQUESTED", "Your supervisor asked you to open the app", {
+    message: "Please open My Attendance on the dashboard.",
     link: "/dashboard",
   });
   res.json({ ok: true });

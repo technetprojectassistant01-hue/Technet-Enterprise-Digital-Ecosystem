@@ -1,35 +1,38 @@
 import { useEffect, useState } from 'react'
-import { LogIn, LogOut, MapPin, RadioTower } from 'lucide-react'
+import { LogIn, LogOut } from 'lucide-react'
 import * as api from '../lib/api'
-import type { SiteAttendance, SiteExitReason } from '../lib/api'
-import { SITE_EXIT_REASON_LABELS } from '../lib/api'
-import { getPosition, mapLink } from '../lib/geolocation'
+import type { SiteAttendance } from '../lib/api'
+import { getPosition } from '../lib/geolocation'
 import { clockOf, currentClockTime, statedTimeSuffix, totalTransportCost } from '../lib/siteAttendance'
 import { formatMoney } from '../lib/format'
-import { Panel, Badge } from './ui'
+import { Panel } from './ui'
 import { primaryButtonClass, secondaryButtonClass } from './buttonStyles'
 import { useToast } from './ToastContext'
 
 const VERIFY_INTERVAL_MS = 10 * 60 * 1000
-const EXIT_REASONS = Object.keys(SITE_EXIT_REASON_LABELS) as SiteExitReason[]
 
 const noteInputClass =
   'rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
 const fieldLabelClass = 'text-xs font-semibold tracking-widest text-ink-400'
 
-function siteStatusTone(status: 'ON_SITE' | 'OUTSIDE_SITE' | 'UNVERIFIED') {
-  if (status === 'ON_SITE') return 'success' as const
-  if (status === 'OUTSIDE_SITE') return 'warning' as const
-  return 'neutral' as const
-}
-
+/**
+ * The technician's own view of their attendance: time, location, transport, and their recent
+ * visits. Deliberately does NOT surface the location tracking back at them - no coordinates, no
+ * map links, no on-site/outside-site badge, no "explain why you left the site" prompt. All of
+ * that still happens and is still recorded; it is shown to Admin, HR and Operations on Team
+ * Attendance and Field Operations instead.
+ *
+ * Note this is about not confronting somebody with monitoring in their own screen. It is not
+ * concealment, and must not be built into it: the browser's own geolocation permission prompt
+ * discloses the tracking to every technician before the first check-in can succeed, and check-in
+ * fails outright if they decline. That disclosure is not ours to remove.
+ */
 function AttendanceWidget() {
   const toast = useToast()
   const [current, setCurrent] = useState<SiteAttendance | null>(null)
   const [history, setHistory] = useState<SiteAttendance[]>([])
   const [loading, setLoading] = useState(true)
   const [actioning, setActioning] = useState(false)
-  const [verifying, setVerifying] = useState(false)
   const [note, setNote] = useState('')
   const [declaredTime, setDeclaredTime] = useState(currentClockTime)
   // The box is prefilled with the clock, so a technician who just opens the app and taps through
@@ -37,9 +40,6 @@ function AttendanceWidget() {
   // rather than sending the prefill - on a page that has been open a while, that value is stale.
   const [declaredTimeEdited, setDeclaredTimeEdited] = useState(false)
   const [transportCost, setTransportCost] = useState('')
-  const [exitReason, setExitReason] = useState<SiteExitReason | ''>('')
-  const [exitNote, setExitNote] = useState('')
-  const [submittingExit, setSubmittingExit] = useState(false)
 
   function load() {
     setLoading(true)
@@ -59,58 +59,31 @@ function AttendanceWidget() {
   useEffect(load, [])
 
   const hasSiteCoords = !!current?.workOrder?.siteLat && !!current?.workOrder?.siteLng
-  const latestVerification = current?.verifications[0] ?? null
-  const needsExitReason = latestVerification?.status === 'OUTSIDE_SITE' && !latestVerification.exitReason
 
-  // Periodic (not continuous) location re-check while checked in and linked to a work order with a
-  // known site — stops the moment the technician checks out or leaves this page.
+  /**
+   * Periodic (not continuous) location re-check while checked in and linked to a work order with a
+   * known site. Runs once on mount and every 10 minutes after, and stops the moment the technician
+   * checks out or leaves this page - it is still foreground-tab-only, since there is no service
+   * worker (see CLAUDE.md §9).
+   *
+   * The immediate first run replaces the old manual "Verify My Location" button: a supervisor's
+   * requested check is now satisfied by the technician simply opening the app, rather than by
+   * asking them to press something. Failures stay silent - a missed check isn't worth interrupting
+   * somebody mid-job over, and the result is for managers, not for them.
+   */
   useEffect(() => {
     if (!current || !hasSiteCoords) return
-    const interval = setInterval(() => {
+
+    const verify = () =>
       getPosition()
         .then((pos) => api.verifyMyLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }))
-        .then(() => load())
-        .catch(() => {
-          // A missed periodic check isn't worth interrupting the technician with an error.
-        })
-    }, VERIFY_INTERVAL_MS)
+        .catch(() => {})
+
+    verify()
+    const interval = setInterval(verify, VERIFY_INTERVAL_MS)
     return () => clearInterval(interval)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current?.id, hasSiteCoords])
-
-  async function handleVerifyNow() {
-    setVerifying(true)
-    try {
-      const pos = await getPosition()
-      const result = await api.verifyMyLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude })
-      if ('skipped' in result) {
-        toast.error('Not linked to a work order with a site location')
-      } else {
-        toast.success(result.verification.status === 'ON_SITE' ? 'Verified: you are on site' : "You're outside the assigned site")
-      }
-      load()
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to verify location')
-    } finally {
-      setVerifying(false)
-    }
-  }
-
-  async function handleSubmitExitReason() {
-    if (!exitReason) return
-    setSubmittingExit(true)
-    try {
-      await api.submitMyExitReason({ reason: exitReason, note: exitNote || undefined })
-      toast.success('Reason recorded')
-      setExitReason('')
-      setExitNote('')
-      load()
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to submit reason')
-    } finally {
-      setSubmittingExit(false)
-    }
-  }
 
   /** Resets the form back to a fresh prefilled state after a successful check-in or check-out. */
   function resetForm() {
@@ -191,11 +164,6 @@ function AttendanceWidget() {
                 {current.workOrder && (
                   <span className="text-ink-400"> · {current.workOrder.workOrderNumber} — {current.workOrder.title}</span>
                 )}
-                {current && hasSiteCoords && (
-                  <Badge tone={siteStatusTone(latestVerification?.status ?? 'UNVERIFIED')}>
-                    {latestVerification ? latestVerification.status.replace('_', ' ') : 'NOT YET VERIFIED'}
-                  </Badge>
-                )}
               </p>
             ) : (
               <p className="text-sm text-ink-400">Not checked in</p>
@@ -250,12 +218,6 @@ function AttendanceWidget() {
             </div>
 
             <div className="flex items-center gap-2">
-              {current && hasSiteCoords && (
-                <button type="button" onClick={handleVerifyNow} disabled={verifying} className={secondaryButtonClass}>
-                  <RadioTower className="h-4 w-4" />
-                  Verify My Location
-                </button>
-              )}
               {current ? (
                 <button type="button" onClick={handleCheckOut} disabled={actioning} className={secondaryButtonClass}>
                   <LogOut className="h-4 w-4" />
@@ -271,74 +233,26 @@ function AttendanceWidget() {
           </div>
         </div>
 
-        {needsExitReason && (
-          <div className="flex flex-wrap items-end gap-3 border-t border-ink-800 pt-3">
-            <p className="w-full text-xs font-semibold tracking-widest text-amber-400">YOU'RE NOT AT THE ASSIGNED SITE</p>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold tracking-widest text-ink-400">REASON</label>
-              <select
-                value={exitReason}
-                onChange={(e) => setExitReason(e.target.value as SiteExitReason | '')}
-                className={noteInputClass}
-              >
-                <option value="">Select a reason...</option>
-                {EXIT_REASONS.map((r) => (
-                  <option key={r} value={r}>
-                    {SITE_EXIT_REASON_LABELS[r]}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex flex-1 min-w-[12rem] flex-col gap-1">
-              <label className="text-xs font-semibold tracking-widest text-ink-400">NOTE (OPTIONAL)</label>
-              <input
-                value={exitNote}
-                onChange={(e) => setExitNote(e.target.value)}
-                maxLength={300}
-                className={noteInputClass}
-              />
-            </div>
-            <button
-              type="button"
-              onClick={handleSubmitExitReason}
-              disabled={!exitReason || submittingExit}
-              className={primaryButtonClass}
-            >
-              Submit
-            </button>
-          </div>
-        )}
 
         {history.length > 0 && (
           <div className="flex flex-col gap-2 border-t border-ink-800 pt-3">
             {history.slice(0, 5).map((v) => (
               <div key={v.id} className="flex items-center justify-between gap-3 text-xs text-ink-400">
-                <a
-                  href={mapLink(v.checkInLat, v.checkInLng)}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-1.5 hover:text-cyan-accent hover:underline"
-                >
-                  <MapPin className="h-3 w-3" />
+                <span>
                   {new Date(v.checkInAt).toLocaleString()}
                   {statedTimeSuffix(v.checkInDeclaredTime, v.checkInAt)}
                   {v.checkInNote && <span> · {v.checkInNote}</span>}
-                </a>
+                </span>
                 <span className="flex items-center gap-2">
                   {totalTransportCost(v) > 0 && (
                     <span className="text-ink-300">{formatMoney(totalTransportCost(v))}</span>
                   )}
                   {v.checkOutAt ? (
-                    <a
-                      href={v.checkOutLat && v.checkOutLng ? mapLink(v.checkOutLat, v.checkOutLng) : undefined}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="hover:text-cyan-accent hover:underline"
-                    >
+                    <span>
                       → {clockOf(new Date(v.checkOutAt))}
                       {statedTimeSuffix(v.checkOutDeclaredTime, v.checkOutAt)}
                       {v.checkOutNote && <span> · {v.checkOutNote}</span>}
-                    </a>
+                    </span>
                   ) : (
                     'Still checked in'
                   )}
