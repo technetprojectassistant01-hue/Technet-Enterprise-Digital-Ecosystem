@@ -9,7 +9,7 @@ import { downloadCsv } from '../lib/csv'
 import { useToast } from '../dashboard/ToastContext'
 import { useAuth } from '../context/AuthContext'
 import { hasRole, OPS_MANAGE_ROLES } from '../lib/permissions'
-import { useMaintenanceContracts } from './useMaintenanceContracts'
+import { useSchedulableContracts } from './useMaintenanceContracts'
 import { useAssignableEmployees } from '../erp/useEmployees'
 import { useCustomers } from '../erp/useCustomers'
 import { scheduleStatusTone } from './statusTones'
@@ -30,7 +30,7 @@ function SchedulePage() {
   const toast = useToast()
   const { user } = useAuth()
   const canWrite = hasRole(user?.role, OPS_MANAGE_ROLES)
-  const contracts = useMaintenanceContracts()
+  const contracts = useSchedulableContracts()
   const employees = useAssignableEmployees()
   const customers = useCustomers()
   const [schedules, setSchedules] = useState<MaintenanceSchedule[]>([])

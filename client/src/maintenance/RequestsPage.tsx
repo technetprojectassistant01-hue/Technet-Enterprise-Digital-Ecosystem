@@ -9,7 +9,7 @@ import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
 import { hasRole, OPS_MANAGE_ROLES } from '../lib/permissions'
-import { useAssets } from './useAssets'
+import { useServiceableAssets } from './useAssets'
 import { useAssignableEmployees } from '../erp/useEmployees'
 import { useCustomers } from '../erp/useCustomers'
 import { requestPriorityTone, requestStatusTone } from './statusTones'
@@ -33,7 +33,7 @@ function RequestsPage() {
   const confirm = useConfirm()
   const { user } = useAuth()
   const canWrite = hasRole(user?.role, OPS_MANAGE_ROLES)
-  const assets = useAssets()
+  const assets = useServiceableAssets()
   const employees = useAssignableEmployees()
   const customers = useCustomers()
   const [requests, setRequests] = useState<MaintenanceRequest[]>([])
