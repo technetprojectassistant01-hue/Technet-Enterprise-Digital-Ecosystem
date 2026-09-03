@@ -157,8 +157,10 @@ router.patch("/:id", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
   try {
     if (Array.isArray(technicianIds)) {
       const techIds = (technicianIds as string[]).filter((v) => typeof v === "string");
-      await prisma.maintenanceScheduleTechnician.deleteMany({ where: { scheduleId: id } });
-      data.technicians = { create: techIds.map((employeeId) => ({ employeeId })) };
+      // Clear and re-add in the same nested write so the swap rides on the update's own
+      // transaction - a standalone deleteMany isn't rolled back when the update then fails,
+      // which would strip every technician off the visit and still return an error.
+      data.technicians = { deleteMany: {}, create: techIds.map((employeeId) => ({ employeeId })) };
     }
 
     const schedule = await prisma.maintenanceSchedule.update({ where: { id }, data, include: DETAIL_INCLUDE });
