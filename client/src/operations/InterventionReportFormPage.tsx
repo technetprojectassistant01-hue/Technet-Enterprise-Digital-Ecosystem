@@ -10,7 +10,7 @@ import { primaryButtonClass, secondaryButtonClass } from '../dashboard/buttonSty
 import { useToast } from '../dashboard/ToastContext'
 import { useAuth } from '../context/AuthContext'
 import { hasRole, OPS_SUBMIT_ROLES } from '../lib/permissions'
-import { useEmployees } from '../erp/useEmployees'
+import { useAssignableEmployees } from '../erp/useEmployees'
 import { useCustomers } from '../erp/useCustomers'
 import { useWorkOrders } from './useWorkOrders'
 import SignaturePad from './SignaturePad'
@@ -140,7 +140,7 @@ function InterventionReportFormPage() {
 
   const customers = useCustomers()
   const workOrders = useWorkOrders()
-  const employees = useEmployees()
+  const employees = useAssignableEmployees()
 
   const [draft] = useState(() => loadDraft())
   const [draftRestored, setDraftRestored] = useState(() => draft !== null)

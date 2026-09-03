@@ -5,7 +5,7 @@ import type { DailyWorkReport, InterventionReport } from '../lib/api'
 import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { primaryButtonClass, secondaryButtonClass } from '../dashboard/buttonStyles'
 import { downloadCsv } from '../lib/csv'
-import { useEmployees } from '../erp/useEmployees'
+import { useAssignableEmployees } from '../erp/useEmployees'
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
@@ -25,7 +25,7 @@ function DailyReportsPage() {
   const toast = useToast()
   const confirm = useConfirm()
   const { user } = useAuth()
-  const employees = useEmployees()
+  const employees = useAssignableEmployees()
   const workOrders = useWorkOrders()
   const [reports, setReports] = useState<DailyWorkReport[]>([])
   const [loading, setLoading] = useState(true)

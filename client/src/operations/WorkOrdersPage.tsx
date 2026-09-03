@@ -9,7 +9,7 @@ import { primaryButtonClass, secondaryButtonClass } from '../dashboard/buttonSty
 import { downloadCsv } from '../lib/csv'
 import { useCustomers } from '../erp/useCustomers'
 import { useProjects } from '../erp/useProjects'
-import { useEmployees } from '../erp/useEmployees'
+import { useAssignableEmployees, useEmployees } from '../erp/useEmployees'
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
@@ -29,7 +29,11 @@ function WorkOrdersPage() {
   const canWrite = hasRole(user?.role, OPS_MANAGE_ROLES)
   const customers = useCustomers()
   const projects = useProjects()
+  // Two different lists on purpose: the filter above the table has to offer technicians who have
+  // since left, or their past work orders become unsearchable, while the assignment checkboxes
+  // below must not - you can't send somebody who no longer works here to next week's job.
   const employees = useEmployees()
+  const assignableEmployees = useAssignableEmployees()
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -406,10 +410,10 @@ function WorkOrdersPage() {
             <div>
               <label className={labelClass}>TECHNICIANS</label>
               <div className="mt-2 flex flex-col gap-1.5 rounded-md border border-ink-700 bg-ink-950 p-3 max-h-40 overflow-y-auto">
-                {employees.length === 0 ? (
+                {assignableEmployees.length === 0 ? (
                   <p className="text-xs text-ink-500">No employees yet.</p>
                 ) : (
-                  employees.map((emp) => (
+                  assignableEmployees.map((emp) => (
                     <label key={emp.id} className="flex items-center gap-2 text-sm text-ink-200">
                       <input
                         type="checkbox"
