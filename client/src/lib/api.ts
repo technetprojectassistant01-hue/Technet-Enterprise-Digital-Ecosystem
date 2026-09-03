@@ -1790,6 +1790,9 @@ export interface SiteAttendance {
   checkOutTransportCost: string | null
   checkOutLocationMatch: LocationMatch | null
   checkOutLocationDistanceMeters: number | null
+  /** A manager closed a forgotten session rather than the technician checking out. Such a row
+   * has no check-out coordinates, because nobody observed where they were. */
+  checkOutByManager: boolean
   verifications: SiteVerification[]
 }
 
@@ -1900,6 +1903,18 @@ export function getSiteTracking() {
 
 export function getMyAttendance() {
   return request<{ current: SiteAttendance | null; history: SiteAttendance[] }>('/api/site-attendance/me')
+}
+
+/**
+ * Closes a session the technician forgot to check out of. `checkOutAt` is an ISO string for when
+ * they actually left - omit it and "now" is used, which is usually wrong for a session that has
+ * been open for days.
+ */
+export function closeSiteAttendance(id: string, payload: { checkOutAt?: string; note?: string } = {}) {
+  return request<{ siteAttendance: SiteAttendanceWithEmployee }>(`/api/site-attendance/${id}/close`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
 }
 
 export function requestLocationVerification(siteAttendanceId: string) {

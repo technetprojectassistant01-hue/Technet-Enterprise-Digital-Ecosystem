@@ -3,15 +3,16 @@ import { ChevronLeft, ChevronRight, Download, Lock, MapPin, Users } from 'lucide
 import { Link } from 'react-router-dom'
 import * as api from '../lib/api'
 import type { SiteAttendanceWithEmployee, TechnicianAttendanceSummary } from '../lib/api'
-import { Panel, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
+import { Panel, Badge, EmptyState, Modal, TableSkeleton } from '../dashboard/ui'
 import { useAuth } from '../context/AuthContext'
 import { hasRole, OPS_MANAGE_ROLES } from '../lib/permissions'
 import { mapLink } from '../lib/geolocation'
 import { hasLocationMismatch, locationMismatchLabel, statedTimeSuffix, totalTransportCost } from '../lib/siteAttendance'
 import { formatMoney } from '../lib/format'
 import { downloadCsv } from '../lib/csv'
-import { secondaryButtonClass } from '../dashboard/buttonStyles'
+import { primaryButtonClass, secondaryButtonClass } from '../dashboard/buttonStyles'
 import { useEmployees } from '../erp/useEmployees'
+import { useToast } from '../dashboard/ToastContext'
 
 const inputClass =
   'rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -90,6 +91,19 @@ function formatWeek(weekStart: string): string {
   return `${formatDayShort(weekStart)} – ${formatDayShort(addDays(weekStart, 6))}`
 }
 
+/** Past this, an open session is almost certainly a forgotten check-out rather than a long shift. */
+const STALE_SESSION_HOURS = 14
+
+function openForHours(v: SiteAttendanceWithEmployee): number {
+  return (Date.now() - new Date(v.checkInAt).getTime()) / 3_600_000
+}
+
+/** "YYYY-MM-DDTHH:MM" in local time, the value <input type="datetime-local"> expects. */
+function toLocalInputValue(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
 /** Elapsed time on site, blank while a session is still open. */
 function hoursOnSite(v: SiteAttendanceWithEmployee): string {
   if (!v.checkOutAt) return ''
@@ -101,6 +115,7 @@ function TeamAttendancePage() {
   const { user } = useAuth()
   const canAccess = hasRole(user?.role, OPS_MANAGE_ROLES)
   const employees = useEmployees()
+  const toast = useToast()
 
   const [month, setMonth] = useState(currentMonth())
   const [period, setPeriod] = useState<'month' | 'week'>('month')
@@ -112,7 +127,41 @@ function TeamAttendancePage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const [closing, setClosing] = useState<SiteAttendanceWithEmployee | null>(null)
+  const [closeAt, setCloseAt] = useState('')
+  const [closeNote, setCloseNote] = useState('')
+  const [closeError, setCloseError] = useState<string | null>(null)
+  const [submittingClose, setSubmittingClose] = useState(false)
+
+  // Default the picker to now, but the manager is expected to correct it - "now" is the wrong
+  // answer for a session that has been sitting open since last week.
   useEffect(() => {
+    if (!closing) return
+    setCloseAt(toLocalInputValue(new Date()))
+    setCloseNote('')
+    setCloseError(null)
+  }, [closing])
+
+  async function handleClose() {
+    if (!closing) return
+    setSubmittingClose(true)
+    setCloseError(null)
+    try {
+      await api.closeSiteAttendance(closing.id, {
+        checkOutAt: closeAt ? new Date(closeAt).toISOString() : undefined,
+        note: closeNote || undefined,
+      })
+      toast.success('Session closed')
+      setClosing(null)
+      reload()
+    } catch (err) {
+      setCloseError(err instanceof Error ? err.message : 'Failed to close the session')
+    } finally {
+      setSubmittingClose(false)
+    }
+  }
+
+  function reload() {
     if (!canAccess) return
     setLoading(true)
     api
@@ -128,7 +177,9 @@ function TeamAttendancePage() {
       })
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load attendance'))
       .finally(() => setLoading(false))
-  }, [canAccess, period, month, weekStart, employeeFilter])
+  }
+
+  useEffect(reload, [canAccess, period, month, weekStart, employeeFilter]) // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
    * CSV rather than a real .xlsx: it opens straight in Excel, and the app already exports Work
@@ -241,17 +292,33 @@ function TeamAttendancePage() {
                     <div className="text-xs text-ink-400">
                       Since {new Date(v.checkInAt).toLocaleString()}
                       {v.checkInNote && <span> · {v.checkInNote}</span>}
+                      {openForHours(v) >= STALE_SESSION_HOURS && (
+                        <span className="ml-2 font-medium text-amber-400">
+                          open {Math.floor(openForHours(v) / 24) >= 1
+                            ? `${Math.floor(openForHours(v) / 24)}d`
+                            : `${Math.round(openForHours(v))}h`} — likely forgotten
+                        </span>
+                      )}
                     </div>
                   </div>
-                  <a
-                    href={mapLink(v.checkInLat, v.checkInLng)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-1.5 text-xs text-cyan-accent hover:underline"
-                  >
-                    <MapPin className="h-3.5 w-3.5" />
-                    View location
-                  </a>
+                  <div className="flex items-center gap-3">
+                    <a
+                      href={mapLink(v.checkInLat, v.checkInLng)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-1.5 text-xs text-cyan-accent hover:underline"
+                    >
+                      <MapPin className="h-3.5 w-3.5" />
+                      View location
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => setClosing(v)}
+                      className="text-xs text-ink-400 hover:text-amber-400"
+                    >
+                      Close session
+                    </button>
+                  </div>
                 </div>
               )
             })}
@@ -469,6 +536,9 @@ function TeamAttendancePage() {
                             ) : (
                               <span className="text-ink-500">Still checked in</span>
                             )}
+                            {v.checkOutByManager && (
+                              <span className="mt-0.5 block text-[11px] text-ink-500">closed by management</span>
+                            )}
                             {locationMismatchLabel(v.checkOutLocationMatch, v.checkOutLocationDistanceMeters) && (
                               <span className="mt-0.5 block text-[11px] font-medium text-amber-400">
                                 ⚠ {locationMismatchLabel(v.checkOutLocationMatch, v.checkOutLocationDistanceMeters)}
@@ -488,6 +558,61 @@ function TeamAttendancePage() {
           </div>
         )}
       </Panel>
+
+      {closing && (
+        <Modal title="Close this session" onClose={() => setClosing(null)}>
+          <div className="flex flex-col gap-4">
+            <p className="text-sm text-ink-300">
+              {closing.employee?.firstName} {closing.employee?.lastName} checked in on{' '}
+              {new Date(closing.checkInAt).toLocaleString()} and never checked out. Set when they
+              actually left — leaving it at now would book the whole elapsed time as hours on site.
+            </p>
+
+            <div className="flex flex-col gap-1">
+              <label htmlFor="close-at" className={labelClass}>
+                CHECKED OUT AT
+              </label>
+              <input
+                id="close-at"
+                type="datetime-local"
+                value={closeAt}
+                onChange={(e) => setCloseAt(e.target.value)}
+                className={inputClass}
+              />
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label htmlFor="close-note" className={labelClass}>
+                NOTE (OPTIONAL)
+              </label>
+              <input
+                id="close-note"
+                value={closeNote}
+                onChange={(e) => setCloseNote(e.target.value)}
+                placeholder="Closed by management"
+                maxLength={200}
+                className={inputClass}
+              />
+            </div>
+
+            <p className="text-xs text-ink-500">
+              No location is recorded for a session closed this way — nobody observed where they
+              were, and the record will show it was closed by management rather than by them.
+            </p>
+
+            {closeError && <p className="text-sm text-red-400">{closeError}</p>}
+
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => setClosing(null)} className={secondaryButtonClass}>
+                Cancel
+              </button>
+              <button type="button" onClick={handleClose} disabled={submittingClose} className={primaryButtonClass}>
+                {submittingClose ? 'Closing…' : 'Close session'}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }

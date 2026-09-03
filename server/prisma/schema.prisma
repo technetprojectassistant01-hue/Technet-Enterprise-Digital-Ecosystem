@@ -1038,6 +1038,11 @@ model SiteAttendance {
   checkOutTransportCost Decimal? @db.Decimal(10, 2)
   checkOutLocationMatch          LocationMatch?
   checkOutLocationDistanceMeters Int?
+  /** True when a manager closed a forgotten session rather than the technician checking out.
+   * Such a row has no checkOutLat/Lng - nobody observed where they were, and inventing a
+   * position would put a fabricated location into the record this system exists to be trusted
+   * on. The distinction has to survive into reporting, hence a column rather than a note. */
+  checkOutByManager Boolean @default(false)
 
   verifications SiteVerification[]
 

@@ -189,6 +189,55 @@ router.post("/:id/request-verification", requireRole(...OPS_MANAGE_ROLES), async
   res.json({ ok: true });
 });
 
+/**
+ * Closes a session the technician forgot to check out of.
+ *
+ * Deliberately records no coordinates: nobody observed where they were, and writing a position
+ * nobody captured would put a fabricated location into the record this system exists to be
+ * trusted on. `checkOutByManager` keeps an administrative close from reading as a real one.
+ *
+ * `checkOutAt` is optional and exists because "now" is usually the wrong answer - a session left
+ * open since last week would otherwise book a 163-hour visit into that month's hours. A manager
+ * who knows the technician actually left at 17:00 on the 27th can say so.
+ */
+router.post("/:id/close", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
+  const id = req.params.id as string;
+  const { checkOutAt, note } = req.body ?? {};
+
+  const session = await prisma.siteAttendance.findUnique({
+    where: { id },
+    select: { id: true, checkInAt: true, checkOutAt: true },
+  });
+  if (!session) return res.status(404).json({ error: "Site attendance session not found" });
+  if (session.checkOutAt) return res.status(400).json({ error: "This session is already closed" });
+
+  let closedAt = new Date();
+  if (checkOutAt !== undefined && checkOutAt !== null && checkOutAt !== "") {
+    const parsed = new Date(checkOutAt);
+    if (Number.isNaN(parsed.getTime())) {
+      return res.status(400).json({ error: "Provide a valid check-out date and time" });
+    }
+    if (parsed <= session.checkInAt) {
+      return res.status(400).json({ error: "Check-out must be after the check-in" });
+    }
+    if (parsed.getTime() > Date.now() + 60_000) {
+      return res.status(400).json({ error: "Check-out cannot be in the future" });
+    }
+    closedAt = parsed;
+  }
+
+  const siteAttendance = await prisma.siteAttendance.update({
+    where: { id },
+    data: {
+      checkOutAt: closedAt,
+      checkOutByManager: true,
+      checkOutNote: typeof note === "string" && note.trim() ? note.trim().slice(0, 200) : "Closed by management",
+    },
+    include: { employee: { select: EMPLOYEE_SELECT }, workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE },
+  });
+  res.json({ siteAttendance });
+});
+
 router.get("/me", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
   const employee = await prisma.employee.findUnique({ where: { userId: req.user!.sub } });
   if (!employee) return res.status(403).json({ error: "No employee record is linked to your account" });
