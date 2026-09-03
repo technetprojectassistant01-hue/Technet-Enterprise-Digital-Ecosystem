@@ -9,7 +9,7 @@ import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
 import { hasRole, OPS_MANAGE_ROLES } from '../lib/permissions'
-import { useAssets } from './useAssets'
+import { useServiceableAssets } from './useAssets'
 import { useCustomers } from '../erp/useCustomers'
 import { maintenanceContractStatusTone } from './statusTones'
 
@@ -34,7 +34,7 @@ function ContractsPage() {
   const confirm = useConfirm()
   const { user } = useAuth()
   const canWrite = hasRole(user?.role, OPS_MANAGE_ROLES)
-  const assets = useAssets()
+  const assets = useServiceableAssets()
   const customers = useCustomers()
   const [contracts, setContracts] = useState<MaintenanceContract[]>([])
   const [loading, setLoading] = useState(true)
