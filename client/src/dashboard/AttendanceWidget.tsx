@@ -13,6 +13,13 @@ const EXIT_REASONS = Object.keys(SITE_EXIT_REASON_LABELS) as SiteExitReason[]
 
 const noteInputClass =
   'rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
+const fieldLabelClass = 'text-xs font-semibold tracking-widest text-ink-400'
+
+/** Local wall-clock "HH:MM", the format both <input type="time"> and the server expect. */
+function currentClockTime(): string {
+  const now = new Date()
+  return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+}
 
 function siteStatusTone(status: 'ON_SITE' | 'OUTSIDE_SITE' | 'UNVERIFIED') {
   if (status === 'ON_SITE') return 'success' as const
@@ -28,6 +35,12 @@ function AttendanceWidget() {
   const [actioning, setActioning] = useState(false)
   const [verifying, setVerifying] = useState(false)
   const [note, setNote] = useState('')
+  const [declaredTime, setDeclaredTime] = useState(currentClockTime)
+  // The box is prefilled with the clock, so a technician who just opens the app and taps through
+  // gets the right time with no typing. If they never touched it, we re-read the clock at submit
+  // rather than sending the prefill - on a page that has been open a while, that value is stale.
+  const [declaredTimeEdited, setDeclaredTimeEdited] = useState(false)
+  const [transportCost, setTransportCost] = useState('')
   const [exitReason, setExitReason] = useState<SiteExitReason | ''>('')
   const [exitNote, setExitNote] = useState('')
   const [submittingExit, setSubmittingExit] = useState(false)
@@ -103,17 +116,38 @@ function AttendanceWidget() {
     }
   }
 
+  /** Resets the form back to a fresh prefilled state after a successful check-in or check-out. */
+  function resetForm() {
+    setNote('')
+    setTransportCost('')
+    setDeclaredTime(currentClockTime())
+    setDeclaredTimeEdited(false)
+  }
+
+  /** The number the API expects, or undefined when the field was left blank - never NaN. */
+  function transportCostForSubmit(): number | undefined {
+    if (!transportCost.trim()) return undefined
+    const amount = Number(transportCost)
+    return Number.isFinite(amount) ? amount : undefined
+  }
+
   async function handleCheckIn() {
     if (!note.trim()) {
-      toast.error('A location note is required to check in')
+      toast.error('A location is required to check in')
       return
     }
     setActioning(true)
     try {
       const pos = await getPosition()
-      await api.checkInAttendance({ lat: pos.coords.latitude, lng: pos.coords.longitude, note })
+      await api.checkInAttendance({
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+        note,
+        timeIn: declaredTimeEdited ? declaredTime : currentClockTime(),
+        transportCost: transportCostForSubmit(),
+      })
       toast.success('Checked in')
-      setNote('')
+      resetForm()
       load()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to check in')
@@ -126,9 +160,15 @@ function AttendanceWidget() {
     setActioning(true)
     try {
       const pos = await getPosition()
-      await api.checkOutAttendance({ lat: pos.coords.latitude, lng: pos.coords.longitude, note: note || undefined })
+      await api.checkOutAttendance({
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+        note: note || undefined,
+        timeOut: declaredTimeEdited ? declaredTime : currentClockTime(),
+        transportCost: transportCostForSubmit(),
+      })
       toast.success('Checked out')
-      setNote('')
+      resetForm()
       load()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to check out')
@@ -161,31 +201,73 @@ function AttendanceWidget() {
               <p className="text-sm text-ink-400">Not checked in</p>
             )}
           </div>
-          <div className="flex items-center gap-2">
-            <input
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder={current ? 'Note (optional)' : 'Office, client site... (required)'}
-              maxLength={200}
-              className={noteInputClass}
-            />
-            {current && hasSiteCoords && (
-              <button type="button" onClick={handleVerifyNow} disabled={verifying} className={secondaryButtonClass}>
-                <RadioTower className="h-4 w-4" />
-                Verify My Location
-              </button>
-            )}
-            {current ? (
-              <button type="button" onClick={handleCheckOut} disabled={actioning} className={secondaryButtonClass}>
-                <LogOut className="h-4 w-4" />
-                Check Out
-              </button>
-            ) : (
-              <button type="button" onClick={handleCheckIn} disabled={actioning} className={primaryButtonClass}>
-                <LogIn className="h-4 w-4" />
-                Check In
-              </button>
-            )}
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="flex flex-col gap-1">
+              <label htmlFor="site-declared-time" className={fieldLabelClass}>
+                {current ? 'TIME OUT' : 'TIME IN'}
+              </label>
+              <input
+                id="site-declared-time"
+                type="time"
+                value={declaredTime}
+                onChange={(e) => {
+                  setDeclaredTime(e.target.value)
+                  setDeclaredTimeEdited(true)
+                }}
+                className={`${noteInputClass} w-32`}
+              />
+            </div>
+
+            <div className="flex min-w-[12rem] flex-1 flex-col gap-1">
+              <label htmlFor="site-location" className={fieldLabelClass}>
+                {current ? 'NOTE (OPTIONAL)' : 'LOCATION'}
+              </label>
+              <input
+                id="site-location"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder={current ? 'Anything worth recording' : 'Office, client site...'}
+                maxLength={200}
+                className={noteInputClass}
+              />
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label htmlFor="site-transport-cost" className={fieldLabelClass}>
+                TRANSPORT (MUR)
+              </label>
+              <input
+                id="site-transport-cost"
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="0.01"
+                value={transportCost}
+                onChange={(e) => setTransportCost(e.target.value)}
+                placeholder="If applicable"
+                className={`${noteInputClass} w-36`}
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              {current && hasSiteCoords && (
+                <button type="button" onClick={handleVerifyNow} disabled={verifying} className={secondaryButtonClass}>
+                  <RadioTower className="h-4 w-4" />
+                  Verify My Location
+                </button>
+              )}
+              {current ? (
+                <button type="button" onClick={handleCheckOut} disabled={actioning} className={secondaryButtonClass}>
+                  <LogOut className="h-4 w-4" />
+                  Check Out
+                </button>
+              ) : (
+                <button type="button" onClick={handleCheckIn} disabled={actioning} className={primaryButtonClass}>
+                  <LogIn className="h-4 w-4" />
+                  Check In
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
