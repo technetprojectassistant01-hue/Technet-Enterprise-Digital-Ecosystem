@@ -10,7 +10,7 @@ import { useToast } from '../dashboard/ToastContext'
 import { useAuth } from '../context/AuthContext'
 import { hasRole, OPS_MANAGE_ROLES } from '../lib/permissions'
 import { useCustomers } from './useCustomers'
-import { useEmployees } from './useEmployees'
+import { useAssignableEmployees } from './useEmployees'
 import { projectStatusTone } from './statusTones'
 import { formatMoney } from '../lib/format'
 
@@ -47,7 +47,7 @@ function ProjectsPage() {
   const { user } = useAuth()
   const canWrite = hasRole(user?.role, OPS_MANAGE_ROLES)
   const customers = useCustomers()
-  const employees = useEmployees()
+  const employees = useAssignableEmployees()
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

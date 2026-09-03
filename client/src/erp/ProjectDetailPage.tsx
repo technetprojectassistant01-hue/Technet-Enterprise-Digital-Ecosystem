@@ -9,7 +9,7 @@ import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
 import { hasRole, OPS_MANAGE_ROLES } from '../lib/permissions'
-import { useEmployees } from './useEmployees'
+import { useAssignableEmployees } from './useEmployees'
 import { projectStatusTone, projectStatusTransitions, invoiceStatusTone } from './statusTones'
 import { formatMoney } from '../lib/format'
 
@@ -23,7 +23,7 @@ function ProjectDetailPage() {
   const confirm = useConfirm()
   const { user } = useAuth()
   const canWrite = hasRole(user?.role, OPS_MANAGE_ROLES)
-  const employees = useEmployees()
+  const employees = useAssignableEmployees()
 
   const [project, setProject] = useState<ProjectDetail | null>(null)
   const [loading, setLoading] = useState(true)
