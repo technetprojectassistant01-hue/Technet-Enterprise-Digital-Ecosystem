@@ -16,7 +16,7 @@ There is a formal **SDD (Software Design Document)**, the actual source of truth
 - **Client**: React 19 + TypeScript + Vite. Routing via `react-router-dom` v7. Styling: Tailwind CSS v4. Icons: `lucide-react`. No UI component library — hand-built components in `client/src/dashboard/ui.tsx` (Panel, Badge, Modal, EmptyState, TableSkeleton, StatCard, etc.) reused everywhere.
 - **Server**: Node.js + Express 5 + TypeScript, run via `tsx`. Auth via JWT in an httpOnly cookie (not bearer tokens) — see `server/src/routes/auth.ts`.
 - **Database**: PostgreSQL via **Prisma ORM 7.x** using the `@prisma/adapter-pg` driver adapter (not Prisma's default engine). Hosted on **Neon** (serverless Postgres — has a cold-start delay of ~2.5–9s after idle; don't mistake this for a bug when a page looks stuck loading right after a period of inactivity).
-- **Testing**: `vitest` on the server (`npm run test -w server`), currently 47 tests across lib helpers and a few route smoke tests. No client automated test suite — client changes are verified via `tsc -b` (typecheck) and manual/Playwright browser checks.
+- **Testing**: `vitest` on the server (`npm run test -w server`), currently 75 tests across 13 files — lib helpers plus route-level validator/transition tests. No client automated test suite — client changes are verified via `tsc -b` (typecheck) and manual/Playwright browser checks.
 - **Email**: Resend (password reset emails).
 - **PDF generation**: `pdfkit` (quotations/invoices/purchase order documents).
 
