@@ -1,0 +1,47 @@
+name: Check-in reminder
+
+# 04:15 UTC is 08:15 in Mauritius (UTC+4, no daylight saving), Monday to Saturday.
+#
+# This lives here rather than in a timer inside the server because the Render free instance
+# sleeps after ~15 minutes idle: at 08:15, before anyone has opened the app, there is no process
+# alive for a setInterval to run in. The request below is also what wakes it.
+#
+# GitHub's scheduled runners are best-effort and can lag by several minutes under load, so treat
+# 08:15 as "shortly after 08:15" rather than a precise alarm.
+on:
+  schedule:
+    - cron: "15 4 * * 1-6"
+  workflow_dispatch: # so it can be fired by hand to test, without waiting for tomorrow
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wake the API and send reminders
+        env:
+          API_URL: ${{ vars.API_URL || 'https://technet-digital-api.onrender.com' }}
+          REMINDER_SECRET: ${{ secrets.REMINDER_TRIGGER_SECRET }}
+        run: |
+          if [ -z "$REMINDER_SECRET" ]; then
+            echo "REMINDER_TRIGGER_SECRET is not set in repository secrets — nothing sent."
+            exit 1
+          fi
+
+          # A sleeping free instance takes 30-60s to wake, and the reminder request itself is what
+          # wakes it, so allow generously rather than timing out on a cold start.
+          response=$(curl -sS -m 180 -w '\n%{http_code}' -X POST \
+            -H "x-reminder-secret: $REMINDER_SECRET" \
+            -H 'Content-Type: application/json' \
+            "$API_URL/api/push/send-checkin-reminders")
+
+          body=$(echo "$response" | sed '$d')
+          status=$(echo "$response" | tail -n1)
+          echo "HTTP $status"
+          echo "$body"
+
+          # A 404 here means the secret did not match — the endpoint hides itself rather than
+          # returning 401, so a wrong secret and a missing route look identical on purpose.
+          if [ "$status" != "200" ]; then
+            echo "Reminder trigger failed."
+            exit 1
+          fi

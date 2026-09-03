@@ -3156,3 +3156,27 @@ export function listMarketingPosts(
   const qs = query.toString()
   return request<{ posts: MarketingPost[] }>(`/api/marketing/posts${qs ? `?${qs}` : ''}`)
 }
+
+/* ------------------------------------------------------------------ *
+ * Web Push - the 08:15 check-in reminder
+ * ------------------------------------------------------------------ */
+
+export function getPushPublicKey() {
+  return request<{ enabled: boolean; publicKey: string | null }>('/api/push/public-key')
+}
+
+export function getPushStatus() {
+  return request<{ enabled: boolean; devices: number }>('/api/push/status')
+}
+
+export function savePushSubscription(payload: {
+  endpoint: string
+  keys: { p256dh: string; auth: string }
+  userAgent?: string
+}) {
+  return request<{ ok: true }>('/api/push/subscribe', { method: 'POST', body: JSON.stringify(payload) })
+}
+
+export function removePushSubscription(endpoint: string) {
+  return request<{ ok: true }>('/api/push/unsubscribe', { method: 'POST', body: JSON.stringify({ endpoint }) })
+}

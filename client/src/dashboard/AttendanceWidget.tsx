@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { LogIn, LogOut } from 'lucide-react'
+import { BellOff, BellRing, LogIn, LogOut } from 'lucide-react'
 import * as api from '../lib/api'
 import type { SiteAttendance } from '../lib/api'
 import { getPosition } from '../lib/geolocation'
@@ -8,12 +8,77 @@ import { formatMoney } from '../lib/format'
 import { Panel } from './ui'
 import { primaryButtonClass, secondaryButtonClass } from './buttonStyles'
 import { useToast } from './ToastContext'
+import { disablePushReminders, enablePushReminders, pushSupport } from '../lib/pushNotifications'
 
 const VERIFY_INTERVAL_MS = 10 * 60 * 1000
 
 const noteInputClass =
   'rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
 const fieldLabelClass = 'text-xs font-semibold tracking-widest text-ink-400'
+
+/**
+ * Opt-in for the 08:15 weekday check-in reminder.
+ *
+ * Deliberately a button rather than something that fires on load: browsers penalise sites that
+ * request notification permission without a user gesture, and Chrome can block a site outright
+ * for it. iPhone users are told to add the app to their Home Screen first, because Safari does
+ * not expose PushManager in an ordinary tab — there is no way around that, and saying so beats
+ * a button that fails for reasons they cannot see.
+ */
+function ReminderToggle() {
+  const toast = useToast()
+  const [devices, setDevices] = useState<number | null>(null)
+  const [available, setAvailable] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const support = pushSupport()
+
+  useEffect(() => {
+    api
+      .getPushStatus()
+      .then(({ enabled, devices }) => {
+        setAvailable(enabled)
+        setDevices(devices)
+      })
+      .catch(() => setAvailable(false))
+  }, [])
+
+  if (!available || devices === null || support === 'unsupported') return null
+
+  if (support === 'needs-home-screen') {
+    return <span className="text-xs text-ink-500">Add to your Home Screen for check-in reminders</span>
+  }
+
+  async function toggle() {
+    setBusy(true)
+    try {
+      if (devices && devices > 0) {
+        await disablePushReminders()
+        toast.success('Check-in reminders turned off')
+      } else {
+        await enablePushReminders()
+        toast.success("Reminders on — we'll nudge you at 8:15 if you haven't checked in")
+      }
+      const status = await api.getPushStatus()
+      setDevices(status.devices)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not change reminder settings')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      disabled={busy}
+      className="flex items-center gap-1.5 text-xs text-ink-400 hover:text-cyan-accent disabled:opacity-50"
+    >
+      {devices > 0 ? <BellRing className="h-3.5 w-3.5 text-cyan-accent" /> : <BellOff className="h-3.5 w-3.5" />}
+      {devices > 0 ? 'Reminders on' : 'Remind me to check in'}
+    </button>
+  )
+}
 
 /**
  * The technician's own view of their attendance: time, location, transport, and their recent
@@ -149,7 +214,7 @@ function AttendanceWidget() {
   if (loading) return null
 
   return (
-    <Panel title="My Attendance">
+    <Panel title="My Attendance" action={<ReminderToggle />}>
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
