@@ -1005,14 +1005,30 @@ model SiteAttendance {
   workOrder   WorkOrder? @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
   employeeId  String
   employee    Employee   @relation(fields: [employeeId], references: [id])
+  /** When the server actually received the check-in. Set by the DB, never client-supplied - this
+   * is the verifiable half of the record, and the reason checkInDeclaredTime sits beside it
+   * rather than replacing it. */
   checkInAt   DateTime   @default(now())
   checkInLat  Decimal    @db.Decimal(9, 6)
   checkInLng  Decimal    @db.Decimal(9, 6)
+  /** Where the technician says they are - "Office", "Celero site", etc. */
   checkInNote String?
+  /** The arrival time the technician types, as an "HH:MM" local wall-clock string (same single
+   * timezone convention as AttendanceRecord.clockIn). Deliberately distinct from checkInAt:
+   * somebody who arrives at 08:00 and opens the app at 08:20 should have both on record, and a
+   * typed value must never overwrite the timestamp the trust reporting depends on. */
+  checkInDeclaredTime  String?
+  /** Travel cost for the trip out, in MUR. Optional - not every visit has one. */
+  checkInTransportCost Decimal? @db.Decimal(10, 2)
+
   checkOutAt   DateTime?
   checkOutLat  Decimal?  @db.Decimal(9, 6)
   checkOutLng  Decimal?  @db.Decimal(9, 6)
   checkOutNote String?
+  /** Departure time as typed, mirroring checkInDeclaredTime. */
+  checkOutDeclaredTime  String?
+  /** Travel cost for the return trip, in MUR. */
+  checkOutTransportCost Decimal? @db.Decimal(10, 2)
 
   verifications SiteVerification[]
 
