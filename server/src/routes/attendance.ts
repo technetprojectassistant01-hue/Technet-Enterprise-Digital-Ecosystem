@@ -4,6 +4,7 @@ import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { isForeignKeyConstraintError, isNotFoundError } from "../lib/prismaErrors";
 import { HR_ROLES, WORKFORCE_VIEW_ROLES } from "../lib/roles";
+import { parseClockTime } from "../lib/clockTime";
 
 const router = Router();
 
@@ -32,17 +33,15 @@ function parseDateOnly(value: unknown): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-/** Validates an "HH:MM" clock string and returns it, or null when absent. */
+/**
+ * Validates an "HH:MM" clock string. Tri-state on purpose, and callers depend on it:
+ * `null` means "explicitly cleared", `undefined` means "absent or invalid" - the caller tells
+ * those two apart by also checking whether the key was present on the request body.
+ */
 function parseClock(value: unknown): string | null | undefined {
   if (value === undefined) return undefined;
   if (value === null || value === "") return null;
-  if (typeof value !== "string") return undefined;
-  const match = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
-  if (!match) return undefined;
-  const hours = Number(match[1]);
-  const minutes = Number(match[2]);
-  if (hours > 23 || minutes > 59) return undefined;
-  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+  return parseClockTime(value) ?? undefined;
 }
 
 function clockToMinutes(value: string): number {
