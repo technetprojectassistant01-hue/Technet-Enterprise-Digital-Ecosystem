@@ -1761,14 +1761,22 @@ export interface SiteAttendance {
   workOrder: SiteAttendanceWorkOrderSummary | null
   employeeId: string
   employee?: EmployeeSummary
+  /** When the server received the check-in. The verifiable half - never client-supplied. */
   checkInAt: string
   checkInLat: string
   checkInLng: string
+  /** Where the technician says they are. */
   checkInNote: string | null
+  /** Arrival time as typed, "HH:MM". Sits beside checkInAt rather than replacing it. */
+  checkInDeclaredTime: string | null
+  /** Travel cost for the trip out, in MUR. Decimal, so it arrives as a string. */
+  checkInTransportCost: string | null
   checkOutAt: string | null
   checkOutLat: string | null
   checkOutLng: string | null
   checkOutNote: string | null
+  checkOutDeclaredTime: string | null
+  checkOutTransportCost: string | null
   verifications: SiteVerification[]
 }
 
@@ -1906,17 +1914,34 @@ export function listTeamAttendance(params: { month?: string; employeeId?: string
   }>(`/api/site-attendance${qs ? `?${qs}` : ''}`)
 }
 
-export function checkInAttendance(coords: { lat: number; lng: number; note?: string }) {
+/**
+ * `timeIn` is "HH:MM" as typed and `transportCost` a real number, not the raw input string -
+ * the server rejects a non-numeric cost, so callers must convert before sending (see the
+ * numeric-field note in CLAUDE.md §9).
+ */
+export function checkInAttendance(payload: {
+  lat: number
+  lng: number
+  note?: string
+  timeIn?: string
+  transportCost?: number
+}) {
   return request<{ siteAttendance: SiteAttendance }>('/api/site-attendance/check-in', {
     method: 'POST',
-    body: JSON.stringify(coords),
+    body: JSON.stringify(payload),
   })
 }
 
-export function checkOutAttendance(coords: { lat: number; lng: number; note?: string }) {
+export function checkOutAttendance(payload: {
+  lat: number
+  lng: number
+  note?: string
+  timeOut?: string
+  transportCost?: number
+}) {
   return request<{ siteAttendance: SiteAttendance }>('/api/site-attendance/check-out', {
     method: 'POST',
-    body: JSON.stringify(coords),
+    body: JSON.stringify(payload),
   })
 }
 
