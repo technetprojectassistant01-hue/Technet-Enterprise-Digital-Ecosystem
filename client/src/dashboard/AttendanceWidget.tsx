@@ -220,13 +220,13 @@ function AttendanceWidget() {
 
             <div className="flex min-w-[12rem] flex-1 flex-col gap-1">
               <label htmlFor="site-location" className={fieldLabelClass}>
-                {current ? 'NOTE (OPTIONAL)' : 'LOCATION'}
+                {current ? 'LOCATION (OPTIONAL)' : 'LOCATION'}
               </label>
               <input
                 id="site-location"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                placeholder={current ? 'Anything worth recording' : 'Office, client site...'}
+                placeholder={current ? 'Where you are leaving from' : 'Office, client site...'}
                 maxLength={200}
                 className={noteInputClass}
               />

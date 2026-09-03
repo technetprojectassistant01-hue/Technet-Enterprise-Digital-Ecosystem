@@ -1021,9 +1021,12 @@ model SiteAttendance {
   /** Travel cost for the trip out, in MUR. Optional - not every visit has one. */
   checkInTransportCost Decimal? @db.Decimal(10, 2)
 
+  /** Server-set on check-out, alongside the GPS fix - both are required to close a session. */
   checkOutAt   DateTime?
   checkOutLat  Decimal?  @db.Decimal(9, 6)
   checkOutLng  Decimal?  @db.Decimal(9, 6)
+  /** Where the technician says they are leaving from. Optional, unlike checkInNote - by the time
+   * somebody is checking out the site is usually already established by the check-in. */
   checkOutNote String?
   /** Departure time as typed, mirroring checkInDeclaredTime. */
   checkOutDeclaredTime  String?
