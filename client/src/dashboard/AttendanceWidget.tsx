@@ -15,10 +15,28 @@ const noteInputClass =
   'rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
 const fieldLabelClass = 'text-xs font-semibold tracking-widest text-ink-400'
 
-/** Local wall-clock "HH:MM", the format both <input type="time"> and the server expect. */
+/** Local wall-clock "HH:MM". Built from date parts, not toLocaleTimeString, so it can be compared
+ * against a stored declared time without locale formatting getting in the way. */
+function clockOf(date: Date): string {
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+}
+
+/** The format both <input type="time"> and the server expect. */
 function currentClockTime(): string {
-  const now = new Date()
-  return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+  return clockOf(new Date())
+}
+
+/**
+ * The technician's stated time, shown only when it differs from what the server recorded.
+ * Repeating a matching value is noise; a mismatch is the thing worth seeing.
+ */
+function statedTimeSuffix(declared: string | null, actualIso: string | null): string {
+  if (!declared || !actualIso) return ''
+  return declared === clockOf(new Date(actualIso)) ? '' : ` (stated ${declared})`
+}
+
+function totalTransportCost(visit: SiteAttendance): number {
+  return Number(visit.checkInTransportCost ?? 0) + Number(visit.checkOutTransportCost ?? 0)
 }
 
 function siteStatusTone(status: 'ON_SITE' | 'OUTSIDE_SITE' | 'UNVERIFIED') {
@@ -186,8 +204,12 @@ function AttendanceWidget() {
           <div>
             {current ? (
               <p className="text-sm text-ink-100">
-                Checked in since {new Date(current.checkInAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                Checked in since {clockOf(new Date(current.checkInAt))}
+                {statedTimeSuffix(current.checkInDeclaredTime, current.checkInAt)}
                 {current.checkInNote && <span className="text-ink-400"> · {current.checkInNote}</span>}
+                {Number(current.checkInTransportCost ?? 0) > 0 && (
+                  <span className="text-ink-400"> · transport Rs {Number(current.checkInTransportCost).toFixed(2)}</span>
+                )}
                 {current.workOrder && (
                   <span className="text-ink-400"> · {current.workOrder.workOrderNumber} — {current.workOrder.title}</span>
                 )}
@@ -321,9 +343,13 @@ function AttendanceWidget() {
                 >
                   <MapPin className="h-3 w-3" />
                   {new Date(v.checkInAt).toLocaleString()}
+                  {statedTimeSuffix(v.checkInDeclaredTime, v.checkInAt)}
                   {v.checkInNote && <span> · {v.checkInNote}</span>}
                 </a>
-                <span>
+                <span className="flex items-center gap-2">
+                  {totalTransportCost(v) > 0 && (
+                    <span className="text-ink-300">Rs {totalTransportCost(v).toFixed(2)}</span>
+                  )}
                   {v.checkOutAt ? (
                     <a
                       href={v.checkOutLat && v.checkOutLng ? mapLink(v.checkOutLat, v.checkOutLng) : undefined}
@@ -331,7 +357,8 @@ function AttendanceWidget() {
                       rel="noreferrer"
                       className="hover:text-cyan-accent hover:underline"
                     >
-                      → {new Date(v.checkOutAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      → {clockOf(new Date(v.checkOutAt))}
+                      {statedTimeSuffix(v.checkOutDeclaredTime, v.checkOutAt)}
                       {v.checkOutNote && <span> · {v.checkOutNote}</span>}
                     </a>
                   ) : (
