@@ -1,0 +1,18 @@
+{
+  "name": "Technet Digital",
+  "short_name": "Technet",
+  "description": "Technet Engineering's internal operations platform",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0a0e13",
+  "theme_color": "#00b8d4",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

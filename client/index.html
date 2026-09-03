@@ -10,7 +10,13 @@
       href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <title>client</title>
+    <!-- Needed for Web Push: iOS only delivers notifications to a site added to the home screen,
+         and that requires a manifest. Also gives the app a real name on an Android home screen. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#00b8d4" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Technet" />
+    <title>Technet Digital</title>
   </head>
   <body>
     <div id="root"></div>
