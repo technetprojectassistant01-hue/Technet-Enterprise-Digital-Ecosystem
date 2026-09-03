@@ -105,7 +105,7 @@ router.get("/site-tracking", requireRole(...OPS_MANAGE_ROLES), async (_req, res)
 
   const [current, recentlyCompleted] = await Promise.all([
     prisma.siteAttendance.findMany({
-      where: { workOrderId: { not: null }, checkOutAt: null },
+      where: { checkOutAt: null },
       include: {
         employee: { select: EMPLOYEE_SELECT },
         workOrder: WORK_ORDER_SELECT,
@@ -114,7 +114,7 @@ router.get("/site-tracking", requireRole(...OPS_MANAGE_ROLES), async (_req, res)
       orderBy: { checkInAt: "desc" },
     }),
     prisma.siteAttendance.findMany({
-      where: { workOrderId: { not: null }, checkOutAt: { not: null } },
+      where: { checkOutAt: { not: null } },
       include: {
         employee: { select: EMPLOYEE_SELECT },
         workOrder: WORK_ORDER_SELECT,
