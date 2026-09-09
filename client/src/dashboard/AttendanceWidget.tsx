@@ -9,6 +9,9 @@ import { Panel } from './ui'
 import { primaryButtonClass, secondaryButtonClass } from './buttonStyles'
 import { useToast } from './ToastContext'
 import { disablePushReminders, enablePushReminders, pushSupport } from '../lib/pushNotifications'
+import { listOutbox, submitOrQueue, subscribeOutbox } from '../lib/outbox'
+
+const QUEUED_MESSAGE = "No signal — saved on your device. It'll upload automatically when you're back online."
 
 const VERIFY_INTERVAL_MS = 10 * 60 * 1000
 
@@ -98,6 +101,8 @@ function AttendanceWidget() {
   const [history, setHistory] = useState<SiteAttendance[]>([])
   const [loading, setLoading] = useState(true)
   const [actioning, setActioning] = useState(false)
+  // A check-in/out saved on the device during a signal drop and not yet synced (see lib/outbox).
+  const [pendingKinds, setPendingKinds] = useState<string[]>([])
   const [note, setNote] = useState('')
   const [declaredTime, setDeclaredTime] = useState(currentClockTime)
   // The box is prefilled with the clock, so a technician who just opens the app and taps through
@@ -122,6 +127,24 @@ function AttendanceWidget() {
   }
 
   useEffect(load, [])
+
+  // Track queued check-in/out so the widget can show "waiting to sync" and still offer check-out
+  // when the check-in itself hasn't reached the server yet.
+  useEffect(() => {
+    const refresh = () =>
+      listOutbox().then((items) =>
+        setPendingKinds(items.filter((i) => i.kind === 'check-in' || i.kind === 'check-out').map((i) => i.kind)),
+      )
+    refresh()
+    return subscribeOutbox(refresh)
+  }, [])
+
+  const pendingCheckIn = pendingKinds.includes('check-in')
+  const pendingCheckOut = pendingKinds.includes('check-out')
+  // "Checked in" from the technician's point of view: a live session, or a queued check-in that
+  // hasn't been followed by a queued check-out.
+  const checkedIn = !!current || (pendingCheckIn && !pendingCheckOut)
+  const syncPending = pendingCheckIn || pendingCheckOut
 
   const hasSiteCoords = !!current?.workOrder?.siteLat && !!current?.workOrder?.siteLng
 
@@ -173,14 +196,19 @@ function AttendanceWidget() {
     setActioning(true)
     try {
       const pos = await getPosition()
-      await api.checkInAttendance({
-        lat: pos.coords.latitude,
-        lng: pos.coords.longitude,
-        note,
-        timeIn: declaredTimeEdited ? declaredTime : currentClockTime(),
-        transportCost: transportCostForSubmit(),
+      const { queued } = await submitOrQueue({
+        kind: 'check-in',
+        label: `Check-in — ${note.trim()}`,
+        endpoint: '/api/site-attendance/check-in',
+        body: {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          note,
+          timeIn: declaredTimeEdited ? declaredTime : currentClockTime(),
+          transportCost: transportCostForSubmit(),
+        },
       })
-      toast.success('Checked in')
+      toast.success(queued ? QUEUED_MESSAGE : 'Checked in')
       resetForm()
       load()
     } catch (err) {
@@ -194,14 +222,19 @@ function AttendanceWidget() {
     setActioning(true)
     try {
       const pos = await getPosition()
-      await api.checkOutAttendance({
-        lat: pos.coords.latitude,
-        lng: pos.coords.longitude,
-        note: note || undefined,
-        timeOut: declaredTimeEdited ? declaredTime : currentClockTime(),
-        transportCost: transportCostForSubmit(),
+      const { queued } = await submitOrQueue({
+        kind: 'check-out',
+        label: 'Check-out',
+        endpoint: '/api/site-attendance/check-out',
+        body: {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          note: note || undefined,
+          timeOut: declaredTimeEdited ? declaredTime : currentClockTime(),
+          transportCost: transportCostForSubmit(),
+        },
       })
-      toast.success('Checked out')
+      toast.success(queued ? QUEUED_MESSAGE : 'Checked out')
       resetForm()
       load()
     } catch (err) {
@@ -230,14 +263,19 @@ function AttendanceWidget() {
                   <span className="text-ink-400"> · {current.workOrder.workOrderNumber} — {current.workOrder.title}</span>
                 )}
               </p>
+            ) : checkedIn ? (
+              <p className="text-sm text-ink-100">Checked in — waiting to sync</p>
             ) : (
               <p className="text-sm text-ink-400">Not checked in</p>
+            )}
+            {syncPending && !checkedIn && (
+              <p className="text-xs text-ink-500">Check-out saved on your device — waiting to sync</p>
             )}
           </div>
           <div className="flex flex-wrap items-end gap-3">
             <div className="flex flex-col gap-1">
               <label htmlFor="site-declared-time" className={fieldLabelClass}>
-                {current ? 'TIME OUT' : 'TIME IN'}
+                {checkedIn ? 'TIME OUT' : 'TIME IN'}
               </label>
               <input
                 id="site-declared-time"
@@ -253,13 +291,13 @@ function AttendanceWidget() {
 
             <div className="flex min-w-[12rem] flex-1 flex-col gap-1">
               <label htmlFor="site-location" className={fieldLabelClass}>
-                {current ? 'LOCATION (OPTIONAL)' : 'LOCATION'}
+                {checkedIn ? 'LOCATION (OPTIONAL)' : 'LOCATION'}
               </label>
               <input
                 id="site-location"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                placeholder={current ? 'Where you are leaving from' : 'Office, client site...'}
+                placeholder={checkedIn ? 'Where you are leaving from' : 'Office, client site...'}
                 maxLength={200}
                 className={noteInputClass}
               />
@@ -283,7 +321,7 @@ function AttendanceWidget() {
             </div>
 
             <div className="flex items-center gap-2">
-              {current ? (
+              {checkedIn ? (
                 <button type="button" onClick={handleCheckOut} disabled={actioning} className={secondaryButtonClass}>
                   <LogOut className="h-4 w-4" />
                   Check Out
