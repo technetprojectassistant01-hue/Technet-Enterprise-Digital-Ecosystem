@@ -6,6 +6,7 @@ import { isForeignKeyConstraintError, isNotFoundError } from "../lib/prismaError
 import { formatAssetNumber, formatContractNumber, formatRequestNumber } from "../lib/maintenanceNumbers";
 import { OPS_MANAGE_ROLES, OPS_SUBMIT_ROLES } from "../lib/roles";
 import { notifyRoles, notifyUser } from "../lib/notifications";
+import { claimRequest, releaseRequest } from "../lib/idempotency";
 
 const router = Router();
 
@@ -193,41 +194,59 @@ router.post("/:id/report", requireRole(...OPS_SUBMIT_ROLES), async (req, res) =>
     return res.status(400).json({ error: "Remarks are required" });
   }
 
-  const schedule = await prisma.maintenanceSchedule.findUnique({ where: { id } });
-  if (!schedule) return res.status(404).json({ error: "Maintenance schedule not found" });
-  if (schedule.status !== "SCHEDULED") {
-    return res.status(400).json({ error: `Cannot file a report for a schedule in ${schedule.status} status` });
+  // A maintenance report queued offline is replayed on reconnect. The SCHEDULED-status guard
+  // below would already reject the replay, but with a confusing 400 for work that went through;
+  // hand back the current schedule instead.
+  const clientRequestId = (req.body as { clientRequestId?: unknown })?.clientRequestId;
+  if (!(await claimRequest(clientRequestId, "maintenance-report"))) {
+    const current = await prisma.maintenanceSchedule.findUnique({ where: { id }, include: DETAIL_INCLUDE });
+    return res.status(200).json({ schedule: current ? withNumbers(current) : null, deduped: true });
   }
 
-  await prisma.$transaction([
-    prisma.maintenanceReport.create({
-      data: {
-        scheduleId: id,
-        remarks: remarks.trim(),
-        workCompleted: workCompleted !== false,
-        recommendations: typeof recommendations === "string" && recommendations.trim() ? recommendations.trim() : null,
-        submittedById: req.user!.sub,
-      },
-    }),
-    prisma.maintenanceSchedule.update({ where: { id }, data: { status: "COMPLETED" } }),
-    ...(schedule.requestId
-      ? [prisma.maintenanceRequest.update({ where: { id: schedule.requestId }, data: { status: "COMPLETED" } })]
-      : []),
-  ]);
-
-  const updated = await prisma.maintenanceSchedule.findUnique({ where: { id }, include: DETAIL_INCLUDE });
-  await notifyRoles(OPS_MANAGE_ROLES, "MAINTENANCE_REPORT_SUBMITTED", "A maintenance report needs review", {
-    link: `/dashboard/maintenance/schedule/${id}`,
-  });
-  if (schedule.requestId) {
-    const request = await prisma.maintenanceRequest.findUnique({ where: { id: schedule.requestId }, select: { requestedById: true } });
-    if (request) {
-      await notifyUser(request.requestedById, "MAINTENANCE_REQUEST_COMPLETED", "Your maintenance request is complete", {
-        link: "/dashboard/maintenance/requests",
-      });
+  try {
+    const schedule = await prisma.maintenanceSchedule.findUnique({ where: { id } });
+    if (!schedule) {
+      await releaseRequest(clientRequestId);
+      return res.status(404).json({ error: "Maintenance schedule not found" });
     }
+    if (schedule.status !== "SCHEDULED") {
+      await releaseRequest(clientRequestId);
+      return res.status(400).json({ error: `Cannot file a report for a schedule in ${schedule.status} status` });
+    }
+
+    await prisma.$transaction([
+      prisma.maintenanceReport.create({
+        data: {
+          scheduleId: id,
+          remarks: remarks.trim(),
+          workCompleted: workCompleted !== false,
+          recommendations: typeof recommendations === "string" && recommendations.trim() ? recommendations.trim() : null,
+          submittedById: req.user!.sub,
+        },
+      }),
+      prisma.maintenanceSchedule.update({ where: { id }, data: { status: "COMPLETED" } }),
+      ...(schedule.requestId
+        ? [prisma.maintenanceRequest.update({ where: { id: schedule.requestId }, data: { status: "COMPLETED" } })]
+        : []),
+    ]);
+
+    const updated = await prisma.maintenanceSchedule.findUnique({ where: { id }, include: DETAIL_INCLUDE });
+    await notifyRoles(OPS_MANAGE_ROLES, "MAINTENANCE_REPORT_SUBMITTED", "A maintenance report needs review", {
+      link: `/dashboard/maintenance/schedule/${id}`,
+    });
+    if (schedule.requestId) {
+      const request = await prisma.maintenanceRequest.findUnique({ where: { id: schedule.requestId }, select: { requestedById: true } });
+      if (request) {
+        await notifyUser(request.requestedById, "MAINTENANCE_REQUEST_COMPLETED", "Your maintenance request is complete", {
+          link: "/dashboard/maintenance/requests",
+        });
+      }
+    }
+    res.status(201).json({ schedule: withNumbers(updated!) });
+  } catch (err) {
+    await releaseRequest(clientRequestId);
+    throw err;
   }
-  res.status(201).json({ schedule: withNumbers(updated!) });
 });
 
 async function reviewReport(scheduleId: string, reviewerId: string, toStatus: "APPROVED" | "REJECTED", note?: string) {
