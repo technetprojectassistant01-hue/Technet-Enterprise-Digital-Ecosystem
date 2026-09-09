@@ -1,10 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Paperclip, X as XIcon, ImagePlus, Lock } from 'lucide-react'
-import * as api from '../lib/api'
-import type { JobCategory, WarrantyStatus } from '../lib/api'
+import type { InterventionReport, JobCategory, WarrantyStatus } from '../lib/api'
 import { JOB_CATEGORY_LABELS, WORK_TYPE_LABELS } from '../lib/api'
 import type { ServiceCategory } from '../lib/api'
+import { submitOrQueue } from '../lib/outbox'
 import { EmptyState, Panel } from '../dashboard/ui'
 import { primaryButtonClass, secondaryButtonClass } from '../dashboard/buttonStyles'
 import { useToast } from '../dashboard/ToastContext'
@@ -311,6 +311,11 @@ function InterventionReportFormPage() {
     setAttachmentFile(file)
   }
 
+  const customerName =
+    customers.find((c) => c.id === customerId)?.company ||
+    customers.find((c) => c.id === customerId)?.name ||
+    ''
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setFormError(null)
@@ -352,52 +357,71 @@ function InterventionReportFormPage() {
         attachmentData = await readFileAsDataUrl(attachmentFile)
       }
 
-      const { interventionReport } = await api.createInterventionReport({
-        customerId,
-        workOrderId: workOrderId || undefined,
-        contactPerson: contactPerson || undefined,
-        contactPhone: contactPhone || undefined,
-        contactEmail: contactEmail || undefined,
-        jobCategory,
-        workType,
-        workTypeOther: workType === 'OTHER' ? workTypeOther || undefined : undefined,
-        equipment: equipment || undefined,
-        make: make || undefined,
-        model: model || undefined,
-        serialNo: serialNo || undefined,
-        natureOfIntervention,
-        actionTaken,
-        workCompleted,
-        incompleteDetails: workCompleted ? undefined : incompleteDetails || undefined,
-        timeIn: timeIn || undefined,
-        timeOut: timeOut || undefined,
-        warrantyStatus: warrantyStatus || undefined,
-        technicianReport: technicianReport || undefined,
-        materialsUsed: materialsUsed || undefined,
-        comments: comments || undefined,
-        additionalInfo: additionalInfo || undefined,
-        technicianIds,
-        units: cleanedUnits.length > 0 ? cleanedUnits : undefined,
-        signedByName,
-        signatureData,
-        attachmentData,
-        attachmentFileName: attachmentFile?.name,
-      })
-
-      const photoUploads = [
+      // Turn every photo into a data URL up front, so the whole report — text, signature,
+      // attachment and photos — can be handed to the outbox as one unit and saved on the device
+      // if there's no signal (see lib/outbox). Online, the outbox sends it straight through.
+      const photoFiles = [
         ...beforePhotos.map((f) => ({ file: f, kind: 'BEFORE' as const })),
         ...afterPhotos.map((f) => ({ file: f, kind: 'AFTER' as const })),
         ...equipmentPhotos.map((f) => ({ file: f, kind: 'EQUIPMENT' as const })),
         ...workDonePhotos.map((f) => ({ file: f, kind: 'WORK_DONE' as const })),
       ]
-      for (const { file, kind } of photoUploads) {
-        const fileData = await readFileAsDataUrl(file)
-        await api.uploadInterventionReportPhoto(interventionReport.id, { kind, fileData, fileName: file.name })
-      }
+      const photos = await Promise.all(
+        photoFiles.map(async ({ file, kind }) => ({
+          kind,
+          fileData: await readFileAsDataUrl(file),
+          fileName: file.name,
+        })),
+      )
+
+      const { queued, data } = await submitOrQueue<{ interventionReport: InterventionReport }>({
+        kind: 'intervention-report',
+        label: `Intervention report — ${customerName || 'customer'}`,
+        endpoint: '/api/intervention-reports',
+        body: {
+          customerId,
+          workOrderId: workOrderId || undefined,
+          contactPerson: contactPerson || undefined,
+          contactPhone: contactPhone || undefined,
+          contactEmail: contactEmail || undefined,
+          jobCategory,
+          workType,
+          workTypeOther: workType === 'OTHER' ? workTypeOther || undefined : undefined,
+          equipment: equipment || undefined,
+          make: make || undefined,
+          model: model || undefined,
+          serialNo: serialNo || undefined,
+          natureOfIntervention,
+          actionTaken,
+          workCompleted,
+          incompleteDetails: workCompleted ? undefined : incompleteDetails || undefined,
+          timeIn: timeIn || undefined,
+          timeOut: timeOut || undefined,
+          warrantyStatus: warrantyStatus || undefined,
+          technicianReport: technicianReport || undefined,
+          materialsUsed: materialsUsed || undefined,
+          comments: comments || undefined,
+          additionalInfo: additionalInfo || undefined,
+          technicianIds,
+          units: cleanedUnits.length > 0 ? cleanedUnits : undefined,
+          signedByName,
+          signatureData,
+          attachmentData,
+          attachmentFileName: attachmentFile?.name,
+        },
+        photos,
+      })
 
       localStorage.removeItem(DRAFT_STORAGE_KEY)
-      toast.success('Intervention report submitted')
-      navigate(`/dashboard/operations/intervention-reports/${interventionReport.id}`)
+      if (queued || !data?.interventionReport) {
+        toast.success(
+          "No signal — saved on your device. It'll upload automatically when you're back online.",
+        )
+        navigate('/dashboard/operations/intervention-reports')
+      } else {
+        toast.success('Intervention report submitted')
+        navigate(`/dashboard/operations/intervention-reports/${data.interventionReport.id}`)
+      }
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Failed to submit intervention report')
     } finally {
