@@ -1327,6 +1327,16 @@ model MaintenanceReport {
   createdAt       DateTime            @default(now())
 }
 
+/// Marks a client-generated request id as already handled, so a retried offline submission
+/// (see client/src/lib/outbox.ts) doesn't create a duplicate row. A queued check-in or report
+/// whose 200 was lost to a signal drop gets replayed on reconnect; the first request through
+/// claims its id here and every replay short-circuits. `kind` is for debugging only.
+model ProcessedRequest {
+  id        String   @id
+  kind      String
+  createdAt DateTime @default(now())
+}
+
 model PayrollRun {
   id          String   @id @default(uuid())
   year        Int
