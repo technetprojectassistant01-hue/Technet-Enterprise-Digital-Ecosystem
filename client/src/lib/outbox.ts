@@ -44,8 +44,8 @@ export interface OutboxItem {
   createdAt: number
   attempts: number
   lastError?: string
-  /** The main POST to replay. */
-  endpoint: string
+  /** The main POST to replay — an absolute URL, so the service worker can replay it too. */
+  url: string
   body: Record<string, unknown>
   /** Intervention reports only: the follow-up photo uploads. */
   photos?: OutboxPhoto[]
@@ -134,9 +134,9 @@ interface RawResult {
   networkError: boolean
 }
 
-async function post(endpoint: string, body: unknown): Promise<RawResult> {
+async function post(url: string, body: unknown): Promise<RawResult> {
   try {
-    const res = await fetch(`${API_URL}${endpoint}`, {
+    const res = await fetch(url, {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
@@ -165,11 +165,14 @@ export interface QueueResult<T> {
 export interface SubmitSpec {
   kind: OutboxKind
   label: string
+  /** API path, e.g. "/api/daily-reports". */
   endpoint: string
   body: Record<string, unknown>
   /** Intervention reports only. */
   photos?: { kind: string; fileData: string; fileName: string }[]
 }
+
+const photosUrl = (reportId: string) => `${API_URL}/api/intervention-reports/${reportId}/photos`
 
 /**
  * Sends a field submission, or saves it to the outbox if the device is offline. Throws (exactly
@@ -190,6 +193,7 @@ export async function submitOrQueue<T>(spec: SubmitSpec): Promise<QueueResult<T>
         : `${id}-${Math.random().toString(36).slice(2)}`,
   }))
 
+  const url = `${API_URL}${spec.endpoint}`
   const enqueue = (progress?: OutboxItem['progress']) =>
     putItem({
       id,
@@ -197,7 +201,7 @@ export async function submitOrQueue<T>(spec: SubmitSpec): Promise<QueueResult<T>
       label: spec.label,
       createdAt: Date.now(),
       attempts: 0,
-      endpoint: spec.endpoint,
+      url,
       body,
       photos: photos.length ? photos : undefined,
       progress,
@@ -209,7 +213,7 @@ export async function submitOrQueue<T>(spec: SubmitSpec): Promise<QueueResult<T>
     return { queued: true }
   }
 
-  const res = await post(spec.endpoint, body)
+  const res = await post(url, body)
   if (res.networkError) {
     await enqueue()
     void requestBackgroundSync()
@@ -225,7 +229,7 @@ export async function submitOrQueue<T>(spec: SubmitSpec): Promise<QueueResult<T>
     if (reportId) {
       for (let i = 0; i < photos.length; i += 1) {
         const p = photos[i]
-        const pr = await post(`/api/intervention-reports/${reportId}/photos`, {
+        const pr = await post(photosUrl(reportId), {
           kind: p.kind,
           fileData: p.fileData,
           fileName: p.fileName,
@@ -262,7 +266,7 @@ async function replay(item: OutboxItem): Promise<ReplayOutcome> {
   let progress = item.progress
 
   if (!progress) {
-    const res = await post(item.endpoint, item.body)
+    const res = await post(item.url, item.body)
     const verdict = classify(res)
     if (verdict !== 'ok') return verdict
 
@@ -279,7 +283,7 @@ async function replay(item: OutboxItem): Promise<ReplayOutcome> {
   const photos = item.photos ?? []
   for (let i = progress.photosDone; i < photos.length; i += 1) {
     const p = photos[i]
-    const res = await post(`/api/intervention-reports/${progress.reportId}/photos`, {
+    const res = await post(photosUrl(progress.reportId), {
       kind: p.kind,
       fileData: p.fileData,
       fileName: p.fileName,
