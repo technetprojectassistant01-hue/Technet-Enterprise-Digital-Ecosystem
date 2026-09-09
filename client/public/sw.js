@@ -23,7 +23,7 @@
 
 // Bump on a release when you want old caches garbage-collected. Not required for correctness —
 // network-first means online users always get the latest regardless.
-const CACHE_VERSION = 'v1'
+const CACHE_VERSION = 'v2'
 const SHELL_CACHE = `technet-shell-${CACHE_VERSION}`
 const API_CACHE = `technet-api-${CACHE_VERSION}`
 
@@ -135,8 +135,8 @@ self.addEventListener('push', (event) => {
       tag: payload.tag,
       // Replaces a previous reminder instead of stacking a second one on the lock screen.
       renotify: Boolean(payload.tag),
-      icon: '/favicon.svg',
-      badge: '/favicon.svg',
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
       data: { url: payload.url || '/dashboard' },
     }),
   )
