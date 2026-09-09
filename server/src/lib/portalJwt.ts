@@ -18,7 +18,9 @@ export interface PortalTokenPayload {
 }
 
 export function signPortalToken(payload: PortalTokenPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: "8h", audience: PORTAL_AUDIENCE });
+  // 30 days, re-issued on every authenticated request (see lib/portalAuthCookie.ts) — same
+  // "log in once" behaviour the staff app now has.
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: "30d", audience: PORTAL_AUDIENCE });
 }
 
 export function verifyPortalToken(token: string): PortalTokenPayload {
