@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { HelpCircle, Plus, Search, Settings } from 'lucide-react'
 import { useAuth } from './context/AuthContext'
@@ -6,10 +7,31 @@ import { MAIN_NAV, SYSTEM_NAV, ADMIN_NAV } from './dashboard/nav'
 import { Avatar } from './dashboard/ui'
 import NavTree from './dashboard/NavTree'
 import NotificationBell from './dashboard/NotificationBell'
+import { useToast } from './dashboard/ToastContext'
+import { registerServiceWorker } from './lib/pushNotifications'
+import { setOutboxDropHandler, startOutbox } from './lib/outbox'
 
 function Dashboard() {
   const { user, logout } = useAuth()
+  const toast = useToast()
+  const toastRef = useRef(toast)
+  toastRef.current = toast
   const { pathname } = useLocation()
+
+  // Register the service worker for every signed-in user (it was previously registered only on
+  // push opt-in), and start the offline outbox: it replays field submissions that were saved on
+  // the device during a signal drop. A submission the server permanently rejects on replay is
+  // surfaced here rather than lost silently.
+  useEffect(() => {
+    void registerServiceWorker()
+    startOutbox()
+    setOutboxDropHandler((item) =>
+      toastRef.current.error(
+        `"${item.label}" couldn't be submitted${item.lastError ? `: ${item.lastError}` : ''}`,
+      ),
+    )
+    return () => setOutboxDropHandler(() => {})
+  }, [])
   const displayName = user?.name || user?.email || ''
   const systemNav = user?.role === 'ADMIN' ? [...SYSTEM_NAV, ADMIN_NAV] : SYSTEM_NAV
   const mainNav = MAIN_NAV.filter((item) => !user?.role || !item.hiddenFrom?.includes(user.role))
