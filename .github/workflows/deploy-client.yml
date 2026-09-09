@@ -27,4 +27,7 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          VITE_API_URL: https://technet-digital-api.onrender.com
+          # Empty on purpose: the Worker (client/worker/index.ts) proxies /api to the Render API
+          # under this same origin, so the client calls it with a relative path. A first-party
+          # cookie is what keeps an installed iOS PWA logged in.
+          VITE_API_URL: ""

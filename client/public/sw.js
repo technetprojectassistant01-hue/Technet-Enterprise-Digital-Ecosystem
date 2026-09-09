@@ -23,7 +23,7 @@
 
 // Bump on a release when you want old caches garbage-collected. Not required for correctness —
 // network-first means online users always get the latest regardless.
-const CACHE_VERSION = 'v2'
+const CACHE_VERSION = 'v3'
 const SHELL_CACHE = `technet-shell-${CACHE_VERSION}`
 const API_CACHE = `technet-api-${CACHE_VERSION}`
 
@@ -225,7 +225,12 @@ async function replayItem(db, item) {
   }
 
   const photos = item.photos || []
-  const photosUrl = new URL(item.url).origin + '/api/intervention-reports/' + progress.reportId + '/photos'
+  // item.url is relative in production (same-origin API via the Worker), absolute in local dev.
+  const photosUrl =
+    new URL(item.url, self.location.origin).origin +
+    '/api/intervention-reports/' +
+    progress.reportId +
+    '/photos'
   for (let i = progress.photosDone; i < photos.length; i += 1) {
     const p = photos[i]
     const res = await sendJson(photosUrl, {

@@ -19,7 +19,8 @@
  * duplicate — see server/src/lib/idempotency.ts.
  */
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+// See the note in api.ts — `??` so an explicit empty prod value means "same origin".
+const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000'
 
 export type OutboxKind =
   | 'check-in'
