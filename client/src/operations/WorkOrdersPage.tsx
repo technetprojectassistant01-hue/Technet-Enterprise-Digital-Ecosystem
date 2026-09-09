@@ -7,6 +7,7 @@ import { JOB_CATEGORY_LABELS } from '../lib/api'
 import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { primaryButtonClass, secondaryButtonClass } from '../dashboard/buttonStyles'
 import { downloadCsv } from '../lib/csv'
+import { useReloadOnReconnect } from '../lib/useOnline'
 import { useCustomers } from '../erp/useCustomers'
 import { useProjects } from '../erp/useProjects'
 import { useAssignableEmployees, useEmployees } from '../erp/useEmployees'
@@ -64,12 +65,24 @@ function WorkOrdersPage() {
         customerId: filterCustomerId || undefined,
         technicianId: filterTechnicianId || undefined,
       })
-      .then(({ workOrders }) => setWorkOrders(workOrders))
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load work orders'))
+      .then(({ workOrders }) => {
+        setWorkOrders(workOrders)
+        setError(null)
+      })
+      .catch((err) =>
+        setError(
+          navigator.onLine
+            ? err instanceof Error
+              ? err.message
+              : 'Failed to load work orders'
+            : "You're offline and this list hasn't been synced to this device yet.",
+        ),
+      )
       .finally(() => setLoading(false))
   }
 
   useEffect(load, [from, to, filterCustomerId, filterTechnicianId]) // eslint-disable-line react-hooks/exhaustive-deps
+  useReloadOnReconnect(load)
 
   function clearFilters() {
     setFrom('')

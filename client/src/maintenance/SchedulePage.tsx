@@ -6,6 +6,7 @@ import type { MaintenanceSchedule, MaintenanceScheduleStatus } from '../lib/api'
 import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { primaryButtonClass, secondaryButtonClass } from '../dashboard/buttonStyles'
 import { downloadCsv } from '../lib/csv'
+import { useReloadOnReconnect } from '../lib/useOnline'
 import { useToast } from '../dashboard/ToastContext'
 import { useAuth } from '../context/AuthContext'
 import { hasRole, OPS_MANAGE_ROLES } from '../lib/permissions'
@@ -55,12 +56,24 @@ function SchedulePage() {
         from: from || undefined,
         to: to || undefined,
       })
-      .then(({ schedules }) => setSchedules(schedules))
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load schedule'))
+      .then(({ schedules }) => {
+        setSchedules(schedules)
+        setError(null)
+      })
+      .catch((err) =>
+        setError(
+          navigator.onLine
+            ? err instanceof Error
+              ? err.message
+              : 'Failed to load schedule'
+            : "You're offline and the schedule hasn't been synced to this device yet.",
+        ),
+      )
       .finally(() => setLoading(false))
   }
 
   useEffect(load, [status, customerFilter, from, to]) // eslint-disable-line react-hooks/exhaustive-deps
+  useReloadOnReconnect(load)
 
   function clearFilters() {
     setStatus('')
