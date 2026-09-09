@@ -71,15 +71,29 @@ function openDb(): Promise<IDBDatabase> {
   })
 }
 
-function run<T>(mode: IDBTransactionMode, fn: (store: IDBObjectStore) => IDBRequest): Promise<T> {
-  return openDb().then(
-    (db) =>
-      new Promise<T>((resolve, reject) => {
-        const request = fn(db.transaction(STORE, mode).objectStore(STORE))
-        request.onsuccess = () => resolve(request.result as T)
-        request.onerror = () => reject(request.error)
-      }),
-  )
+/**
+ * Runs one transaction. A write resolves only once the transaction has *committed* — not merely
+ * when the request succeeded — so a read on a following transaction always sees it. The
+ * "N waiting to sync" count was undercounting because it could read between a put's success and
+ * its commit.
+ */
+async function run<T>(mode: IDBTransactionMode, fn: (store: IDBObjectStore) => IDBRequest): Promise<T> {
+  const db = await openDb()
+  try {
+    return await new Promise<T>((resolve, reject) => {
+      const tx = db.transaction(STORE, mode)
+      const request = fn(tx.objectStore(STORE))
+      let result: T
+      request.onsuccess = () => {
+        result = request.result as T
+      }
+      request.onerror = () => reject(request.error)
+      tx.oncomplete = () => resolve(result)
+      tx.onabort = () => reject(tx.error ?? request.error)
+    })
+  } finally {
+    db.close()
+  }
 }
 
 /** Pending items, oldest first — replay order matters (a check-in must land before its check-out). */
