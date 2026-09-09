@@ -1883,17 +1883,11 @@ export function submitMyExitReason(input: { reason: SiteExitReason; note?: strin
   })
 }
 
-export interface SiteTrackingEntry extends SiteAttendanceWithEmployee {
-  workOrder: {
-    id: string
-    workOrderNumber: string
-    title: string
-    siteLat: string | null
-    siteLng: string | null
-    siteAddress: string | null
-    customer: WorkOrderCustomer
-  }
-}
+/**
+ * A row from the /site-tracking endpoint. Since site attendance stopped linking to work orders
+ * (CLAUDE.md §7a) this is just a team attendance record — `workOrder` on it is always null.
+ */
+export type SiteTrackingEntry = SiteAttendanceWithEmployee
 
 export function getSiteTracking() {
   return request<{ current: SiteTrackingEntry[]; recentlyCompleted: SiteTrackingEntry[] }>(
