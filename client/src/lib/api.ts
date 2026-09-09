@@ -1,4 +1,7 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+// `??` not `||`: in production this is an explicit empty string, meaning "same origin" — the
+// Cloudflare Worker proxies /api there (client/worker/index.ts). Unset (local dev without a
+// .env) still falls back to the dev server.
+const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000'
 
 export type Role =
   | 'ADMIN'
