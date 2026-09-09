@@ -27,3 +27,20 @@ services:
         sync: false
       - key: EMAIL_FROM
         sync: false
+      # Web Push for the 08:15 check-in reminder. Declared here rather than only in the dashboard
+      # because this service is Blueprint-managed: a var that exists in the dashboard but not in
+      # this file can be dropped on the next sync. sync: false means "value is set by hand in the
+      # dashboard, never read from this repo" - same as the secrets above.
+      #
+      # Without the VAPID trio the server logs one warning at boot and every send is a silent
+      # no-op. REMINDER_TRIGGER_SECRET must match the GitHub repository secret of the same name
+      # exactly, or /api/push/send-checkin-reminders answers 404 and the scheduled workflow in
+      # .github/workflows/checkin-reminder.yml fails every morning.
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT
+        sync: false
+      - key: REMINDER_TRIGGER_SECRET
+        sync: false
