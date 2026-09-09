@@ -1,5 +1,8 @@
 import type { Request, Response, NextFunction } from "express";
 import { verifyPortalToken, type PortalTokenPayload } from "../lib/portalJwt";
+import { PORTAL_COOKIE_NAME, issuePortalCookie } from "../lib/portalAuthCookie";
+
+export { PORTAL_COOKIE_NAME };
 
 declare global {
   namespace Express {
@@ -11,8 +14,6 @@ declare global {
   }
 }
 
-export const PORTAL_COOKIE_NAME = "portal_token";
-
 export function requirePortalAuth(req: Request, res: Response, next: NextFunction) {
   const token = req.cookies?.[PORTAL_COOKIE_NAME];
 
@@ -22,6 +23,8 @@ export function requirePortalAuth(req: Request, res: Response, next: NextFunctio
 
   try {
     req.portalUser = verifyPortalToken(token);
+    // Slide the 30-day expiry forward on every authenticated request.
+    issuePortalCookie(res, req.portalUser);
     next();
   } catch {
     return res.status(401).json({ error: "Invalid or expired session" });
