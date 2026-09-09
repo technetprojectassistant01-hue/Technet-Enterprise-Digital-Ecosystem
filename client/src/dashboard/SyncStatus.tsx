@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { CloudOff, RefreshCw } from 'lucide-react'
 import { flushOutbox, listOutbox, subscribeOutbox, type OutboxItem } from '../lib/outbox'
+import { useOnline } from '../lib/useOnline'
 import { Modal } from './ui'
 
 /**
@@ -10,21 +11,6 @@ import { Modal } from './ui'
  * the technician's own screens deliberately don't dwell on the tracking side of attendance, but
  * "your work is saved and will upload itself" is reassurance, not monitoring.
  */
-function useOnline(): boolean {
-  const [online, setOnline] = useState(typeof navigator === 'undefined' ? true : navigator.onLine)
-  useEffect(() => {
-    const on = () => setOnline(true)
-    const off = () => setOnline(false)
-    window.addEventListener('online', on)
-    window.addEventListener('offline', off)
-    return () => {
-      window.removeEventListener('online', on)
-      window.removeEventListener('offline', off)
-    }
-  }, [])
-  return online
-}
-
 function SyncStatus() {
   const online = useOnline()
   const [items, setItems] = useState<OutboxItem[]>([])

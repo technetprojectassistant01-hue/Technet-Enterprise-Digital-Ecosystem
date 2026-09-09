@@ -11,6 +11,7 @@ import SyncStatus from './dashboard/SyncStatus'
 import { useToast } from './dashboard/ToastContext'
 import { registerServiceWorker } from './lib/pushNotifications'
 import { setOutboxDropHandler, startOutbox } from './lib/outbox'
+import { useOnline } from './lib/useOnline'
 
 function Dashboard() {
   const { user, logout } = useAuth()
@@ -18,6 +19,7 @@ function Dashboard() {
   const toastRef = useRef(toast)
   toastRef.current = toast
   const { pathname } = useLocation()
+  const online = useOnline()
 
   // Register the service worker for every signed-in user (it was previously registered only on
   // push opt-in), and start the offline outbox: it replays field submissions that were saved on
@@ -138,6 +140,13 @@ function Dashboard() {
             </div>
           </div>
         </header>
+
+        {!online && (
+          <div className="border-b border-amber-400/30 bg-amber-400/10 px-8 py-2 text-xs text-amber-300">
+            Offline — showing your last synced data. Anything you save is kept on this device and
+            uploads automatically when you reconnect.
+          </div>
+        )}
 
         <main className="flex-1 px-8 py-6">
           <div key={pathname} className="animate-fade-in">
