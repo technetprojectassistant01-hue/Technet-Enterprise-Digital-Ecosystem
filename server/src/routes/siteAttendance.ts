@@ -6,6 +6,7 @@ import { distanceMeters, SITE_GEOFENCE_RADIUS_METERS } from "../lib/geo";
 import { notifyEmployee } from "../lib/notifications";
 import { parseClockTime } from "../lib/clockTime";
 import { checkLocationAgainstGps } from "../lib/locationMatch";
+import { claimRequest, releaseRequest } from "../lib/idempotency";
 
 const router = Router();
 
@@ -269,31 +270,53 @@ router.post("/check-in", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
   const transportCost = parseTransportCost((req.body as { transportCost?: unknown })?.transportCost);
   if ("error" in transportCost) return res.status(400).json({ error: transportCost.error });
 
-  const employee = await prisma.employee.findUnique({ where: { userId: req.user!.sub } });
-  if (!employee) return res.status(403).json({ error: "No employee record is linked to your account" });
+  // A check-in queued offline is replayed on reconnect; if the first attempt actually landed
+  // before the signal dropped, hand back the open session rather than creating a second one.
+  const clientRequestId = (req.body as { clientRequestId?: unknown })?.clientRequestId;
+  if (!(await claimRequest(clientRequestId, "site-check-in"))) {
+    const existing = await prisma.siteAttendance.findFirst({
+      where: { employee: { userId: req.user!.sub }, checkOutAt: null },
+      include: { workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE },
+    });
+    return res.status(200).json({ siteAttendance: existing, deduped: true });
+  }
 
-  const openVisit = await prisma.siteAttendance.findFirst({
-    where: { employeeId: employee.id, checkOutAt: null },
-  });
-  if (openVisit) return res.status(400).json({ error: "You are already checked in" });
+  try {
+    const employee = await prisma.employee.findUnique({ where: { userId: req.user!.sub } });
+    if (!employee) {
+      await releaseRequest(clientRequestId);
+      return res.status(403).json({ error: "No employee record is linked to your account" });
+    }
 
-  // Advisory only, and it never blocks: a technician checks in successfully whatever this says.
-  const locationCheck = await checkLocationAgainstGps(note, coords);
+    const openVisit = await prisma.siteAttendance.findFirst({
+      where: { employeeId: employee.id, checkOutAt: null },
+    });
+    if (openVisit) {
+      await releaseRequest(clientRequestId);
+      return res.status(400).json({ error: "You are already checked in" });
+    }
 
-  const siteAttendance = await prisma.siteAttendance.create({
-    data: {
-      employeeId: employee.id,
-      checkInLat: coords.lat,
-      checkInLng: coords.lng,
-      checkInNote: note,
-      checkInDeclaredTime: declaredTime.value,
-      checkInTransportCost: transportCost.value,
-      checkInLocationMatch: locationCheck.match,
-      checkInLocationDistanceMeters: locationCheck.distanceMeters,
-    },
-    include: { workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE },
-  });
-  res.status(201).json({ siteAttendance });
+    // Advisory only, and it never blocks: a technician checks in successfully whatever this says.
+    const locationCheck = await checkLocationAgainstGps(note, coords);
+
+    const siteAttendance = await prisma.siteAttendance.create({
+      data: {
+        employeeId: employee.id,
+        checkInLat: coords.lat,
+        checkInLng: coords.lng,
+        checkInNote: note,
+        checkInDeclaredTime: declaredTime.value,
+        checkInTransportCost: transportCost.value,
+        checkInLocationMatch: locationCheck.match,
+        checkInLocationDistanceMeters: locationCheck.distanceMeters,
+      },
+      include: { workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE },
+    });
+    res.status(201).json({ siteAttendance });
+  } catch (err) {
+    await releaseRequest(clientRequestId);
+    throw err;
+  }
 });
 
 router.post("/check-out", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
@@ -305,32 +328,55 @@ router.post("/check-out", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => 
   const transportCost = parseTransportCost((req.body as { transportCost?: unknown })?.transportCost);
   if ("error" in transportCost) return res.status(400).json({ error: transportCost.error });
 
-  const employee = await prisma.employee.findUnique({ where: { userId: req.user!.sub } });
-  if (!employee) return res.status(403).json({ error: "No employee record is linked to your account" });
+  // As with check-in: a replay of a check-out that already landed returns the last session
+  // rather than the "not currently checked in" 404 that would otherwise alarm the technician.
+  const clientRequestId = (req.body as { clientRequestId?: unknown })?.clientRequestId;
+  if (!(await claimRequest(clientRequestId, "site-check-out"))) {
+    const last = await prisma.siteAttendance.findFirst({
+      where: { employee: { userId: req.user!.sub } },
+      orderBy: { checkInAt: "desc" },
+      include: { workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE },
+    });
+    return res.status(200).json({ siteAttendance: last, deduped: true });
+  }
 
-  const openVisit = await prisma.siteAttendance.findFirst({
-    where: { employeeId: employee.id, checkOutAt: null },
-  });
-  if (!openVisit) return res.status(404).json({ error: "You are not currently checked in" });
+  try {
+    const employee = await prisma.employee.findUnique({ where: { userId: req.user!.sub } });
+    if (!employee) {
+      await releaseRequest(clientRequestId);
+      return res.status(403).json({ error: "No employee record is linked to your account" });
+    }
 
-  const checkOutNote = parseNote(req.body);
-  const locationCheck = await checkLocationAgainstGps(checkOutNote, coords);
+    const openVisit = await prisma.siteAttendance.findFirst({
+      where: { employeeId: employee.id, checkOutAt: null },
+    });
+    if (!openVisit) {
+      await releaseRequest(clientRequestId);
+      return res.status(404).json({ error: "You are not currently checked in" });
+    }
 
-  const siteAttendance = await prisma.siteAttendance.update({
-    where: { id: openVisit.id },
-    data: {
-      checkOutAt: new Date(),
-      checkOutLat: coords.lat,
-      checkOutLng: coords.lng,
-      checkOutNote,
-      checkOutDeclaredTime: declaredTime.value,
-      checkOutTransportCost: transportCost.value,
-      checkOutLocationMatch: locationCheck.match,
-      checkOutLocationDistanceMeters: locationCheck.distanceMeters,
-    },
-    include: { workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE },
-  });
-  res.json({ siteAttendance });
+    const checkOutNote = parseNote(req.body);
+    const locationCheck = await checkLocationAgainstGps(checkOutNote, coords);
+
+    const siteAttendance = await prisma.siteAttendance.update({
+      where: { id: openVisit.id },
+      data: {
+        checkOutAt: new Date(),
+        checkOutLat: coords.lat,
+        checkOutLng: coords.lng,
+        checkOutNote,
+        checkOutDeclaredTime: declaredTime.value,
+        checkOutTransportCost: transportCost.value,
+        checkOutLocationMatch: locationCheck.match,
+        checkOutLocationDistanceMeters: locationCheck.distanceMeters,
+      },
+      include: { workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE },
+    });
+    res.json({ siteAttendance });
+  } catch (err) {
+    await releaseRequest(clientRequestId);
+    throw err;
+  }
 });
 
 /** A periodic (not continuous) re-check of the technician's location while checked in and linked to a work order. */
