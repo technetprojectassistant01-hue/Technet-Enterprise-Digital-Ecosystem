@@ -74,6 +74,8 @@ Everyone lands on **Overview** (`/dashboard`) — as of 2026-08-19 this is real,
 | Settings, User Management | Built | Admin-only user management (`/dashboard/users`), self-service password change |
 | **Notifications** | **Built** (2026-08-19), in-app only | `server/src/lib/notifications.ts` (`notifyUser`/`notifyEmployee`/`notifyRoles`), `/api/notifications`, bell icon in `Dashboard.tsx` header (`NotificationBell.tsx`) + Overview's Recent Activity panel. Triggers so far: leave approve/reject, requisition approve/reject, work order technician assignment, quotation accept/reject, intervention report submit+review, maintenance request schedule/cancel, maintenance report submit+review+completion, project assignment, supervisor-requested location check (§13 item 2). No email/SMS — in-app polling only (60s). |
 
+**Offline field capture + sync is built** (2026-09-09, §14): the five technician submissions (check-in, check-out, daily report, maintenance report, intervention report) save to the device on a signal drop and auto-upload on reconnect, and the technician's own job info is cached for offline viewing.
+
 Also **not built** (per the flowchart, confirmed unimplemented): a biometric/facial-recognition attendance-machine integration for office staff ("Attendance Sync" under Workforce is currently just a decorative dashboard tile), SMS gateway, general AI content-generation service, cloud file storage (documents are DB blobs today), and email notifications (in-app notifications now exist, see table above).
 
 ## 6. Roles & access control (RBAC)
@@ -124,7 +126,7 @@ Advisory only, exactly like the geofence it replaced: a failed, slow or empty lo
 
 **The technician's own widget deliberately does not surface the tracking back at them** (2026-09-03, `d16aa55`): no coordinates, no map links, no on-site/outside-site badge, no "explain why you left the site" prompt. All of it is still recorded and shown in full to Admin/HR/Operations. This is about not confronting people with monitoring in their own screen — **it is not concealment and must not be built into it.** The browser's geolocation permission prompt discloses the tracking before the first check-in can succeed, and check-in fails outright if declined; that disclosure isn't ours to remove, and the app cannot work without it. Covert location collection on staff would also sit squarely under Mauritius's Data Protection Act 2017.
 
-**Manager visibility**: **Team Attendance** (`OPS_MANAGE_ROLES`) — Month/Week toggle, per-technician filter, a daily register showing stated-vs-recorded times, transport cost and location flags, a per-technician summary (days present, check-ins, hours on site, transport total, location flags), and a CSV export of whichever period is on screen. **Field Operations** (`OPS_MANAGE_ROLES`) — who's in the field right now. Both it and Insight's "technicians on site" tile previously filtered to work-order-linked sessions and therefore showed nothing at all; repointed at all open sessions 2026-09-03.
+**Manager visibility**: **Team Attendance** (`OPS_MANAGE_ROLES`) — Month/Week toggle, per-technician filter, a daily register showing stated-vs-recorded times, transport cost and location flags, a per-technician summary (days present, check-ins, hours on site, transport total, location flags), and a CSV export of whichever period is on screen. **Field Operations** (`OPS_MANAGE_ROLES`) — who's in the field right now: technician, the location they typed, the location-match flag, stated-vs-recorded check-in time, duration, transport. Both it and Insight's "technicians on site" tile previously filtered to work-order-linked sessions and therefore showed nothing at all; repointed at all open sessions 2026-09-03. Field Operations still assumed every session had a work order after that repoint and **crashed** (`entry.workOrder.id` on a null relation) on any open session — fixed 2026-09-09 (§14) by removing the work-order grouping entirely.
 
 The weekly view sends an explicit `from`/`to` day range rather than carving a week out of month data, because a week straddles a month boundary several times a year. Export is CSV, not `.xlsx` — it opens in Excel and matches how Work Orders and Intervention Reports already export.
 
@@ -197,6 +199,16 @@ Grouped by domain (not exhaustive on fields — read the schema for that):
   both passing clean. Only a real Playwright run that fills the actual form and submits it caught it.
   For any new numeric field reachable from a form, run the Playwright check against the real form, not
   just a raw-fetch script with hand-typed correct types.
+- **A hand-rolled IndexedDB write must resolve on `transaction.oncomplete`, not `request.onsuccess`** —
+  the request succeeding doesn't mean the transaction has committed, and a follow-up read on a fresh
+  transaction can miss the just-written row. Found 2026-09-09 (§14): the offline outbox's
+  "N waiting to sync" count undercounted because the count refresh raced the commit.
+- **When a shared record shape loses a relation, grep every unguarded dereference of it across the
+  client.** Site attendance dropped its work-order link (§7a) but `FieldOperationsPage` still did
+  `entry.workOrder.id` throughout and crashed on every open session (2026-09-09, §14). Every other
+  `.workOrder.` access in the client was already `?.`/`&&`-guarded — a single stale page assumed
+  otherwise, and only a runtime crash surfaced it (`tsc` was happy because the client type still
+  claimed the relation was non-null).
 - **PDF/file download buttons must use fetch-with-credentials + blob, never a plain cross-origin `<a href target="_blank">`** (fixed 2026-08-25 across Quotation PDF, Invoice PDF, and both Technet Connect portal PDF links — `c303302`, `93633f1`, `4814a1e`, `5bc9272`; two more instances found and fixed 2026-08-28 — Documents page download, and Intervention Report's attachment download + photo "view full size" links, `e9be983`/`4be2c13`). Root cause: prod auth cookies are `SameSite=None; Partitioned` (see §3/§6), and a Partitioned cookie set while the top-level browsing context is the client origin is *not* sent on a direct top-level navigation to the server's own origin (that creates a different partition). A plain link straight to the API 401s in prod even though the user is logged in. `fetch(url, { credentials: 'include' })` from inside the client page keeps the top-level context on the client origin, so the cookie is sent correctly — then build a blob URL and trigger the save via a synthetic `<a>` click (download) or `window.open(blobUrl)` (view in a new tab). Note an `<img src>` pointed straight at an authenticated API URL is *not* the same bug — that's a same-partition subresource fetch, not a top-level navigation, so the cookie is sent fine; only a link/navigation that opens a *new* top-level browsing context is affected. Apply this pattern to any *new* download/export/view-in-new-tab control that hits the API directly — this bug has now recurred three separate times across different pages, so specifically check for it whenever adding one.
 - **Customer portal login must match email case-insensitively and trim both fields** (fixed
   2026-08-27, `server/src/routes/portalAuth.ts`). Symptom reported by the user: "customer uses their
@@ -555,6 +567,80 @@ Two briefs (both under `C:\Users\User\Downloads\`) drove this work: `claude-code
 2. **Attendance-trust confirmation** — ✅ Done. Existing GPS system (§7a) already covered the manager's stated need; the one real gap — supervisor-initiated, on-demand location check (previously technician-initiated only) — was built as a "Request location check" button on Field Operations, sending a notification asking the technician to verify (not a live/forced ping — kept honest in the UI copy). (`7aaa461`, `72246e1`, `85da9c3`, `27fe2ac`)
 3. **Intervention search/audit by client** — ✅ Done. Customer + date filters and CSV export already existed and worked; added quick 3/6/12-month range buttons and a visible result count for faster phone-call lookups. (`9f484b5`) Sub-location structured field (e.g. "Level 5") question raised with the user — decision: stay on free text, no schema change.
 4. **Per-unit problem/action breakdown** on `InterventionReport` — ✅ Done. New `InterventionReportUnit` model (label/problem/action rows, cascade-deleted with the report), an opt-in `UnitBreakdownEditor` on the report form, and a matching display block on the detail page. (`7ce2969` through `b519f56`)
-5. **Offline save + auto-sync** — ⏳ Not started. PWA install (Part 1, low-risk) should ship before offline field-flow support (Part 2). Blocked on the manager confirming exact offline scope needed (check-in only vs. full report+photo submission vs. viewing-only) before any queue/sync code is written — do not guess this one.
-6. **Parallel-team visibility** — ✅ Done. Field Operations now groups technicians under one job header when several share a work order, instead of scattering them as unrelated rows. (`eb509a0`)
+5. **Offline save + auto-sync** — ✅ Done (2026-09-09), see §14. Scope was confirmed by the user first ("field entries + their job info", from a gist of the manager's meeting): the five field submissions save on the device during a signal drop and auto-upload on reconnect; the technician's own job info is cached for offline viewing. Not "the whole app works offline" — the manager explicitly wanted the narrow, cheap version.
+6. **Parallel-team visibility** — ✅ Done. Field Operations *used to* group technicians under one job header when several shared a work order (`eb509a0`) — but that grouping was removed 2026-09-09 (§14) because site attendance no longer links to a work order at all (§7a), so there was nothing to group by and `groupByWorkOrder` was in fact crashing the page.
 7. **OCR/scan ingestion** — Parked by the manager as a contingency only. Not built, not planned.
+
+## 14. Offline field capture + sync (2026-09-09)
+
+The last open item from §13 (item 5). Scope was settled by the user before any code: a **gist**
+of the manager's meeting (`CLAUDE GIST.pdf` / `CLAUDE GIST (1).pdf` in Downloads, page 3 of the
+second one carries a test report) made clear he wanted the **narrow** version — *"not the app
+works with no internet"* but *"a technician's check-in or report survives a signal drop, gets
+saved on the device, and quietly catches up to head office whenever a connection comes back"*,
+and repeatedly stressed cheap-and-simple over clever. Asked to choose, the user picked **"field
+entries + their job info"** (not "every technician screen").
+
+**Hard platform limit, stated plainly:** iOS browsers have no Background Sync, so on iPhones the
+queue flushes **the next time the technician opens the app** with signal — automatic, no re-entry,
+but not while the app is closed. Android can flush in the background. The committed mechanism is
+the **foreground flush**; Background Sync is an Android-only bonus and is **unverified against
+prod's cross-origin `SameSite=None; Partitioned` cookie** (a background SW fetch may not carry it)
+— don't rely on it.
+
+### What was built
+
+- **`ProcessedRequest` table + `server/src/lib/idempotency.ts`** (`claimRequest`/`releaseRequest`/
+  `recordRequestResult`/`priorRequestResult`). A queued submission carries a stable
+  `clientRequestId`; a replay of one that already landed is a no-op returning the existing row,
+  not a duplicate. Wired into check-in, check-out, daily report, maintenance report, intervention
+  report create, and each intervention photo. Requests without a `clientRequestId` are unaffected.
+- **`client/src/lib/outbox.ts`** — hand-rolled IndexedDB queue (`technet-outbox` DB, no dep).
+  `submitOrQueue()` tries the real call and, only on a genuine network failure, saves to the queue
+  and returns `{ queued: true }` (a real 4xx/5xx still throws, so validation errors still reach the
+  technician). `flushOutbox()` replays FIFO — on the `online` event, app start, a 60s timer, and a
+  best-effort SW Background Sync — and **stops at the first item that can't go through** (order
+  matters: a check-out must not land before its check-in). Intervention reports queue their photo
+  uploads too and a replay resumes from `progress.photosDone`.
+- **The five call sites** (`AttendanceWidget`, `DailyReportsPage`, `ScheduleDetailPage`,
+  `InterventionReportFormPage`) route through `submitOrQueue`. The attendance widget shows
+  "Checked in — waiting to sync" and still offers check-out when a check-in is queued.
+- **`SyncStatus.tsx`** in the dashboard header — "Offline" pill / "N waiting to sync" count with a
+  panel explaining it and a manual "Try now". Plus a global one-line offline banner in
+  `Dashboard.tsx`.
+- **Service worker (`public/sw.js`)** now also: registers for **every** signed-in user (was
+  push-opt-in only, done in `Dashboard.tsx`); has a Background Sync `outbox-flush` handler
+  (compact re-implementation of the flush — keep it in step with `OutboxItem`); and **caches for
+  offline reads** — the SPA shell (network-first) and an allow-list of technician GET endpoints
+  (`/api/work-orders`, `/api/maintenance-schedules`, `/api/daily-reports`,
+  `/api/intervention-reports`, `/api/maintenance-assets/:id`, `/api/site-attendance/me`,
+  `/api/auth/me`, `/api/customers`, `/api/employees`) network-first with a cache fallback. Versioned
+  caches (`CACHE_VERSION`), cleared on `activate`. Cleared on logout (`lib/offlineCache.ts`) — the
+  outbox is deliberately **not** cleared on logout (unsynced work).
+- **`client/src/lib/useOnline.ts`** — `useOnline()` + `useReloadOnReconnect()`. The latter is wired
+  into Daily Reports, Work Orders and Maintenance Schedule so a page opened offline refreshes
+  itself on reconnect instead of staying stale.
+
+### Verification status
+
+- **Server idempotency** — verified end-to-end against the real DB with a disposable
+  `server/scratch-idempotency.ts` (deleted after): replays return 200-deduped, exactly one row.
+  Server test suite still green (107).
+- **Client** — `tsc -b` clean throughout. Browser verification was **blocked on this machine**
+  (company laptop; Chrome automation can't reach `localhost`, no local Playwright). A test run in
+  another environment (that gist's page 3) confirmed Test A (daily report survives offline, syncs,
+  no duplicate) and data integrity under a two-item queue. It also surfaced two fixes, both since
+  made: an IndexedDB write resolved on request-success not transaction-commit (undercounted the
+  "N waiting" pill), and the Field Operations `groupByWorkOrder` crash (§7a — pre-existing, not
+  from this work).
+- **Real Android + iPhone pass** with genuine airplane mode is still outstanding — hand to the user.
+
+### Lessons (see also §9)
+
+- **An IndexedDB write must resolve on `transaction.oncomplete`, not `request.onsuccess`** — a
+  follow-up read on a fresh transaction can otherwise miss the just-written row. This undercounted
+  the sync indicator until fixed.
+- **When a shared record shape stops carrying a relation, grep every unguarded dereference of it.**
+  Site attendance dropped its work-order link (§7a) but `FieldOperationsPage` still did
+  `entry.workOrder.id` everywhere and crashed on every open session. Every *other* `.workOrder.`
+  access in the client was correctly `?.`/`&&`-guarded — only this page assumed it.
