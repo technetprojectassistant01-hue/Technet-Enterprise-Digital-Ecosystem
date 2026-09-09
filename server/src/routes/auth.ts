@@ -2,7 +2,7 @@ import { Router } from "express";
 import bcrypt from "bcryptjs";
 import rateLimit from "express-rate-limit";
 import { prisma } from "../lib/prisma";
-import { signAuthToken } from "../lib/jwt";
+import { AUTH_COOKIE_NAME, authCookieOptions, issueAuthCookie } from "../lib/authCookie";
 import { requireAuth } from "../middleware/auth";
 import { generateResetToken, hashResetToken } from "../lib/passwordReset";
 import { sendPasswordResetEmail } from "../lib/email";
@@ -19,24 +19,6 @@ const forgotPasswordLimiter = rateLimit({
   message: { error: "Too many reset requests. Please try again later." },
 });
 
-const COOKIE_NAME = "token";
-const isProduction = process.env.NODE_ENV === "production";
-
-// Client (Cloudflare) and server (Render) are different sites in
-// production, so the session cookie needs SameSite=None to be sent on
-// cross-site fetch calls. In dev both run on localhost (same site), so
-// Lax is fine and avoids needing HTTPS locally.
-// `partitioned` (CHIPS) keeps the cookie working under browsers' rollout
-// of third-party-cookie blocking — without it, some real-world browser
-// profiles silently drop the cookie after login, leaving every
-// subsequent request unauthenticated even though the login itself
-// "succeeded" client-side.
-const cookieOptions = {
-  httpOnly: true,
-  secure: isProduction,
-  sameSite: (isProduction ? "none" : "lax") as "none" | "lax",
-  partitioned: isProduction,
-};
 
 router.post("/login", async (req, res) => {
   const { email, password } = req.body ?? {};
@@ -62,12 +44,7 @@ router.post("/login", async (req, res) => {
 
   await logSecurityEvent("LOGIN_SUCCEEDED", { actorUserId: user.id, actorEmail: user.email });
 
-  const token = signAuthToken({ sub: user.id, role: user.role });
-
-  res.cookie(COOKIE_NAME, token, {
-    ...cookieOptions,
-    maxAge: 8 * 60 * 60 * 1000,
-  });
+  issueAuthCookie(res, { sub: user.id, role: user.role });
 
   res.json({
     user: {
@@ -81,7 +58,7 @@ router.post("/login", async (req, res) => {
 });
 
 router.post("/logout", (_req, res) => {
-  res.clearCookie(COOKIE_NAME, cookieOptions);
+  res.clearCookie(AUTH_COOKIE_NAME, authCookieOptions);
   res.json({ ok: true });
 });
 

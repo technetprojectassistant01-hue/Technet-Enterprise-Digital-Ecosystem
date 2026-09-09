@@ -8,6 +8,7 @@ function mockReqRes(cookies: Record<string, string> = {}) {
   const res = {
     status: vi.fn().mockReturnThis(),
     json: vi.fn().mockReturnThis(),
+    cookie: vi.fn().mockReturnThis(),
   } as unknown as Response;
   const next = vi.fn();
   return { req, res, next };
@@ -35,6 +36,8 @@ describe("requireAuth", () => {
     expect(next).toHaveBeenCalledOnce();
     expect(req.user).toMatchObject({ sub: "user-1", role: "OPERATIONS_MANAGER" });
     expect(res.status).not.toHaveBeenCalled();
+    // The 30-day expiry is slid forward on every authenticated request.
+    expect(res.cookie).toHaveBeenCalledWith("token", expect.any(String), expect.objectContaining({ maxAge: expect.any(Number) }));
   });
 });
 

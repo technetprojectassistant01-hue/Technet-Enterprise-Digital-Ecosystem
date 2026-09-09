@@ -13,7 +13,10 @@ export interface AuthTokenPayload {
 }
 
 export function signAuthToken(payload: AuthTokenPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: "8h" });
+  // 30 days, and every authenticated request re-issues it (see lib/authCookie.ts), so an active
+  // session never expires and only a month of real inactivity logs someone out. The old 8h with
+  // no renewal meant a re-login roughly once a working day.
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: "30d" });
 }
 
 export function verifyAuthToken(token: string): AuthTokenPayload {

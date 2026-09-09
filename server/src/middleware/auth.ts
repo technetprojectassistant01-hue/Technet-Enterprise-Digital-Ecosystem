@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { verifyAuthToken, type AuthTokenPayload } from "../lib/jwt";
+import { issueAuthCookie } from "../lib/authCookie";
 
 declare global {
   namespace Express {
@@ -18,6 +19,9 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
 
   try {
     req.user = verifyAuthToken(token);
+    // Slide the 30-day expiry forward on every authenticated request, so an active session never
+    // lapses and only real inactivity signs someone out.
+    issueAuthCookie(res, req.user);
     next();
   } catch {
     return res.status(401).json({ error: "Invalid or expired session" });
