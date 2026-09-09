@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import * as api from '../lib/api'
 import type { CurrentUser } from '../lib/api'
+import { clearOfflineCaches } from '../lib/offlineCache'
 
 interface AuthContextValue {
   user: CurrentUser | null
@@ -36,6 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function logout() {
     await api.logout()
+    await clearOfflineCaches()
     setUser(null)
   }
 
