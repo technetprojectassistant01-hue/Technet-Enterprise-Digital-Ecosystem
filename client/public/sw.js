@@ -1,7 +1,7 @@
 /**
  * Service worker for Technet Digital.
  *
- * Two jobs:
+ * Three jobs:
  *
  *  1. Web Push: showing the 08:15 check-in reminder on a device whose browser is closed.
  *  2. Background Sync: flushing the offline outbox (see src/lib/outbox.ts) when the connection
@@ -11,11 +11,35 @@
  *     fetch from here to the API's own origin may not carry the cookie. The foreground flush,
  *     which runs in the page where the cookie definitely works, is the guarantee; this only
  *     ever helps, never hurts.
+ *  3. Offline reads: caching the app shell and the technician's own data (their work orders,
+ *     schedule, assets) so those screens still open with no signal (CLAUDE.md §13 item 5,
+ *     Milestone 2). Navigations and API reads are network-first, so an online device always
+ *     gets the latest — the cache is only a fallback, never authoritative, which keeps a stale
+ *     build from being served.
  *
- * It still deliberately does NOT cache application code or pages — offline *reads* are a
- * separate piece of work (CLAUDE.md §13 item 5, Milestone 2). Adding caching here carelessly
- * would risk serving a stale build.
+ * Dev note: this runs on localhost too. Navigation is network-first so Vite HMR is unaffected;
+ * if HMR ever misbehaves, DevTools → Application → Service Workers → Unregister.
  */
+
+// Bump on a release when you want old caches garbage-collected. Not required for correctness —
+// network-first means online users always get the latest regardless.
+const CACHE_VERSION = 'v1'
+const SHELL_CACHE = `technet-shell-${CACHE_VERSION}`
+const API_CACHE = `technet-api-${CACHE_VERSION}`
+
+// GET paths whose responses are worth keeping for offline viewing — the technician-facing data,
+// not the whole API. Matched by path only, so it works whatever origin the API is served from.
+const CACHEABLE_API = [
+  /^\/api\/auth\/me$/,
+  /^\/api\/site-attendance\/me$/,
+  /^\/api\/work-orders(\/[^/]+)?$/,
+  /^\/api\/daily-reports$/,
+  /^\/api\/intervention-reports(\/[^/]+)?$/,
+  /^\/api\/maintenance-schedules(\/[^/]+)?$/,
+  /^\/api\/maintenance-assets\/[^/]+$/,
+  /^\/api\/customers$/,
+  /^\/api\/employees$/,
+]
 
 self.addEventListener('install', () => {
   // Take over immediately rather than waiting for every old tab to close, so a technician who
@@ -24,7 +48,76 @@ self.addEventListener('install', () => {
 })
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim())
+  event.waitUntil(
+    (async () => {
+      const keep = new Set([SHELL_CACHE, API_CACHE])
+      for (const key of await caches.keys()) {
+        if (key.startsWith('technet-') && !keep.has(key)) await caches.delete(key)
+      }
+      await self.clients.claim()
+    })(),
+  )
+})
+
+function isStaticAsset(url) {
+  return (
+    url.origin === self.location.origin &&
+    (url.pathname.startsWith('/assets/') ||
+      /\.(?:js|css|woff2?|ttf|png|svg|ico|webmanifest)$/.test(url.pathname))
+  )
+}
+
+function isCacheableApi(url) {
+  return url.pathname.startsWith('/api/') && CACHEABLE_API.some((re) => re.test(url.pathname))
+}
+
+/** Network-first: fresh when online, last-cached when not. Used for navigations and API reads. */
+async function networkFirst(request, cacheName, fallbackKey) {
+  const cache = await caches.open(cacheName)
+  try {
+    const res = await fetch(request)
+    if (res.ok) cache.put(fallbackKey || request, res.clone())
+    return res
+  } catch (e) {
+    const cached = await cache.match(fallbackKey || request)
+    if (cached) return cached
+    throw e
+  }
+}
+
+/** Serve from cache immediately, refresh in the background. Used for hashed static assets. */
+async function staleWhileRevalidate(request) {
+  const cache = await caches.open(SHELL_CACHE)
+  const cached = await cache.match(request)
+  const network = fetch(request)
+    .then((res) => {
+      if (res.ok) cache.put(request, res.clone())
+      return res
+    })
+    .catch(() => null)
+  return cached || (await network) || fetch(request)
+}
+
+self.addEventListener('fetch', (event) => {
+  const { request } = event
+  if (request.method !== 'GET') return // never cache a mutation
+
+  const url = new URL(request.url)
+
+  if (request.mode === 'navigate') {
+    // The SPA shell — Cloudflare serves index.html for any client route.
+    event.respondWith(networkFirst(request, SHELL_CACHE, '/index.html'))
+    return
+  }
+  if (isStaticAsset(url)) {
+    event.respondWith(staleWhileRevalidate(request))
+    return
+  }
+  if (isCacheableApi(url)) {
+    event.respondWith(networkFirst(request, API_CACHE))
+    return
+  }
+  // Everything else (binary photo downloads, non-listed endpoints, other origins): untouched.
 })
 
 self.addEventListener('push', (event) => {
