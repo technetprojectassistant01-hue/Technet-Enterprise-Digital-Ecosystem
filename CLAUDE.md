@@ -22,10 +22,11 @@ There is a formal **SDD (Software Design Document)**, the actual source of truth
 
 ## 3. Deployment topology
 
-- **Client** → Cloudflare Workers (via `wrangler`, static SPA build with `not_found_handling: single-page-application`). Domain: `technet-digital.technetprojectassistant01.workers.dev` — note the account subdomain in the middle; the shorter `technet-digital.workers.dev` is not a real address and won't resolve. `CLIENT_ORIGIN` in `render.yaml` must match it exactly, no trailing slash.
+- **Client** → Cloudflare Workers (via `wrangler`, SPA build with `not_found_handling: single-page-application`). Domain: `technet-digital.technetprojectassistant01.workers.dev` — note the account subdomain in the middle; the shorter `technet-digital.workers.dev` is not a real address and won't resolve. `CLIENT_ORIGIN` in `render.yaml` must match it exactly, no trailing slash.
+  - As of 2026-09-09 the client is **no longer static-only**: a small Worker (`client/worker/index.ts`, `main` in `client/wrangler.jsonc`) proxies `/api/*` to the Render API and serves everything else from the static assets binding. So **the browser talks to one origin for both the app and the API** — which is what makes the auth cookie first-party (see below). `VITE_API_URL` is now empty in `deploy-client.yml` (the client calls `/api` relative); `api.ts`/`outbox.ts` use `?? 'http://localhost:4000'` so local dev without a `.env` still works. `client/worker/index.ts` lives outside `src/` so `tsc -b` doesn't try to typecheck it against DOM libs.
 - **Server** → Render (Node host running the compiled Express app; `render.yaml` Blueprint builds with `npm ci --include=dev && npm run build -w server` and starts with `npm run start -w server`, which runs `prisma migrate deploy` before booting). Migrated from Railway 2026-08-24 after its free trial ran out — free-tier tradeoff: the service sleeps after ~15 min idle, so the first request after a quiet period can take 30-60s. `railway.json` is left in the repo as inert historical reference, not used by anything. **Build gotcha**: `NODE_ENV=production` (needed at runtime for cookie behavior, see below) also applies during Render's build step, which makes a plain `npm ci` skip devDependencies the build itself needs (`typescript`, `@types/*`, `vitest`) — `--include=dev` forces them in regardless. If a future Render deploy fails with `TS7016`/`TS7006`/"Cannot find module 'vitest'", this is almost certainly the cause.
 - **Database** → Neon Postgres. Neon suspends compute after ~5 min with no queries (2.5–9s cold start on the next one — see §9). `server/src/lib/keepWarm.ts` runs a `SELECT 1` every 4 min *while the server process is up* to keep that from biting interactive actions (PDF downloads especially). It deliberately does **not** keep the Render host awake — that's inbound-HTTP-driven, and when the host itself is asleep the keep-warm timer isn't running anyway. So the first request after a fully idle period can still hit both cold starts stacked (~30–60s Render + a few s Neon); once the server's warm, Neon stays warm too.
-- Client and server are different origins in production, so auth cookies use `SameSite=None; Secure; Partitioned` in prod and `SameSite=Lax` in dev (see the cookie config comment in `server/src/routes/auth.ts` — this was hard-won; don't simplify it without understanding why).
+- **Auth cookies are first-party `SameSite=Lax` everywhere** as of 2026-09-09. They *were* `SameSite=None; Secure; Partitioned` in prod because the app and API were different origins — but iOS drops `SameSite=None` cross-site cookies when a home-screen PWA is closed, so an installed app asked for login on every reopen. The Worker proxy (above) makes `/api` same-origin, so `Lax` is enough and it survives an app close. Config lives in `server/src/lib/authCookie.ts` (staff) and `server/src/lib/portalAuthCookie.ts` (portal, kept a separate copy on purpose). **Sessions are 30 days and re-issued on every authenticated request** (`requireAuth`/`requirePortalAuth` call `issueAuthCookie`/`issuePortalCookie`), so an active user never gets logged out — was 8h with no renewal. Longer-lived JWT ⇒ a stolen token is valid longer; the mitigation is still `JWT_SECRET` rotation as the "log everyone out" kill switch.
 - **Known deploy gotcha**: Cloudflare has intermittently served stale cached HTML/JS after a successful deploy (`CF-Cache-Status: HIT` with old content, confirmed via direct `curl`, not just browser cache). Fix: push a fresh commit to force a new deploy version. If "I don't see the new feature" comes up after confirming a deploy succeeded, check `CF-Cache-Status` via curl before assuming the code is wrong.
 
 ## 4. Repo structure
@@ -99,7 +100,7 @@ Role groups used for gating (server `roles.ts` / client `permissions.ts`):
 - `QUOTE_REQUEST_VIEW_ROLES` = ADMIN, SALES_OFFICER, OPERATIONS_MANAGER — added 2026-08-25, read-only visibility into the Quote Request queue for Operations Managers; creating/converting/declining stays `SALES_ROLES`-only. See §10.
 - `MARKETING_ROLES` = ADMIN, SALES_OFFICER — added 2026-08-26 for Technet Digital Marketing Phase 1. No Technet stakeholder has confirmed who owns marketing yet, so this defaults to Sales as the closest adjacent function, same pragmatic pattern as `CUSTOMER_MANAGE_ROLES`. Read access is broader (`NON_FIELD_ROLES`, same as the rest of ERP-ish modules); only writes are gated to `MARKETING_ROLES`. See §10a.
 
-**Customer portal auth is a separate domain, not a 9th `Role`.** Technet Connect (`/portal/*`, added 2026-08-24) does not reuse `Role`/`requireAuth`/`requireRole` at all — a `CustomerPortalUser` login gets its own cookie (`portal_token`, not `token`), its own JWT signing (`server/src/lib/portalJwt.ts`, `verifyPortalToken`) carrying a distinct `audience: "portal"` claim, and its own middleware (`requirePortalAuth`, sets `req.portalUser`, never `req.user`). This was deliberate: adding a `CUSTOMER` role into the existing enum would have meant auditing every broad allow-list (`NON_FIELD_ROLES`, etc.) across dozens of routes to make sure a customer token could never slip through. The `audience` claim is the actual enforcement point — verified in this session that a genuine staff JWT placed directly in the `portal_token` cookie is rejected outright, not just kept out by cookie-name convention.
+**Customer portal auth is a separate domain, not a 9th `Role`.** Technet Connect (`/portal/*`, added 2026-08-24) does not reuse `Role`/`requireAuth`/`requireRole` at all — a `CustomerPortalUser` login gets its own cookie (`portal_token`, not `token`), its own JWT signing (`server/src/lib/portalJwt.ts`, `verifyPortalToken`) carrying a distinct `audience: "portal"` claim, its own cookie config (`server/src/lib/portalAuthCookie.ts` — a deliberate separate copy of `authCookie.ts`, same first-party `Lax` + 30-day-renewing behaviour), and its own middleware (`requirePortalAuth`, sets `req.portalUser`, never `req.user`). This was deliberate: adding a `CUSTOMER` role into the existing enum would have meant auditing every broad allow-list (`NON_FIELD_ROLES`, etc.) across dozens of routes to make sure a customer token could never slip through. The `audience` claim is the actual enforcement point — verified in this session that a genuine staff JWT placed directly in the `portal_token` cookie is rejected outright, not just kept out by cookie-name convention.
 
 On the client, note that `AuthProvider` (staff, `client/src/context/AuthContext.tsx`) is mounted at the app root in `main.tsx`, above `<App/>` — so it runs on *every* route including `/portal/*`, even though staff and portal never share a cookie. Fixed 2026-08-25 (`32c1ccf`): its mount-time `/api/auth/me` check now short-circuits when `window.location.pathname` starts with `/portal`, since that call was guaranteed to 401 there and was pure noise. It's still mounted globally (not worth restructuring the provider tree for this), just skips the fetch on portal paths.
 
@@ -209,7 +210,7 @@ Grouped by domain (not exhaustive on fields — read the schema for that):
   `.workOrder.` access in the client was already `?.`/`&&`-guarded — a single stale page assumed
   otherwise, and only a runtime crash surfaced it (`tsc` was happy because the client type still
   claimed the relation was non-null).
-- **PDF/file download buttons must use fetch-with-credentials + blob, never a plain cross-origin `<a href target="_blank">`** (fixed 2026-08-25 across Quotation PDF, Invoice PDF, and both Technet Connect portal PDF links — `c303302`, `93633f1`, `4814a1e`, `5bc9272`; two more instances found and fixed 2026-08-28 — Documents page download, and Intervention Report's attachment download + photo "view full size" links, `e9be983`/`4be2c13`). Root cause: prod auth cookies are `SameSite=None; Partitioned` (see §3/§6), and a Partitioned cookie set while the top-level browsing context is the client origin is *not* sent on a direct top-level navigation to the server's own origin (that creates a different partition). A plain link straight to the API 401s in prod even though the user is logged in. `fetch(url, { credentials: 'include' })` from inside the client page keeps the top-level context on the client origin, so the cookie is sent correctly — then build a blob URL and trigger the save via a synthetic `<a>` click (download) or `window.open(blobUrl)` (view in a new tab). Note an `<img src>` pointed straight at an authenticated API URL is *not* the same bug — that's a same-partition subresource fetch, not a top-level navigation, so the cookie is sent fine; only a link/navigation that opens a *new* top-level browsing context is affected. Apply this pattern to any *new* download/export/view-in-new-tab control that hits the API directly — this bug has now recurred three separate times across different pages, so specifically check for it whenever adding one.
+- **PDF/file download buttons must use fetch-with-credentials + blob, never a plain cross-origin `<a href target="_blank">`** (fixed 2026-08-25 across Quotation PDF, Invoice PDF, and both Technet Connect portal PDF links — `c303302`, `93633f1`, `4814a1e`, `5bc9272`; two more instances found and fixed 2026-08-28 — Documents page download, and Intervention Report's attachment download + photo "view full size" links, `e9be983`/`4be2c13`). Root cause: prod auth cookies are `SameSite=None; Partitioned` (see §3/§6), and a Partitioned cookie set while the top-level browsing context is the client origin is *not* sent on a direct top-level navigation to the server's own origin (that creates a different partition). A plain link straight to the API 401s in prod even though the user is logged in. `fetch(url, { credentials: 'include' })` from inside the client page keeps the top-level context on the client origin, so the cookie is sent correctly — then build a blob URL and trigger the save via a synthetic `<a>` click (download) or `window.open(blobUrl)` (view in a new tab). Note an `<img src>` pointed straight at an authenticated API URL is *not* the same bug — that's a same-partition subresource fetch, not a top-level navigation, so the cookie is sent fine; only a link/navigation that opens a *new* top-level browsing context is affected. **Root cause removed 2026-09-09**: the API is now same-origin (the Cloudflare Worker proxy, §3) and the cookie is first-party `SameSite=Lax`, so a plain top-level navigation to `/api/...` would carry the cookie fine. The `fetch`+blob pattern is still correct and worth keeping (it also handles error responses gracefully and forces a filename), and the existing code should be left as-is — but a *new* download control no longer strictly needs it to avoid a 401, and this is no longer a recurring trap.
 - **Customer portal login must match email case-insensitively and trim both fields** (fixed
   2026-08-27, `server/src/routes/portalAuth.ts`). Symptom reported by the user: "customer uses their
   password once or twice then it says invalid email or password" — the portal login lookup was an
@@ -584,9 +585,9 @@ entries + their job info"** (not "every technician screen").
 **Hard platform limit, stated plainly:** iOS browsers have no Background Sync, so on iPhones the
 queue flushes **the next time the technician opens the app** with signal — automatic, no re-entry,
 but not while the app is closed. Android can flush in the background. The committed mechanism is
-the **foreground flush**; Background Sync is an Android-only bonus and is **unverified against
-prod's cross-origin `SameSite=None; Partitioned` cookie** (a background SW fetch may not carry it)
-— don't rely on it.
+the **foreground flush**; Background Sync is an Android-only bonus. (Its earlier caveat — a
+background SW fetch maybe not carrying the cross-origin `Partitioned` cookie — went away
+2026-09-09 when the API became same-origin and the cookie first-party, §3/§6.)
 
 ### What was built
 
@@ -644,3 +645,48 @@ prod's cross-origin `SameSite=None; Partitioned` cookie** (a background SW fetch
   Site attendance dropped its work-order link (§7a) but `FieldOperationsPage` still did
   `entry.workOrder.id` everywhere and crashed on every open session. Every *other* `.workOrder.`
   access in the client was correctly `?.`/`&&`-guarded — only this page assumed it.
+
+## 15. Same-origin API + sticky sessions for the installed PWA (2026-09-09)
+
+**Problem:** the user installed the app on an iPhone home screen expecting "log in once", but it
+asked for login on every reopen — sometimes within minutes.
+
+**Two causes:** (1) the auth cookie was cross-site (`SameSite=None; Secure; Partitioned`) because
+the app (`*.workers.dev`) and API (`*.onrender.com`) were different origins, and iOS evicts
+cross-site cookies when a standalone PWA closes; (2) the cookie and JWT both had an **8-hour hard
+expiry with no renewal**, so even a surviving session lapsed ~once a working day.
+
+**Fix (both staff app and the customer portal):**
+
+- **Cloudflare Worker proxy** — `client/worker/index.ts` (referenced by `main` in
+  `client/wrangler.jsonc`, with `assets.binding: "ASSETS"`). It forwards `/api/*` to
+  `https://technet-digital-api.onrender.com` and serves everything else from the static build.
+  The browser now uses **one origin** for app + API, so the cookie is first-party. Lives outside
+  `client/src/` so `tsc -b` ignores it; the `@cloudflare/vite-plugin` builds it as a second
+  environment (`npm run build` produces `dist/technet_digital/` + `dist/client/`).
+- `deploy-client.yml` sets `VITE_API_URL: ""` (relative `/api`); `api.ts`/`outbox.ts` switched
+  `|| 'http://localhost:4000'` → `??` so an explicit empty prod value means "same origin";
+  `sw.js` resolves the now-relative queued URLs with `new URL(item.url, self.location.origin)`.
+- **Server cookie** — new `server/src/lib/authCookie.ts` / `server/src/lib/portalAuthCookie.ts`:
+  `SameSite=Lax`, `Secure` in prod, **no `Partitioned`**, `maxAge` 30 days. `issueAuthCookie` /
+  `issuePortalCookie` sign a fresh 30-day token; `expiresIn` in `jwt.ts`/`portalJwt.ts` is `"30d"`.
+- **Sliding renewal** — `requireAuth` / `requirePortalAuth` call `issue*Cookie` after every
+  successful verify, so an active session's clock resets and only genuine 30-day inactivity logs
+  someone out. (Destructure `sub`/`role` before re-signing — a verified token carries `iat`/`exp`,
+  which `jwt.sign` rejects alongside `expiresIn`.)
+
+**Deploy order:** server first (cookie → Lax + 30d), client proxy immediately after — between the
+two, a fresh login's cross-origin calls would 401 on a `Lax` cookie. Existing `None` sessions keep
+working until they expire.
+
+**Verified:** disposable `server/scratch-session.ts` (deleted) — login `Set-Cookie` is
+`SameSite=Lax`, no `Partitioned`, `Max-Age`/JWT life ≈ 30d, and `/api/auth/me` re-issues it.
+`npm run build` + `wrangler deploy --dry-run` pass. Server suite green (107). **Outstanding:** the
+real iPhone test — install, log in, force-close, reopen → still logged in.
+
+**Bonus:** this removes the recurring cross-origin download-button trap (§9) and lets Background
+Sync's SW fetch carry the cookie (§14).
+
+**Trade-off accepted:** a 30-day JWT widens the stolen-token window vs. 8h. `JWT_SECRET` rotation
+stays the "log everyone out" kill switch. A proper short-access + refresh-token split was
+considered and deferred as a bigger task.
