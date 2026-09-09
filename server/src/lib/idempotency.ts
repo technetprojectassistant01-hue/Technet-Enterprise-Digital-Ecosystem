@@ -33,3 +33,23 @@ export async function releaseRequest(clientRequestId: unknown): Promise<void> {
   if (typeof clientRequestId !== "string" || !clientRequestId.trim()) return;
   await prisma.processedRequest.delete({ where: { id: clientRequestId.trim() } }).catch(() => {});
 }
+
+/**
+ * Records the id of the row a claimed request created. Only needed for a multi-step submission
+ * (an intervention report followed by its photos), where a replay that gets deduped still needs
+ * the report id to carry on uploading. Best-effort — a missed write just means the replay finds
+ * no prior result and the client re-sends, which the create's own dedup still catches.
+ */
+export async function recordRequestResult(clientRequestId: unknown, resultId: string): Promise<void> {
+  if (typeof clientRequestId !== "string" || !clientRequestId.trim()) return;
+  await prisma.processedRequest
+    .update({ where: { id: clientRequestId.trim() }, data: { resultId } })
+    .catch(() => {});
+}
+
+/** The row id a previously-processed request created, if it recorded one. */
+export async function priorRequestResult(clientRequestId: unknown): Promise<string | null> {
+  if (typeof clientRequestId !== "string" || !clientRequestId.trim()) return null;
+  const row = await prisma.processedRequest.findUnique({ where: { id: clientRequestId.trim() } });
+  return row?.resultId ?? null;
+}

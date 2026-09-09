@@ -6,6 +6,7 @@ import { isForeignKeyConstraintError, isNotFoundError } from "../lib/prismaError
 import { formatInterventionNumber } from "../lib/interventionNumber";
 import { OPS_MANAGE_ROLES, OPS_SUBMIT_ROLES } from "../lib/roles";
 import { notifyRoles, notifyUser } from "../lib/notifications";
+import { claimRequest, priorRequestResult, recordRequestResult, releaseRequest } from "../lib/idempotency";
 
 const router = Router();
 
@@ -236,6 +237,13 @@ router.post("/:id/photos", requireRole(...OPS_SUBMIT_ROLES), async (req, res) =>
     return res.status(400).json({ error: "fileName is required" });
   }
 
+  // Each photo from an offline-queued report carries its own id, so a retried upload whose
+  // response was lost doesn't attach the same picture twice.
+  const clientRequestId = (req.body as { clientRequestId?: unknown })?.clientRequestId;
+  if (!(await claimRequest(clientRequestId, "intervention-photo"))) {
+    return res.status(200).json({ deduped: true });
+  }
+
   try {
     const photo = await prisma.interventionReportPhoto.create({
       data: {
@@ -249,6 +257,7 @@ router.post("/:id/photos", requireRole(...OPS_SUBMIT_ROLES), async (req, res) =>
     });
     res.status(201).json({ photo });
   } catch (err) {
+    await releaseRequest(clientRequestId);
     if (isForeignKeyConstraintError(err)) return res.status(404).json({ error: "Intervention report not found" });
     throw err;
   }
@@ -341,6 +350,21 @@ router.post("/", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
 
   const techIds = Array.isArray(technicianIds) ? (technicianIds as string[]).filter((v) => typeof v === "string") : [];
 
+  // An intervention report queued offline is replayed on reconnect. If the create already
+  // landed, return that report (with its id) so the client can carry on uploading any photos
+  // that didn't make it, rather than filing a duplicate.
+  const clientRequestId = (req.body as { clientRequestId?: unknown })?.clientRequestId;
+  if (!(await claimRequest(clientRequestId, "intervention-report"))) {
+    const priorId = await priorRequestResult(clientRequestId);
+    const existing = priorId
+      ? await prisma.interventionReport.findUnique({ where: { id: priorId }, select: DETAIL_SELECT })
+      : null;
+    return res.status(200).json({
+      interventionReport: existing ? withInterventionNumber(existing) : null,
+      deduped: true,
+    });
+  }
+
   try {
     const created = await prisma.interventionReport.create({
       data: {
@@ -388,6 +412,7 @@ router.post("/", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
       },
       select: { id: true, workOrderId: true, workCompleted: true },
     });
+    await recordRequestResult(clientRequestId, created.id);
 
     // Closing the job off the back of a "work completed" report is the intended shortcut, but it
     // has to respect WorkOrder's own terminal states - this path bypasses the PATCH route where
@@ -414,6 +439,7 @@ router.post("/", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
     });
     res.status(201).json({ interventionReport: withNumber });
   } catch (err) {
+    await releaseRequest(clientRequestId);
     if (isForeignKeyConstraintError(err)) return res.status(400).json({ error: "Customer, work order, or technician not found" });
     throw err;
   }

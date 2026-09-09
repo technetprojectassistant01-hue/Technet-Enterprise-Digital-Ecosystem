@@ -1334,6 +1334,10 @@ model MaintenanceReport {
 model ProcessedRequest {
   id        String   @id
   kind      String
+  /// The id of the row the original request created, when it made one. Lets a replay of a
+  /// multi-step submission (an intervention report and then its photos) recover the report id
+  /// it needs to carry on, rather than being stranded by a bare "already handled" response.
+  resultId  String?
   createdAt DateTime @default(now())
 }
 
