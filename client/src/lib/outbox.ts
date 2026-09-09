@@ -317,12 +317,18 @@ export async function flushOutbox(): Promise<void> {
       if (outcome === 'done') {
         await removeItem(item.id)
       } else if (outcome === 'drop') {
+        // Permanently rejected (a 4xx). Remove it and carry on — but tell the technician,
+        // because for them the entry looked saved.
         await removeItem(item.id)
         onDrop?.(item)
-      } else if (outcome === 'auth') {
-        break // keep everything; the technician needs to sign in again first
       } else {
-        await putItem({ ...item, attempts: item.attempts + 1, lastError: outcome.retry })
+        // 'auth' or a transient failure. Stop the pass rather than pressing on: the queue is
+        // replayed in order and a later entry often depends on an earlier one (a check-out on
+        // its check-in), and a real outage would fail the rest the same way.
+        if (outcome !== 'auth') {
+          await putItem({ ...item, attempts: item.attempts + 1, lastError: outcome.retry })
+        }
+        break
       }
     }
   } finally {
