@@ -1,34 +1,15 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { Lock, MapPin, ChevronDown, ChevronUp, BellRing } from 'lucide-react'
 import * as api from '../lib/api'
 import type { SiteTrackingEntry } from '../lib/api'
 import { SITE_EXIT_REASON_LABELS } from '../lib/api'
-import { Panel, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
+import { Panel, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { useAuth } from '../context/AuthContext'
 import { hasRole, OPS_MANAGE_ROLES } from '../lib/permissions'
 import { mapLink } from '../lib/geolocation'
+import { locationMismatchLabel, statedTimeSuffix, totalTransportCost } from '../lib/siteAttendance'
+import { formatMoney } from '../lib/format'
 import { useToast } from '../dashboard/ToastContext'
-
-function siteStatusTone(status: 'ON_SITE' | 'OUTSIDE_SITE' | 'UNVERIFIED' | 'NO_SITE') {
-  if (status === 'ON_SITE') return 'success' as const
-  if (status === 'OUTSIDE_SITE') return 'warning' as const
-  return 'neutral' as const
-}
-
-function siteStatusLabel(entry: SiteTrackingEntry): string {
-  if (!entry.workOrder.siteLat || !entry.workOrder.siteLng) return 'NO SITE SET'
-  const latest = entry.verifications[0]
-  if (!latest) return 'NOT YET VERIFIED'
-  return latest.status.replace('_', ' ')
-}
-
-function siteStatus(entry: SiteTrackingEntry): 'ON_SITE' | 'OUTSIDE_SITE' | 'UNVERIFIED' | 'NO_SITE' {
-  if (!entry.workOrder.siteLat || !entry.workOrder.siteLng) return 'NO_SITE'
-  const latest = entry.verifications[0]
-  if (!latest) return 'UNVERIFIED'
-  return latest.status
-}
 
 function formatDuration(startIso: string, endIso?: string): string {
   const ms = new Date(endIso ?? new Date().toISOString()).getTime() - new Date(startIso).getTime()
@@ -39,6 +20,11 @@ function formatDuration(startIso: string, endIso?: string): string {
   return `${hours}h ${minutes}m`
 }
 
+/**
+ * Historical exits, from before site attendance stopped linking to a work order (CLAUDE.md §7a).
+ * No new SiteVerification rows are written now, so this renders for old sessions only and is
+ * empty for anything recent.
+ */
 function ExitEvents({ entry }: { entry: SiteTrackingEntry }) {
   const [open, setOpen] = useState(false)
   const exits = entry.verifications.filter((v) => v.status === 'OUTSIDE_SITE')
@@ -78,22 +64,8 @@ function ExitEvents({ entry }: { entry: SiteTrackingEntry }) {
   )
 }
 
-/** Groups entries by work order so several technicians on the same job read as one job block, not scattered rows. */
-function groupByWorkOrder(entries: SiteTrackingEntry[]): SiteTrackingEntry[][] {
-  const map = new Map<string, SiteTrackingEntry[]>()
-  for (const entry of entries) {
-    const group = map.get(entry.workOrder.id)
-    if (group) group.push(entry)
-    else map.set(entry.workOrder.id, [entry])
-  }
-  return Array.from(map.values())
-}
-
-function TechnicianStatus({ entry }: { entry: SiteTrackingEntry }) {
+function RequestCheck({ entry }: { entry: SiteTrackingEntry }) {
   const toast = useToast()
-  const latest = entry.verifications[0]
-  const lat = latest?.lat ?? entry.checkInLat
-  const lng = latest?.lng ?? entry.checkInLng
   const [requesting, setRequesting] = useState(false)
   const [requested, setRequested] = useState(false)
 
@@ -102,7 +74,7 @@ function TechnicianStatus({ entry }: { entry: SiteTrackingEntry }) {
     try {
       await api.requestLocationVerification(entry.id)
       setRequested(true)
-      toast.success(`Asked ${entry.employee.firstName} to verify their location`)
+      toast.success(`Asked ${entry.employee.firstName} to open the app`)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to send the request')
     } finally {
@@ -111,28 +83,16 @@ function TechnicianStatus({ entry }: { entry: SiteTrackingEntry }) {
   }
 
   return (
-    <div className="flex flex-col items-end gap-1.5">
-      <Badge tone={siteStatusTone(siteStatus(entry))}>{siteStatusLabel(entry)}</Badge>
-      <a
-        href={mapLink(lat, lng)}
-        target="_blank"
-        rel="noreferrer"
-        className="flex items-center gap-1.5 text-xs text-cyan-accent hover:underline"
-      >
-        <MapPin className="h-3.5 w-3.5" />
-        {latest ? `Verified ${new Date(latest.checkedAt).toLocaleTimeString()}` : 'Check-in location'}
-      </a>
-      <button
-        type="button"
-        onClick={handleRequestVerification}
-        disabled={requesting || requested}
-        title="Sends a notification asking them to verify - not an instant live location"
-        className="flex items-center gap-1.5 text-xs text-ink-400 hover:text-cyan-accent disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        <BellRing className="h-3.5 w-3.5" />
-        {requested ? 'Requested' : 'Request location check'}
-      </button>
-    </div>
+    <button
+      type="button"
+      onClick={handleRequestVerification}
+      disabled={requesting || requested}
+      title="Sends a notification asking them to open the app - not an instant live location"
+      className="flex items-center gap-1.5 text-xs text-ink-400 hover:text-cyan-accent disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      <BellRing className="h-3.5 w-3.5" />
+      {requested ? 'Requested' : 'Request check'}
+    </button>
   )
 }
 
@@ -152,6 +112,7 @@ function FieldOperationsPage() {
       .then(({ current, recentlyCompleted }) => {
         setCurrent(current)
         setRecentlyCompleted(recentlyCompleted)
+        setError(null)
       })
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load field operations'))
       .finally(() => setLoading(false))
@@ -168,7 +129,7 @@ function FieldOperationsPage() {
       <div>
         <h1 className="text-2xl font-bold text-ink-100">Field Operations</h1>
         <p className="mt-1 text-sm text-ink-300">
-          Where technicians are right now, whether they're still at the assigned site, and any time they've left.
+          Who is checked in to a site right now, the location they gave, and how long they've been on it.
         </p>
       </div>
 
@@ -176,82 +137,42 @@ function FieldOperationsPage() {
         {loading ? (
           <TableSkeleton rows={3} cols={3} />
         ) : current.length === 0 ? (
-          <p className="text-sm text-ink-400">Nobody is currently checked in to a work order.</p>
+          <p className="text-sm text-ink-400">Nobody is currently checked in.</p>
         ) : (
           <div className="flex flex-col gap-3">
-            {groupByWorkOrder(current).map((group) => {
-              const [first] = group
-              if (group.length === 1) {
-                return (
-                  <div key={first.id} className="rounded-lg bg-ink-800 px-4 py-3">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <div className="text-sm font-medium text-ink-100">
-                          {first.employee.firstName} {first.employee.lastName}
-                          {first.employee.position && <span className="text-ink-500"> · {first.employee.position}</span>}
-                        </div>
-                        <div className="mt-1 text-xs text-ink-400">
-                          <Link
-                            to={`/dashboard/operations/work-orders/${first.workOrder.id}`}
-                            className="text-cyan-accent hover:underline"
-                          >
-                            {first.workOrder.workOrderNumber}
-                          </Link>
-                          {' — '}
-                          {first.workOrder.title} ·{' '}
-                          {first.workOrder.customer.company || first.workOrder.customer.name}
-                        </div>
-                        <div className="mt-1 text-xs text-ink-500">
-                          On site for {formatDuration(first.checkInAt)}
-                        </div>
-                      </div>
-                      <TechnicianStatus entry={first} />
-                    </div>
-                    <ExitEvents entry={first} />
-                  </div>
-                )
-              }
-
-              // More than one technician on the same job - group under one job header instead of
-              // repeating the work order info in scattered, unrelated-looking rows.
+            {current.map((entry) => {
+              const flag = locationMismatchLabel(entry.checkInLocationMatch, entry.checkInLocationDistanceMeters)
+              const transport = totalTransportCost(entry)
               return (
-                <div key={first.workOrder.id} className="rounded-lg bg-ink-800 px-4 py-3">
-                  <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2 border-b border-ink-700 pb-2">
-                    <div className="text-xs text-ink-400">
-                      <Link
-                        to={`/dashboard/operations/work-orders/${first.workOrder.id}`}
-                        className="font-semibold text-cyan-accent hover:underline"
-                      >
-                        {first.workOrder.workOrderNumber}
-                      </Link>
-                      {' — '}
-                      {first.workOrder.title} · {first.workOrder.customer.company || first.workOrder.customer.name}
-                    </div>
-                    <span className="text-xs font-semibold tracking-widest text-ink-500">
-                      {group.length} TECHNICIANS
-                    </span>
-                  </div>
-                  <div className="flex flex-col divide-y divide-ink-700">
-                    {group.map((entry, i) => (
-                      <div key={entry.id} className={i > 0 ? 'pt-3' : undefined}>
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div>
-                            <div className="text-sm font-medium text-ink-100">
-                              {entry.employee.firstName} {entry.employee.lastName}
-                              {entry.employee.position && (
-                                <span className="text-ink-500"> · {entry.employee.position}</span>
-                              )}
-                            </div>
-                            <div className="mt-1 text-xs text-ink-500">
-                              On site for {formatDuration(entry.checkInAt)}
-                            </div>
-                          </div>
-                          <TechnicianStatus entry={entry} />
-                        </div>
-                        <ExitEvents entry={entry} />
+                <div key={entry.id} className="rounded-lg bg-ink-800 px-4 py-3">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-medium text-ink-100">
+                        {entry.employee.firstName} {entry.employee.lastName}
+                        {entry.employee.position && <span className="text-ink-500"> · {entry.employee.position}</span>}
                       </div>
-                    ))}
+                      <div className="mt-1 flex items-center gap-1.5 text-xs text-ink-400">
+                        <MapPin className="h-3.5 w-3.5 shrink-0" />
+                        <a
+                          href={mapLink(entry.checkInLat, entry.checkInLng)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-cyan-accent hover:underline"
+                        >
+                          {entry.checkInNote || 'Location not given'}
+                        </a>
+                      </div>
+                      {flag && <div className="mt-0.5 text-[11px] font-medium text-amber-400">⚠ {flag}</div>}
+                      <div className="mt-1 text-xs text-ink-500">
+                        On site for {formatDuration(entry.checkInAt)} · checked in{' '}
+                        {new Date(entry.checkInAt).toLocaleTimeString()}
+                        {statedTimeSuffix(entry.checkInDeclaredTime, entry.checkInAt)}
+                        {transport > 0 && <span> · transport {formatMoney(transport)}</span>}
+                      </div>
+                    </div>
+                    <RequestCheck entry={entry} />
                   </div>
+                  <ExitEvents entry={entry} />
                 </div>
               )
             })}
@@ -270,32 +191,25 @@ function FieldOperationsPage() {
               <thead>
                 <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
                   <th className="px-3 py-3 font-semibold">TECHNICIAN</th>
-                  <th className="px-3 py-3 font-semibold">WORK ORDER</th>
+                  <th className="px-3 py-3 font-semibold">LOCATION</th>
                   <th className="px-3 py-3 font-semibold">DURATION</th>
-                  <th className="px-3 py-3 font-semibold">EXITS</th>
+                  <th className="px-3 py-3 font-semibold">TRANSPORT</th>
                 </tr>
               </thead>
               <tbody>
                 {recentlyCompleted.map((entry) => {
-                  const exits = entry.verifications.filter((v) => v.status === 'OUTSIDE_SITE').length
+                  const transport = totalTransportCost(entry)
                   return (
                     <tr key={entry.id} className="border-b border-ink-800 last:border-0">
                       <td className="px-3 py-3 text-ink-100">
                         {entry.employee.firstName} {entry.employee.lastName}
                       </td>
-                      <td className="px-3 py-3 text-ink-300">
-                        <Link
-                          to={`/dashboard/operations/work-orders/${entry.workOrder.id}`}
-                          className="text-cyan-accent hover:underline"
-                        >
-                          {entry.workOrder.workOrderNumber}
-                        </Link>
-                      </td>
+                      <td className="px-3 py-3 text-ink-300">{entry.checkInNote || '—'}</td>
                       <td className="px-3 py-3 text-ink-400">
                         {entry.checkOutAt ? formatDuration(entry.checkInAt, entry.checkOutAt) : '—'}
                       </td>
                       <td className="px-3 py-3 text-ink-400">
-                        {exits > 0 ? <span className="text-amber-400">{exits}</span> : '—'}
+                        {transport > 0 ? formatMoney(transport) : '—'}
                       </td>
                     </tr>
                   )

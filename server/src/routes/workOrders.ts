@@ -91,24 +91,15 @@ router.get("/", async (req, res) => {
 });
 
 /** Manager-facing feed for the Field Operations view: who's in the field right now, plus recent history. */
+// "Who is in the field right now", for Field Operations. Site attendance no longer links to a
+// work order (CLAUDE.md §7a), so this is a team-attendance feed: open sessions, plus the last
+// 50 closed ones.
 router.get("/site-tracking", requireRole(...OPS_MANAGE_ROLES), async (_req, res) => {
-  const WORK_ORDER_SELECT = {
-    select: {
-      id: true,
-      workOrderNumber: true,
-      title: true,
-      siteLat: true,
-      siteLng: true,
-      customer: { select: CUSTOMER_SELECT },
-    },
-  } as const;
-
   const [current, recentlyCompleted] = await Promise.all([
     prisma.siteAttendance.findMany({
       where: { checkOutAt: null },
       include: {
         employee: { select: EMPLOYEE_SELECT },
-        workOrder: WORK_ORDER_SELECT,
         verifications: { orderBy: { checkedAt: "desc" } },
       },
       orderBy: { checkInAt: "desc" },
@@ -117,7 +108,6 @@ router.get("/site-tracking", requireRole(...OPS_MANAGE_ROLES), async (_req, res)
       where: { checkOutAt: { not: null } },
       include: {
         employee: { select: EMPLOYEE_SELECT },
-        workOrder: WORK_ORDER_SELECT,
         verifications: { orderBy: { checkedAt: "desc" } },
       },
       orderBy: { checkOutAt: "desc" },
