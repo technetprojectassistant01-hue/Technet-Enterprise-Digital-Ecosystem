@@ -7,6 +7,7 @@ import { MAIN_NAV, SYSTEM_NAV, ADMIN_NAV } from './dashboard/nav'
 import { Avatar } from './dashboard/ui'
 import NavTree from './dashboard/NavTree'
 import NotificationBell from './dashboard/NotificationBell'
+import SyncStatus from './dashboard/SyncStatus'
 import { useToast } from './dashboard/ToastContext'
 import { registerServiceWorker } from './lib/pushNotifications'
 import { setOutboxDropHandler, startOutbox } from './lib/outbox'
@@ -123,6 +124,7 @@ function Dashboard() {
           </div>
 
           <div className="ml-auto flex items-center gap-5">
+            <SyncStatus />
             <NotificationBell />
             <NavLink to="/dashboard/settings" className="text-ink-300 hover:text-ink-100" aria-label="Settings">
               <Settings className="h-5 w-5" />
