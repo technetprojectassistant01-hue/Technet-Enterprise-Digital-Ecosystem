@@ -76,7 +76,8 @@ npm run prisma:studio    # optional: browse data in a GUI
 npm run build
 ```
 
-Builds the client to `client/dist` and compiles the server to `server/dist`.
+Builds the client to `client/dist/` (the SPA under `dist/client/`, the edge Worker
+under `dist/technet_digital/`) and compiles the server to `server/dist`.
 
 ## Deployment
 
@@ -85,20 +86,33 @@ can't run there — the API needs a real Node host.
 
 | Piece | Where | Live at |
 |---|---|---|
-| **Client** (`client/dist`) | Cloudflare Workers | `technet-digital.technetprojectassistant01.workers.dev` |
-| **Server** (Express API) | Render (free web service) | `technet-digital-api.onrender.com` |
+| **Client** (SPA + edge Worker) | Cloudflare Workers | `technet-digital.technetprojectassistant01.workers.dev` |
+| **Server** (Express API) | Render (free web service) | `technet-digital-api.onrender.com` (via the Worker, see below) |
 | **Database** | Neon (free Postgres) | — |
+
+### Same-origin architecture
+
+The browser only ever talks to **one origin** — the Cloudflare Workers domain. A small
+Worker (`client/worker/index.ts`, wired via `main` in `client/wrangler.jsonc`) proxies
+`/api/*` through to the Render API and serves everything else from the static build.
+
+This is deliberate: it makes the auth cookie **first-party** (`SameSite=Lax`, no
+`Partitioned`), which is the only reliable way to keep an installed iOS home-screen
+PWA logged in after it's closed. It also means no CORS in normal operation and no
+cross-origin cookie fragility. The Render URL is hardcoded in the Worker (like
+`CLIENT_ORIGIN` in `render.yaml`) — change it there if the API ever moves.
 
 ### Client
 
 Built and deployed by `.github/workflows/deploy-client.yml` on every push to `main`
 that touches `client/**`. The job runs `npm run deploy` (`vite build` then
-`wrangler deploy`); `client/wrangler.jsonc` sets the SPA fallback so client-side
-routes resolve.
+`wrangler deploy`); `vite build` produces both the Worker bundle and the SPA, and
+`client/wrangler.jsonc` sets the SPA fallback so client-side routes resolve.
 
-`VITE_API_URL` is set in that workflow's `env:` block and is **baked in at compile
-time**, not read at runtime — changing the API's address means editing the workflow
-and re-running it, not flipping a setting on Cloudflare.
+`VITE_API_URL` is **empty** in that workflow's `env:` block — the client calls `/api`
+with a relative path, resolved against its own origin (the Worker). It's baked in at
+compile time. Local dev keeps `VITE_API_URL=http://localhost:4000` in `client/.env`
+and calls the dev API directly (the Worker only exists in the deployed build).
 
 ### Server
 
@@ -123,9 +137,15 @@ Use Neon's direct URL, not the pooled one: `prisma migrate deploy` takes advisor
 locks that Neon's connection pooler doesn't support, so migrations fail on the
 pooled URL.
 
-`CLIENT_ORIGIN` and `VITE_API_URL` point at each other. If either is wrong the app
-loads but every request fails CORS, since `cors` runs with `credentials: true` and
-won't accept a wildcard origin.
+`CLIENT_ORIGIN` still matters: the Worker forwards the browser's `Origin` header on
+same-origin `POST`s, and `cors` (running with `credentials: true`) checks it against
+this value. It must be the Workers domain, exact, no trailing slash.
+
+**Auth cookies are first-party `SameSite=Lax`** (`server/src/lib/authCookie.ts`,
+`server/src/lib/portalAuthCookie.ts`), 30 days, re-issued on every authenticated
+request so an active session never lapses. This depends on the Worker proxy being in
+place — if the app and API were ever split back onto separate origins, the cookie
+would have to go back to `SameSite=None; Secure; Partitioned`.
 
 `railway.json` is left in the repo as historical reference from the pre-2026-08-24
 Railway setup. Nothing reads it.
