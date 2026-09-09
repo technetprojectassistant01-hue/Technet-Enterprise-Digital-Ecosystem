@@ -13,6 +13,7 @@ import { hasRole, OPS_MANAGE_ROLES, OPS_SUBMIT_ROLES } from '../lib/permissions'
 import { reportStatusTone } from '../erp/statusTones'
 import { useWorkOrders } from './useWorkOrders'
 import { submitOrQueue } from '../lib/outbox'
+import { useReloadOnReconnect } from '../lib/useOnline'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -50,12 +51,24 @@ function DailyReportsPage() {
     setLoading(true)
     api
       .listDailyReports({ from: from || undefined, to: to || undefined })
-      .then(({ dailyWorkReports }) => setReports(dailyWorkReports))
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load daily reports'))
+      .then(({ dailyWorkReports }) => {
+        setReports(dailyWorkReports)
+        setError(null)
+      })
+      .catch((err) =>
+        setError(
+          navigator.onLine
+            ? err instanceof Error
+              ? err.message
+              : 'Failed to load daily reports'
+            : "You're offline and this list hasn't been synced to this device yet.",
+        ),
+      )
       .finally(() => setLoading(false))
   }
 
   useEffect(load, [from, to]) // eslint-disable-line react-hooks/exhaustive-deps
+  useReloadOnReconnect(load)
 
   // Surfaces same-day intervention reports already filed against the selected work orders, so the
   // summary can be adapted from what was already written up in detail rather than retyped from scratch.
