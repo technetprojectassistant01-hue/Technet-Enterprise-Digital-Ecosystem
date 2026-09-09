@@ -5,6 +5,7 @@ import { requireAuth, requireRole } from "../middleware/auth";
 import { isForeignKeyConstraintError, isNotFoundError } from "../lib/prismaErrors";
 import { OPS_MANAGE_ROLES, OPS_SUBMIT_ROLES } from "../lib/roles";
 import { notifyRoles, notifyUser } from "../lib/notifications";
+import { claimRequest, releaseRequest } from "../lib/idempotency";
 
 const router = Router();
 
@@ -76,6 +77,12 @@ router.post("/", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
   const techIds = Array.isArray(technicianIds) ? (technicianIds as string[]).filter((v) => typeof v === "string") : [];
   const woIds = Array.isArray(workOrderIds) ? (workOrderIds as string[]).filter((v) => typeof v === "string") : [];
 
+  // A daily report queued offline is replayed on reconnect; skip it if the first attempt landed.
+  const clientRequestId = (req.body as { clientRequestId?: unknown })?.clientRequestId;
+  if (!(await claimRequest(clientRequestId, "daily-report"))) {
+    return res.status(200).json({ deduped: true });
+  }
+
   try {
     const dailyWorkReport = await prisma.dailyWorkReport.create({
       data: {
@@ -94,6 +101,7 @@ router.post("/", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
     });
     res.status(201).json({ dailyWorkReport });
   } catch (err) {
+    await releaseRequest(clientRequestId);
     if (isForeignKeyConstraintError(err)) return res.status(400).json({ error: "Technician or work order not found" });
     throw err;
   }
