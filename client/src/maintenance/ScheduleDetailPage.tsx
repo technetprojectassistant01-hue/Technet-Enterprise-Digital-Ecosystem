@@ -10,6 +10,7 @@ import { useAuth } from '../context/AuthContext'
 import { hasRole, OPS_MANAGE_ROLES, OPS_SUBMIT_ROLES } from '../lib/permissions'
 import { scheduleStatusTone } from './statusTones'
 import { reportStatusTone } from '../erp/statusTones'
+import { submitOrQueue } from '../lib/outbox'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -69,12 +70,21 @@ function ScheduleDetailPage() {
 
     setSubmitting(true)
     try {
-      await api.submitMaintenanceReport(schedule!.id, {
-        remarks: remarks.trim(),
-        workCompleted,
-        recommendations: recommendations || undefined,
+      const { queued } = await submitOrQueue({
+        kind: 'maintenance-report',
+        label: `Maintenance report — ${(schedule!.contract?.asset ?? schedule!.request?.asset)?.name ?? new Date(schedule!.scheduledDate).toLocaleDateString()}`,
+        endpoint: `/api/maintenance-schedules/${schedule!.id}/report`,
+        body: {
+          remarks: remarks.trim(),
+          workCompleted,
+          recommendations: recommendations || undefined,
+        },
       })
-      toast.success('Report filed')
+      toast.success(
+        queued
+          ? "No signal — saved on your device. It'll upload automatically when you're back online."
+          : 'Report filed',
+      )
       setShowReport(false)
       load()
     } catch (err) {

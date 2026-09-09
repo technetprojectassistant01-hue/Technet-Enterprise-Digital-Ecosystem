@@ -12,6 +12,7 @@ import { useAuth } from '../context/AuthContext'
 import { hasRole, OPS_MANAGE_ROLES, OPS_SUBMIT_ROLES } from '../lib/permissions'
 import { reportStatusTone } from '../erp/statusTones'
 import { useWorkOrders } from './useWorkOrders'
+import { submitOrQueue } from '../lib/outbox'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -117,14 +118,23 @@ function DailyReportsPage() {
 
     setSubmitting(true)
     try {
-      await api.createDailyReport({
-        date,
-        summary,
-        hours: hours ? Number(hours) : undefined,
-        technicianIds,
-        workOrderIds,
+      const { queued } = await submitOrQueue({
+        kind: 'daily-report',
+        label: `Daily report — ${date}`,
+        endpoint: '/api/daily-reports',
+        body: {
+          date,
+          summary,
+          hours: hours ? Number(hours) : undefined,
+          technicianIds,
+          workOrderIds,
+        },
       })
-      toast.success('Daily report submitted')
+      toast.success(
+        queued
+          ? "No signal — saved on your device. It'll upload automatically when you're back online."
+          : 'Daily report submitted',
+      )
       setShowCreate(false)
       load()
     } catch (err) {
