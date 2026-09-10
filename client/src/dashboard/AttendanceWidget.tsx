@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { BellOff, BellRing, Briefcase, ChevronDown, LogIn, LogOut } from 'lucide-react'
+import { BellOff, BellRing, Briefcase, LogIn, LogOut } from 'lucide-react'
 import * as api from '../lib/api'
 import type { MyWorkOrderOption, SiteAttendance } from '../lib/api'
 import { getPosition } from '../lib/geolocation'
@@ -117,7 +117,6 @@ function AttendanceWidget() {
   // rather than sending the prefill — on a page open a while, the prefill is stale.
   const [declaredTimeEdited, setDeclaredTimeEdited] = useState(false)
   const [transportCost, setTransportCost] = useState('')
-  const [tripDetailsOpen, setTripDetailsOpen] = useState(false)
 
   function load() {
     setLoading(true)
@@ -167,18 +166,28 @@ function AttendanceWidget() {
     setTransportCost('')
     setDeclaredTime(currentClockTime())
     setDeclaredTimeEdited(false)
-    setTripDetailsOpen(false)
   }
 
-  function transportCostForSubmit(): number | undefined {
-    if (!transportCost.trim()) return undefined
+  /** Transport cost is required — a technician with no travel enters 0. */
+  function parseTransport(): { value: number } | { error: string } {
+    if (!transportCost.trim()) return { error: 'Enter your transport cost (0 if none)' }
     const amount = Number(transportCost)
-    return Number.isFinite(amount) ? amount : undefined
+    if (!Number.isFinite(amount) || amount < 0) return { error: 'Transport cost must be a number, 0 or more' }
+    return { value: amount }
   }
 
   async function handleCheckIn() {
     if (!note.trim()) {
       toast.error('Enter where you are to check in')
+      return
+    }
+    if (!declaredTime) {
+      toast.error('Enter your time in')
+      return
+    }
+    const transport = parseTransport()
+    if ('error' in transport) {
+      toast.error(transport.error)
       return
     }
     setActioning(true)
@@ -194,7 +203,7 @@ function AttendanceWidget() {
           note,
           workOrderId: workOrderId || undefined,
           timeIn: declaredTimeEdited ? declaredTime : currentClockTime(),
-          transportCost: transportCostForSubmit(),
+          transportCost: transport.value,
         },
       })
       toast.success(queued ? QUEUED_MESSAGE : 'Checked in')
@@ -208,6 +217,15 @@ function AttendanceWidget() {
   }
 
   async function handleCheckOut() {
+    if (!declaredTime) {
+      toast.error('Enter your time out')
+      return
+    }
+    const transport = parseTransport()
+    if ('error' in transport) {
+      toast.error(transport.error)
+      return
+    }
     setActioning(true)
     try {
       const pos = await getPosition()
@@ -220,7 +238,7 @@ function AttendanceWidget() {
           lng: pos.coords.longitude,
           note: note || undefined,
           timeOut: declaredTimeEdited ? declaredTime : currentClockTime(),
-          transportCost: transportCostForSubmit(),
+          transportCost: transport.value,
         },
       })
       toast.success(queued ? QUEUED_MESSAGE : 'Checked out')
@@ -280,29 +298,68 @@ function AttendanceWidget() {
         )}
 
         {/* Primary action + its fields */}
-        {checkedIn ? (
-          <>
-            <button type="button" onClick={handleCheckOut} disabled={actioning} className={primaryButton}>
-              <LogOut className="h-5 w-5" />
-              {actioning ? 'Checking out…' : 'Check Out'}
-            </button>
-            <TripDetails
-              open={tripDetailsOpen}
-              onToggle={() => setTripDetailsOpen((v) => !v)}
-              mode="out"
-              time={declaredTime}
-              onTime={(v) => {
-                setDeclaredTime(v)
-                setDeclaredTimeEdited(true)
-              }}
-              note={note}
-              onNote={setNote}
-              transport={transportCost}
-              onTransport={setTransportCost}
-            />
-          </>
-        ) : (
-          <>
+        {(() => {
+          const time = (
+            <div className="flex flex-col gap-1">
+              <label htmlFor="att-time" className={fieldLabelClass}>
+                {checkedIn ? 'TIME OUT' : 'TIME IN'}
+              </label>
+              <input
+                id="att-time"
+                type="time"
+                value={declaredTime}
+                onChange={(e) => {
+                  setDeclaredTime(e.target.value)
+                  setDeclaredTimeEdited(true)
+                }}
+                className={inputClass}
+              />
+            </div>
+          )
+          const transport = (
+            <div className="flex flex-col gap-1">
+              <label htmlFor="att-transport" className={fieldLabelClass}>
+                TRANSPORT (MUR)
+              </label>
+              <input
+                id="att-transport"
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="0.01"
+                value={transportCost}
+                onChange={(e) => setTransportCost(e.target.value)}
+                placeholder="0 if none"
+                className={inputClass}
+              />
+            </div>
+          )
+
+          return checkedIn ? (
+            <div className="flex flex-col gap-3">
+              <div className="grid grid-cols-2 gap-3">
+                {time}
+                {transport}
+              </div>
+              <div className="flex flex-col gap-1">
+                <label htmlFor="att-out-note" className={fieldLabelClass}>
+                  LEAVING FROM (OPTIONAL)
+                </label>
+                <input
+                  id="att-out-note"
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder="Where you are leaving from"
+                  maxLength={200}
+                  className={inputClass}
+                />
+              </div>
+              <button type="button" onClick={handleCheckOut} disabled={actioning} className={primaryButton}>
+                <LogOut className="h-5 w-5" />
+                {actioning ? 'Checking out…' : 'Check Out'}
+              </button>
+            </div>
+          ) : (
             <div className="flex flex-col gap-3">
               <div className="flex flex-col gap-1">
                 <label htmlFor="att-location" className={fieldLabelClass}>
@@ -338,27 +395,19 @@ function AttendanceWidget() {
                   </select>
                 </div>
               )}
+
+              <div className="grid grid-cols-2 gap-3">
+                {time}
+                {transport}
+              </div>
+
+              <button type="button" onClick={handleCheckIn} disabled={actioning} className={primaryButton}>
+                <LogIn className="h-5 w-5" />
+                {actioning ? 'Checking in…' : 'Check In'}
+              </button>
             </div>
-
-            <button type="button" onClick={handleCheckIn} disabled={actioning} className={primaryButton}>
-              <LogIn className="h-5 w-5" />
-              {actioning ? 'Checking in…' : 'Check In'}
-            </button>
-
-            <TripDetails
-              open={tripDetailsOpen}
-              onToggle={() => setTripDetailsOpen((v) => !v)}
-              mode="in"
-              time={declaredTime}
-              onTime={(v) => {
-                setDeclaredTime(v)
-                setDeclaredTimeEdited(true)
-              }}
-              transport={transportCost}
-              onTransport={setTransportCost}
-            />
-          </>
-        )}
+          )
+        })()}
 
         {/* Today */}
         {history.length > 0 && (
@@ -386,74 +435,6 @@ function AttendanceWidget() {
         )}
       </div>
     </Panel>
-  )
-}
-
-function TripDetails({
-  open,
-  onToggle,
-  mode,
-  time,
-  onTime,
-  note,
-  onNote,
-  transport,
-  onTransport,
-}: {
-  open: boolean
-  onToggle: () => void
-  mode: 'in' | 'out'
-  time: string
-  onTime: (v: string) => void
-  note?: string
-  onNote?: (v: string) => void
-  transport: string
-  onTransport: (v: string) => void
-}) {
-  return (
-    <div className="rounded-lg border border-ink-800">
-      <button
-        type="button"
-        onClick={onToggle}
-        className="flex w-full items-center justify-between px-3 py-2 text-xs font-medium text-ink-300"
-      >
-        Trip details (optional)
-        <ChevronDown className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
-      {open && (
-        <div className="flex flex-col gap-3 border-t border-ink-800 px-3 py-3">
-          <div className="flex flex-col gap-1">
-            <label className={fieldLabelClass}>{mode === 'out' ? 'TIME OUT' : 'TIME IN'}</label>
-            <input type="time" value={time} onChange={(e) => onTime(e.target.value)} className={`${inputClass} w-36`} />
-          </div>
-          {mode === 'out' && onNote && (
-            <div className="flex flex-col gap-1">
-              <label className={fieldLabelClass}>LEAVING FROM</label>
-              <input
-                value={note ?? ''}
-                onChange={(e) => onNote(e.target.value)}
-                placeholder="Where you are leaving from"
-                maxLength={200}
-                className={inputClass}
-              />
-            </div>
-          )}
-          <div className="flex flex-col gap-1">
-            <label className={fieldLabelClass}>TRANSPORT (MUR)</label>
-            <input
-              type="number"
-              inputMode="decimal"
-              min="0"
-              step="0.01"
-              value={transport}
-              onChange={(e) => onTransport(e.target.value)}
-              placeholder="If applicable"
-              className={`${inputClass} w-36`}
-            />
-          </div>
-        </div>
-      )}
-    </div>
   )
 }
 
