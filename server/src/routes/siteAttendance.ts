@@ -259,6 +259,28 @@ router.get("/me", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
   res.json({ current, history });
 });
 
+/** The caller's own assigned, still-open work orders — for the "which job?" picker on check-in. */
+router.get("/my-work-orders", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
+  const employee = await prisma.employee.findUnique({ where: { userId: req.user!.sub } });
+  if (!employee) return res.status(403).json({ error: "No employee record is linked to your account" });
+
+  const workOrders = await prisma.workOrder.findMany({
+    where: {
+      technicians: { some: { employeeId: employee.id } },
+      status: { notIn: ["COMPLETED", "CANCELLED"] },
+    },
+    select: {
+      id: true,
+      workOrderNumber: true,
+      title: true,
+      customer: { select: { id: true, name: true, company: true } },
+    },
+    orderBy: { scheduledDate: "desc" },
+  });
+
+  res.json({ workOrders });
+});
+
 router.post("/check-in", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
   const coords = parseCoords(req.body);
   if (!coords) return res.status(400).json({ error: "A valid lat and lng are required" });
@@ -296,12 +318,34 @@ router.post("/check-in", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
       return res.status(400).json({ error: "You are already checked in" });
     }
 
+    // The technician optionally picks which job they're on. It must be one assigned to them and
+    // still open — a check-in that names a stranger's job or a closed one is refused. The link is
+    // display + Team Attendance context only; it does not drive the (inert) geofence path.
+    const rawWorkOrderId = (req.body as { workOrderId?: unknown }).workOrderId;
+    let workOrderId: string | null = null;
+    if (typeof rawWorkOrderId === "string" && rawWorkOrderId) {
+      const wo = await prisma.workOrder.findUnique({
+        where: { id: rawWorkOrderId },
+        select: { status: true, technicians: { where: { employeeId: employee.id }, select: { id: true } } },
+      });
+      if (!wo || wo.technicians.length === 0) {
+        await releaseRequest(clientRequestId);
+        return res.status(400).json({ error: "That work order isn't one of your assigned jobs" });
+      }
+      if (wo.status === "COMPLETED" || wo.status === "CANCELLED") {
+        await releaseRequest(clientRequestId);
+        return res.status(400).json({ error: "That job is already closed" });
+      }
+      workOrderId = rawWorkOrderId;
+    }
+
     // Advisory only, and it never blocks: a technician checks in successfully whatever this says.
     const locationCheck = await checkLocationAgainstGps(note, coords);
 
     const siteAttendance = await prisma.siteAttendance.create({
       data: {
         employeeId: employee.id,
+        workOrderId,
         checkInLat: coords.lat,
         checkInLng: coords.lng,
         checkInNote: note,
