@@ -118,7 +118,7 @@ This is where nearly all recent sessions' work has concentrated. Sub-pages: Work
 
 **Typed time sits beside the server timestamp, never replacing it** (`checkInDeclaredTime` vs `checkInAt`). Somebody who arrives at 08:00 and opens the app at 08:20 has both on record. Managers are shown the stated time only when it differs from the recorded one — a match is noise, a mismatch is the point. If the technician never edits the prefilled box, the clock is re-read at submit, since a page left open since morning would otherwise post a stale arrival time.
 
-**Attendance no longer links to work orders** (removed 2026-09-03, `91f1148`). It used to auto-attach via `findCurrentWorkOrder()`, which matched a job that was `IN_PROGRESS` or `SCHEDULED` for today — and in production it never matched once in the system's lifetime, because work orders aren't moved through their lifecycle and the only geocoded one sat `SCHEDULED` with a three-week-old date. Every session ever recorded has `workOrderId` null, so the 150m `SiteVerification` geofence it fed produced **zero rows, ever**. `SiteVerification`, `SITE_GEOFENCE_RADIUS_METERS` and `POST /verify-location` still exist but are inert; don't assume they carry data.
+**The check-in ↔ work-order link: auto-detect removed 2026-09-03 (`91f1148`), technician-picked re-added 2026-09-10 (§16).** It used to auto-attach via `findCurrentWorkOrder()` (a job `IN_PROGRESS`/`SCHEDULED` for today) — which never matched once in production, because work orders aren't moved through their lifecycle. As of 2026-09-10 the technician **optionally picks** their job from a dropdown of their assigned open work orders on the check-in form (`GET /api/site-attendance/my-work-orders`; the check-in validates the job is theirs and not `COMPLETED`/`CANCELLED`). The link drives the widget's job chip and the Team Attendance "Work Order" column — **nothing else**. Fully automatic detection is the Part 3 Phase 3 goal, contingent on work-order lifecycle discipline improving. `SiteVerification`, `SITE_GEOFENCE_RADIUS_METERS` and `POST /verify-location` remain **inert** — the picked link does **not** revive the geofence path, and the widget's dormant periodic `verifyMyLocation` effect was removed 2026-09-10 so a picked job with coordinates can't silently restart it.
 
 **In its place, the typed location is checked against the GPS fix** (`server/src/lib/locationMatch.ts`), recorded as `MATCHED` / `MISMATCH` / `UNCHECKABLE` plus a distance. Three things about this are load-bearing and were established by measuring the real Nominatim API, not by reasoning:
 - The lookup **must** stay confined to Mauritius (`countrycodes=mu`). Unconstrained, `"Office"` resolves to Harbin, China and `"Closed early"` to Anaheim, California — every ordinary check-in would flag as a ten-thousand-kilometre mismatch.
@@ -127,9 +127,9 @@ This is where nearly all recent sessions' work has concentrated. Sub-pages: Work
 
 Advisory only, exactly like the geofence it replaced: a failed, slow or empty lookup yields `UNCHECKABLE` and the check-in succeeds regardless.
 
-**The technician's own widget deliberately does not surface the tracking back at them** (2026-09-03, `d16aa55`): no coordinates, no map links, no on-site/outside-site badge, no "explain why you left the site" prompt. All of it is still recorded and shown in full to Admin/HR/Operations. This is about not confronting people with monitoring in their own screen — **it is not concealment and must not be built into it.** The browser's geolocation permission prompt discloses the tracking before the first check-in can succeed, and check-in fails outright if declined; that disclosure isn't ours to remove, and the app cannot work without it. Covert location collection on staff would also sit squarely under Mauritius's Data Protection Act 2017.
+**The technician's own widget deliberately does not surface the tracking back at them** (2026-09-03, `d16aa55`; upheld in the 2026-09-10 redesign, §16): no coordinates, no map links, no on-site/outside-site badge, no "explain why you left the site" prompt. All of it is still recorded and shown in full to Admin/HR/Operations. This is about not confronting people with monitoring in their own screen — **it is not concealment and must not be built into it.** The browser's geolocation permission prompt discloses the tracking before the first check-in can succeed, and check-in fails outright if declined; that disclosure isn't ours to remove, and the app cannot work without it. Covert location collection on staff would also sit squarely under Mauritius's Data Protection Act 2017. The 2026-09-10 redesign of `AttendanceWidget.tsx` (one big CHECKED IN / duration readout, one full-width primary action, only the location required, transport/notes behind a "Trip details" disclosure, the job chip for context) held this line — a design mockup that showed the technician an "On site / verified / view on map" card was deliberately **not** built.
 
-**Manager visibility**: **Team Attendance** (`OPS_MANAGE_ROLES`) — Month/Week toggle, per-technician filter, a daily register showing stated-vs-recorded times, transport cost and location flags, a per-technician summary (days present, check-ins, hours on site, transport total, location flags), and a CSV export of whichever period is on screen. **Field Operations** (`OPS_MANAGE_ROLES`) — who's in the field right now: technician, the location they typed, the location-match flag, stated-vs-recorded check-in time, duration, transport. Both it and Insight's "technicians on site" tile previously filtered to work-order-linked sessions and therefore showed nothing at all; repointed at all open sessions 2026-09-03. Field Operations still assumed every session had a work order after that repoint and **crashed** (`entry.workOrder.id` on a null relation) on any open session — fixed 2026-09-09 (§14) by removing the work-order grouping entirely.
+**Manager visibility**: **Team Attendance** (`OPS_MANAGE_ROLES`) — Month/Week toggle, per-technician filter, a daily register showing stated-vs-recorded times, transport cost, the work order, and **two** flag types — a location flag (§7 above) and, added 2026-09-10, a **time flag** (`statedTimeGapLabel` in `client/src/lib/siteAttendance.ts`: the typed time differs from the GPS-recorded one by ≥ `STATED_TIME_GAP_MINUTES`, currently 15). Both tint the row and appear in the per-technician summary and the CSV. The time-flag count is computed client-side from the register rows on purpose — the comparison needs the browser's Mauritius wall clock, not the server's UTC. Plus a CSV export of whichever period is on screen. **Field Operations** (`OPS_MANAGE_ROLES`) — who's in the field right now: technician, the location they typed, the location-match flag, stated-vs-recorded check-in time, duration, transport. Both it and Insight's "technicians on site" tile previously filtered to work-order-linked sessions and therefore showed nothing at all; repointed at all open sessions 2026-09-03. Field Operations still assumed every session had a work order after that repoint and **crashed** (`entry.workOrder.id` on a null relation) on any open session — fixed 2026-09-09 (§14) by removing the work-order grouping entirely.
 
 The weekly view sends an explicit `from`/`to` day range rather than carving a week out of month data, because a week straddles a month boundary several times a year. Export is CSV, not `.xlsx` — it opens in Excel and matches how Work Orders and Intervention Reports already export.
 
@@ -704,24 +704,29 @@ only — never integrate with, call, or fix it).
   drawer / phone quick-strip (Option D); `ModuleHeader` and modal form grids made responsive.
   Verification is inherently visual and could **not** be done from the dev machine (no local
   browser automation / Playwright) — handed to the user as a three-width click-through.
-- **Part 2 — whole-app visual modernization — ⏳ not started.** Refine the shared hand-built kit
-  (`client/src/dashboard/ui.tsx` — Panel/Badge/Modal/EmptyState/StatCard/…): spacing, type scale,
-  elevation, hover/press/focus, transitions, empty/loading states. No component library — stays
-  Tailwind + hand-built. **Attendance widget (`AttendanceWidget.tsx`) redesign is the top
-  priority within Part 2**, to the FieldOps *feel* bar (one big unambiguous status readout, one
-  primary action, minimal fields). **Confirmed with the user: keep location tracking OFF the
-  technician's own screen** — the p8 mockup shows "On site / verified / view on map", but that
-  reverses the deliberate §7a decision (`d16aa55`, DPA grounds); the redesign shows the big
-  status + the work-order chip for context, but not the on-site/off-site verdict or a map.
-  Modernize the same *existing* widget — never a second/parallel check-in surface (§7a).
-- **Part 3 — attendance roadmap — ⏳ not started.** Phase 1 (do alongside Part 2): flag the
-  gap between GPS-actual and typed "stated" time on Team Attendance; populate the (always-blank)
-  Work Order column on GPS attendance by linking each check-in to the technician's active job;
-  and **determine which dataset actually feeds Payroll** (GPS self-check-in under Operations vs.
-  the manually-typed HR register under Workforce) — a question for whoever runs payroll, not an
-  assumption from the code, and it blocks Phase 3. Phase 2: a Sites & Geofences admin screen
-  (real address + lat/lng + radius per site), metre-based geofence checks replacing the "same
-  island?" gross check, an Anomalies queue with a confirm/false-positive/dismiss workflow, and a
-  Leaflet + OpenStreetMap map on Field Operations (free, no key — same reasoning as §7b). Phase
-  3: merge the two attendance systems into one record/employee/day, payroll approvals +
-  payslips, wire My Leave accrual into the daily register, auto-populate the work-order link.
+- **Part 2 — whole-app visual modernization — ⏳ round 1 done, round 2 pending.**
+  - **Round 1 (done 2026-09-10):** `AttendanceWidget.tsx` redesigned (one big CHECKED IN /
+    ticking-duration readout, one full-width primary action, location the only required field on
+    check-in, transport/notes behind a "Trip details" disclosure, an optional "Which job?" picker
+    whose choice shows as a chip). Location tracking stays **off** the technician's screen (§7a) —
+    the p8 mockup's "on site / verified / map" card was not built. The dormant periodic
+    verify-location effect was removed.
+  - **Round 2 (not started):** the broad shared-kit refresh — `client/src/dashboard/ui.tsx`
+    (Panel/Badge/Modal/EmptyState/StatCard/…) spacing, type scale, elevation, hover/press/focus,
+    transitions, empty/loading states. No component library — stays Tailwind + hand-built. Verify
+    on deploy (visual, can't be checked from the dev machine).
+- **Part 3 — attendance roadmap — ⏳ Phase 1 partly done.**
+  - **Phase 1 (done 2026-09-10):** time-gap flag on Team Attendance (§7 "Manager visibility");
+    the Work Order column is populated via the technician's check-in picker (§7 "the check-in ↔
+    work-order link"). **Still open — the payroll-data-source question** (GPS self-check-in under
+    Operations vs. the manually-typed HR register under Workforce): with the user to get an answer
+    from whoever runs payroll; **it blocks Phase 3** and must be settled before any reconciliation
+    work.
+  - **Phase 2 (not started):** a Sites & Geofences admin screen (real address + lat/lng + radius
+    per site), metre-based geofence checks replacing the "same island?" gross check, an Anomalies
+    queue with a confirm/false-positive/dismiss workflow, and a Leaflet + OpenStreetMap map on
+    Field Operations (free, no key — same reasoning as §7b). Also: check whether the (now removed
+    from the widget) 10-minute foreground poll needs redesigning here.
+  - **Phase 3 (not started, blocked on the payroll question):** merge the two attendance systems
+    into one record/employee/day, payroll approvals + payslips, wire My Leave accrual into the
+    daily register, make the work-order link automatic rather than picked.
