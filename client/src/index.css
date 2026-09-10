@@ -95,10 +95,14 @@ body {
   color: var(--color-ink-100);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Keep content clear of the notch / status bar / home indicator when installed as a
+     standalone PWA (viewport-fit=cover in index.html). Zero everywhere else. */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
 }
 
 #root {
-  min-height: 100svh;
+  min-height: calc(100svh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
 }
