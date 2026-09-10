@@ -52,6 +52,8 @@ Technet-Enterprise-Digital-Ecosystem/
 
 A **separate, sibling directory** `Technet TEDE/pw-check/` (one level up from the repo, NOT inside git) holds ad-hoc Playwright verification scripts and screenshots used to visually confirm features work end-to-end. It has its own `node_modules`. Disposable — scripts get written, run, and deleted after each verification; a few leftover screenshots may remain. Similarly, disposable server-side smoke-test scripts are written as `server/scratch-*.ts` (using `tsx`, real bcrypt hashing, direct Prisma calls + real `fetch` calls against the running dev server), always cleaned up (data deleted, file removed) after use — never committed.
 
+**The shell is responsive as of 2026-09-10** (Part 1 of the mobile/attendance brief, §16). `Dashboard.tsx` has three states: `lg`+ keeps the permanent sidebar; below `lg` it collapses behind a hamburger into a slide-in drawer (`SidebarContent.tsx`, shared by both); on phone (`<md`) a scrollable quick-nav strip (`MobileNav.tsx`, the "Option D" pattern) sits under a compact header, with "All" opening the drawer. `<main>` padding, the offline banner, `ModuleHeader` (its full-bleed negative margins **must** track `<main>`'s responsive padding), and modal form grids all carry breakpoints now. New multi-column rows must ship with `grid-cols-1 sm:…`, not a bare `grid-cols-2/3/4`.
+
 ## 5. Modules — what's actually built vs. stubbed
 
 Everyone lands on **Overview** (`/dashboard`) — as of 2026-08-19 this is real, not decorative: a "Recent Activity" panel of actual notifications and a role-aware "Quick Stats" row (each tile backed by a real endpoint, only shown to roles that can access it), plus the real **My Attendance** widget for linked employees. (It used to be fake "system health" tiles — see git history 2026-08-19 "Replace the fake Overview dashboard with real data" if that's referenced anywhere stale.)
@@ -690,3 +692,36 @@ Sync's SW fetch carry the cookie (§14).
 **Trade-off accepted:** a 30-day JWT widens the stolen-token window vs. 8h. `JWT_SECRET` rotation
 stays the "log everyone out" kill switch. A proper short-access + refresh-token split was
 considered and deferred as a bigger task.
+
+## 16. Mobile-responsive redesign + attendance upgrade (brief 2026-09-10)
+
+A three-part brief (`claude-code-brief-mobile-responsive-and-attendance-upgrade-2026-09-10.md` +
+design mockups in `CLAUDE GIST (2).pdf` pp.5–8), driven by phone screenshots of the sidebar not
+adapting and a benchmarking review against an external system called **FieldOps** (a reference
+only — never integrate with, call, or fix it).
+
+- **Part 1 — responsive shell — ✅ done 2026-09-10.** See §4. Desktop sidebar / tablet+phone
+  drawer / phone quick-strip (Option D); `ModuleHeader` and modal form grids made responsive.
+  Verification is inherently visual and could **not** be done from the dev machine (no local
+  browser automation / Playwright) — handed to the user as a three-width click-through.
+- **Part 2 — whole-app visual modernization — ⏳ not started.** Refine the shared hand-built kit
+  (`client/src/dashboard/ui.tsx` — Panel/Badge/Modal/EmptyState/StatCard/…): spacing, type scale,
+  elevation, hover/press/focus, transitions, empty/loading states. No component library — stays
+  Tailwind + hand-built. **Attendance widget (`AttendanceWidget.tsx`) redesign is the top
+  priority within Part 2**, to the FieldOps *feel* bar (one big unambiguous status readout, one
+  primary action, minimal fields). **Confirmed with the user: keep location tracking OFF the
+  technician's own screen** — the p8 mockup shows "On site / verified / view on map", but that
+  reverses the deliberate §7a decision (`d16aa55`, DPA grounds); the redesign shows the big
+  status + the work-order chip for context, but not the on-site/off-site verdict or a map.
+  Modernize the same *existing* widget — never a second/parallel check-in surface (§7a).
+- **Part 3 — attendance roadmap — ⏳ not started.** Phase 1 (do alongside Part 2): flag the
+  gap between GPS-actual and typed "stated" time on Team Attendance; populate the (always-blank)
+  Work Order column on GPS attendance by linking each check-in to the technician's active job;
+  and **determine which dataset actually feeds Payroll** (GPS self-check-in under Operations vs.
+  the manually-typed HR register under Workforce) — a question for whoever runs payroll, not an
+  assumption from the code, and it blocks Phase 3. Phase 2: a Sites & Geofences admin screen
+  (real address + lat/lng + radius per site), metre-based geofence checks replacing the "same
+  island?" gross check, an Anomalies queue with a confirm/false-positive/dismiss workflow, and a
+  Leaflet + OpenStreetMap map on Field Operations (free, no key — same reasoning as §7b). Phase
+  3: merge the two attendance systems into one record/employee/day, payroll approvals +
+  payslips, wire My Leave accrual into the daily register, auto-populate the work-order link.
