@@ -1,32 +1,35 @@
 import { useEffect, useState } from 'react'
-import { BellOff, BellRing, LogIn, LogOut } from 'lucide-react'
+import { BellOff, BellRing, Briefcase, ChevronDown, LogIn, LogOut } from 'lucide-react'
 import * as api from '../lib/api'
-import type { SiteAttendance } from '../lib/api'
+import type { MyWorkOrderOption, SiteAttendance } from '../lib/api'
 import { getPosition } from '../lib/geolocation'
 import { clockOf, currentClockTime, statedTimeSuffix, totalTransportCost } from '../lib/siteAttendance'
 import { formatMoney } from '../lib/format'
 import { Panel } from './ui'
-import { primaryButtonClass, secondaryButtonClass } from './buttonStyles'
 import { useToast } from './ToastContext'
 import { disablePushReminders, enablePushReminders, pushSupport } from '../lib/pushNotifications'
 import { listOutbox, submitOrQueue, subscribeOutbox } from '../lib/outbox'
 
 const QUEUED_MESSAGE = "No signal — saved on your device. It'll upload automatically when you're back online."
 
-const VERIFY_INTERVAL_MS = 10 * 60 * 1000
-
-const noteInputClass =
-  'rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
+const inputClass =
+  'w-full rounded-lg border border-ink-600 bg-ink-950 px-3 py-2.5 text-sm text-ink-100 outline-none focus:border-cyan-accent'
 const fieldLabelClass = 'text-xs font-semibold tracking-widest text-ink-400'
 
+/** "2h 14m" since an ISO timestamp, or "just now". */
+function durationSince(iso: string, now: number): string {
+  const mins = Math.max(0, Math.floor((now - new Date(iso).getTime()) / 60000))
+  if (mins < 1) return 'just now'
+  const h = Math.floor(mins / 60)
+  const m = mins % 60
+  return h === 0 ? `${m}m` : `${h}h ${m}m`
+}
+
 /**
- * Opt-in for the 08:15 weekday check-in reminder.
- *
- * Deliberately a button rather than something that fires on load: browsers penalise sites that
- * request notification permission without a user gesture, and Chrome can block a site outright
- * for it. iPhone users are told to add the app to their Home Screen first, because Safari does
- * not expose PushManager in an ordinary tab — there is no way around that, and saying so beats
- * a button that fails for reasons they cannot see.
+ * Opt-in for the 08:15 weekday check-in reminder. Deliberately a button, not something that fires
+ * on load — browsers penalise (and Chrome can block) a site that asks for notification permission
+ * without a user gesture. iPhone users must add the app to the Home Screen first (Safari hides
+ * PushManager in an ordinary tab), and saying so beats a button that fails invisibly.
  */
 function ReminderToggle() {
   const toast = useToast()
@@ -46,9 +49,8 @@ function ReminderToggle() {
   }, [])
 
   if (!available || devices === null || support === 'unsupported') return null
-
   if (support === 'needs-home-screen') {
-    return <span className="text-xs text-ink-500">Add to your Home Screen for check-in reminders</span>
+    return <span className="text-xs text-ink-500">Add to your Home Screen for reminders</span>
   }
 
   async function toggle() {
@@ -78,38 +80,44 @@ function ReminderToggle() {
       className="flex items-center gap-1.5 text-xs text-ink-400 hover:text-cyan-accent disabled:opacity-50"
     >
       {devices > 0 ? <BellRing className="h-3.5 w-3.5 text-cyan-accent" /> : <BellOff className="h-3.5 w-3.5" />}
-      {devices > 0 ? 'Reminders on' : 'Remind me to check in'}
+      {devices > 0 ? 'Reminders on' : 'Remind me'}
     </button>
   )
 }
 
 /**
- * The technician's own view of their attendance: time, location, transport, and their recent
- * visits. Deliberately does NOT surface the location tracking back at them - no coordinates, no
- * map links, no on-site/outside-site badge, no "explain why you left the site" prompt. All of
- * that still happens and is still recorded; it is shown to Admin, HR and Operations on Team
- * Attendance and Field Operations instead.
+ * The technician's own attendance screen — the one used most, often one-handed and outdoors, so:
+ * one big unambiguous status, one primary action, minimal required fields (only the location, on
+ * check-in). Transport and a departure note sit behind a "Trip details" disclosure so a normal
+ * check-out is a single tap.
  *
- * Note this is about not confronting somebody with monitoring in their own screen. It is not
- * concealment, and must not be built into it: the browser's own geolocation permission prompt
- * discloses the tracking to every technician before the first check-in can succeed, and check-in
- * fails outright if they decline. That disclosure is not ours to remove.
+ * It deliberately does NOT surface the location tracking back at the technician — no coordinates,
+ * no map, no on-site/off-site verdict, no "explain why you left" prompt. All of that is still
+ * recorded and shown to Admin/HR/Operations on Team Attendance and Field Operations. This is about
+ * not confronting somebody with monitoring in their own screen; it is not concealment (the
+ * browser's geolocation prompt discloses the tracking before the first check-in can succeed, and
+ * a decline blocks check-in). See CLAUDE.md §7a.
  */
 function AttendanceWidget() {
   const toast = useToast()
   const [current, setCurrent] = useState<SiteAttendance | null>(null)
   const [history, setHistory] = useState<SiteAttendance[]>([])
+  const [myWorkOrders, setMyWorkOrders] = useState<MyWorkOrderOption[]>([])
   const [loading, setLoading] = useState(true)
   const [actioning, setActioning] = useState(false)
+  const [now, setNow] = useState(() => Date.now())
   // A check-in/out saved on the device during a signal drop and not yet synced (see lib/outbox).
   const [pendingKinds, setPendingKinds] = useState<string[]>([])
+
   const [note, setNote] = useState('')
+  const [workOrderId, setWorkOrderId] = useState('')
   const [declaredTime, setDeclaredTime] = useState(currentClockTime)
   // The box is prefilled with the clock, so a technician who just opens the app and taps through
   // gets the right time with no typing. If they never touched it, we re-read the clock at submit
-  // rather than sending the prefill - on a page that has been open a while, that value is stale.
+  // rather than sending the prefill — on a page open a while, the prefill is stale.
   const [declaredTimeEdited, setDeclaredTimeEdited] = useState(false)
   const [transportCost, setTransportCost] = useState('')
+  const [tripDetailsOpen, setTripDetailsOpen] = useState(false)
 
   function load() {
     setLoading(true)
@@ -127,9 +135,16 @@ function AttendanceWidget() {
   }
 
   useEffect(load, [])
+  useEffect(() => {
+    api.getMyWorkOrders().then(({ workOrders }) => setMyWorkOrders(workOrders)).catch(() => setMyWorkOrders([]))
+  }, [])
 
-  // Track queued check-in/out so the widget can show "waiting to sync" and still offer check-out
-  // when the check-in itself hasn't reached the server yet.
+  // Tick the on-site duration once a minute while checked in.
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 60_000)
+    return () => clearInterval(t)
+  }, [])
+
   useEffect(() => {
     const refresh = () =>
       listOutbox().then((items) =>
@@ -141,47 +156,20 @@ function AttendanceWidget() {
 
   const pendingCheckIn = pendingKinds.includes('check-in')
   const pendingCheckOut = pendingKinds.includes('check-out')
-  // "Checked in" from the technician's point of view: a live session, or a queued check-in that
-  // hasn't been followed by a queued check-out.
+  // "Checked in" from the technician's point of view: a live session, or a queued check-in not yet
+  // followed by a queued check-out.
   const checkedIn = !!current || (pendingCheckIn && !pendingCheckOut)
-  const syncPending = pendingCheckIn || pendingCheckOut
+  const awaitingSync = (pendingCheckIn && !current) || pendingCheckOut
 
-  const hasSiteCoords = !!current?.workOrder?.siteLat && !!current?.workOrder?.siteLng
-
-  /**
-   * Periodic (not continuous) location re-check while checked in and linked to a work order with a
-   * known site. Runs once on mount and every 10 minutes after, and stops the moment the technician
-   * checks out or leaves this page - it is still foreground-tab-only, since there is no service
-   * worker (see CLAUDE.md §9).
-   *
-   * The immediate first run replaces the old manual "Verify My Location" button: a supervisor's
-   * requested check is now satisfied by the technician simply opening the app, rather than by
-   * asking them to press something. Failures stay silent - a missed check isn't worth interrupting
-   * somebody mid-job over, and the result is for managers, not for them.
-   */
-  useEffect(() => {
-    if (!current || !hasSiteCoords) return
-
-    const verify = () =>
-      getPosition()
-        .then((pos) => api.verifyMyLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }))
-        .catch(() => {})
-
-    verify()
-    const interval = setInterval(verify, VERIFY_INTERVAL_MS)
-    return () => clearInterval(interval)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current?.id, hasSiteCoords])
-
-  /** Resets the form back to a fresh prefilled state after a successful check-in or check-out. */
   function resetForm() {
     setNote('')
+    setWorkOrderId('')
     setTransportCost('')
     setDeclaredTime(currentClockTime())
     setDeclaredTimeEdited(false)
+    setTripDetailsOpen(false)
   }
 
-  /** The number the API expects, or undefined when the field was left blank - never NaN. */
   function transportCostForSubmit(): number | undefined {
     if (!transportCost.trim()) return undefined
     const amount = Number(transportCost)
@@ -190,7 +178,7 @@ function AttendanceWidget() {
 
   async function handleCheckIn() {
     if (!note.trim()) {
-      toast.error('A location is required to check in')
+      toast.error('Enter where you are to check in')
       return
     }
     setActioning(true)
@@ -204,6 +192,7 @@ function AttendanceWidget() {
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
           note,
+          workOrderId: workOrderId || undefined,
           timeIn: declaredTimeEdited ? declaredTime : currentClockTime(),
           transportCost: transportCostForSubmit(),
         },
@@ -246,126 +235,228 @@ function AttendanceWidget() {
 
   if (loading) return null
 
+  const primaryButton =
+    'flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-accent px-4 py-3.5 text-base font-semibold text-ink-950 transition hover:bg-cyan-accent-dark disabled:opacity-60'
+
   return (
     <Panel title="My Attendance" action={<ReminderToggle />}>
       <div className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            {current ? (
-              <p className="text-sm text-ink-100">
-                Checked in since {clockOf(new Date(current.checkInAt))}
-                {statedTimeSuffix(current.checkInDeclaredTime, current.checkInAt)}
-                {current.checkInNote && <span className="text-ink-400"> · {current.checkInNote}</span>}
-                {Number(current.checkInTransportCost ?? 0) > 0 && (
-                  <span className="text-ink-400"> · transport {formatMoney(Number(current.checkInTransportCost))}</span>
-                )}
-                {current.workOrder && (
-                  <span className="text-ink-400"> · {current.workOrder.workOrderNumber} — {current.workOrder.title}</span>
-                )}
-              </p>
-            ) : checkedIn ? (
-              <p className="text-sm text-ink-100">Checked in — waiting to sync</p>
-            ) : (
-              <p className="text-sm text-ink-400">Not checked in</p>
-            )}
-            {syncPending && !checkedIn && (
-              <p className="text-xs text-ink-500">Check-out saved on your device — waiting to sync</p>
-            )}
-          </div>
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="flex flex-col gap-1">
-              <label htmlFor="site-declared-time" className={fieldLabelClass}>
-                {checkedIn ? 'TIME OUT' : 'TIME IN'}
-              </label>
-              <input
-                id="site-declared-time"
-                type="time"
-                value={declaredTime}
-                onChange={(e) => {
-                  setDeclaredTime(e.target.value)
-                  setDeclaredTimeEdited(true)
-                }}
-                className={`${noteInputClass} w-32`}
-              />
-            </div>
-
-            <div className="flex min-w-[12rem] flex-1 flex-col gap-1">
-              <label htmlFor="site-location" className={fieldLabelClass}>
-                {checkedIn ? 'LOCATION (OPTIONAL)' : 'LOCATION'}
-              </label>
-              <input
-                id="site-location"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder={checkedIn ? 'Where you are leaving from' : 'Office, client site...'}
-                maxLength={200}
-                className={noteInputClass}
-              />
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <label htmlFor="site-transport-cost" className={fieldLabelClass}>
-                TRANSPORT (MUR)
-              </label>
-              <input
-                id="site-transport-cost"
-                type="number"
-                inputMode="decimal"
-                min="0"
-                step="0.01"
-                value={transportCost}
-                onChange={(e) => setTransportCost(e.target.value)}
-                placeholder="If applicable"
-                className={`${noteInputClass} w-36`}
-              />
-            </div>
-
-            <div className="flex items-center gap-2">
-              {checkedIn ? (
-                <button type="button" onClick={handleCheckOut} disabled={actioning} className={secondaryButtonClass}>
-                  <LogOut className="h-4 w-4" />
-                  Check Out
-                </button>
+        {/* Status card */}
+        <div className="rounded-xl border border-ink-700 bg-ink-950/60 px-4 py-5 text-center">
+          <div className="text-[11px] font-semibold tracking-widest text-ink-500">CURRENT STATUS</div>
+          {checkedIn ? (
+            <>
+              <div className="mt-1 flex items-center justify-center gap-2 text-lg font-bold text-ink-100">
+                <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
+                CHECKED IN
+              </div>
+              {current ? (
+                <>
+                  <div className="mt-2 text-4xl font-bold tracking-tight text-cyan-accent">
+                    {durationSince(current.checkInAt, now)}
+                  </div>
+                  <div className="mt-1 text-xs text-ink-400">
+                    since {clockOf(new Date(current.checkInAt))}
+                    {statedTimeSuffix(current.checkInDeclaredTime, current.checkInAt)}
+                  </div>
+                  {current.workOrder && (
+                    <div className="mx-auto mt-3 inline-flex max-w-full items-center gap-1.5 rounded-lg bg-ink-800 px-3 py-1.5 text-xs text-ink-200">
+                      <Briefcase className="h-3.5 w-3.5 shrink-0 text-cyan-accent" />
+                      <span className="truncate">
+                        {current.workOrder.workOrderNumber} — {current.workOrder.title}
+                      </span>
+                    </div>
+                  )}
+                </>
               ) : (
-                <button type="button" onClick={handleCheckIn} disabled={actioning} className={primaryButtonClass}>
-                  <LogIn className="h-4 w-4" />
-                  Check In
-                </button>
+                <div className="mt-2 text-sm text-amber-300">Saved on your device — waiting to sync</div>
               )}
-            </div>
-          </div>
+            </>
+          ) : (
+            <>
+              <div className="mt-1 text-lg font-bold text-ink-300">NOT CHECKED IN</div>
+              {awaitingSync && (
+                <div className="mt-2 text-sm text-amber-300">Check-out saved — waiting to sync</div>
+              )}
+            </>
+          )}
         </div>
 
-
-        {history.length > 0 && (
-          <div className="flex flex-col gap-2 border-t border-ink-800 pt-3">
-            {history.slice(0, 5).map((v) => (
-              <div key={v.id} className="flex items-center justify-between gap-3 text-xs text-ink-400">
-                <span>
-                  {new Date(v.checkInAt).toLocaleString()}
-                  {statedTimeSuffix(v.checkInDeclaredTime, v.checkInAt)}
-                  {v.checkInNote && <span> · {v.checkInNote}</span>}
-                </span>
-                <span className="flex items-center gap-2">
-                  {totalTransportCost(v) > 0 && (
-                    <span className="text-ink-300">{formatMoney(totalTransportCost(v))}</span>
-                  )}
-                  {v.checkOutAt ? (
-                    <span>
-                      → {clockOf(new Date(v.checkOutAt))}
-                      {statedTimeSuffix(v.checkOutDeclaredTime, v.checkOutAt)}
-                      {v.checkOutNote && <span> · {v.checkOutNote}</span>}
-                    </span>
-                  ) : (
-                    'Still checked in'
-                  )}
-                </span>
+        {/* Primary action + its fields */}
+        {checkedIn ? (
+          <>
+            <button type="button" onClick={handleCheckOut} disabled={actioning} className={primaryButton}>
+              <LogOut className="h-5 w-5" />
+              {actioning ? 'Checking out…' : 'Check Out'}
+            </button>
+            <TripDetails
+              open={tripDetailsOpen}
+              onToggle={() => setTripDetailsOpen((v) => !v)}
+              mode="out"
+              time={declaredTime}
+              onTime={(v) => {
+                setDeclaredTime(v)
+                setDeclaredTimeEdited(true)
+              }}
+              note={note}
+              onNote={setNote}
+              transport={transportCost}
+              onTransport={setTransportCost}
+            />
+          </>
+        ) : (
+          <>
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-1">
+                <label htmlFor="att-location" className={fieldLabelClass}>
+                  WHERE ARE YOU?
+                </label>
+                <input
+                  id="att-location"
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder="Office, client site…"
+                  maxLength={200}
+                  className={inputClass}
+                />
               </div>
-            ))}
+
+              {myWorkOrders.length > 0 && (
+                <div className="flex flex-col gap-1">
+                  <label htmlFor="att-wo" className={fieldLabelClass}>
+                    WHICH JOB? (OPTIONAL)
+                  </label>
+                  <select
+                    id="att-wo"
+                    value={workOrderId}
+                    onChange={(e) => setWorkOrderId(e.target.value)}
+                    className={inputClass}
+                  >
+                    <option value="">Not for a specific job</option>
+                    {myWorkOrders.map((wo) => (
+                      <option key={wo.id} value={wo.id}>
+                        {wo.workOrderNumber} — {wo.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+
+            <button type="button" onClick={handleCheckIn} disabled={actioning} className={primaryButton}>
+              <LogIn className="h-5 w-5" />
+              {actioning ? 'Checking in…' : 'Check In'}
+            </button>
+
+            <TripDetails
+              open={tripDetailsOpen}
+              onToggle={() => setTripDetailsOpen((v) => !v)}
+              mode="in"
+              time={declaredTime}
+              onTime={(v) => {
+                setDeclaredTime(v)
+                setDeclaredTimeEdited(true)
+              }}
+              transport={transportCost}
+              onTransport={setTransportCost}
+            />
+          </>
+        )}
+
+        {/* Today */}
+        {history.length > 0 && (
+          <div className="border-t border-ink-800 pt-3">
+            <div className="mb-2 text-[11px] font-semibold tracking-widest text-ink-500">RECENT</div>
+            <div className="flex flex-col gap-2.5">
+              {history.slice(0, 5).map((v) => (
+                <div key={v.id} className="flex items-start gap-2.5 text-xs">
+                  <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-cyan-accent/70" />
+                  <div className="min-w-0 flex-1 text-ink-400">
+                    <span className="text-ink-200">
+                      {clockOf(new Date(v.checkInAt))}
+                      {v.checkOutAt ? ` – ${clockOf(new Date(v.checkOutAt))}` : ' · still in'}
+                    </span>
+                    {v.checkInNote && <span> · {v.checkInNote}</span>}
+                    {totalTransportCost(v) > 0 && (
+                      <span className="text-ink-300"> · {formatMoney(totalTransportCost(v))}</span>
+                    )}
+                    <span className="block text-ink-500">{new Date(v.checkInAt).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
     </Panel>
+  )
+}
+
+function TripDetails({
+  open,
+  onToggle,
+  mode,
+  time,
+  onTime,
+  note,
+  onNote,
+  transport,
+  onTransport,
+}: {
+  open: boolean
+  onToggle: () => void
+  mode: 'in' | 'out'
+  time: string
+  onTime: (v: string) => void
+  note?: string
+  onNote?: (v: string) => void
+  transport: string
+  onTransport: (v: string) => void
+}) {
+  return (
+    <div className="rounded-lg border border-ink-800">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center justify-between px-3 py-2 text-xs font-medium text-ink-300"
+      >
+        Trip details (optional)
+        <ChevronDown className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="flex flex-col gap-3 border-t border-ink-800 px-3 py-3">
+          <div className="flex flex-col gap-1">
+            <label className={fieldLabelClass}>{mode === 'out' ? 'TIME OUT' : 'TIME IN'}</label>
+            <input type="time" value={time} onChange={(e) => onTime(e.target.value)} className={`${inputClass} w-36`} />
+          </div>
+          {mode === 'out' && onNote && (
+            <div className="flex flex-col gap-1">
+              <label className={fieldLabelClass}>LEAVING FROM</label>
+              <input
+                value={note ?? ''}
+                onChange={(e) => onNote(e.target.value)}
+                placeholder="Where you are leaving from"
+                maxLength={200}
+                className={inputClass}
+              />
+            </div>
+          )}
+          <div className="flex flex-col gap-1">
+            <label className={fieldLabelClass}>TRANSPORT (MUR)</label>
+            <input
+              type="number"
+              inputMode="decimal"
+              min="0"
+              step="0.01"
+              value={transport}
+              onChange={(e) => onTransport(e.target.value)}
+              placeholder="If applicable"
+              className={`${inputClass} w-36`}
+            />
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 
