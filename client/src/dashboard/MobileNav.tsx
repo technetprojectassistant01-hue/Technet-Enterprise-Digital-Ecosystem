@@ -4,16 +4,16 @@ import { useAuth } from '../context/AuthContext'
 import { MAIN_NAV } from './nav'
 
 /**
- * The phone quick-nav strip (Option D from the design mockups): a horizontally scrollable row of
- * the top-level sections for one-tap access, plus an "All" button that opens the full navigation
- * drawer. Only rendered below `md` — tablet and up use the sidebar/drawer directly.
+ * The quick-nav strip (Option D from the design mockups): a horizontally scrollable row of the
+ * top-level sections for one-tap access, plus an "All" button that opens the full navigation
+ * drawer. Shown below `lg` — phone and tablet, where the permanent sidebar is gone.
  */
 function MobileNav({ onOpenAll }: { onOpenAll: () => void }) {
   const { user } = useAuth()
   const items = MAIN_NAV.filter((item) => !user?.role || !item.hiddenFrom?.includes(user.role))
 
   return (
-    <div className="flex items-stretch gap-1 border-b border-ink-800 bg-ink-900 px-2 py-1.5 md:hidden">
+    <div className="flex items-stretch gap-1 border-b border-ink-800 bg-ink-900 px-2 py-1.5 lg:hidden">
       <div className="flex flex-1 gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {items.map((item) => (
           <NavLink
