@@ -13,8 +13,11 @@ interface ModuleTab {
  * The module-level bar every ERP/Operations section shares: label + tabs on
  * the left, a decorative local search + notification/settings/avatar on the
  * right. Breaks out of the padded <main> content area with negative margins
- * so it spans full width like the design mockups, rather than restructuring
- * the dashboard shell.
+ * so it spans full width like the design mockups — the negative margins must
+ * track <main>'s responsive padding in Dashboard.tsx exactly.
+ *
+ * The right-side cluster is hidden below `lg`: it duplicates the dashboard
+ * shell header, which already carries notifications/settings/avatar there.
  */
 function ModuleHeader({
   title,
@@ -31,21 +34,21 @@ function ModuleHeader({
   const displayName = user?.name || user?.email || ''
 
   return (
-    <div className="-mx-8 -mt-6 mb-6 border-b border-ink-800 bg-ink-900 px-8 py-4">
+    <div className="-mx-4 -mt-4 mb-6 border-b border-ink-800 bg-ink-900 px-4 py-4 sm:-mx-6 sm:px-6 sm:-mt-6 lg:-mx-8 lg:px-8">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1">
+        <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-6 gap-y-1">
           <div>
             <div className="text-sm text-ink-300">{title}</div>
             <div className="text-sm font-bold uppercase tracking-wide text-ink-100">{subtitle}</div>
           </div>
-          <nav className="flex flex-wrap gap-1">
+          <nav className="-mx-1 flex gap-1 overflow-x-auto px-1 [scrollbar-width:none] sm:flex-wrap sm:overflow-visible [&::-webkit-scrollbar]:hidden">
             {tabs.map((tab) => (
               <NavLink
                 key={tab.to}
                 to={tab.to}
                 end={tab.end}
                 className={({ isActive }: { isActive: boolean }) =>
-                  `border-b-2 px-3 py-1.5 text-sm font-medium transition ${
+                  `shrink-0 border-b-2 px-3 py-1.5 text-sm font-medium transition ${
                     isActive
                       ? 'border-cyan-accent text-cyan-accent'
                       : 'border-transparent text-ink-300 hover:text-ink-100'
@@ -58,7 +61,7 @@ function ModuleHeader({
           </nav>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="hidden items-center gap-4 lg:flex">
           <div className="hidden items-center gap-2 rounded-md border border-ink-700 bg-ink-950 px-3 py-1.5 sm:flex">
             <Search className="h-3.5 w-3.5 text-ink-400" />
             <input
