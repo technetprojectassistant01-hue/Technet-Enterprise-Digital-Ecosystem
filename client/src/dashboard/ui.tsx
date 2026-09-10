@@ -1,6 +1,13 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { X, type LucideIcon } from 'lucide-react'
 
+/**
+ * The shared, hand-built UI kit. Every module reuses these primitives, so a refinement here
+ * cascades to the whole app. The 2026-09-10 pass aimed for "cleaner and more confidence-inspiring,
+ * not busier": softer borders + a subtle shadow so surfaces read as layered rather than flat and
+ * outlined, keyboard focus rings, gentle press states, and pill badges.
+ */
+
 export function Panel({
   title,
   icon: Icon,
@@ -18,16 +25,16 @@ export function Panel({
 }) {
   return (
     <div
-      className={`animate-fade-in-up rounded-xl border border-ink-700 bg-ink-900 p-6 transition-colors duration-150 hover:border-ink-600 ${className}`}
+      className={`animate-fade-in-up rounded-xl border border-ink-800 bg-ink-900 p-5 shadow-sm shadow-black/20 sm:p-6 ${className}`}
     >
       {title && (
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-ink-100">
-            {Icon && <Icon className="h-4 w-4 text-ink-300" />}
-            {title}
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-ink-100">
+            {Icon && <Icon className="h-4 w-4 shrink-0 text-ink-300" />}
+            <span className="truncate">{title}</span>
             {badge}
           </h2>
-          {action}
+          {action && <div className="shrink-0">{action}</div>}
         </div>
       )}
       {children}
@@ -54,20 +61,20 @@ export function StatCard({
   progress?: number
 }) {
   return (
-    <div className="animate-fade-in-up rounded-xl border border-ink-700 bg-ink-900 p-5 transition-all duration-150 hover:-translate-y-0.5 hover:border-ink-600 hover:shadow-lg hover:shadow-black/20">
+    <div className="animate-fade-in-up rounded-xl border border-ink-800 bg-ink-900 p-5 shadow-sm shadow-black/20 transition duration-150 hover:-translate-y-0.5 hover:border-ink-700 hover:shadow-md hover:shadow-black/30">
       <div className="flex items-start justify-between">
         <span className="text-xs font-semibold tracking-widest text-ink-400">{label}</span>
         {Icon && (
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-ink-800 text-cyan-accent">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-cyan-accent/10 text-cyan-accent">
             <Icon className="h-3.5 w-3.5" />
           </span>
         )}
       </div>
-      <div className="mt-2 flex items-baseline justify-between">
+      <div className="mt-2 flex items-baseline justify-between gap-2">
         <span className="font-mono text-2xl font-semibold text-ink-100">{value}</span>
         {delta && (
           <span
-            className={`text-xs font-medium ${
+            className={`shrink-0 text-xs font-medium ${
               deltaTone === 'positive' ? 'text-cyan-accent' : 'text-amber-400'
             }`}
           >
@@ -147,22 +154,22 @@ export function Modal({
 }) {
   return (
     <div
-      className="animate-backdrop-in fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      className="animate-backdrop-in fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm p-0 sm:items-center sm:p-4"
       onClick={onClose}
     >
       <div
-        className={`animate-scale-in flex max-h-[90vh] w-full flex-col rounded-xl border border-ink-700 bg-ink-900 p-6 shadow-2xl ${
-          size === 'lg' ? 'max-w-3xl' : 'max-w-lg'
+        className={`animate-scale-in flex max-h-[92vh] w-full flex-col rounded-t-2xl border border-ink-700 bg-ink-900 p-4 shadow-2xl shadow-black/50 sm:max-h-[85vh] sm:rounded-xl sm:p-6 ${
+          size === 'lg' ? 'sm:max-w-3xl' : 'sm:max-w-lg'
         }`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mb-4 flex shrink-0 items-center justify-between">
-          <h2 className="text-base font-semibold text-ink-100">{title}</h2>
+        <div className="mb-4 flex shrink-0 items-center justify-between gap-3">
+          <h2 className="truncate text-base font-semibold text-ink-100">{title}</h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="text-ink-400 hover:text-ink-100"
+            className="-mr-1 shrink-0 rounded-md p-1 text-ink-400 transition hover:bg-ink-800 hover:text-ink-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-accent"
           >
             <X className="h-5 w-5" />
           </button>
@@ -186,7 +193,7 @@ const badgeToneClasses: Record<BadgeTone, string> = {
 export function Badge({ tone = 'neutral', children }: { tone?: BadgeTone; children: ReactNode }) {
   return (
     <span
-      className={`inline-block rounded px-2 py-1 text-xs font-medium ${badgeToneClasses[tone]}`}
+      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ring-white/5 ${badgeToneClasses[tone]}`}
     >
       {children}
     </span>
@@ -203,11 +210,11 @@ export function EmptyState({
   action?: ReactNode
 }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
-      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-ink-800 text-ink-500">
-        <Icon className="h-5 w-5" />
+    <div className="flex flex-col items-center justify-center gap-3 px-6 py-14 text-center">
+      <span className="flex h-14 w-14 items-center justify-center rounded-full bg-ink-800 text-ink-500 ring-1 ring-inset ring-white/5">
+        <Icon className="h-6 w-6" />
       </span>
-      <p className="text-sm text-ink-400">{message}</p>
+      <p className="max-w-sm text-sm text-ink-400">{message}</p>
       {action}
     </div>
   )
@@ -222,7 +229,7 @@ export function TableSkeleton({ rows = 4, cols = 4 }: { rows?: number; cols?: nu
             <span
               key={c}
               className="h-4 flex-1 rounded bg-[linear-gradient(90deg,var(--color-ink-800)_25%,var(--color-ink-700)_50%,var(--color-ink-800)_75%)] bg-[length:200%_100%] animate-shimmer"
-              style={{ animationDelay: `${r * 60}ms` }}
+              style={{ animationDelay: `${(r * cols + c) * 60}ms` }}
             />
           ))}
         </div>
@@ -242,7 +249,7 @@ export function Avatar({ name, size = 36 }: { name: string; size?: number }) {
 
   return (
     <div
-      className="flex shrink-0 items-center justify-center rounded-full bg-cyan-accent/20 font-semibold text-cyan-accent"
+      className="flex shrink-0 items-center justify-center rounded-full bg-cyan-accent/20 font-semibold text-cyan-accent ring-1 ring-inset ring-cyan-accent/20"
       style={{ width: size, height: size, fontSize: size * 0.4 }}
     >
       {initials || '?'}
