@@ -466,7 +466,7 @@ function InterventionReportFormPage() {
       <form onSubmit={handleSubmit} className="flex flex-col gap-6">
         <Panel title="Customer & Contact">
           <div className="flex flex-col gap-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className={labelClass}>
                   CUSTOMER
@@ -494,7 +494,7 @@ function InterventionReportFormPage() {
               </div>
             </div>
             <p className="text-xs text-ink-500">The intervention number is assigned automatically on submit.</p>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <div>
                 <label className={labelClass}>CONTACT PERSON</label>
                 <input value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} className={`mt-2 ${inputClass}`} />
@@ -519,7 +519,7 @@ function InterventionReportFormPage() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className={labelClass}>JOB CATEGORY</label>
                 <select
@@ -565,7 +565,7 @@ function InterventionReportFormPage() {
 
         <Panel title="Equipment / System (optional)">
           <div className="flex flex-col gap-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className={labelClass}>EQUIPMENT</label>
                 <input value={equipment} onChange={(e) => setEquipment(e.target.value)} className={`mt-2 ${inputClass}`} />
@@ -693,7 +693,7 @@ function InterventionReportFormPage() {
                 )}
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className={labelClass}>TIME IN</label>
                 <input type="time" value={timeIn} onChange={(e) => setTimeIn(e.target.value)} className={`mt-2 ${inputClass}`} />

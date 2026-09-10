@@ -380,7 +380,7 @@ function QuotationsPage() {
       {showCreate && (
         <Modal title="New Quotation" onClose={() => setShowCreate(false)}>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className={labelClass}>CUSTOMER</label>
                 <select value={customerId} onChange={(e) => handleCustomerChange(e.target.value)} className={`mt-2 ${inputClass}`}>
@@ -417,7 +417,7 @@ function QuotationsPage() {
                 className={`mt-2 ${inputClass}`}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className={labelClass}>VAT %</label>
                 <input

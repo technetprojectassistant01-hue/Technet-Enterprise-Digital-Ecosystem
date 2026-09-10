@@ -262,7 +262,7 @@ function InvoicesPage() {
       {showCreate && (
         <Modal title="New Invoice" onClose={() => setShowCreate(false)}>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className={labelClass}>CUSTOMER</label>
                 <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className={`mt-2 ${inputClass}`}>
@@ -295,7 +295,7 @@ function InvoicesPage() {
                 className={`mt-2 ${inputClass}`}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className={labelClass}>P.O. NUMBER (OPTIONAL)</label>
                 <input value={poReference} onChange={(e) => setPoReference(e.target.value)} className={`mt-2 ${inputClass}`} />
@@ -305,7 +305,7 @@ function InvoicesPage() {
                 <input value={terms} onChange={(e) => setTerms(e.target.value)} className={`mt-2 ${inputClass}`} />
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <div>
                 <label className={labelClass}>STATUS</label>
                 <select

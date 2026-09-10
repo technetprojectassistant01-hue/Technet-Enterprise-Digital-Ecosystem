@@ -328,7 +328,7 @@ function CustomersPage() {
       {(showCreate || editing) && (
         <Modal title={editing ? 'Edit Customer' : 'Add Customer'} onClose={closeForm}>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="col-span-2">
                 <label className={labelClass}>NAME</label>
                 <input

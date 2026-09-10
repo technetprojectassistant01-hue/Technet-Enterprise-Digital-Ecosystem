@@ -557,7 +557,7 @@ function QuotationDetailPage() {
         )}
         {editingItems ? (
           <form onSubmit={handleSaveItems} className="flex flex-col gap-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className={labelClass}>CUSTOMER</label>
                 <select value={editCustomerId} onChange={(e) => setEditCustomerId(e.target.value)} className={`mt-2 ${inputClass}`}>
@@ -799,7 +799,7 @@ function QuotationDetailPage() {
           {canWrite && (
             <form onSubmit={handleLogCall} className="flex flex-col gap-3 border-t border-ink-800 pt-4">
               <p className={labelClass}>LOG A CALL</p>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className={labelClass}>SPOKEN TO</label>
                   <input value={spokenTo} onChange={(e) => setSpokenTo(e.target.value)} className={`mt-2 ${inputClass}`} />

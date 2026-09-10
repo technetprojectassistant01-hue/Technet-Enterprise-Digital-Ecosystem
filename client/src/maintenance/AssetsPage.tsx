@@ -338,7 +338,7 @@ function AssetsPage() {
       {(showCreate || editing) && (
         <Modal title={editing ? 'Edit Asset' : 'Add Asset'} onClose={closeForm}>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="col-span-2">
                 <label className={labelClass}>NAME</label>
                 <input
