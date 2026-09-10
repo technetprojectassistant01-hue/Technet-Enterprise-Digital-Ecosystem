@@ -26,3 +26,11 @@ export function issuePortalCookie(res: Response, payload: PortalTokenPayload): v
   const token = signPortalToken({ portalUserId: payload.portalUserId, customerId: payload.customerId });
   res.cookie(PORTAL_COOKIE_NAME, token, { ...portalCookieOptions, maxAge: MAX_AGE_MS });
 }
+
+/** Clears portal_token under every attribute shape it has been set with — see the staff
+ * equivalent in lib/authCookie.ts. Call on login (before issuing) and on logout. */
+export function clearPortalCookieVariants(res: Response): void {
+  res.clearCookie(PORTAL_COOKIE_NAME, portalCookieOptions);
+  res.clearCookie(PORTAL_COOKIE_NAME, { httpOnly: true, secure: true, sameSite: "none", partitioned: true });
+  res.clearCookie(PORTAL_COOKIE_NAME, { httpOnly: true, secure: true, sameSite: "none" });
+}

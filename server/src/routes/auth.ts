@@ -2,7 +2,7 @@ import { Router } from "express";
 import bcrypt from "bcryptjs";
 import rateLimit from "express-rate-limit";
 import { prisma } from "../lib/prisma";
-import { AUTH_COOKIE_NAME, authCookieOptions, issueAuthCookie } from "../lib/authCookie";
+import { clearAuthCookieVariants, issueAuthCookie } from "../lib/authCookie";
 import { requireAuth } from "../middleware/auth";
 import { generateResetToken, hashResetToken } from "../lib/passwordReset";
 import { sendPasswordResetEmail } from "../lib/email";
@@ -44,6 +44,9 @@ router.post("/login", async (req, res) => {
 
   await logSecurityEvent("LOGIN_SUCCEEDED", { actorUserId: user.id, actorEmail: user.email });
 
+  // Wipe any stale token cookie (older SameSite=None; Partitioned variants, or another user's
+  // lingering session) before issuing the fresh one, so only this login survives.
+  clearAuthCookieVariants(res);
   issueAuthCookie(res, { sub: user.id, role: user.role });
 
   res.json({
@@ -58,7 +61,7 @@ router.post("/login", async (req, res) => {
 });
 
 router.post("/logout", (_req, res) => {
-  res.clearCookie(AUTH_COOKIE_NAME, authCookieOptions);
+  clearAuthCookieVariants(res);
   res.json({ ok: true });
 });
 
