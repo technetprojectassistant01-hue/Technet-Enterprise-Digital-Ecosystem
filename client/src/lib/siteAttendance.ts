@@ -55,3 +55,39 @@ export function hasLocationMismatch(
 ): boolean {
   return visit.checkInLocationMatch === 'MISMATCH' || visit.checkOutLocationMatch === 'MISMATCH'
 }
+
+/**
+ * A gap of this many minutes or more between the time a technician typed and the time the server
+ * recorded is worth a manager's attention. Below it is ordinary rounding / app-open lag. Tune
+ * once real data is in front of someone.
+ */
+export const STATED_TIME_GAP_MINUTES = 15
+
+/**
+ * The signed gap between a typed "stated" time and the recorded one, as `"+22m"` / `"−15m"`, but
+ * only once it reaches STATED_TIME_GAP_MINUTES — otherwise `null`. Same shape and intent as
+ * locationMismatchLabel: rendered only when it means something.
+ */
+export function statedTimeGapLabel(declared: string | null, actualIso: string | null): string | null {
+  if (!declared || !actualIso) return null
+  const [h, m] = declared.split(':').map(Number)
+  if (Number.isNaN(h) || Number.isNaN(m)) return null
+  const actual = new Date(actualIso)
+  const recordedMinutes = actual.getHours() * 60 + actual.getMinutes()
+  const gap = recordedMinutes - (h * 60 + m)
+  if (Math.abs(gap) < STATED_TIME_GAP_MINUTES) return null
+  return `${gap > 0 ? '+' : '−'}${Math.abs(gap)}m`
+}
+
+/** True when either leg's stated time differs from the recorded one by STATED_TIME_GAP_MINUTES+. */
+export function hasStatedTimeGap(
+  visit: Pick<
+    SiteAttendance,
+    'checkInDeclaredTime' | 'checkInAt' | 'checkOutDeclaredTime' | 'checkOutAt'
+  >,
+): boolean {
+  return (
+    statedTimeGapLabel(visit.checkInDeclaredTime, visit.checkInAt) !== null ||
+    statedTimeGapLabel(visit.checkOutDeclaredTime, visit.checkOutAt) !== null
+  )
+}
