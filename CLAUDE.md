@@ -706,15 +706,22 @@ only — never integrate with, call, or fix it).
   browser automation / Playwright) — handed to the user as a three-width click-through.
 - **Part 2 — whole-app visual modernization — ⏳ round 1 done, round 2 pending.**
   - **Round 1 (done 2026-09-10):** `AttendanceWidget.tsx` redesigned (one big CHECKED IN /
-    ticking-duration readout, one full-width primary action, location the only required field on
-    check-in, transport/notes behind a "Trip details" disclosure, an optional "Which job?" picker
-    whose choice shows as a chip). Location tracking stays **off** the technician's screen (§7a) —
-    the p8 mockup's "on site / verified / map" card was not built. The dormant periodic
-    verify-location effect was removed.
-  - **Round 2 (not started):** the broad shared-kit refresh — `client/src/dashboard/ui.tsx`
-    (Panel/Badge/Modal/EmptyState/StatCard/…) spacing, type scale, elevation, hover/press/focus,
-    transitions, empty/loading states. No component library — stays Tailwind + hand-built. Verify
-    on deploy (visual, can't be checked from the dev machine).
+    ticking-duration readout, one full-width primary action, an optional "Which job?" picker whose
+    choice shows as a chip; capped at `max-w-md` so it stays a compact card on wide screens).
+    **Required fields on both check-in and check-out: location (check-in only), time, and
+    transport** — a technician with no travel enters 0. (These were briefly behind an optional
+    "Trip details" disclosure; the manager wanted the data captured every time.) Location tracking
+    stays **off** the technician's screen (§7a) — the p8 mockup's "on site / verified / map" card
+    was not built. The dormant periodic verify-location effect was removed. Also this pass:
+    `viewport-fit=cover` + safe-area insets so the installed iOS PWA keeps content clear of the
+    notch.
+  - **Round 2 (done 2026-09-10):** the shared-kit refresh — `client/src/dashboard/ui.tsx` and
+    `buttonStyles.ts`: softer borders (ink-800) + a subtle shadow on Panel/StatCard/Modal so
+    surfaces read as layered not flat; keyboard focus rings + an `active:scale` press on all
+    buttons; pill badges; larger ringed EmptyState icon; Modal is a bottom sheet on phone with a
+    blurred backdrop. No component library — still Tailwind + hand-built. `buttonStyles.ts` now
+    also exports a shared `inputClass`/`labelClass` (new forms only; existing forms keep local
+    copies).
 - **Part 3 — attendance roadmap — ⏳ Phase 1 partly done.**
   - **Phase 1 (done 2026-09-10):** time-gap flag on Team Attendance (§7 "Manager visibility");
     the Work Order column is populated via the technician's check-in picker (§7 "the check-in ↔
