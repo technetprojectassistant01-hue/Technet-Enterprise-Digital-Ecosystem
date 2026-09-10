@@ -689,6 +689,15 @@ real iPhone test — install, log in, force-close, reopen → still logged in.
 **Bonus:** this removes the recurring cross-origin download-button trap (§9) and lets Background
 Sync's SW fetch carry the cookie (§14).
 
+**Stale-cookie gotcha (fixed 2026-09-10, `9f50d7e`):** a `token` cookie set as `SameSite=None;
+Partitioned` (the pre-proxy form) is a *different* cookie to the browser than the new
+`SameSite=Lax` one, so a lingering variant — even from a different user's earlier session on that
+browser — could be the one `req.cookies.token` reads. It surfaced as an **admin getting
+"Insufficient permissions"** on `OPS_MANAGE`-only pages while a technician's old cookie was still
+being sent. `clearAuthCookieVariants` / `clearPortalCookieVariants` now wipe every attribute
+shape on login (before issuing the fresh cookie) and on logout. A device already in this state
+needs one manual cookie clear / PWA reinstall to recover; fresh logins self-heal.
+
 **Trade-off accepted:** a 30-day JWT widens the stolen-token window vs. 8h. `JWT_SECRET` rotation
 stays the "log everyone out" kill switch. A proper short-access + refresh-token split was
 considered and deferred as a bigger task.
