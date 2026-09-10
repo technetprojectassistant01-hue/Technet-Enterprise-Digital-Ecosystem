@@ -1,11 +1,11 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { HelpCircle, Plus, Search, Settings } from 'lucide-react'
+import { Menu, Search, Settings, X } from 'lucide-react'
 import { useAuth } from './context/AuthContext'
 import Logo from './components/Logo'
-import { MAIN_NAV, SYSTEM_NAV, ADMIN_NAV } from './dashboard/nav'
 import { Avatar } from './dashboard/ui'
-import NavTree from './dashboard/NavTree'
+import SidebarContent from './dashboard/SidebarContent'
+import MobileNav from './dashboard/MobileNav'
 import NotificationBell from './dashboard/NotificationBell'
 import SyncStatus from './dashboard/SyncStatus'
 import { useToast } from './dashboard/ToastContext'
@@ -14,12 +14,13 @@ import { setOutboxDropHandler, startOutbox } from './lib/outbox'
 import { useOnline } from './lib/useOnline'
 
 function Dashboard() {
-  const { user, logout } = useAuth()
+  const { user } = useAuth()
   const toast = useToast()
   const toastRef = useRef(toast)
   toastRef.current = toast
   const { pathname } = useLocation()
   const online = useOnline()
+  const [navOpen, setNavOpen] = useState(false)
 
   // Register the service worker for every signed-in user (it was previously registered only on
   // push opt-in), and start the offline outbox: it replays field submissions that were saved on
@@ -35,88 +36,68 @@ function Dashboard() {
     )
     return () => setOutboxDropHandler(() => {})
   }, [])
+
+  // Close the mobile nav on navigation, and on Escape; lock body scroll while it's open.
+  useEffect(() => setNavOpen(false), [pathname])
+  useEffect(() => {
+    if (!navOpen) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setNavOpen(false)
+    window.addEventListener('keydown', onKey)
+    const previous = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      document.body.style.overflow = previous
+    }
+  }, [navOpen])
+
   const displayName = user?.name || user?.email || ''
-  const systemNav = user?.role === 'ADMIN' ? [...SYSTEM_NAV, ADMIN_NAV] : SYSTEM_NAV
-  const mainNav = MAIN_NAV.filter((item) => !user?.role || !item.hiddenFrom?.includes(user.role))
 
   return (
     <div className="flex min-h-screen bg-ink-950 text-ink-100">
-      <aside className="flex w-64 shrink-0 flex-col border-r border-ink-800 px-4 py-6">
-        <div className="px-2">
-          <Logo size="sm" />
-        </div>
-
-        <nav className="mt-8 flex flex-1 flex-col gap-6">
-          <div>
-            <span className="px-2 text-[11px] font-semibold tracking-widest text-ink-500">
-              MAIN MENU
-            </span>
-            <div className="mt-2">
-              <NavTree items={mainNav} />
-            </div>
-          </div>
-
-          <div>
-            <span className="px-2 text-[11px] font-semibold tracking-widest text-ink-500">
-              SYSTEM
-            </span>
-            <div className="mt-2 flex flex-col gap-1">
-              {systemNav.map((item) => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  className={({ isActive }: { isActive: boolean }) =>
-                    `flex items-center gap-3 rounded-md px-3 py-2 text-sm transition ${
-                      isActive
-                        ? 'bg-cyan-accent/10 text-cyan-accent'
-                        : 'text-ink-300 hover:bg-ink-800 hover:text-ink-100'
-                    }`
-                  }
-                >
-                  <item.icon className="h-4 w-4 shrink-0" />
-                  {item.label}
-                </NavLink>
-              ))}
-            </div>
-          </div>
-        </nav>
-
-        <div className="mt-6 flex flex-col gap-3">
-          <NavLink
-            to="/dashboard/erp/projects"
-            className="flex items-center justify-center gap-2 rounded-md bg-cyan-accent px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-ink-950 transition hover:bg-cyan-accent-dark"
-          >
-            <Plus className="h-4 w-4" />
-            New Project
-          </NavLink>
-          <a
-            href="#"
-            className="flex items-center gap-3 rounded-md px-3 py-1.5 text-sm text-ink-300 hover:text-ink-100"
-          >
-            <HelpCircle className="h-4 w-4 shrink-0" />
-            Support
-          </a>
-        </div>
-
-        <div className="mt-4 flex items-center gap-3 border-t border-ink-800 px-2 pt-4">
-          <Avatar name={displayName} />
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-medium text-ink-100">{displayName}</div>
-            <div className="text-xs text-ink-400">{user?.role}</div>
-          </div>
-          <button
-            type="button"
-            onClick={() => logout()}
-            className="text-xs text-ink-400 hover:text-ink-100"
-          >
-            Log out
-          </button>
-        </div>
+      {/* Desktop sidebar — always visible from lg up */}
+      <aside className="hidden w-64 shrink-0 border-r border-ink-800 lg:flex">
+        <SidebarContent />
       </aside>
 
-      <div className="flex flex-1 flex-col">
-        <header className="flex items-center gap-4 border-b border-ink-800 px-8 py-4">
-          <div className="flex max-w-md flex-1 items-center gap-2 rounded-lg border border-ink-700 bg-ink-900 px-3 py-2">
+      {/* Tablet / phone drawer */}
+      {navOpen && (
+        <>
+          <div
+            className="animate-backdrop-in fixed inset-0 z-40 bg-black/50 lg:hidden"
+            onClick={() => setNavOpen(false)}
+            aria-hidden="true"
+          />
+          <aside className="fixed inset-y-0 left-0 z-50 flex w-72 border-r border-ink-800 bg-ink-950 shadow-2xl lg:hidden">
+            <button
+              type="button"
+              onClick={() => setNavOpen(false)}
+              aria-label="Close menu"
+              className="absolute right-3 top-4 rounded p-1 text-ink-400 hover:bg-ink-800 hover:text-ink-100"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <SidebarContent />
+          </aside>
+        </>
+      )}
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="flex items-center gap-3 border-b border-ink-800 px-4 py-3 sm:gap-4 sm:px-6 lg:px-8 lg:py-4">
+          <button
+            type="button"
+            onClick={() => setNavOpen(true)}
+            aria-label="Open menu"
+            className="rounded p-1 text-ink-300 hover:bg-ink-800 hover:text-ink-100 lg:hidden"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+
+          <div className="lg:hidden">
+            <Logo size="sm" />
+          </div>
+
+          <div className="hidden max-w-md flex-1 items-center gap-2 rounded-lg border border-ink-700 bg-ink-900 px-3 py-2 sm:flex">
             <Search className="h-4 w-4 text-ink-400" />
             <input
               type="text"
@@ -125,14 +106,14 @@ function Dashboard() {
             />
           </div>
 
-          <div className="ml-auto flex items-center gap-5">
+          <div className="ml-auto flex items-center gap-3 sm:gap-5">
             <SyncStatus />
             <NotificationBell />
             <NavLink to="/dashboard/settings" className="text-ink-300 hover:text-ink-100" aria-label="Settings">
               <Settings className="h-5 w-5" />
             </NavLink>
             <div className="flex items-center gap-3">
-              <div className="text-right leading-tight">
+              <div className="hidden text-right leading-tight sm:block">
                 <div className="text-sm font-medium text-ink-100">{displayName}</div>
                 <div className="text-xs text-ink-400">{user?.role}</div>
               </div>
@@ -141,20 +122,22 @@ function Dashboard() {
           </div>
         </header>
 
+        <MobileNav onOpenAll={() => setNavOpen(true)} />
+
         {!online && (
-          <div className="border-b border-amber-400/30 bg-amber-400/10 px-8 py-2 text-xs text-amber-300">
+          <div className="border-b border-amber-400/30 bg-amber-400/10 px-4 py-2 text-xs text-amber-300 sm:px-6 lg:px-8">
             Offline — showing your last synced data. Anything you save is kept on this device and
             uploads automatically when you reconnect.
           </div>
         )}
 
-        <main className="flex-1 px-8 py-6">
+        <main className="flex-1 px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
           <div key={pathname} className="animate-fade-in">
             <Outlet />
           </div>
         </main>
 
-        <footer className="flex flex-col gap-3 border-t border-ink-800 px-8 py-4 text-xs text-ink-400 sm:flex-row sm:items-center sm:justify-between">
+        <footer className="flex flex-col gap-3 border-t border-ink-800 px-4 py-4 text-xs text-ink-400 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
           <span>© 2026 Technet Engineering.</span>
           <div className="flex flex-wrap gap-5">
             <a href="#" className="hover:text-ink-200">
