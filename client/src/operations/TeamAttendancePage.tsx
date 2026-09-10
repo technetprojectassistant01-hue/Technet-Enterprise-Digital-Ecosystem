@@ -7,7 +7,14 @@ import { Panel, Badge, EmptyState, Modal, TableSkeleton } from '../dashboard/ui'
 import { useAuth } from '../context/AuthContext'
 import { hasRole, OPS_MANAGE_ROLES } from '../lib/permissions'
 import { mapLink } from '../lib/geolocation'
-import { hasLocationMismatch, locationMismatchLabel, statedTimeSuffix, totalTransportCost } from '../lib/siteAttendance'
+import {
+  hasLocationMismatch,
+  hasStatedTimeGap,
+  locationMismatchLabel,
+  statedTimeGapLabel,
+  statedTimeSuffix,
+  totalTransportCost,
+} from '../lib/siteAttendance'
 import { formatMoney } from '../lib/format'
 import { downloadCsv } from '../lib/csv'
 import { primaryButtonClass, secondaryButtonClass } from '../dashboard/buttonStyles'
@@ -226,6 +233,16 @@ function TeamAttendancePage() {
               .filter(Boolean)
               .join('; '),
         },
+        {
+          header: 'Time Flag',
+          accessor: (v: SiteAttendanceWithEmployee) =>
+            [
+              statedTimeGapLabel(v.checkInDeclaredTime, v.checkInAt),
+              statedTimeGapLabel(v.checkOutDeclaredTime, v.checkOutAt),
+            ]
+              .filter(Boolean)
+              .join('; '),
+        },
       ],
       history,
     )
@@ -242,6 +259,18 @@ function TeamAttendancePage() {
       map.get(day)!.push(v)
     }
     return Array.from(map.entries())
+  }, [history])
+
+  // Stated-vs-recorded time-gap counts per technician, computed from the same rows the register
+  // renders (client-side, so the comparison uses the browser's Mauritius wall clock rather than
+  // the server's UTC). Feeds the "Time Flags" column of the summary alongside the server's
+  // location-flag count.
+  const timeGapCountByEmployee = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const v of history) {
+      if (hasStatedTimeGap(v)) map.set(v.employeeId, (map.get(v.employeeId) ?? 0) + 1)
+    }
+    return map
   }, [history])
 
   if (!canAccess) {
@@ -347,6 +376,7 @@ function TeamAttendancePage() {
                   <th className="px-3 py-2 font-semibold">HOURS ON SITE</th>
                   <th className="px-3 py-2 font-semibold">TRANSPORT</th>
                   <th className="px-3 py-2 font-semibold">LOCATION FLAGS</th>
+                  <th className="px-3 py-2 font-semibold">TIME FLAGS</th>
                 </tr>
               </thead>
               <tbody>
@@ -365,6 +395,13 @@ function TeamAttendancePage() {
                     <td className="px-3 py-2">
                       {s.locationMismatchCount > 0 ? (
                         <span className="font-medium text-amber-400">{s.locationMismatchCount}</span>
+                      ) : (
+                        <span className="text-ink-500">0</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2">
+                      {(timeGapCountByEmployee.get(s.employee.id) ?? 0) > 0 ? (
+                        <span className="font-medium text-amber-400">{timeGapCountByEmployee.get(s.employee.id)}</span>
                       ) : (
                         <span className="text-ink-500">0</span>
                       )}
@@ -493,7 +530,7 @@ function TeamAttendancePage() {
                         <tr
                           key={v.id}
                           className={`border-b border-ink-800 last:border-0 ${
-                            hasLocationMismatch(v) ? 'bg-amber-400/5' : ''
+                            hasLocationMismatch(v) || hasStatedTimeGap(v) ? 'bg-amber-400/5' : ''
                           }`}
                         >
                           <td className="px-3 py-2 text-ink-100">
@@ -519,6 +556,11 @@ function TeamAttendancePage() {
                                 ⚠ {locationMismatchLabel(v.checkInLocationMatch, v.checkInLocationDistanceMeters)}
                               </span>
                             )}
+                            {statedTimeGapLabel(v.checkInDeclaredTime, v.checkInAt) && (
+                              <span className="mt-0.5 block text-[11px] font-medium text-amber-400">
+                                ⚠ stated time off by {statedTimeGapLabel(v.checkInDeclaredTime, v.checkInAt)}
+                              </span>
+                            )}
                           </td>
                           <td className="px-3 py-2 text-ink-300">
                             {v.checkOutAt && v.checkOutLat && v.checkOutLng ? (
@@ -542,6 +584,11 @@ function TeamAttendancePage() {
                             {locationMismatchLabel(v.checkOutLocationMatch, v.checkOutLocationDistanceMeters) && (
                               <span className="mt-0.5 block text-[11px] font-medium text-amber-400">
                                 ⚠ {locationMismatchLabel(v.checkOutLocationMatch, v.checkOutLocationDistanceMeters)}
+                              </span>
+                            )}
+                            {statedTimeGapLabel(v.checkOutDeclaredTime, v.checkOutAt) && (
+                              <span className="mt-0.5 block text-[11px] font-medium text-amber-400">
+                                ⚠ stated time off by {statedTimeGapLabel(v.checkOutDeclaredTime, v.checkOutAt)}
                               </span>
                             )}
                           </td>
