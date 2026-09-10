@@ -1956,12 +1956,25 @@ export function listTeamAttendance(
  * the server rejects a non-numeric cost, so callers must convert before sending (see the
  * numeric-field note in CLAUDE.md §9).
  */
+export interface MyWorkOrderOption {
+  id: string
+  workOrderNumber: string
+  title: string
+  customer: { id: string; name: string; company: string | null }
+}
+
+/** The caller's assigned, still-open work orders — for the "which job?" picker on check-in. */
+export function getMyWorkOrders() {
+  return request<{ workOrders: MyWorkOrderOption[] }>('/api/site-attendance/my-work-orders')
+}
+
 export function checkInAttendance(payload: {
   lat: number
   lng: number
   note?: string
   timeIn?: string
   transportCost?: number
+  workOrderId?: string
 }) {
   return request<{ siteAttendance: SiteAttendance }>('/api/site-attendance/check-in', {
     method: 'POST',
