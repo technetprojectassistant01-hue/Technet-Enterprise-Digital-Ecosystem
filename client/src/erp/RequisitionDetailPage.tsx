@@ -264,7 +264,7 @@ function RequisitionDetailPage() {
       {showConvert && (
         <Modal title="Convert to Purchase Order" onClose={() => setShowConvert(false)}>
           <form onSubmit={handleConvert} className="flex flex-col gap-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className={labelClass}>SUPPLIER</label>
                 <select value={supplierId} onChange={(e) => setSupplierId(e.target.value)} className={`mt-2 ${inputClass}`}>

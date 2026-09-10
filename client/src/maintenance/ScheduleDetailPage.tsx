@@ -187,7 +187,7 @@ function ScheduleDetailPage() {
               <dt className="text-xs font-semibold tracking-widest text-ink-400">REMARKS</dt>
               <dd className="mt-1 text-sm text-ink-100">{schedule.report.remarks}</dd>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <dt className="text-xs font-semibold tracking-widest text-ink-400">WORK COMPLETED</dt>
                 <dd className="mt-1 text-sm text-ink-100">{schedule.report.workCompleted ? 'Yes' : 'No'}</dd>

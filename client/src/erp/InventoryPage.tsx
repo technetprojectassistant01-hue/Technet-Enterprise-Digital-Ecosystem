@@ -354,7 +354,7 @@ function InventoryPage() {
       {(showCreate || editingItem) && (
         <Modal title={editingItem ? 'Edit Item' : 'Add Item'} onClose={closeForm}>
           <form onSubmit={handleFormSubmit} className="flex flex-col gap-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className={labelClass}>SKU</label>
                 <input
