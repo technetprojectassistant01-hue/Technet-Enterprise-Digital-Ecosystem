@@ -23,7 +23,7 @@
 
 // Bump on a release when you want old caches garbage-collected. Not required for correctness —
 // network-first means online users always get the latest regardless.
-const CACHE_VERSION = 'v3'
+const CACHE_VERSION = 'v4'
 const SHELL_CACHE = `technet-shell-${CACHE_VERSION}`
 const API_CACHE = `technet-api-${CACHE_VERSION}`
 

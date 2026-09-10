@@ -239,48 +239,45 @@ function AttendanceWidget() {
     'flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-accent px-4 py-3.5 text-base font-semibold text-ink-950 transition hover:bg-cyan-accent-dark disabled:opacity-60'
 
   return (
-    <Panel title="My Attendance" action={<ReminderToggle />}>
-      <div className="flex flex-col gap-4">
+    // max-w-md: a compact, phone-shaped card even on a wide screen — this is a focused
+    // single-task view, not a full-width dashboard panel.
+    <Panel title="My Attendance" action={<ReminderToggle />} className="max-w-md">
+      <div className="flex w-full flex-col gap-4">
         {/* Status card */}
-        <div className="rounded-xl border border-ink-700 bg-ink-950/60 px-4 py-5 text-center">
-          <div className="text-[11px] font-semibold tracking-widest text-ink-500">CURRENT STATUS</div>
-          {checkedIn ? (
-            <>
-              <div className="mt-1 flex items-center justify-center gap-2 text-lg font-bold text-ink-100">
-                <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
-                CHECKED IN
+        {checkedIn && current ? (
+          <div className="rounded-xl border border-ink-700 bg-ink-950/60 px-4 py-5 text-center">
+            <div className="text-[11px] font-semibold tracking-widest text-ink-500">CURRENT STATUS</div>
+            <div className="mt-1 flex items-center justify-center gap-2 text-base font-bold text-ink-100">
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
+              CHECKED IN
+            </div>
+            <div className="mt-2 text-4xl font-bold tracking-tight text-cyan-accent">
+              {durationSince(current.checkInAt, now)}
+            </div>
+            <div className="mt-1 text-xs text-ink-400">
+              since {clockOf(new Date(current.checkInAt))}
+              {statedTimeSuffix(current.checkInDeclaredTime, current.checkInAt)}
+            </div>
+            {current.workOrder && (
+              <div className="mx-auto mt-3 inline-flex max-w-full items-center gap-1.5 rounded-lg bg-ink-800 px-3 py-1.5 text-xs text-ink-200">
+                <Briefcase className="h-3.5 w-3.5 shrink-0 text-cyan-accent" />
+                <span className="truncate">
+                  {current.workOrder.workOrderNumber} — {current.workOrder.title}
+                </span>
               </div>
-              {current ? (
-                <>
-                  <div className="mt-2 text-4xl font-bold tracking-tight text-cyan-accent">
-                    {durationSince(current.checkInAt, now)}
-                  </div>
-                  <div className="mt-1 text-xs text-ink-400">
-                    since {clockOf(new Date(current.checkInAt))}
-                    {statedTimeSuffix(current.checkInDeclaredTime, current.checkInAt)}
-                  </div>
-                  {current.workOrder && (
-                    <div className="mx-auto mt-3 inline-flex max-w-full items-center gap-1.5 rounded-lg bg-ink-800 px-3 py-1.5 text-xs text-ink-200">
-                      <Briefcase className="h-3.5 w-3.5 shrink-0 text-cyan-accent" />
-                      <span className="truncate">
-                        {current.workOrder.workOrderNumber} — {current.workOrder.title}
-                      </span>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="mt-2 text-sm text-amber-300">Saved on your device — waiting to sync</div>
-              )}
-            </>
-          ) : (
-            <>
-              <div className="mt-1 text-lg font-bold text-ink-300">NOT CHECKED IN</div>
-              {awaitingSync && (
-                <div className="mt-2 text-sm text-amber-300">Check-out saved — waiting to sync</div>
-              )}
-            </>
-          )}
-        </div>
+            )}
+          </div>
+        ) : (
+          <div className="flex items-center justify-center gap-2 rounded-xl border border-ink-800 bg-ink-950/60 px-4 py-3 text-sm font-semibold">
+            <span className={`h-2 w-2 rounded-full ${checkedIn ? 'bg-emerald-400' : 'bg-ink-500'}`} />
+            <span className={checkedIn ? 'text-ink-100' : 'text-ink-300'}>
+              {checkedIn ? 'CHECKED IN' : 'NOT CHECKED IN'}
+            </span>
+            {(awaitingSync || (checkedIn && !current)) && (
+              <span className="text-xs font-normal text-amber-300">· waiting to sync</span>
+            )}
+          </div>
+        )}
 
         {/* Primary action + its fields */}
         {checkedIn ? (
