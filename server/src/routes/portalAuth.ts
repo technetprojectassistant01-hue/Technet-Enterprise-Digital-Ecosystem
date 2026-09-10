@@ -1,7 +1,7 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { prisma } from "../lib/prisma";
-import { PORTAL_COOKIE_NAME, portalCookieOptions, issuePortalCookie } from "../lib/portalAuthCookie";
+import { clearPortalCookieVariants, issuePortalCookie } from "../lib/portalAuthCookie";
 import { requirePortalAuth } from "../middleware/portalAuth";
 
 const router = Router();
@@ -35,6 +35,7 @@ router.post("/login", async (req, res) => {
     return res.status(401).json({ error: "Invalid email or password" });
   }
 
+  clearPortalCookieVariants(res);
   issuePortalCookie(res, { portalUserId: portalUser.id, customerId: portalUser.customerId });
 
   res.json({
@@ -43,7 +44,7 @@ router.post("/login", async (req, res) => {
 });
 
 router.post("/logout", (_req, res) => {
-  res.clearCookie(PORTAL_COOKIE_NAME, portalCookieOptions);
+  clearPortalCookieVariants(res);
   res.json({ ok: true });
 });
 

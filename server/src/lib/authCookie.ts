@@ -30,3 +30,17 @@ export function issueAuthCookie(res: Response, payload: AuthTokenPayload): void 
   const token = signAuthToken({ sub: payload.sub, role: payload.role });
   res.cookie(AUTH_COOKIE_NAME, token, { ...authCookieOptions, maxAge: MAX_AGE_MS });
 }
+
+/**
+ * Clears the `token` cookie under every attribute shape it has been set with. Browsers treat a
+ * cookie set as `SameSite=None; Partitioned` (the pre-2026-09-09 cross-origin form) as a
+ * *different* cookie from the current `SameSite=Lax` one, so a stale variant from an earlier
+ * session (possibly a different user) can linger and be the one the server reads — which showed
+ * up as an admin getting "Insufficient permissions". Call this on login (before issuing the
+ * fresh cookie) and on logout so only one `token` can survive.
+ */
+export function clearAuthCookieVariants(res: Response): void {
+  res.clearCookie(AUTH_COOKIE_NAME, authCookieOptions);
+  res.clearCookie(AUTH_COOKIE_NAME, { httpOnly: true, secure: true, sameSite: "none", partitioned: true });
+  res.clearCookie(AUTH_COOKIE_NAME, { httpOnly: true, secure: true, sameSite: "none" });
+}
