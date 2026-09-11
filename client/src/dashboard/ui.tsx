@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { X, type LucideIcon } from 'lucide-react'
+import { useT } from '../i18n'
 
 /**
  * The shared, hand-built UI kit. Every module reuses these primitives, so a refinement here
@@ -152,6 +153,7 @@ export function Modal({
   size?: 'md' | 'lg'
   children: ReactNode
 }) {
+  const t = useT()
   return (
     <div
       className="animate-backdrop-in fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm p-0 sm:items-center sm:p-4"
@@ -168,7 +170,7 @@ export function Modal({
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t.common.close}
             className="-mr-1 shrink-0 rounded-md p-1 text-ink-400 transition hover:bg-ink-800 hover:text-ink-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-accent"
           >
             <X className="h-5 w-5" />
