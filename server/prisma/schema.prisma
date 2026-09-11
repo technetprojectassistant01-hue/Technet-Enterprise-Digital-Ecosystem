@@ -245,6 +245,10 @@ model User {
   name         String?
   role         Role     @default(EMPLOYEE)
   createdAt    DateTime @default(now())
+  /// UI language: "en" | "fr" | "mfe" (Mauritian Creole). Null = never chosen — the first choice
+  /// made on the sign-in page is saved here on login. Validated in routes/auth.ts, not an enum,
+  /// so adding a language doesn't need a migration.
+  language     String?
 
   employee                 Employee?
   stockMovements           StockMovement[]
