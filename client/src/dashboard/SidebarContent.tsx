@@ -5,6 +5,7 @@ import Logo from '../components/Logo'
 import { MAIN_NAV, SYSTEM_NAV, ADMIN_NAV } from './nav'
 import { Avatar } from './ui'
 import NavTree from './NavTree'
+import { navLabel, useT } from '../i18n'
 
 /**
  * The navigation column shared by the always-on desktop sidebar and the slide-in drawer used at
@@ -12,6 +13,7 @@ import NavTree from './NavTree'
  */
 function SidebarContent() {
   const { user, logout } = useAuth()
+  const t = useT()
   const displayName = user?.name || user?.email || ''
   const systemNav = user?.role === 'ADMIN' ? [...SYSTEM_NAV, ADMIN_NAV] : SYSTEM_NAV
   const mainNav = MAIN_NAV.filter((item) => !user?.role || !item.hiddenFrom?.includes(user.role))
@@ -24,14 +26,14 @@ function SidebarContent() {
 
       <nav className="mt-8 flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto">
         <div>
-          <span className="px-2 text-[11px] font-semibold tracking-widest text-ink-500">MAIN MENU</span>
+          <span className="px-2 text-[11px] font-semibold tracking-widest text-ink-500">{t.shell.mainMenu}</span>
           <div className="mt-2">
             <NavTree items={mainNav} />
           </div>
         </div>
 
         <div>
-          <span className="px-2 text-[11px] font-semibold tracking-widest text-ink-500">SYSTEM</span>
+          <span className="px-2 text-[11px] font-semibold tracking-widest text-ink-500">{t.shell.system}</span>
           <div className="mt-2 flex flex-col gap-1">
             {systemNav.map((item) => (
               <NavLink
@@ -46,7 +48,7 @@ function SidebarContent() {
                 }
               >
                 <item.icon className="h-4 w-4 shrink-0" />
-                {item.label}
+                {navLabel(t, item.label)}
               </NavLink>
             ))}
           </div>
@@ -59,7 +61,7 @@ function SidebarContent() {
           className="flex items-center justify-center gap-2 rounded-md bg-cyan-accent px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-ink-950 transition hover:bg-cyan-accent-dark"
         >
           <Plus className="h-4 w-4" />
-          New Project
+          {t.shell.newProject}
         </NavLink>
         <NavLink
           to="/dashboard/help"
@@ -70,7 +72,7 @@ function SidebarContent() {
           }
         >
           <HelpCircle className="h-4 w-4 shrink-0" />
-          Help Center
+          {t.shell.helpCenter}
         </NavLink>
       </div>
 
@@ -78,10 +80,10 @@ function SidebarContent() {
         <Avatar name={displayName} />
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-medium text-ink-100">{displayName}</div>
-          <div className="text-xs text-ink-400">{user?.role}</div>
+          <div className="text-xs text-ink-400">{user ? t.roles[user.role] : ''}</div>
         </div>
         <button type="button" onClick={() => logout()} className="text-xs text-ink-400 hover:text-ink-100">
-          Log out
+          {t.shell.logOut}
         </button>
       </div>
     </div>
