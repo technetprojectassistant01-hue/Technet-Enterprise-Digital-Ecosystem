@@ -43,9 +43,9 @@ function ResetPassword() {
       <header className="flex items-center justify-between border-b border-cyan-accent/30 px-8 py-4">
         <Logo size="sm" />
         <div className="flex items-center gap-6 text-sm text-ink-200">
-          <a href="#" className="hover:text-ink-100">
+          <Link to="/help" className="hover:text-ink-100">
             Help Center
-          </a>
+          </Link>
           <span className="flex items-center gap-1.5">
             <Globe className="h-4 w-4" />
             EN
@@ -183,9 +183,9 @@ function ResetPassword() {
           <a href="#" className="hover:text-ink-200">
             Security Audit
           </a>
-          <a href="#" className="hover:text-ink-200">
+          <Link to="/help#contact" className="hover:text-ink-200">
             Contact Support
-          </a>
+          </Link>
         </div>
       </footer>
     </div>
