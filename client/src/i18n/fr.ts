@@ -1,0 +1,344 @@
+import type { Dict } from './en'
+
+/** French. Typed against the English master (en.ts) — every key there must exist here. */
+export const fr: Dict = {
+  common: {
+    cancel: 'Annuler',
+    confirm: 'Confirmer',
+    areYouSure: 'Êtes-vous sûr ?',
+    close: 'Fermer',
+    loading: 'Chargement…',
+    somethingWentWrong: "Une erreur s'est produite. Veuillez réessayer.",
+  },
+
+  language: {
+    label: 'Langue',
+    settingsHint:
+      "Choisissez la langue de l'application. Elle est enregistrée sur votre compte et vous suit sur tous vos appareils.",
+  },
+
+  roles: {
+    ADMIN: 'Administrateur',
+    SALES_OFFICER: 'Chargé des ventes',
+    FINANCE_OFFICER: 'Chargé des finances',
+    STOREKEEPER: 'Magasinier',
+    HR_OFFICER: 'Chargé RH',
+    OPERATIONS_MANAGER: 'Responsable des opérations',
+    FIELD_TECHNICIAN: 'Technicien terrain',
+    EMPLOYEE: 'Employé',
+  },
+
+  nav: {
+    Overview: "Vue d'ensemble",
+    'My Leave': 'Mes congés',
+    'Technet ERP': 'Technet ERP',
+    Inventory: 'Inventaire',
+    Finance: 'Finance',
+    Customers: 'Clients',
+    Invoices: 'Factures',
+    Expenses: 'Dépenses',
+    Quotations: 'Devis',
+    'Follow-Up': 'Suivi',
+    Contracts: 'Contrats',
+    Procurement: 'Achats',
+    Suppliers: 'Fournisseurs',
+    Requisitions: "Demandes d'achat",
+    'Purchase Orders': 'Bons de commande',
+    HR: 'RH',
+    Employees: 'Employés',
+    Leave: 'Congés',
+    Certifications: 'Certifications',
+    Projects: 'Projets',
+    Documents: 'Documents',
+    'Technet Maintenance': 'Technet Maintenance',
+    Assets: 'Équipements',
+    Requests: 'Demandes',
+    Schedule: 'Planning',
+    'Technet Connect': 'Technet Connect',
+    'Technet Operations': 'Technet Operations',
+    'Work Orders': 'Ordres de travail',
+    'Daily Reports': 'Rapports journaliers',
+    'Intervention Reports': "Rapports d'intervention",
+    'Team Attendance': "Présence de l'équipe",
+    'Field Operations': 'Opérations terrain',
+    'Technet Workforce': 'Technet Workforce',
+    Availability: 'Disponibilité',
+    Attendance: 'Présence',
+    Payroll: 'Paie',
+    'Technet Digital Marketing': 'Technet Digital Marketing',
+    'Technet Insight': 'Technet Insight',
+    Settings: 'Paramètres',
+    Security: 'Sécurité',
+    'User Management': 'Gestion des utilisateurs',
+  },
+
+  auth: {
+    helpCenter: "Centre d'aide",
+    welcomeBack: 'Bon retour',
+    loginSubtitle: 'Accès sécurisé à votre portail technique',
+    userIdentifier: 'IDENTIFIANT',
+    accessToken: 'MOT DE PASSE',
+    emailPlaceholder: 'nom@entreprise.com',
+    showPassword: 'Afficher le mot de passe',
+    hidePassword: 'Masquer le mot de passe',
+    rememberSession: 'Rester connecté',
+    forgotPassword: 'Mot de passe oublié ?',
+    signIn: 'Se connecter',
+    signingIn: 'Connexion…',
+    loginFailed: 'Échec de la connexion',
+    systemsOperational: 'TOUS LES SYSTÈMES SONT OPÉRATIONNELS',
+    copyright: '© 2026 Technet Engineering. Digital Kineticism Secured.',
+    privacyPolicy: 'Politique de confidentialité',
+    termsOfService: "Conditions d'utilisation",
+    securityAudit: 'Audit de sécurité',
+    contactSupport: 'Contacter le support',
+    backToSignIn: 'Retour à la connexion',
+    checkInbox: 'Vérifiez votre boîte mail',
+    ifAccountExistsBefore: 'Si un compte existe pour ',
+    ifAccountExistsAfter: ', un lien de récupération sécurisé est en route.',
+    resetYourAccess: 'Réinitialiser votre accès',
+    resetSubtitle: 'Saisissez votre identifiant pour recevoir un lien de récupération sécurisé.',
+    sendRecovery: 'ENVOYER LE LIEN',
+    sending: 'ENVOI…',
+    invalidLink: 'Lien invalide',
+    invalidLinkBody: 'Ce lien de réinitialisation est incomplet. Demandez-en un nouveau pour continuer.',
+    requestNewLink: 'Demander un nouveau lien',
+    passwordUpdated: 'Mot de passe modifié',
+    passwordUpdatedBody:
+      'Votre mot de passe a été réinitialisé. Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.',
+    setNewPassword: 'Choisir un nouveau mot de passe',
+    chooseNewPassword: 'Choisissez un nouveau mot de passe pour votre compte.',
+    newPassword: 'NOUVEAU MOT DE PASSE',
+    confirmPassword: 'CONFIRMER LE MOT DE PASSE',
+    atLeast8: 'Au moins 8 caractères',
+    reEnterPassword: 'Saisissez à nouveau votre mot de passe',
+    updatePassword: 'METTRE À JOUR',
+    updating: 'MISE À JOUR…',
+    passwordTooShort: 'Le mot de passe doit contenir au moins 8 caractères',
+    passwordsDontMatch: 'Les mots de passe ne correspondent pas',
+  },
+
+  shell: {
+    searchPlaceholder: 'Rechercher commandes, clients, factures...',
+    moduleSearchPlaceholder: 'Rechercher...',
+    offlineBanner:
+      'Hors ligne — affichage de vos dernières données synchronisées. Tout ce que vous enregistrez est conservé sur cet appareil et envoyé automatiquement à la reconnexion.',
+    newVersion: 'Une nouvelle version de Technet Digital est disponible.',
+    reload: 'Recharger',
+    openMenu: 'Ouvrir le menu',
+    closeMenu: 'Fermer le menu',
+    settings: 'Paramètres',
+    notifications: 'Notifications',
+    copyright: '© 2026 Technet Engineering.',
+    systemStable: 'SYSTÈME STABLE :',
+    mainMenu: 'MENU PRINCIPAL',
+    system: 'SYSTÈME',
+    newProject: 'Nouveau projet',
+    helpCenter: "Centre d'aide",
+    logOut: 'Se déconnecter',
+    all: 'Tout',
+    expand: (section: string) => `Déplier ${section}`,
+    collapse: (section: string) => `Replier ${section}`,
+    notAvailableForRole: "Ce module n'est pas disponible pour votre rôle.",
+  },
+
+  sync: {
+    offline: 'Hors ligne',
+    waiting: (count: number) => `${count} en attente de synchro`,
+    title: 'En attente de synchronisation',
+    onlineBody:
+      'Ces saisies terrain sont enregistrées sur cet appareil et seront envoyées automatiquement. Vous pouvez aussi les synchroniser maintenant.',
+    offlineBody:
+      'Vous êtes hors ligne. Tout ce que vous enregistrez est conservé sur cet appareil et envoyé automatiquement dès votre retour en ligne — inutile de le ressaisir.',
+    nothingWaiting: 'Rien en attente.',
+    retried: (times: number) => `réessayé ${times}×`,
+    saved: 'enregistré',
+    syncing: 'Synchronisation…',
+    tryNow: 'Réessayer maintenant',
+  },
+
+  notifications: {
+    title: 'Notifications',
+    markAllRead: 'Tout marquer comme lu',
+    empty: 'Aucune notification pour le moment.',
+  },
+
+  settings: {
+    title: 'Paramètres',
+    changePassword: 'Changer le mot de passe',
+    currentPassword: 'MOT DE PASSE ACTUEL',
+    newPassword: 'NOUVEAU MOT DE PASSE',
+    confirmNewPassword: 'CONFIRMER LE NOUVEAU MOT DE PASSE',
+    updatePassword: 'Mettre à jour le mot de passe',
+    updating: 'Mise à jour…',
+    mismatch: 'Le nouveau mot de passe et la confirmation ne correspondent pas',
+    updated: 'Mot de passe modifié avec succès.',
+    failed: 'Impossible de changer le mot de passe',
+  },
+
+  install: {
+    title: (app: string) => `Installer ${app}`,
+    body: 'Installez cette application pour un accès rapide.',
+    installNow: 'Installer maintenant',
+    notNow: 'Plus tard',
+    done: 'Terminé',
+    gotIt: "J'ai compris",
+    howTo: (app: string) => `Comment installer ${app}`,
+    addToHomeScreen: (app: string) => `Ajoutez ${app} à votre écran d'accueil`,
+    tapShare: 'Touchez Partager',
+    tapMoreThenShare: 'Touchez ⋯ puis Partager',
+    tapAddToHomeScreen: "Touchez Sur l'écran d'accueil",
+    tapAdd: 'Touchez Ajouter',
+    macSafari: 'Dans la barre de menus de Safari, choisissez Fichier → Ajouter au Dock.',
+    androidMenu: 'Ouvrez le menu du navigateur (⋮) et touchez Installer.',
+    panelTitle: "Installer l'application",
+    alreadyInstalled: "Vous utilisez l'application installée.",
+    panelHint: "Installez Technet Digital sur cet appareil pour y accéder rapidement depuis votre écran d'accueil.",
+    panelButton: 'Installer Technet Digital',
+    cannotInstall:
+      "Soit l'application est déjà installée sur cet appareil, soit ce navigateur ne peut pas installer d'applications. Chrome, Edge, Samsung Internet et Safari le peuvent.",
+  },
+
+  help: {
+    title: "Centre d'aide",
+    subtitle: 'Réponses aux questions fréquentes sur Technet Digital.',
+    contactTitle: 'Un problème ? Appelez-nous.',
+    contactBody: "Dites-nous ce que vous faisiez, sur quelle page vous étiez et le message d'erreur éventuel.",
+    searchPlaceholder: 'Rechercher — ex. mot de passe, pointage, congé',
+    searchLabel: "Rechercher dans l'aide",
+    noMatchBefore: (query: string) => `Aucune réponse ne correspond à « ${query} ». Appelez le support au `,
+    noMatchAfter: ' et nous vous aiderons.',
+    backToApp: "Retour à l'application",
+    backToSignIn: 'Retour à la connexion',
+    sections: [
+      {
+        title: 'Connexion',
+        faqs: [
+          {
+            q: "J'ai oublié mon mot de passe",
+            a: [
+              'Sur la page de connexion, touchez « Mot de passe oublié ? » et saisissez votre adresse e-mail. Vous recevrez un e-mail avec un lien pour choisir un nouveau mot de passe.',
+              "Si l'e-mail n'arrive pas après quelques minutes (vérifiez aussi vos spams), appelez le support au 5885 1000.",
+            ],
+          },
+          {
+            q: 'Combien de temps je reste connecté ?',
+            a: [
+              "Vous restez connecté 30 jours, et ce délai repart à zéro à chaque utilisation de l'application — si vous l'utilisez régulièrement, on ne vous redemandera pas de vous connecter. Touchez « Se déconnecter » pour vous déconnecter immédiatement.",
+            ],
+          },
+          {
+            q: 'Comment changer mon mot de passe ?',
+            a: [
+              "Touchez l'icône d'engrenage en haut à droite pour ouvrir les Paramètres, puis utilisez la section « Changer le mot de passe ».",
+            ],
+          },
+        ],
+      },
+      {
+        title: 'Langue',
+        faqs: [
+          {
+            q: 'Comment changer la langue ?',
+            a: [
+              "Sur la page de connexion, utilisez le menu des langues en haut. Une fois connecté, allez dans Paramètres (icône d'engrenage, en haut à droite) → « Langue ». Votre choix est enregistré sur votre compte et vous suit sur tous vos appareils.",
+            ],
+          },
+        ],
+      },
+      {
+        title: "Installer l'application",
+        faqs: [
+          {
+            q: "Comment installer l'application sur mon téléphone ?",
+            a: [
+              "Android (Chrome ou Samsung Internet) : touchez « Installer maintenant » quand la fenêtre d'installation apparaît, puis confirmez. L'icône Technet est ajoutée à votre écran d'accueil.",
+              "iPhone ou iPad : ouvrez le site dans Safari, touchez le bouton Partager, puis « Sur l'écran d'accueil », puis « Ajouter ». (Sur les iPhone récents, Partager se trouve dans le bouton ⋯ en bas à droite.)",
+              'Ordinateur (Chrome ou Edge) : touchez « Installer maintenant » dans la fenêtre.',
+            ],
+          },
+          {
+            q: "J'ai touché « Plus tard » sur la fenêtre d'installation",
+            a: [
+              "Vous pouvez l'installer à tout moment depuis Paramètres (icône d'engrenage, en haut à droite) → « Installer l'application ».",
+            ],
+          },
+        ],
+      },
+      {
+        title: 'Présence',
+        faqs: [
+          {
+            q: 'Comment pointer mon arrivée et mon départ ?',
+            a: [
+              "Utilisez la carte « Ma présence » sur la page Vue d'ensemble. Vérifiez l'heure d'arrivée (elle est remplie pour vous), indiquez où vous êtes, saisissez vos frais de transport (0 si vous n'en avez pas), puis touchez « Pointer l'arrivée ».",
+              'En partant, faites de même avec « Pointer le départ ». Vous pouvez pointer plusieurs fois par jour si vous passez sur plusieurs sites.',
+            ],
+          },
+          {
+            q: "Pourquoi l'application demande-t-elle ma position ?",
+            a: [
+              "Chaque arrivée et chaque départ enregistrent votre position avec l'heure, et vos responsables peuvent la voir. Le pointage ne fonctionne pas sans elle.",
+              'Si vous avez refusé la demande de localisation par erreur, autorisez la localisation pour ce site dans les réglages de votre téléphone ou de votre navigateur, puis réessayez.',
+            ],
+          },
+          {
+            q: 'Je ne vois pas la carte « Ma présence »',
+            a: [
+              'Votre compte doit être relié à votre fiche employé. Contactez les RH et demandez-leur de relier votre compte.',
+            ],
+          },
+          {
+            q: "L'application peut-elle me rappeler de pointer ?",
+            a: [
+              "Oui. Touchez « Me le rappeler » sur la carte « Ma présence » et autorisez les notifications. Les jours de semaine, vous recevrez un rappel à 8 h 15 si vous n'avez pas encore pointé.",
+              "Sur iPhone, installez d'abord l'application sur votre écran d'accueil — les iPhone n'autorisent les rappels que pour les applications installées.",
+            ],
+          },
+        ],
+      },
+      {
+        title: 'Travailler sans réseau',
+        faqs: [
+          {
+            q: 'Que se passe-t-il si je perds le réseau en envoyant quelque chose ?',
+            a: [
+              "Les arrivées, départs, rapports journaliers, rapports de maintenance et rapports d'intervention sont enregistrés sur votre téléphone et envoyés automatiquement dès le retour du réseau. Inutile de les renvoyer.",
+              'Tant que quelque chose est en attente, la barre du haut affiche « en attente de synchro ». Touchez-la puis « Réessayer maintenant » pour relancer tout de suite.',
+              "Sur iPhone, les éléments enregistrés sont envoyés à la prochaine ouverture de l'application avec du réseau.",
+            ],
+          },
+          {
+            q: 'Puis-je voir mes interventions sans réseau ?',
+            a: [
+              "Oui — vos ordres de travail, votre planning et vos rapports affichent la dernière version chargée par votre téléphone quand il avait du réseau. Ouvrez-les une fois connecté pour qu'ils soient enregistrés sur votre téléphone.",
+            ],
+          },
+        ],
+      },
+      {
+        title: 'Congés',
+        faqs: [
+          {
+            q: 'Comment demander un congé ?',
+            a: [
+              'Ouvrez « Mes congés » dans le menu et touchez « Demander un congé ». Les RH examinent la demande et vous recevez une notification quand elle est approuvée ou refusée.',
+              "Tant qu'une demande est en attente, vous pouvez la retirer depuis la même page.",
+            ],
+          },
+        ],
+      },
+      {
+        title: 'Accès',
+        faqs: [
+          {
+            q: "Je ne vois pas une page ou un module dont j'ai besoin",
+            a: [
+              "Ce que vous voyez dépend de votre rôle. Si vous avez besoin d'accéder à quelque chose, demandez à votre responsable ou à l'administrateur du système.",
+            ],
+          },
+        ],
+      },
+    ],
+  },
+}
