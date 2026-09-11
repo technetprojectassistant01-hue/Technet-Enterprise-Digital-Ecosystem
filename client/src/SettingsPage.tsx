@@ -1,6 +1,46 @@
 import { useState, type FormEvent } from 'react'
 import * as api from './lib/api'
 import { Panel } from './dashboard/ui'
+import { primaryButtonClass } from './dashboard/buttonStyles'
+import { InstallAppDialog } from './dashboard/InstallAppDialog'
+import { useInstallMethod } from './lib/installPrompt'
+import { isStandalone } from './lib/platform'
+
+/** Lets someone install the app after choosing "Not now" on the pop-up. */
+function InstallAppPanel() {
+  const method = useInstallMethod()
+  const [open, setOpen] = useState(false)
+
+  return (
+    <Panel title="Install app">
+      {isStandalone() ? (
+        <p className="text-sm text-ink-300">You're using the installed app.</p>
+      ) : method ? (
+        <>
+          <p className="mb-4 text-sm text-ink-300">
+            Install Technet Digital on this device for quick access from your home screen.
+          </p>
+          <button type="button" onClick={() => setOpen(true)} className={primaryButtonClass}>
+            Install Technet Digital
+          </button>
+          {open && (
+            <InstallAppDialog
+              appName="Technet Digital"
+              method={method}
+              onNotNow={() => setOpen(false)}
+              onDone={() => setOpen(false)}
+            />
+          )}
+        </>
+      ) : (
+        <p className="text-sm text-ink-300">
+          Either the app is already installed on this device, or this browser can't install apps.
+          Chrome, Edge, Samsung Internet and Safari all can.
+        </p>
+      )}
+    </Panel>
+  )
+}
 
 function SettingsPage() {
   const [currentPassword, setCurrentPassword] = useState('')
@@ -96,6 +136,10 @@ function SettingsPage() {
           {success && <p className="text-center text-sm text-cyan-accent">Password updated successfully.</p>}
         </form>
       </Panel>
+
+      <div className="mt-6">
+        <InstallAppPanel />
+      </div>
     </div>
   )
 }
