@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from 'react'
 import { AlertTriangle } from 'lucide-react'
+import { useT } from '../i18n'
 
 interface ConfirmOptions {
   title?: string
@@ -15,6 +16,7 @@ interface PendingConfirm extends ConfirmOptions {
 const ConfirmContext = createContext<((options: ConfirmOptions) => Promise<boolean>) | null>(null)
 
 export function ConfirmProvider({ children }: { children: ReactNode }) {
+  const t = useT()
   const [pending, setPending] = useState<PendingConfirm | null>(null)
   const resolver = useRef<((value: boolean) => void) | null>(null)
 
@@ -52,7 +54,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
                 <AlertTriangle className="h-4 w-4" />
               </span>
               <div>
-                <h2 className="text-sm font-semibold text-ink-100">{pending.title || 'Are you sure?'}</h2>
+                <h2 className="text-sm font-semibold text-ink-100">{pending.title || t.common.areYouSure}</h2>
                 <p className="mt-1 text-sm text-ink-300">{pending.message}</p>
               </div>
             </div>
@@ -63,7 +65,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
                 onClick={() => settle(false)}
                 className="rounded-md border border-ink-700 px-4 py-2 text-sm text-ink-200 hover:bg-ink-800"
               >
-                Cancel
+                {t.common.cancel}
               </button>
               <button
                 type="button"
@@ -74,7 +76,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
                     : 'bg-cyan-accent text-ink-950 hover:bg-cyan-accent-dark'
                 }`}
               >
-                {pending.confirmLabel || 'Confirm'}
+                {pending.confirmLabel || t.common.confirm}
               </button>
             </div>
           </div>
