@@ -4,10 +4,12 @@ import { Bell } from 'lucide-react'
 import * as api from '../lib/api'
 import type { Notification } from '../lib/api'
 import { Modal, EmptyState } from './ui'
+import { useT } from '../i18n'
 
 const POLL_INTERVAL_MS = 60_000
 
 function NotificationBell() {
+  const t = useT()
   const [unreadCount, setUnreadCount] = useState(0)
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [open, setOpen] = useState(false)
@@ -70,7 +72,7 @@ function NotificationBell() {
         type="button"
         onClick={openPanel}
         className="relative text-ink-300 hover:text-ink-100"
-        aria-label="Notifications"
+        aria-label={t.notifications.title}
       >
         <Bell className="h-5 w-5" />
         {unreadCount > 0 && (
@@ -82,7 +84,7 @@ function NotificationBell() {
 
       {open && (
         <Modal
-          title="Notifications"
+          title={t.notifications.title}
           onClose={() => setOpen(false)}
           size="md"
         >
@@ -94,15 +96,15 @@ function NotificationBell() {
                   onClick={handleMarkAllRead}
                   className="text-xs font-medium text-cyan-accent hover:underline"
                 >
-                  Mark all read
+                  {t.notifications.markAllRead}
                 </button>
               </div>
             )}
 
             {loading ? (
-              <p className="py-6 text-center text-sm text-ink-400">Loading…</p>
+              <p className="py-6 text-center text-sm text-ink-400">{t.common.loading}</p>
             ) : notifications.length === 0 ? (
-              <EmptyState icon={Bell} message="No notifications yet." />
+              <EmptyState icon={Bell} message={t.notifications.empty} />
             ) : (
               <div className="flex flex-col gap-2">
                 {notifications.map((n) => {
