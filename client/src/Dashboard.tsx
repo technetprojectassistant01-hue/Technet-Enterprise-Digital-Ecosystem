@@ -12,6 +12,7 @@ import { useToast } from './dashboard/ToastContext'
 import { registerServiceWorker } from './lib/pushNotifications'
 import { setOutboxDropHandler, startOutbox } from './lib/outbox'
 import { useOnline } from './lib/useOnline'
+import { watchForAppUpdate } from './lib/appUpdate'
 
 function Dashboard() {
   const { user } = useAuth()
@@ -21,6 +22,7 @@ function Dashboard() {
   const { pathname } = useLocation()
   const online = useOnline()
   const [navOpen, setNavOpen] = useState(false)
+  const [updateAvailable, setUpdateAvailable] = useState(false)
 
   // Register the service worker for every signed-in user (it was previously registered only on
   // push opt-in), and start the offline outbox: it replays field submissions that were saved on
@@ -36,6 +38,10 @@ function Dashboard() {
     )
     return () => setOutboxDropHandler(() => {})
   }, [])
+
+  // A new deploy's service worker takes over silently; without this someone can be stuck on a
+  // stale bundle until they fully close and reopen the app (CLAUDE.md — post-launch brief item 6).
+  useEffect(() => watchForAppUpdate(() => setUpdateAvailable(true)), [])
 
   // Close the mobile nav on navigation, and on Escape; lock body scroll while it's open.
   useEffect(() => setNavOpen(false), [pathname])
@@ -128,6 +134,19 @@ function Dashboard() {
           <div className="border-b border-amber-400/30 bg-amber-400/10 px-4 py-2 text-xs text-amber-300 sm:px-6 lg:px-8">
             Offline — showing your last synced data. Anything you save is kept on this device and
             uploads automatically when you reconnect.
+          </div>
+        )}
+
+        {updateAvailable && (
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-cyan-accent/30 bg-cyan-accent/10 px-4 py-2 text-xs text-cyan-accent sm:px-6 lg:px-8">
+            <span>A new version of Technet Digital is available.</span>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="rounded-md border border-cyan-accent/40 px-2.5 py-1 font-semibold hover:bg-cyan-accent/10"
+            >
+              Reload
+            </button>
           </div>
         )}
 
