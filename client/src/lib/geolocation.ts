@@ -1,3 +1,5 @@
+import { getT } from '../i18n'
+
 function requestPosition(options: PositionOptions): Promise<GeolocationPosition> {
   return new Promise((resolve, reject) => {
     navigator.geolocation.getCurrentPosition(resolve, reject, options)
@@ -6,7 +8,7 @@ function requestPosition(options: PositionOptions): Promise<GeolocationPosition>
 
 export async function getPosition(): Promise<GeolocationPosition> {
   if (!navigator.geolocation) {
-    throw new Error('Geolocation is not supported by this browser')
+    throw new Error(getT().geo.unsupported)
   }
   try {
     return await requestPosition({ enableHighAccuracy: true, timeout: 15000 })
@@ -16,8 +18,11 @@ export async function getPosition(): Promise<GeolocationPosition> {
     try {
       return await requestPosition({ enableHighAccuracy: false, timeout: 10000 })
     } catch (err) {
-      const message = err instanceof GeolocationPositionError ? err.message : undefined
-      throw new Error(message || 'Unable to determine your location. Move outdoors or near a window and try again.')
+      // The browser's own message is English-only and cryptic ("User denied Geolocation"), so map
+      // the error code to our own wording — a blocked permission needs a different fix than a
+      // weak signal.
+      const denied = err instanceof GeolocationPositionError && err.code === err.PERMISSION_DENIED
+      throw new Error(denied ? getT().geo.denied : getT().geo.unavailable)
     }
   }
 }
