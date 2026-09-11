@@ -824,3 +824,42 @@ Notify-on-check-in is the one item this pass added:
   environment. **Lesson**: a brief describing a feature as "not built yet" is the brief author's
   belief, not a fact — check the actual code before scoping a rebuild; here the gap was
   unconfigured secrets, not missing code.
+
+## 19. Languages: English, French, Mauritian Creole (2026-09-11)
+
+Three UI languages, decided with the user: **scope = everyday screens first, then module by
+module**; **Creole shipped as drafted, no native-speaker review** (the user's explicit choice — if
+wording complaints come in, they're one-line dictionary edits); **choice saved on the account**.
+
+- **No i18n library.** `client/src/i18n/en.ts` is the master dictionary (a plain object; `Dict =
+  typeof en`); `fr.ts` and `mfe.ts` are typed `Dict`, so **a key added to `en.ts` fails `tsc -b`
+  until it's translated in both** — that's the completeness check, don't loosen it with
+  `Partial`. Inserted values are small functions (`waiting: (n) => ...`) so word order can differ.
+  Components read `const t = useT()` → `t.auth.signIn`; code outside components uses `getT()`.
+  Menu labels are translated by their English label via `navLabel(t, item.label)` (nav.ts keeps
+  English labels as keys). "mfe" = ISO 639-3 for Mauritian Creole; spelling is standard Grafi
+  Larmoni; phone menu labels in the iPhone guide are quoted in English for Creole (phones aren't in
+  Creole) and in French iOS wording for French.
+- **Where the choice lives:** the device (localStorage `technet-language`, so the sign-in page is
+  already right) and `User.language` (nullable string, migration `20260911160000_user_language`,
+  validated against `SUPPORTED_LANGUAGES` in `routes/auth.ts`; `PUT /api/auth/language`). On
+  sign-in `AuthContext.adoptLanguage` applies the account's language, or — if the account has none —
+  saves the device's choice to it. `changeLanguage()` (used by `LanguageSwitcher`) does both.
+  Switchers: compact in the sign-in / forgot / reset / public Help headers (replacing the old static
+  "EN"), full-width in Settings → Language. `LanguageProvider` sits **outside** `AuthProvider` in
+  `main.tsx`.
+- **Translated so far (Phase 1):** sign-in, forgot/reset password, app shell (header, sidebar,
+  phone quick-nav, nav tree, banners, footer, role names — the header now shows e.g. "Field
+  Technician" instead of the raw enum), sync indicator, notification panel chrome, confirm dialog,
+  Settings, install pop-up + iPhone guide, Help Center (its FAQ lives in `help.sections` per
+  language — **FAQ answers quote each language's own button labels, keep them in step**).
+  Overview / My Attendance / My Leave, then the Operations and Maintenance screens technicians use,
+  are the next Phase 1 steps; ERP, HR, Workforce, Marketing, Insight, Connect and the customer
+  portal are later phases.
+- **Still English everywhere:** server-generated text — API error messages (~490 of them, shown
+  in toasts), in-app notification titles/messages, push reminder text, and PDFs. Dates/numbers are
+  not yet locale-formatted. Say so plainly if asked; don't imply full coverage.
+- Migration-ordering gotcha hit while building this: a teammate pushed
+  `20260911150000_...` while this branch had `20260911100000_user_language` uncommitted — renamed to
+  `…160000…` before committing so migrations stay in chronological order. Check `git fetch` for new
+  migrations before committing one.
