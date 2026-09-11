@@ -799,3 +799,28 @@ install pop-up.
   pop-up on Android Chrome + iPhone, offline open straight after install, and the Reload bar
   after a real deploy. `npm run build` + `tsc -b` pass and the stamped `dist/client/sw.js` was
   inspected.
+
+## 18. Post-launch bugs brief (2026-09-11)
+
+Notify-on-check-in is the one item this pass added:
+
+- **Admin/Operations Manager notified on a technician check-in**: new `SITE_CHECKIN_RECORDED`
+  `NotificationType` (migration `20260911150000_site_checkin_recorded_notification`), fired via
+  `notifyRoles(OPS_MANAGE_ROLES, ...)` in `siteAttendance.ts`'s `POST /check-in` — only on a
+  genuinely new check-in, not the deduped-replay branch a queued offline write can hit. Scoped to
+  `OPS_MANAGE_ROLES`, not HR: Team Attendance and Field Operations, the screens the notification
+  links to, are already `OPS_MANAGE_ROLES`-gated, so notifying HR would point at a page they can't
+  open.
+- **The 08:15 check-in reminder (Web Push) was reported as if it needed building from scratch, but
+  the real code already existed** (§ commits `0ea33c0`/`02be623`, 2026-09-03): server-side
+  `web-push` delivery, a `PushSubscription` table, an opt-in toggle on My Attendance, and a
+  `.github/workflows/checkin-reminder.yml` cron firing at 08:15 Mauritius time. It sends nothing in
+  production only because `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT` and
+  `REMINDER_TRIGGER_SECRET` are declared with `sync: false` in `render.yaml` — placeholders, not
+  values. **This is a human-only step**: someone with Render dashboard access must paste real
+  values into the `technet-digital-api` service's environment variables, and someone with GitHub
+  repo admin access must add `REMINDER_TRIGGER_SECRET` as a repository secret (Settings → Secrets
+  and variables → Actions) matching the same value. Neither dashboard is reachable from this
+  environment. **Lesson**: a brief describing a feature as "not built yet" is the brief author's
+  belief, not a fact — check the actual code before scoping a rebuild; here the gap was
+  unconfigured secrets, not missing code.
