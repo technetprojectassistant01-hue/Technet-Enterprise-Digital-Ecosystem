@@ -2,6 +2,7 @@ import { NavLink } from 'react-router-dom'
 import { Bell, Search, Settings } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { Avatar } from './ui'
+import { useT } from '../i18n'
 
 interface ModuleTab {
   label: string
@@ -23,7 +24,7 @@ function ModuleHeader({
   title,
   subtitle,
   tabs,
-  searchPlaceholder = 'Search systems...',
+  searchPlaceholder,
 }: {
   title: string
   subtitle: string
@@ -31,6 +32,7 @@ function ModuleHeader({
   searchPlaceholder?: string
 }) {
   const { user } = useAuth()
+  const t = useT()
   const displayName = user?.name || user?.email || ''
 
   return (
@@ -66,14 +68,14 @@ function ModuleHeader({
             <Search className="h-3.5 w-3.5 text-ink-400" />
             <input
               type="text"
-              placeholder={searchPlaceholder}
+              placeholder={searchPlaceholder ?? t.shell.moduleSearchPlaceholder}
               className="w-40 bg-transparent text-xs text-ink-100 placeholder-ink-500 outline-none"
             />
           </div>
-          <button type="button" className="text-ink-300 hover:text-ink-100" aria-label="Notifications">
+          <button type="button" className="text-ink-300 hover:text-ink-100" aria-label={t.shell.notifications}>
             <Bell className="h-4 w-4" />
           </button>
-          <NavLink to="/dashboard/settings" className="text-ink-300 hover:text-ink-100" aria-label="Settings">
+          <NavLink to="/dashboard/settings" className="text-ink-300 hover:text-ink-100" aria-label={t.shell.settings}>
             <Settings className="h-4 w-4" />
           </NavLink>
           <Avatar name={displayName} size={28} />
