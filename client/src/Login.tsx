@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, Globe } from 'lucide-react'
 import { useAuth } from './context/AuthContext'
 import Logo from './components/Logo'
+import { InstallAppPrompt } from './dashboard/InstallAppDialog'
 
 function Login() {
   const { login } = useAuth()
@@ -30,6 +31,7 @@ function Login() {
 
   return (
     <div className="flex min-h-screen flex-col bg-ink-950 text-ink-100">
+      <InstallAppPrompt appName="Technet Digital" />
       <header className="flex items-center justify-between border-b border-cyan-accent/30 px-8 py-4">
         <Logo size="sm" />
         <div className="flex items-center gap-6 text-sm text-ink-200">
