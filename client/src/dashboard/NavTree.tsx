@@ -2,9 +2,12 @@ import { useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { ChevronDown } from 'lucide-react'
 import type { NavItem } from './nav'
+import { navLabel, useT } from '../i18n'
 
 function NavNode({ item, depth }: { item: NavItem; depth: number }) {
   const { pathname } = useLocation()
+  const t = useT()
+  const label = navLabel(t, item.label)
   const hasChildren = !!item.children?.length
   const [open, setOpen] = useState(() => hasChildren && pathname.startsWith(item.to))
 
@@ -24,13 +27,13 @@ function NavNode({ item, depth }: { item: NavItem; depth: number }) {
           }
         >
           <item.icon className="h-4 w-4 shrink-0" />
-          <span className="truncate">{item.label}</span>
+          <span className="truncate">{label}</span>
         </NavLink>
         {hasChildren && (
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
-            aria-label={open ? `Collapse ${item.label}` : `Expand ${item.label}`}
+            aria-label={open ? t.shell.collapse(label) : t.shell.expand(label)}
             className="mr-1 shrink-0 rounded p-1.5 text-ink-400 transition-colors hover:bg-ink-800 hover:text-ink-100"
           >
             <ChevronDown
