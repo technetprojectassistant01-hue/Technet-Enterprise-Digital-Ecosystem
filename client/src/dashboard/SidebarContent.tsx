@@ -61,13 +61,17 @@ function SidebarContent() {
           <Plus className="h-4 w-4" />
           New Project
         </NavLink>
-        <a
-          href="#"
-          className="flex items-center gap-3 rounded-md px-3 py-1.5 text-sm text-ink-300 hover:text-ink-100"
+        <NavLink
+          to="/dashboard/help"
+          className={({ isActive }: { isActive: boolean }) =>
+            `flex items-center gap-3 rounded-md px-3 py-1.5 text-sm ${
+              isActive ? 'text-cyan-accent' : 'text-ink-300 hover:text-ink-100'
+            }`
+          }
         >
           <HelpCircle className="h-4 w-4 shrink-0" />
-          Support
-        </a>
+          Help Center
+        </NavLink>
       </div>
 
       <div className="mt-4 flex items-center gap-3 border-t border-ink-800 px-2 pt-4">
