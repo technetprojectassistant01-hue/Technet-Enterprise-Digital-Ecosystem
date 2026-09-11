@@ -9,7 +9,7 @@ import MobileNav from './dashboard/MobileNav'
 import NotificationBell from './dashboard/NotificationBell'
 import SyncStatus from './dashboard/SyncStatus'
 import { useToast } from './dashboard/ToastContext'
-import { registerServiceWorker } from './lib/pushNotifications'
+import { InstallAppPrompt } from './dashboard/InstallAppDialog'
 import { setOutboxDropHandler, startOutbox } from './lib/outbox'
 import { useOnline } from './lib/useOnline'
 import { watchForAppUpdate } from './lib/appUpdate'
@@ -24,12 +24,10 @@ function Dashboard() {
   const [navOpen, setNavOpen] = useState(false)
   const [updateAvailable, setUpdateAvailable] = useState(false)
 
-  // Register the service worker for every signed-in user (it was previously registered only on
-  // push opt-in), and start the offline outbox: it replays field submissions that were saved on
-  // the device during a signal drop. A submission the server permanently rejects on replay is
-  // surfaced here rather than lost silently.
+  // Start the offline outbox (the service worker itself is registered in main.tsx): it replays
+  // field submissions that were saved on the device during a signal drop. A submission the
+  // server permanently rejects on replay is surfaced here rather than lost silently.
   useEffect(() => {
-    void registerServiceWorker()
     startOutbox()
     setOutboxDropHandler((item) =>
       toastRef.current.error(
@@ -153,6 +151,8 @@ function Dashboard() {
             </button>
           </div>
         )}
+
+        <InstallAppPrompt appName="Technet Digital" />
 
         <main className="flex-1 px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
           <div key={pathname} className="animate-fade-in">
