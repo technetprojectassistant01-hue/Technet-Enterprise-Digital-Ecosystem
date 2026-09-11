@@ -774,7 +774,17 @@ install pop-up.
   Mac Safari and Firefox Android no site can trigger an install, so it shows the steps instead
   (Share → Add to Home Screen, etc.). Desktop Firefox can't install at all — nothing offered.
   `beforeinstallprompt` is captured in `initInstallSupport()` before React renders, since it's
-  never re-sent. Settings has an "Install app" panel for after a Not now.
+  never re-sent. Settings has an "Install app" panel for after a Not now. The pop-up also shows on
+  both login pages (staff + portal), at most once per page load across all of them.
+- **iPhone/iPad can never be one-tap** — Apple lets no website trigger an install; Share → Add to
+  Home Screen is the only route (a true one-tap needs an App Store app — $99/yr + review; the user
+  was told and chose the simpler path). So on iOS "Install now" opens `IosInstallGuide`: dims the
+  page, bounces an arrow at the browser's Share control, and shows the three taps as icons.
+  `iosShareSpot()` guesses where Share is from the UA (Safari <26 bottom-centre; Safari 26+
+  bottom-right via the "⋯" menu — detected by `Version/26`, since Safari 26 freezes the iOS
+  version in its UA; iPad and Chrome-iOS top-right; Firefox/Edge/Opera iOS no arrow). **These
+  positions are unverified on real devices** — if a user reports the arrow pointing at the wrong
+  place, adjust `iosShareSpot()` rather than the layout.
 - **Client Portal is its own installable app**: `public/portal.webmanifest` (id/scope/start_url
   `/portal`), swapped in by `initInstallSupport()` when the page loads on `/portal`; the portal
   layout shows the same pop-up titled "Install Technet Client Portal".
