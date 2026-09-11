@@ -1,4 +1,5 @@
 import * as api from './api'
+import { isIos, isStandalone } from './platform'
 
 /**
  * Web Push opt-in for the 08:15 check-in reminder.
@@ -14,18 +15,6 @@ import * as api from './api'
  */
 
 export type PushSupport = 'supported' | 'needs-home-screen' | 'unsupported'
-
-function isIos(): boolean {
-  return /iPad|iPhone|iPod/.test(navigator.userAgent)
-}
-
-function isStandalone(): boolean {
-  return (
-    window.matchMedia('(display-mode: standalone)').matches ||
-    // iOS Safari's own non-standard flag, still the only reliable signal there.
-    (navigator as { standalone?: boolean }).standalone === true
-  )
-}
 
 export function pushSupport(): PushSupport {
   if (!('serviceWorker' in navigator) || !('Notification' in window)) return 'unsupported'
