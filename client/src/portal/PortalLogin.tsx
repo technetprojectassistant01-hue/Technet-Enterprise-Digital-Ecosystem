@@ -3,6 +3,7 @@ import { Navigate, useNavigate } from 'react-router-dom'
 import { Eye, EyeOff } from 'lucide-react'
 import { usePortalAuth } from './PortalAuthContext'
 import Logo from '../components/Logo'
+import { InstallAppPrompt } from '../dashboard/InstallAppDialog'
 
 function PortalLogin() {
   const { customer, loading, login } = usePortalAuth()
@@ -31,6 +32,7 @@ function PortalLogin() {
 
   return (
     <div className="flex min-h-screen flex-col bg-ink-950 text-ink-100">
+      <InstallAppPrompt appName="Technet Client Portal" />
       <header className="flex items-center justify-between border-b border-cyan-accent/30 px-8 py-4">
         <Logo size="sm" />
         <span className="text-sm text-ink-300">Client Portal</span>
