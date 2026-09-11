@@ -13,11 +13,16 @@ export type Role =
   | 'FIELD_TECHNICIAN'
   | 'EMPLOYEE'
 
+/** UI language codes — "mfe" is Mauritian Creole (Kreol Morisien). See src/i18n. */
+export type Language = 'en' | 'fr' | 'mfe'
+
 export interface CurrentUser {
   id: string
   email: string
   name: string | null
   role: Role
+  /** Null until the user first picks a language. */
+  language?: Language | null
   employeeId: string | null
 }
 
@@ -70,6 +75,13 @@ export function logout() {
 
 export function fetchMe() {
   return request<{ user: CurrentUser }>('/api/auth/me')
+}
+
+export function updateMyLanguage(language: Language) {
+  return request<{ ok: true; language: Language }>('/api/auth/language', {
+    method: 'PUT',
+    body: JSON.stringify({ language }),
+  })
 }
 
 export function changePassword(currentPassword: string, newPassword: string) {
