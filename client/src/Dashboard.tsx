@@ -169,9 +169,9 @@ function Dashboard() {
             <a href="#" className="hover:text-ink-200">
               Terms of Service
             </a>
-            <a href="#" className="hover:text-ink-200">
+            <NavLink to="/dashboard/help#contact" className="hover:text-ink-200">
               Contact Support
-            </a>
+            </NavLink>
             <a href="#" className="hover:text-ink-200">
               Security Audit
             </a>
