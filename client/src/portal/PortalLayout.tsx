@@ -2,6 +2,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { LogOut } from 'lucide-react'
 import { usePortalAuth } from './PortalAuthContext'
 import Logo from '../components/Logo'
+import { InstallAppPrompt } from '../dashboard/InstallAppDialog'
 
 const TABS = [
   { label: 'Quotations', to: '/portal/quotations' },
@@ -55,6 +56,8 @@ function PortalLayout() {
           ))}
         </nav>
       </header>
+
+      <InstallAppPrompt appName="Technet Client Portal" />
 
       <main className="mx-auto max-w-5xl px-6 py-8">
         <Outlet />
