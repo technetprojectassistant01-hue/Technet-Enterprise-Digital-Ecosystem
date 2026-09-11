@@ -10,25 +10,38 @@
  * even though the worker underneath it changed — only a reload picks up the new JS.
  *
  * Guarded so the very first registration (no controller yet → one appears) doesn't count as an
- * update; only a controller *replacing* an existing one does.
+ * update; only a controller *replacing* an existing one does. The current controller is tracked
+ * rather than captured once, so a page that was uncontrolled when it loaded still gets the bar
+ * for a deploy that lands later.
+ *
+ * This only fires because sw.js's bytes change on every deploy — the build stamps a fresh build
+ * id into it (vite.config.ts). Without that, an app-code-only deploy produced no new worker.
  */
 export function watchForAppUpdate(onUpdateReady: () => void): () => void {
   if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return () => {}
 
-  const hadController = !!navigator.serviceWorker.controller
+  let controller = navigator.serviceWorker.controller
   const onControllerChange = () => {
-    if (hadController) onUpdateReady()
+    if (controller) onUpdateReady()
+    controller = navigator.serviceWorker.controller
   }
   navigator.serviceWorker.addEventListener('controllerchange', onControllerChange)
 
+  const checkForUpdate = () => {
+    navigator.serviceWorker.getRegistration().then((reg) => reg?.update()).catch(() => {})
+  }
   // An installed PWA can sit open for hours without a navigation that would otherwise trigger
-  // the browser's own update check, so ask it to look for a new worker periodically.
-  const interval = setInterval(() => {
-    navigator.serviceWorker.getRegistration().then((reg) => reg?.update())
-  }, 20 * 60 * 1000)
+  // the browser's own update check, so look periodically — and whenever it's brought back to the
+  // foreground, which is how a home-screen app is usually "reopened" on a phone.
+  const interval = setInterval(checkForUpdate, 20 * 60 * 1000)
+  const onVisible = () => {
+    if (document.visibilityState === 'visible') checkForUpdate()
+  }
+  document.addEventListener('visibilitychange', onVisible)
 
   return () => {
     navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange)
+    document.removeEventListener('visibilitychange', onVisible)
     clearInterval(interval)
   }
 }
