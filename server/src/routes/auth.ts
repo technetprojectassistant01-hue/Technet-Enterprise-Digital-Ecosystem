@@ -10,6 +10,9 @@ import { logSecurityEvent } from "../lib/securityEvents";
 
 const router = Router();
 
+/** Kept in sync with LANGUAGES in client/src/i18n/index.tsx. "mfe" is Mauritian Creole. */
+export const SUPPORTED_LANGUAGES = ["en", "fr", "mfe"] as const;
+
 /** A handful of attempts per IP is plenty for a real user who mistyped or lost an email. */
 const forgotPasswordLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -55,6 +58,7 @@ router.post("/login", async (req, res) => {
       email: user.email,
       name: user.name,
       role: user.role,
+      language: user.language,
       employeeId: user.employee?.id ?? null,
     },
   });
@@ -68,7 +72,7 @@ router.post("/logout", (_req, res) => {
 router.get("/me", requireAuth, async (req, res) => {
   const user = await prisma.user.findUnique({
     where: { id: req.user!.sub },
-    select: { id: true, email: true, name: true, role: true, employee: { select: { id: true } } },
+    select: { id: true, email: true, name: true, role: true, language: true, employee: { select: { id: true } } },
   });
 
   if (!user) {
@@ -77,6 +81,17 @@ router.get("/me", requireAuth, async (req, res) => {
 
   const { employee, ...rest } = user;
   res.json({ user: { ...rest, employeeId: employee?.id ?? null } });
+});
+
+/** Saves the signed-in user's UI language so it follows them to any device. */
+router.put("/language", requireAuth, async (req, res) => {
+  const { language } = req.body ?? {};
+  if (!SUPPORTED_LANGUAGES.includes(language)) {
+    return res.status(400).json({ error: `Language must be one of: ${SUPPORTED_LANGUAGES.join(", ")}` });
+  }
+
+  await prisma.user.update({ where: { id: req.user!.sub }, data: { language } });
+  res.json({ ok: true, language });
 });
 
 router.post("/change-password", requireAuth, async (req, res) => {
