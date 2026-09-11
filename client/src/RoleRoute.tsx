@@ -4,12 +4,14 @@ import { EmptyState } from './dashboard/ui'
 import { useAuth } from './context/AuthContext'
 import { hasRole } from './lib/permissions'
 import type { Role } from './lib/api'
+import { useT } from './i18n'
 
 function RoleRoute({ blockedRoles }: { blockedRoles: readonly Role[] }) {
   const { user } = useAuth()
+  const t = useT()
 
   if (hasRole(user?.role, blockedRoles)) {
-    return <EmptyState icon={Lock} message="This module isn't available for your role." />
+    return <EmptyState icon={Lock} message={t.shell.notAvailableForRole} />
   }
 
   return <Outlet />
