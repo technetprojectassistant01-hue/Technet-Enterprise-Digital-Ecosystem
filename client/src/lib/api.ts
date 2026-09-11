@@ -2826,6 +2826,7 @@ export type NotificationType =
   | 'DAILY_REPORT_APPROVED'
   | 'DAILY_REPORT_REJECTED'
   | 'WORK_ORDER_STATUS_CHANGED'
+  | 'SITE_CHECKIN_RECORDED'
 
 export interface Notification {
   id: string

@@ -3,7 +3,7 @@ import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { OPS_MANAGE_ROLES, OPS_SUBMIT_ROLES } from "../lib/roles";
 import { distanceMeters, SITE_GEOFENCE_RADIUS_METERS } from "../lib/geo";
-import { notifyEmployee } from "../lib/notifications";
+import { notifyEmployee, notifyRoles } from "../lib/notifications";
 import { parseClockTime } from "../lib/clockTime";
 import { checkLocationAgainstGps } from "../lib/locationMatch";
 import { claimRequest, releaseRequest } from "../lib/idempotency";
@@ -356,6 +356,18 @@ router.post("/check-in", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
       },
       include: { workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE },
     });
+
+    // Only a genuinely new check-in reaches here - the deduped-replay branch above already
+    // returned. Scoped to OPS_MANAGE_ROLES (not HR): Team Attendance/Field Operations, the screens
+    // this links to, are already OPS_MANAGE_ROLES-gated, so notifying HR would point at a page
+    // they can't open.
+    await notifyRoles(
+      OPS_MANAGE_ROLES,
+      "SITE_CHECKIN_RECORDED",
+      `${employee.firstName} ${employee.lastName} checked in`,
+      { message: note, link: "/dashboard/operations/field-tracking" },
+    );
+
     res.status(201).json({ siteAttendance });
   } catch (err) {
     await releaseRequest(clientRequestId);
