@@ -74,12 +74,16 @@ function Dashboard() {
             onClick={() => setNavOpen(false)}
             aria-hidden="true"
           />
-          <aside className="fixed inset-y-0 left-0 z-50 flex w-72 border-r border-ink-800 bg-ink-950 shadow-2xl lg:hidden">
+          <aside
+            className="fixed inset-y-0 left-0 z-50 flex w-72 border-r border-ink-800 bg-ink-950 shadow-2xl lg:hidden"
+            style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
+          >
             <button
               type="button"
               onClick={() => setNavOpen(false)}
               aria-label="Close menu"
-              className="absolute right-3 top-4 rounded p-1 text-ink-400 hover:bg-ink-800 hover:text-ink-100"
+              className="absolute right-3 rounded p-1 text-ink-400 hover:bg-ink-800 hover:text-ink-100"
+              style={{ top: 'calc(env(safe-area-inset-top) + 1rem)' }}
             >
               <X className="h-5 w-5" />
             </button>

@@ -46,7 +46,15 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div className="pointer-events-none fixed right-6 top-6 z-[100] flex flex-col gap-2">
+      {/* top/right use env(safe-area-inset-*) so this clears the notch/dynamic island in the
+          installed PWA — a `fixed` element ignores the safe-area padding on <body> entirely. */}
+      <div
+        className="pointer-events-none fixed z-[100] flex flex-col gap-2"
+        style={{
+          top: 'calc(env(safe-area-inset-top) + 1.5rem)',
+          right: 'calc(env(safe-area-inset-right) + 1.5rem)',
+        }}
+      >
         {toasts.map((t) => {
           const Icon = t.tone === 'success' ? CheckCircle2 : XCircle
           return (
