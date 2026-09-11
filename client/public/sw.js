@@ -6,26 +6,32 @@
  *  1. Web Push: showing the 08:15 check-in reminder on a device whose browser is closed.
  *  2. Background Sync: flushing the offline outbox (see src/lib/outbox.ts) when the connection
  *     returns, even if the app isn't open. This is a Chromium-only bonus — Safari has no
- *     Background Sync, so on iOS the app's own foreground flush is the only sync path. It is
- *     also unverified against production's cross-origin Partitioned auth cookie: a background
- *     fetch from here to the API's own origin may not carry the cookie. The foreground flush,
- *     which runs in the page where the cookie definitely works, is the guarantee; this only
- *     ever helps, never hurts.
+ *     Background Sync, so on iOS the app's own foreground flush is the only sync path. The API
+ *     is same-origin (the Cloudflare Worker proxy) and the auth cookie first-party, so a fetch
+ *     from here carries it like any page request.
  *  3. Offline reads: caching the app shell and the technician's own data (their work orders,
  *     schedule, assets) so those screens still open with no signal (CLAUDE.md §13 item 5,
- *     Milestone 2). Navigations and API reads are network-first, so an online device always
- *     gets the latest — the cache is only a fallback, never authoritative, which keeps a stale
- *     build from being served.
+ *     Milestone 2). The whole shell is saved at install, so the app opens offline even if it was
+ *     only ever loaded once. Navigations and API reads are network-first, so an online device
+ *     always gets the latest — the cache is only a fallback.
  *
  * Dev note: this runs on localhost too. Navigation is network-first so Vite HMR is unaffected;
  * if HMR ever misbehaves, DevTools → Application → Service Workers → Unregister.
  */
 
-// Bump on a release when you want old caches garbage-collected. Not required for correctness —
-// network-first means online users always get the latest regardless.
-const CACHE_VERSION = 'v5'
-const SHELL_CACHE = `technet-shell-${CACHE_VERSION}`
-const API_CACHE = `technet-api-${CACHE_VERSION}`
+// Both lines are rewritten on every production build by the sw-build-stamp plugin in
+// vite.config.ts (the build fails if it can't find them — keep them exactly as written). The
+// build id makes this file's bytes change on each deploy, which is the only thing that makes a
+// browser pick up a new worker and the app show its "new version" bar. Left as-is in dev.
+const BUILD_ID = 'dev'
+const PRECACHE_URLS = []
+
+// The shell cache is per build: a new deploy saves a fresh copy and the old one is dropped on
+// activate. The API cache is NOT per build — wiping it on every deploy would throw away a
+// technician's saved jobs the moment an update landed. Bump this only if its format changes.
+const API_CACHE_VERSION = 'v5'
+const SHELL_CACHE = `technet-shell-${BUILD_ID}`
+const API_CACHE = `technet-api-${API_CACHE_VERSION}`
 
 // GET paths whose responses are worth keeping for offline viewing — the technician-facing data,
 // not the whole API. Matched by path only, so it works whatever origin the API is served from.
@@ -41,10 +47,28 @@ const CACHEABLE_API = [
   /^\/api\/employees$/,
 ]
 
-self.addEventListener('install', () => {
-  // Take over immediately rather than waiting for every old tab to close, so a technician who
-  // enables reminders gets a worker that can actually receive them without reopening the app.
+/**
+ * Save the whole app shell up front. Without this the shell was only cached by the *next* page
+ * load after the worker took over, so someone who installed the app and lost signal before
+ * opening it a second time got the browser's offline page instead of the app.
+ */
+async function precacheShell() {
+  if (!PRECACHE_URLS.length) return // dev build — nothing stamped in, runtime caching still works
+  const cache = await caches.open(SHELL_CACHE)
+  // Fetched as '/' because Cloudflare redirects /index.html → /, and a redirected response can't
+  // answer a navigation. Stored under the '/index.html' key the navigation fallback reads.
+  const shell = await fetch('/', { cache: 'reload' })
+  if (!shell.ok) throw new Error(`Shell fetch failed: ${shell.status}`)
+  await cache.put('/index.html', shell)
+  await cache.addAll(PRECACHE_URLS)
+}
+
+self.addEventListener('install', (event) => {
+  // Take over as soon as the shell is saved rather than waiting for every old tab to close, so a
+  // technician who enables reminders gets a worker that can receive them without reopening the
+  // app. The open page then shows its "new version — Reload" bar (src/lib/appUpdate.ts).
   self.skipWaiting()
+  event.waitUntil(precacheShell())
 })
 
 self.addEventListener('activate', (event) => {
