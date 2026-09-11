@@ -313,6 +313,7 @@ function EmployeesPage() {
             submitting={submitting}
             error={formError}
             submitLabel={editing ? 'Save Changes' : 'Add Employee'}
+            isCreate={!editing}
           />
         </Modal>
       )}

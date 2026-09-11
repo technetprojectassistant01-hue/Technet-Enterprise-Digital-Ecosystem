@@ -153,6 +153,7 @@ function EmployeeForm({
   submitting,
   error,
   submitLabel,
+  isCreate = false,
 }: {
   form: EmployeeFormState
   setForm: (form: EmployeeFormState) => void
@@ -160,6 +161,9 @@ function EmployeeForm({
   submitting: boolean
   error: string | null
   submitLabel: string
+  /** The employee code is server-generated on create (see CLAUDE.md) — shown read-only there,
+   * editable once the employee exists in case HR needs to correct it. */
+  isCreate?: boolean
 }) {
   const [showPayroll, setShowPayroll] = useState(false)
   const [linkableUsers, setLinkableUsers] = useState<LinkableUser[]>([])
@@ -194,12 +198,16 @@ function EmployeeForm({
 
       <Section title="IDENTITY & CONTACT">
         <Field label="EMPLOYEE CODE">
-          <input
-            value={form.employeeCode}
-            onChange={(e) => set({ employeeCode: e.target.value })}
-            required
-            className={inputClass}
-          />
+          {isCreate ? (
+            <p className="text-sm text-ink-500">Assigned automatically on save.</p>
+          ) : (
+            <input
+              value={form.employeeCode}
+              onChange={(e) => set({ employeeCode: e.target.value })}
+              required
+              className={inputClass}
+            />
+          )}
         </Field>
         <Field label="STATUS">
           <select

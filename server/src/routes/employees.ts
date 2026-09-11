@@ -4,6 +4,7 @@ import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { HR_ROLES } from "../lib/roles";
 import { isUniqueConstraintError, isForeignKeyConstraintError, isNotFoundError } from "../lib/prismaErrors";
+import { generateEmployeeCode } from "../lib/employeeCode";
 
 const router = Router();
 
@@ -150,11 +151,8 @@ router.get("/:id", async (req, res) => {
 
 router.post("/", requireRole(...HR_ROLES), async (req, res) => {
   const body = req.body ?? {};
-  const { employeeCode, firstName, lastName } = body;
+  const { firstName, lastName } = body;
 
-  if (typeof employeeCode !== "string" || !employeeCode.trim()) {
-    return res.status(400).json({ error: "Employee code is required" });
-  }
   if (typeof firstName !== "string" || !firstName.trim() || typeof lastName !== "string" || !lastName.trim()) {
     return res.status(400).json({ error: "First and last name are required" });
   }
@@ -166,51 +164,58 @@ router.post("/", requireRole(...HR_ROLES), async (req, res) => {
     linkedUserId = targetUser.id;
   }
 
-  try {
-    const employee = await prisma.employee.create({
-      data: {
-        employeeCode: employeeCode.trim(),
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        user: linkedUserId ? { connect: { id: linkedUserId } } : undefined,
-        email: optionalString(body.email),
-        phone: optionalString(body.phone),
-        position: optionalString(body.position),
-        department: optionalString(body.department),
-        employmentStatus: optionalEnum(body.employmentStatus, EMPLOYMENT_STATUSES) ?? "ACTIVE",
-        hireDate: optionalDate(body.hireDate),
+  // The employee code is auto-generated, not typed by HR (it used to be a required manual field -
+  // see CLAUDE.md). A short retry loop covers the rare near-simultaneous collision, same pattern
+  // as generateQuotationNumber's caller.
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const employeeCode = await generateEmployeeCode();
+    try {
+      const employee = await prisma.employee.create({
+        data: {
+          employeeCode,
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          user: linkedUserId ? { connect: { id: linkedUserId } } : undefined,
+          email: optionalString(body.email),
+          phone: optionalString(body.phone),
+          position: optionalString(body.position),
+          department: optionalString(body.department),
+          employmentStatus: optionalEnum(body.employmentStatus, EMPLOYMENT_STATUSES) ?? "ACTIVE",
+          hireDate: optionalDate(body.hireDate),
 
-        nationalId: optionalString(body.nationalId),
-        dateOfBirth: optionalDate(body.dateOfBirth),
-        gender: optionalEnum(body.gender, GENDERS),
-        address: optionalString(body.address),
+          nationalId: optionalString(body.nationalId),
+          dateOfBirth: optionalDate(body.dateOfBirth),
+          gender: optionalEnum(body.gender, GENDERS),
+          address: optionalString(body.address),
 
-        emergencyContactName: optionalString(body.emergencyContactName),
-        emergencyContactPhone: optionalString(body.emergencyContactPhone),
-        emergencyContactRelation: optionalString(body.emergencyContactRelation),
+          emergencyContactName: optionalString(body.emergencyContactName),
+          emergencyContactPhone: optionalString(body.emergencyContactPhone),
+          emergencyContactRelation: optionalString(body.emergencyContactRelation),
 
-        contractType: optionalEnum(body.contractType, CONTRACT_TYPES),
-        jobGrade: optionalString(body.jobGrade),
-        probationEndDate: optionalDate(body.probationEndDate),
-        contractEndDate: optionalDate(body.contractEndDate),
-        exitDate: optionalDate(body.exitDate),
-        exitReason: optionalString(body.exitReason),
+          contractType: optionalEnum(body.contractType, CONTRACT_TYPES),
+          jobGrade: optionalString(body.jobGrade),
+          probationEndDate: optionalDate(body.probationEndDate),
+          contractEndDate: optionalDate(body.contractEndDate),
+          exitDate: optionalDate(body.exitDate),
+          exitReason: optionalString(body.exitReason),
 
-        basicSalary: optionalDecimal(body.basicSalary),
-        bankName: optionalString(body.bankName),
-        bankAccountNumber: optionalString(body.bankAccountNumber),
+          basicSalary: optionalDecimal(body.basicSalary),
+          bankName: optionalString(body.bankName),
+          bankAccountNumber: optionalString(body.bankAccountNumber),
 
-        notes: optionalString(body.notes),
-      },
-    });
-    res.status(201).json({ employee });
-  } catch (err) {
-    if (isUniqueConstraintError(err)) {
-      return res
-        .status(409)
-        .json({ error: "An employee with that code or national ID already exists, or that user account is already linked to another employee" });
+          notes: optionalString(body.notes),
+        },
+      });
+      return res.status(201).json({ employee });
+    } catch (err) {
+      if (isUniqueConstraintError(err) && attempt < 4) continue;
+      if (isUniqueConstraintError(err)) {
+        return res
+          .status(409)
+          .json({ error: "An employee with that national ID already exists, or that user account is already linked to another employee" });
+      }
+      throw err;
     }
-    throw err;
   }
 });
 
