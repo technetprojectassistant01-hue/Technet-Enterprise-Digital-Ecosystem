@@ -1,10 +1,13 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Globe, Lock } from 'lucide-react'
+import { ArrowLeft, Lock } from 'lucide-react'
 import Logo from './components/Logo'
+import LanguageSwitcher from './dashboard/LanguageSwitcher'
 import { ApiError, resetPassword } from './lib/api'
+import { useT } from './i18n'
 
 function ResetPassword() {
+  const t = useT()
   const [searchParams] = useSearchParams()
   const token = searchParams.get('token')
 
@@ -19,11 +22,11 @@ function ResetPassword() {
     setError(null)
 
     if (password.length < 8) {
-      setError('Password must be at least 8 characters')
+      setError(t.auth.passwordTooShort)
       return
     }
     if (password !== confirmPassword) {
-      setError('Passwords do not match')
+      setError(t.auth.passwordsDontMatch)
       return
     }
 
@@ -32,7 +35,7 @@ function ResetPassword() {
       await resetPassword(token!, password)
       setDone(true)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.')
+      setError(err instanceof ApiError ? err.message : t.common.somethingWentWrong)
     } finally {
       setSubmitting(false)
     }
@@ -40,16 +43,13 @@ function ResetPassword() {
 
   return (
     <div className="flex min-h-screen flex-col bg-ink-950 text-ink-100">
-      <header className="flex items-center justify-between border-b border-cyan-accent/30 px-8 py-4">
+      <header className="flex items-center justify-between gap-4 border-b border-cyan-accent/30 px-4 py-4 sm:px-8">
         <Logo size="sm" />
-        <div className="flex items-center gap-6 text-sm text-ink-200">
+        <div className="flex items-center gap-4 text-sm text-ink-200 sm:gap-6">
           <Link to="/help" className="hover:text-ink-100">
-            Help Center
+            {t.auth.helpCenter}
           </Link>
-          <span className="flex items-center gap-1.5">
-            <Globe className="h-4 w-4" />
-            EN
-          </span>
+          <LanguageSwitcher />
         </div>
       </header>
 
@@ -67,45 +67,39 @@ function ResetPassword() {
 
           {!token ? (
             <>
-              <h1 className="text-center text-2xl font-semibold text-ink-100">Invalid Link</h1>
-              <p className="mt-3 text-center text-sm text-ink-300">
-                This password reset link is missing its token. Request a new one to continue.
-              </p>
+              <h1 className="text-center text-2xl font-semibold text-ink-100">{t.auth.invalidLink}</h1>
+              <p className="mt-3 text-center text-sm text-ink-300">{t.auth.invalidLinkBody}</p>
               <Link
                 to="/forgot-password"
                 className="mt-8 flex items-center justify-center gap-2 text-sm text-cyan-accent hover:underline"
               >
                 <ArrowLeft className="h-4 w-4" />
-                Request a New Link
+                {t.auth.requestNewLink}
               </Link>
             </>
           ) : done ? (
             <>
-              <h1 className="text-center text-2xl font-semibold text-ink-100">Password Updated</h1>
-              <p className="mt-3 text-center text-sm text-ink-300">
-                Your password has been reset. You can now sign in with your new password.
-              </p>
+              <h1 className="text-center text-2xl font-semibold text-ink-100">{t.auth.passwordUpdated}</h1>
+              <p className="mt-3 text-center text-sm text-ink-300">{t.auth.passwordUpdatedBody}</p>
               <Link
                 to="/login"
                 className="mt-8 flex items-center justify-center gap-2 text-sm text-cyan-accent hover:underline"
               >
                 <ArrowLeft className="h-4 w-4" />
-                Back to Sign In
+                {t.auth.backToSignIn}
               </Link>
             </>
           ) : (
             <>
-              <h1 className="text-center text-2xl font-semibold text-ink-100">Set a New Password</h1>
-              <p className="mt-2 text-center text-sm text-ink-300">
-                Choose a new password for your account.
-              </p>
+              <h1 className="text-center text-2xl font-semibold text-ink-100">{t.auth.setNewPassword}</h1>
+              <p className="mt-2 text-center text-sm text-ink-300">{t.auth.chooseNewPassword}</p>
 
               <form onSubmit={handleSubmit} className="mt-8">
                 <label
                   htmlFor="password"
                   className="text-xs font-semibold tracking-widest text-ink-300"
                 >
-                  NEW PASSWORD
+                  {t.auth.newPassword}
                 </label>
                 <div className="mt-2 flex items-center gap-2 rounded-md border border-ink-600 bg-ink-950 px-3 py-2.5 focus-within:border-cyan-accent">
                   <Lock className="h-4 w-4 text-ink-400" />
@@ -114,7 +108,7 @@ function ResetPassword() {
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="At least 8 characters"
+                    placeholder={t.auth.atLeast8}
                     required
                     minLength={8}
                     className="w-full bg-transparent text-ink-100 placeholder-ink-500 outline-none"
@@ -125,7 +119,7 @@ function ResetPassword() {
                   htmlFor="confirmPassword"
                   className="mt-4 block text-xs font-semibold tracking-widest text-ink-300"
                 >
-                  CONFIRM PASSWORD
+                  {t.auth.confirmPassword}
                 </label>
                 <div className="mt-2 flex items-center gap-2 rounded-md border border-ink-600 bg-ink-950 px-3 py-2.5 focus-within:border-cyan-accent">
                   <Lock className="h-4 w-4 text-ink-400" />
@@ -134,7 +128,7 @@ function ResetPassword() {
                     type="password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Re-enter your new password"
+                    placeholder={t.auth.reEnterPassword}
                     required
                     minLength={8}
                     className="w-full bg-transparent text-ink-100 placeholder-ink-500 outline-none"
@@ -146,7 +140,7 @@ function ResetPassword() {
                   disabled={submitting}
                   className="mt-6 w-full rounded-md bg-cyan-accent py-3 text-sm font-semibold tracking-widest text-ink-950 transition hover:bg-cyan-accent-dark disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                  {submitting ? 'UPDATING…' : 'UPDATE PASSWORD'}
+                  {submitting ? t.auth.updating : t.auth.updatePassword}
                 </button>
 
                 {error && <p className="mt-4 text-center text-sm text-red-400">{error}</p>}
@@ -157,7 +151,7 @@ function ResetPassword() {
                 className="mt-6 flex items-center justify-center gap-2 text-sm text-cyan-accent hover:underline"
               >
                 <ArrowLeft className="h-4 w-4" />
-                Back to Sign In
+                {t.auth.backToSignIn}
               </Link>
             </>
           )}
@@ -165,26 +159,26 @@ function ResetPassword() {
           <div className="mt-8 flex justify-center">
             <span className="flex items-center gap-2 rounded-full border border-ink-700 px-4 py-1.5 text-[11px] tracking-wide text-ink-300">
               <span className="h-1.5 w-1.5 rounded-full bg-cyan-accent" />
-              All Core Systems Operational
+              {t.auth.systemsOperational}
             </span>
           </div>
         </div>
       </main>
 
       <footer className="flex flex-col gap-3 border-t border-ink-800 px-8 py-5 text-xs text-ink-400 sm:flex-row sm:items-center sm:justify-between">
-        <span>© 2026 Technet Engineering. Digital Kineticism Secured.</span>
+        <span>{t.auth.copyright}</span>
         <div className="flex flex-wrap gap-5">
           <a href="#" className="hover:text-ink-200">
-            Privacy Policy
+            {t.auth.privacyPolicy}
           </a>
           <a href="#" className="hover:text-ink-200">
-            Terms of Service
+            {t.auth.termsOfService}
           </a>
           <a href="#" className="hover:text-ink-200">
-            Security Audit
+            {t.auth.securityAudit}
           </a>
           <Link to="/help#contact" className="hover:text-ink-200">
-            Contact Support
+            {t.auth.contactSupport}
           </Link>
         </div>
       </footer>
