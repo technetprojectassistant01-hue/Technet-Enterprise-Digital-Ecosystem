@@ -9,6 +9,7 @@ import {
   useInstallMethod,
   type InstallMethod,
 } from '../lib/installPrompt'
+import { useT } from '../i18n'
 
 type ShareSpot = 'bottom-center' | 'bottom-right' | 'top-right' | null
 
@@ -49,6 +50,7 @@ function GuideStep({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
  * taps. Safari's toolbar sits just outside the page, so an arrow at the page's edge points at it.
  */
 function IosInstallGuide({ appName, onClose }: { appName: string; onClose: () => void }) {
+  const t = useT()
   const { spot, viaMoreMenu } = iosShareSpot()
   const atTop = spot === 'top-right'
   const ArrowIcon = atTop ? ArrowUp : ArrowDown
@@ -65,7 +67,7 @@ function IosInstallGuide({ appName, onClose }: { appName: string; onClose: () =>
       className="animate-backdrop-in fixed inset-0 z-50 bg-black/70 backdrop-blur-sm"
       onClick={onClose}
       role="dialog"
-      aria-label={`How to install ${appName}`}
+      aria-label={t.install.howTo(appName)}
     >
       {spot && (
         <div className="absolute" style={arrowPosition} aria-hidden="true">
@@ -78,33 +80,20 @@ function IosInstallGuide({ appName, onClose }: { appName: string; onClose: () =>
         style={atTop ? { top: 'calc(env(safe-area-inset-top) + 4rem)' } : { bottom: 'calc(env(safe-area-inset-bottom) + 4rem)' }}
         onClick={(e) => e.stopPropagation()}
       >
-        <p className="text-center text-sm font-semibold text-ink-100">Add {appName} to your Home Screen</p>
+        <p className="text-center text-sm font-semibold text-ink-100">{t.install.addToHomeScreen(appName)}</p>
         <div className="mt-4 flex items-start gap-2">
-          <GuideStep icon={viaMoreMenu ? Ellipsis : Share} label={viaMoreMenu ? 'Tap ⋯ then Share' : 'Tap Share'} />
-          <GuideStep icon={SquarePlus} label="Tap Add to Home Screen" />
-          <GuideStep icon={Check} label="Tap Add" />
+          <GuideStep
+            icon={viaMoreMenu ? Ellipsis : Share}
+            label={viaMoreMenu ? t.install.tapMoreThenShare : t.install.tapShare}
+          />
+          <GuideStep icon={SquarePlus} label={t.install.tapAddToHomeScreen} />
+          <GuideStep icon={Check} label={t.install.tapAdd} />
         </div>
         <button type="button" onClick={onClose} className={`${primaryButtonClass} mt-5 w-full`}>
-          Got it
+          {t.install.gotIt}
         </button>
       </div>
     </div>
-  )
-}
-
-/** Mac Safari / Firefox on Android: a website can't trigger the install there either. */
-function InstallSteps({ method }: { method: 'mac-safari' | 'android-menu' }) {
-  if (method === 'mac-safari') {
-    return (
-      <p className="text-sm text-ink-200">
-        In Safari's menu bar, choose <strong>File → Add to Dock</strong>.
-      </p>
-    )
-  }
-  return (
-    <p className="text-sm text-ink-200">
-      Open the browser menu (<strong>⋮</strong>) and tap <strong>Install</strong>.
-    </p>
   )
 }
 
@@ -120,6 +109,7 @@ export function InstallAppDialog({
   onNotNow: () => void
   onDone: () => void
 }) {
+  const t = useT()
   const [showSteps, setShowSteps] = useState(false)
 
   async function handleInstall() {
@@ -134,30 +124,33 @@ export function InstallAppDialog({
   if (showSteps && method === 'ios') return <IosInstallGuide appName={appName} onClose={onDone} />
 
   return (
-    <Modal title={`Install ${appName}`} onClose={onNotNow}>
+    <Modal title={t.install.title(appName)} onClose={onNotNow}>
       <div className="flex items-center gap-4">
         <img src="/icon-192.png" alt="" className="h-14 w-14 shrink-0 rounded-xl" />
-        <p className="text-sm text-ink-200">Install this app for quick access.</p>
+        <p className="text-sm text-ink-200">{t.install.body}</p>
       </div>
 
       {showSteps && (method === 'mac-safari' || method === 'android-menu') ? (
         <>
+          {/* Mac Safari / Firefox on Android: a website can't trigger the install there either. */}
           <div className="mt-5 rounded-lg border border-ink-700 bg-ink-950 p-4">
-            <InstallSteps method={method} />
+            <p className="text-sm text-ink-200">
+              {method === 'mac-safari' ? t.install.macSafari : t.install.androidMenu}
+            </p>
           </div>
           <div className="mt-6 flex justify-end">
             <button type="button" onClick={onDone} className={primaryButtonClass}>
-              Done
+              {t.install.done}
             </button>
           </div>
         </>
       ) : (
         <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <button type="button" onClick={onNotNow} className={secondaryButtonClass}>
-            Not now
+            {t.install.notNow}
           </button>
           <button type="button" onClick={() => void handleInstall()} className={primaryButtonClass}>
-            Install now
+            {t.install.installNow}
           </button>
         </div>
       )}
