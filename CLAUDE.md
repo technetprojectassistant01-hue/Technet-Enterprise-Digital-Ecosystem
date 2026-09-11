@@ -746,3 +746,45 @@ only — never integrate with, call, or fix it).
   - **Phase 3 (not started, blocked on the payroll question):** merge the two attendance systems
     into one record/employee/day, payroll approvals + payslips, wire My Leave accrual into the
     daily register, make the work-order link automatic rather than picked.
+
+## 17. PWA: install pop-up, reliable updates, offline shell (2026-09-11)
+
+An audit of the PWA found two real bugs and some gaps; all fixed, plus the user's requested
+install pop-up.
+
+- **Update bar never fired on a normal deploy (fixed).** A browser only installs a new service
+  worker when `sw.js`'s bytes change, and `appUpdate.ts`'s "new version — Reload" bar depends on
+  that. App-code-only deploys never touched `sw.js`. Now `public/sw.js` has two placeholder lines
+  (`const BUILD_ID = 'dev'` / `const PRECACHE_URLS = []`) that the `swBuildStamp()` plugin in
+  `client/vite.config.ts` rewrites in `dist/client/sw.js` on every build (hash of the built output
+  → id; the build **fails** if the placeholders are missing — keep them verbatim). Dev keeps the
+  placeholders. **No more manual `CACHE_VERSION` bumps** — the shell cache is `technet-shell-<BUILD_ID>`.
+  The API cache deliberately keeps a fixed `API_CACHE_VERSION` so a deploy doesn't wipe a
+  technician's saved jobs.
+- **App didn't open offline right after install (fixed).** The shell was only cached by the page
+  load *after* the worker took over. `sw.js` now precaches `/` (stored under the `/index.html`
+  key — Cloudflare redirects `/index.html` → `/`, and a redirected response can't answer a
+  navigation) plus every built/public file at install. The worker is registered in `main.tsx` on
+  **every** page (was only after sign-in, in `Dashboard.tsx`). Logout now clears only
+  `technet-api-*`, not the shell (no user data in it).
+- **Install pop-up** (`dashboard/InstallAppDialog.tsx`, `lib/installPrompt.ts`): "Install Technet
+  Digital — Install this app for quick access", **Install now** / **Not now**. Appears ~3s into a
+  visit on any device that can install and hasn't; Not now snoozes it 7 days (localStorage).
+  Install now replays the captured `beforeinstallprompt` (Chrome/Edge/Samsung); on iPhone/iPad,
+  Mac Safari and Firefox Android no site can trigger an install, so it shows the steps instead
+  (Share → Add to Home Screen, etc.). Desktop Firefox can't install at all — nothing offered.
+  `beforeinstallprompt` is captured in `initInstallSupport()` before React renders, since it's
+  never re-sent. Settings has an "Install app" panel for after a Not now.
+- **Client Portal is its own installable app**: `public/portal.webmanifest` (id/scope/start_url
+  `/portal`), swapped in by `initInstallSupport()` when the page loads on `/portal`; the portal
+  layout shows the same pop-up titled "Install Technet Client Portal".
+- Also: explicit `"id": "/dashboard"` in the staff manifest (matches the id browsers already
+  derived, so existing installs are unaffected); `appUpdate.ts` tracks the current controller
+  (so a first-visit page still gets the bar later) and re-checks for updates when the app is
+  foregrounded; `lib/platform.ts` holds the shared `isIos`/`isStandalone` (iPadOS 13+ now counts
+  as iOS).
+- **Not done:** manifest `screenshots` for Android's richer install sheet — needs real app
+  captures, and this machine has no browser automation. **Unverified on real devices**: the
+  pop-up on Android Chrome + iPhone, offline open straight after install, and the Reload bar
+  after a real deploy. `npm run build` + `tsc -b` pass and the stamped `dist/client/sw.js` was
+  inspected.
