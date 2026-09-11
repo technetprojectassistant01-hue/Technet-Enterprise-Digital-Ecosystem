@@ -1,4 +1,5 @@
 import type { LocationMatch, SiteAttendance } from './api'
+import { getT } from '../i18n'
 
 /**
  * Helpers shared by the technician's own AttendanceWidget and the manager-facing Team Attendance
@@ -25,7 +26,7 @@ export function currentClockTime(): string {
  */
 export function statedTimeSuffix(declared: string | null, actualIso: string | null): string {
   if (!declared || !actualIso) return ''
-  return declared === clockOf(new Date(actualIso)) ? '' : ` (stated ${declared})`
+  return declared === clockOf(new Date(actualIso)) ? '' : getT().attendance.stated(declared)
 }
 
 /** Both legs of the trip added together. Decimal columns arrive as strings, hence the Number(). */
