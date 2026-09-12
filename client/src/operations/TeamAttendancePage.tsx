@@ -20,6 +20,7 @@ import { downloadCsv } from '../lib/csv'
 import { primaryButtonClass, secondaryButtonClass } from '../dashboard/buttonStyles'
 import { useEmployees } from '../erp/useEmployees'
 import { useToast } from '../dashboard/ToastContext'
+import { enumLabel, useT } from '../i18n'
 
 const inputClass =
   'rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -119,6 +120,7 @@ function hoursOnSite(v: SiteAttendanceWithEmployee): string {
 }
 
 function TeamAttendancePage() {
+  const t = useT()
   const { user } = useAuth()
   const canAccess = hasRole(user?.role, OPS_MANAGE_ROLES)
   const employees = useEmployees()
@@ -158,11 +160,11 @@ function TeamAttendancePage() {
         checkOutAt: closeAt ? new Date(closeAt).toISOString() : undefined,
         note: closeNote || undefined,
       })
-      toast.success('Session closed')
+      toast.success(t.ops.team.sessionClosed)
       setClosing(null)
       reload()
     } catch (err) {
-      setCloseError(err instanceof Error ? err.message : 'Failed to close the session')
+      setCloseError(err instanceof Error ? err.message : t.ops.team.closeFailed)
     } finally {
       setSubmittingClose(false)
     }
@@ -182,7 +184,7 @@ function TeamAttendancePage() {
         setHistory(history)
         setSummary(summary)
       })
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load attendance'))
+      .catch((err) => setError(err instanceof Error ? err.message : t.ops.team.loadFailed))
       .finally(() => setLoading(false))
   }
 
@@ -274,7 +276,7 @@ function TeamAttendancePage() {
   }, [history])
 
   if (!canAccess) {
-    return <EmptyState icon={Lock} message="This section is restricted to Operations management." />
+    return <EmptyState icon={Lock} message={t.shared.restrictedToOps} />
   }
 
   if (error) return <EmptyState icon={MapPin} message={error} />
@@ -282,17 +284,15 @@ function TeamAttendancePage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold text-ink-100">Team Attendance</h1>
-        <p className="mt-1 text-sm text-ink-300">
-          GPS-based daily check-in/out for field technicians, auto-linked to their current work order when they have one.
-        </p>
+        <h1 className="text-2xl font-bold text-ink-100">{t.ops.team.title}</h1>
+        <p className="mt-1 text-sm text-ink-300">{t.ops.team.subtitle}</p>
       </div>
 
-      <Panel title="Currently Checked In">
+      <Panel title={t.ops.team.currentlyIn}>
         {loading ? (
           <TableSkeleton rows={3} cols={2} />
         ) : current.length === 0 ? (
-          <p className="text-sm text-ink-400">Nobody is currently checked in.</p>
+          <p className="text-sm text-ink-400">{t.shared.nobodyCheckedIn}</p>
         ) : (
           <div className="flex flex-col gap-2">
             {current.map((v) => {
@@ -314,18 +314,18 @@ function TeamAttendancePage() {
                       )}
                       {v.workOrder?.siteLat && v.workOrder?.siteLng && (
                         <Badge tone={siteStatusTone(latest?.status ?? 'UNVERIFIED')}>
-                          {latest ? latest.status.replace('_', ' ') : 'NOT YET VERIFIED'}
+                          {enumLabel(t.labels.siteStatus, latest?.status ?? 'UNVERIFIED')}
                         </Badge>
                       )}
                     </div>
                     <div className="text-xs text-ink-400">
-                      Since {new Date(v.checkInAt).toLocaleString()}
+                      {t.ops.team.since(new Date(v.checkInAt).toLocaleString())}
                       {v.checkInNote && <span> · {v.checkInNote}</span>}
                       {openForHours(v) >= STALE_SESSION_HOURS && (
                         <span className="ml-2 font-medium text-amber-400">
-                          open {Math.floor(openForHours(v) / 24) >= 1
-                            ? `${Math.floor(openForHours(v) / 24)}d`
-                            : `${Math.round(openForHours(v))}h`} — likely forgotten
+                          {Math.floor(openForHours(v) / 24) >= 1
+                            ? t.ops.team.openDays(Math.floor(openForHours(v) / 24))
+                            : t.ops.team.openHours(Math.round(openForHours(v)))}
                         </span>
                       )}
                     </div>
@@ -338,14 +338,14 @@ function TeamAttendancePage() {
                       className="flex items-center gap-1.5 text-xs text-cyan-accent hover:underline"
                     >
                       <MapPin className="h-3.5 w-3.5" />
-                      View location
+                      {t.ops.team.viewLocation}
                     </a>
                     <button
                       type="button"
                       onClick={() => setClosing(v)}
                       className="text-xs text-ink-400 hover:text-amber-400"
                     >
-                      Close session
+                      {t.ops.team.closeSession}
                     </button>
                   </div>
                 </div>
@@ -355,28 +355,24 @@ function TeamAttendancePage() {
         )}
       </Panel>
 
-      <Panel title="Attendance Summary" icon={Users}>
-        <p className="mb-4 text-sm text-ink-300">
-          Per-technician totals for {periodLabel}. A location flag means the place they typed
-          resolved somewhere far from their GPS fix — it only catches gross mismatches across the
-          island, and text with no map location (like "Office") is never flagged.
-        </p>
+      <Panel title={t.ops.team.summary} icon={Users}>
+        <p className="mb-4 text-sm text-ink-300">{t.ops.team.summaryNote(periodLabel)}</p>
         {loading ? (
           <TableSkeleton rows={4} cols={5} />
         ) : summary.length === 0 ? (
-          <p className="text-sm text-ink-400">No check-ins recorded for {periodLabel}.</p>
+          <p className="text-sm text-ink-400">{t.ops.team.noCheckIns(periodLabel)}</p>
         ) : (
           <div className="overflow-x-auto rounded-lg border border-ink-800">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
-                  <th className="px-3 py-2 font-semibold">TECHNICIAN</th>
-                  <th className="px-3 py-2 font-semibold">DAYS PRESENT</th>
-                  <th className="px-3 py-2 font-semibold">CHECK-INS</th>
-                  <th className="px-3 py-2 font-semibold">HOURS ON SITE</th>
-                  <th className="px-3 py-2 font-semibold">TRANSPORT</th>
-                  <th className="px-3 py-2 font-semibold">LOCATION FLAGS</th>
-                  <th className="px-3 py-2 font-semibold">TIME FLAGS</th>
+                  <th className="px-3 py-2 font-semibold">{t.shared.technicianCol}</th>
+                  <th className="px-3 py-2 font-semibold">{t.ops.team.daysPresent}</th>
+                  <th className="px-3 py-2 font-semibold">{t.ops.team.checkInsCol}</th>
+                  <th className="px-3 py-2 font-semibold">{t.ops.team.hoursOnSite}</th>
+                  <th className="px-3 py-2 font-semibold">{t.shared.transportCol}</th>
+                  <th className="px-3 py-2 font-semibold">{t.ops.team.locationFlags}</th>
+                  <th className="px-3 py-2 font-semibold">{t.ops.team.timeFlags}</th>
                 </tr>
               </thead>
               <tbody>
@@ -414,7 +410,7 @@ function TeamAttendancePage() {
         )}
       </Panel>
 
-      <Panel title="Attendance Register">
+      <Panel title={t.ops.team.register}>
         <div className="mb-5 flex flex-wrap items-center gap-3">
           <div className="flex overflow-hidden rounded-md border border-ink-600">
             {(['month', 'week'] as const).map((p) => (
@@ -422,11 +418,11 @@ function TeamAttendancePage() {
                 key={p}
                 type="button"
                 onClick={() => setPeriod(p)}
-                className={`px-3 py-1.5 text-sm capitalize transition ${
+                className={`px-3 py-1.5 text-sm transition ${
                   period === p ? 'bg-cyan-accent text-ink-950' : 'text-ink-300 hover:text-ink-100'
                 }`}
               >
-                {p}
+                {p === 'week' ? t.ops.team.week : t.ops.team.month}
               </button>
             ))}
           </div>
@@ -436,7 +432,7 @@ function TeamAttendancePage() {
             onClick={() =>
               period === 'week' ? setWeekStart((w) => addDays(w, -7)) : setMonth((m) => shiftMonth(m, -1))
             }
-            aria-label={period === 'week' ? 'Previous week' : 'Previous month'}
+            aria-label={period === 'week' ? t.ops.team.previousWeek : t.ops.team.previousMonth}
             className="rounded-md border border-ink-600 p-2 text-ink-300 hover:text-ink-100"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -449,7 +445,7 @@ function TeamAttendancePage() {
             onClick={() =>
               period === 'week' ? setWeekStart((w) => addDays(w, 7)) : setMonth((m) => shiftMonth(m, 1))
             }
-            aria-label={period === 'week' ? 'Next week' : 'Next month'}
+            aria-label={period === 'week' ? t.ops.team.nextWeek : t.ops.team.nextMonth}
             className="rounded-md border border-ink-600 p-2 text-ink-300 hover:text-ink-100"
           >
             <ChevronRight className="h-4 w-4" />
@@ -460,7 +456,7 @@ function TeamAttendancePage() {
               onClick={() => setWeekStart(mondayOf(new Date()))}
               className="text-sm text-ink-300 hover:text-ink-100"
             >
-              This Week
+              {t.ops.team.thisWeek}
             </button>
           )}
           {period === 'month' && month !== currentMonth() && (
@@ -469,7 +465,7 @@ function TeamAttendancePage() {
               onClick={() => setMonth(currentMonth())}
               className="text-sm text-ink-300 hover:text-ink-100"
             >
-              This Month
+              {t.ops.team.thisMonth}
             </button>
           )}
           <button
@@ -479,12 +475,12 @@ function TeamAttendancePage() {
             className={`${secondaryButtonClass} disabled:opacity-50`}
           >
             <Download className="h-4 w-4" />
-            Export {period === 'week' ? 'Week' : 'Month'}
+            {period === 'week' ? t.ops.team.exportWeek : t.ops.team.exportMonth}
           </button>
           <div className="ml-auto flex flex-col gap-1">
-            <label className={labelClass}>TECHNICIAN</label>
+            <label className={labelClass}>{t.shared.technicianCol}</label>
             <select value={employeeFilter} onChange={(e) => setEmployeeFilter(e.target.value)} className={inputClass}>
-              <option value="">All technicians</option>
+              <option value="">{t.ops.team.allTechnicians}</option>
               {employees.map((emp) => (
                 <option key={emp.id} value={emp.id}>
                   {emp.firstName} {emp.lastName}
@@ -498,7 +494,7 @@ function TeamAttendancePage() {
               onClick={() => setEmployeeFilter('')}
               className="text-xs font-semibold text-ink-400 hover:text-ink-100"
             >
-              Clear filter
+              {t.ops.team.clearFilter}
             </button>
           )}
         </div>
@@ -506,23 +502,23 @@ function TeamAttendancePage() {
         {loading ? (
           <TableSkeleton rows={6} cols={4} />
         ) : groupedByDay.length === 0 ? (
-          <p className="text-sm text-ink-400">No check-ins recorded for {periodLabel}.</p>
+          <p className="text-sm text-ink-400">{t.ops.team.noCheckIns(periodLabel)}</p>
         ) : (
           <div className="flex flex-col gap-6">
             {groupedByDay.map(([day, entries]) => (
               <div key={day}>
                 <h3 className="mb-2 text-xs font-semibold tracking-widest text-ink-400">
-                  {formatDay(day)} · {entries.length} check-in{entries.length === 1 ? '' : 's'}
+                  {t.ops.team.dayHeading(formatDay(day), entries.length)}
                 </h3>
                 <div className="overflow-x-auto rounded-lg border border-ink-800">
                   <table className="w-full text-left text-sm">
                     <thead>
                       <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
-                        <th className="px-3 py-2 font-semibold">TECHNICIAN</th>
-                        <th className="px-3 py-2 font-semibold">WORK ORDER</th>
-                        <th className="px-3 py-2 font-semibold">CHECK-IN</th>
-                        <th className="px-3 py-2 font-semibold">CHECK-OUT</th>
-                        <th className="px-3 py-2 font-semibold">TRANSPORT</th>
+                        <th className="px-3 py-2 font-semibold">{t.shared.technicianCol}</th>
+                        <th className="px-3 py-2 font-semibold">{t.ops.team.workOrderCol}</th>
+                        <th className="px-3 py-2 font-semibold">{t.ops.team.checkInCol}</th>
+                        <th className="px-3 py-2 font-semibold">{t.ops.team.checkOutCol}</th>
+                        <th className="px-3 py-2 font-semibold">{t.shared.transportCol}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -558,7 +554,7 @@ function TeamAttendancePage() {
                             )}
                             {statedTimeGapLabel(v.checkInDeclaredTime, v.checkInAt) && (
                               <span className="mt-0.5 block text-[11px] font-medium text-amber-400">
-                                ⚠ stated time off by {statedTimeGapLabel(v.checkInDeclaredTime, v.checkInAt)}
+                                ⚠ {t.ops.team.statedTimeOffBy(statedTimeGapLabel(v.checkInDeclaredTime, v.checkInAt)!)}
                               </span>
                             )}
                           </td>
@@ -576,10 +572,10 @@ function TeamAttendancePage() {
                                 {v.checkOutNote && <span> · {v.checkOutNote}</span>}
                               </a>
                             ) : (
-                              <span className="text-ink-500">Still checked in</span>
+                              <span className="text-ink-500">{t.ops.team.stillCheckedIn}</span>
                             )}
                             {v.checkOutByManager && (
-                              <span className="mt-0.5 block text-[11px] text-ink-500">closed by management</span>
+                              <span className="mt-0.5 block text-[11px] text-ink-500">{t.ops.team.closedByManagement}</span>
                             )}
                             {locationMismatchLabel(v.checkOutLocationMatch, v.checkOutLocationDistanceMeters) && (
                               <span className="mt-0.5 block text-[11px] font-medium text-amber-400">
@@ -588,7 +584,7 @@ function TeamAttendancePage() {
                             )}
                             {statedTimeGapLabel(v.checkOutDeclaredTime, v.checkOutAt) && (
                               <span className="mt-0.5 block text-[11px] font-medium text-amber-400">
-                                ⚠ stated time off by {statedTimeGapLabel(v.checkOutDeclaredTime, v.checkOutAt)}
+                                ⚠ {t.ops.team.statedTimeOffBy(statedTimeGapLabel(v.checkOutDeclaredTime, v.checkOutAt)!)}
                               </span>
                             )}
                           </td>
@@ -607,17 +603,18 @@ function TeamAttendancePage() {
       </Panel>
 
       {closing && (
-        <Modal title="Close this session" onClose={() => setClosing(null)}>
+        <Modal title={t.ops.team.closeTitle} onClose={() => setClosing(null)}>
           <div className="flex flex-col gap-4">
             <p className="text-sm text-ink-300">
-              {closing.employee?.firstName} {closing.employee?.lastName} checked in on{' '}
-              {new Date(closing.checkInAt).toLocaleString()} and never checked out. Set when they
-              actually left — leaving it at now would book the whole elapsed time as hours on site.
+              {t.ops.team.closeIntro(
+                `${closing.employee?.firstName ?? ''} ${closing.employee?.lastName ?? ''}`.trim(),
+                new Date(closing.checkInAt).toLocaleString(),
+              )}
             </p>
 
             <div className="flex flex-col gap-1">
               <label htmlFor="close-at" className={labelClass}>
-                CHECKED OUT AT
+                {t.ops.team.checkedOutAt}
               </label>
               <input
                 id="close-at"
@@ -630,31 +627,28 @@ function TeamAttendancePage() {
 
             <div className="flex flex-col gap-1">
               <label htmlFor="close-note" className={labelClass}>
-                NOTE (OPTIONAL)
+                {t.ops.team.noteOptional}
               </label>
               <input
                 id="close-note"
                 value={closeNote}
                 onChange={(e) => setCloseNote(e.target.value)}
-                placeholder="Closed by management"
+                placeholder={t.ops.team.notePlaceholder}
                 maxLength={200}
                 className={inputClass}
               />
             </div>
 
-            <p className="text-xs text-ink-500">
-              No location is recorded for a session closed this way — nobody observed where they
-              were, and the record will show it was closed by management rather than by them.
-            </p>
+            <p className="text-xs text-ink-500">{t.ops.team.closeDisclaimer}</p>
 
             {closeError && <p className="text-sm text-red-400">{closeError}</p>}
 
             <div className="flex justify-end gap-2">
               <button type="button" onClick={() => setClosing(null)} className={secondaryButtonClass}>
-                Cancel
+                {t.common.cancel}
               </button>
               <button type="button" onClick={handleClose} disabled={submittingClose} className={primaryButtonClass}>
-                {submittingClose ? 'Closing…' : 'Close session'}
+                {submittingClose ? t.ops.team.closing : t.ops.team.closeSession}
               </button>
             </div>
           </div>
