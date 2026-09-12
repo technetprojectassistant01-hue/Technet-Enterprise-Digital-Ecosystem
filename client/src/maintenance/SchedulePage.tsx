@@ -14,6 +14,7 @@ import { useSchedulableContracts } from './useMaintenanceContracts'
 import { useAssignableEmployees } from '../erp/useEmployees'
 import { useCustomers } from '../erp/useCustomers'
 import { scheduleStatusTone } from './statusTones'
+import { enumLabel, useT } from '../i18n'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -27,7 +28,10 @@ interface FormState {
 
 const EMPTY_FORM: FormState = { contractId: '', scheduledDate: '', technicianIds: [] }
 
+const SCHEDULE_STATUSES: MaintenanceScheduleStatus[] = ['SCHEDULED', 'COMPLETED', 'CANCELLED']
+
 function SchedulePage() {
+  const t = useT()
   const toast = useToast()
   const { user } = useAuth()
   const canWrite = hasRole(user?.role, OPS_MANAGE_ROLES)
@@ -65,8 +69,8 @@ function SchedulePage() {
           navigator.onLine
             ? err instanceof Error
               ? err.message
-              : 'Failed to load schedule'
-            : "You're offline and the schedule hasn't been synced to this device yet.",
+              : t.maint.schedule.loadFailed
+            : t.maint.schedule.offline,
         ),
       )
       .finally(() => setLoading(false))
@@ -100,11 +104,11 @@ function SchedulePage() {
     setFormError(null)
 
     if (!form.contractId) {
-      setFormError('Select a contract')
+      setFormError(t.maint.schedule.selectContract)
       return
     }
     if (!form.scheduledDate) {
-      setFormError('A scheduled date is required')
+      setFormError(t.shared.dateRequired)
       return
     }
 
@@ -115,11 +119,11 @@ function SchedulePage() {
         scheduledDate: form.scheduledDate,
         technicianIds: form.technicianIds,
       })
-      toast.success('Visit scheduled')
+      toast.success(t.shared.visitScheduled)
       setShowCreate(false)
       load()
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Failed to schedule visit')
+      setFormError(err instanceof Error ? err.message : t.shared.scheduleFailed)
     } finally {
       setSubmitting(false)
     }
@@ -148,35 +152,35 @@ function SchedulePage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-ink-100">Service Schedule</h1>
-          <p className="mt-1 text-sm text-ink-300">Preventive and corrective visits across all contracts.</p>
+          <h1 className="text-2xl font-bold text-ink-100">{t.maint.schedule.title}</h1>
+          <p className="mt-1 text-sm text-ink-300">{t.maint.schedule.subtitle}</p>
         </div>
         <div className="flex items-center gap-3">
           <button type="button" onClick={exportCsv} className={secondaryButtonClass}>
             <Download className="h-4 w-4" />
-            Export CSV
+            {t.shared.exportCsv}
           </button>
           {canWrite && (
             <button type="button" onClick={openCreate} disabled={contracts.length === 0} className={primaryButtonClass}>
               <Plus className="h-4 w-4" />
-              Schedule Visit
+              {t.shared.scheduleVisit}
             </button>
           )}
         </div>
       </div>
 
       {canWrite && contracts.length === 0 && (
-        <p className="text-sm text-ink-400">Create a contract first to schedule a preventive visit.</p>
+        <p className="text-sm text-ink-400">{t.maint.schedule.contractFirst}</p>
       )}
 
-      <StatCard label="UPCOMING VISITS" value={scheduledCount} icon={CalendarClock} />
+      <StatCard label={t.maint.schedule.upcoming} value={scheduledCount} icon={CalendarClock} />
 
-      <Panel title="Visit Ledger">
+      <Panel title={t.maint.schedule.ledger}>
         <div className="mb-4 flex flex-wrap items-end gap-4">
           <div className="flex max-w-xs flex-1 flex-col gap-1">
-            <label className={labelClass}>CUSTOMER</label>
+            <label className={labelClass}>{t.shared.customer}</label>
             <select value={customerFilter} onChange={(e) => setCustomerFilter(e.target.value)} className={inputClass}>
-              <option value="">All customers</option>
+              <option value="">{t.shared.allCustomers}</option>
               {customers.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.company || c.name}
@@ -185,29 +189,31 @@ function SchedulePage() {
             </select>
           </div>
           <div className="flex flex-col gap-1">
-            <label className={labelClass}>STATUS</label>
+            <label className={labelClass}>{t.shared.status}</label>
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value as MaintenanceScheduleStatus | '')}
               className={inputClass}
             >
-              <option value="">All statuses</option>
-              <option value="SCHEDULED">SCHEDULED</option>
-              <option value="COMPLETED">COMPLETED</option>
-              <option value="CANCELLED">CANCELLED</option>
+              <option value="">{t.shared.allStatuses}</option>
+              {SCHEDULE_STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {enumLabel(t.labels.scheduleStatus, s)}
+                </option>
+              ))}
             </select>
           </div>
           <div className="flex flex-col gap-1">
-            <label className={labelClass}>FROM</label>
+            <label className={labelClass}>{t.shared.from}</label>
             <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className={inputClass} />
           </div>
           <div className="flex flex-col gap-1">
-            <label className={labelClass}>TO</label>
+            <label className={labelClass}>{t.shared.to}</label>
             <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className={inputClass} />
           </div>
           {(status || customerFilter || from || to) && (
             <button type="button" onClick={clearFilters} className="text-xs font-semibold text-ink-400 hover:text-ink-100">
-              Clear filters
+              {t.shared.clearFilters}
             </button>
           )}
         </div>
@@ -217,18 +223,18 @@ function SchedulePage() {
         {loading ? (
           <TableSkeleton cols={7} />
         ) : schedules.length === 0 ? (
-          <EmptyState icon={CalendarClock} message="No visits match these filters." />
+          <EmptyState icon={CalendarClock} message={t.maint.schedule.empty} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
-                  <th className="px-3 py-3 font-semibold">DATE</th>
-                  <th className="px-3 py-3 font-semibold">TYPE</th>
-                  <th className="px-3 py-3 font-semibold">ASSET</th>
-                  <th className="px-3 py-3 font-semibold">CUSTOMER</th>
-                  <th className="px-3 py-3 font-semibold">TECHNICIANS</th>
-                  <th className="px-3 py-3 font-semibold">STATUS</th>
+                  <th className="px-3 py-3 font-semibold">{t.shared.date}</th>
+                  <th className="px-3 py-3 font-semibold">{t.shared.type}</th>
+                  <th className="px-3 py-3 font-semibold">{t.shared.asset}</th>
+                  <th className="px-3 py-3 font-semibold">{t.shared.customer}</th>
+                  <th className="px-3 py-3 font-semibold">{t.shared.technicians}</th>
+                  <th className="px-3 py-3 font-semibold">{t.shared.status}</th>
                   <th className="px-3 py-3" />
                 </tr>
               </thead>
@@ -238,7 +244,7 @@ function SchedulePage() {
                   return (
                     <tr key={s.id} className="border-b border-ink-800 last:border-0">
                       <td className="px-3 py-3 text-ink-100">{s.scheduledDate.slice(0, 10)}</td>
-                      <td className="px-3 py-3 text-ink-300">{s.contract ? 'Preventive' : 'Corrective'}</td>
+                      <td className="px-3 py-3 text-ink-300">{s.contract ? t.shared.preventive : t.shared.corrective}</td>
                       <td className="px-3 py-3 font-mono text-ink-300">{assetRef?.assetNumber || '—'}</td>
                       <td className="px-3 py-3 text-ink-300">
                         {assetRef?.customer ? assetRef.customer.company || assetRef.customer.name : '—'}
@@ -249,14 +255,14 @@ function SchedulePage() {
                           : s.technicians.map((t) => `${t.employee.firstName} ${t.employee.lastName}`).join(', ')}
                       </td>
                       <td className="px-3 py-3">
-                        <Badge tone={scheduleStatusTone[s.status]}>{s.status}</Badge>
+                        <Badge tone={scheduleStatusTone[s.status]}>{enumLabel(t.labels.scheduleStatus, s.status)}</Badge>
                       </td>
                       <td className="px-3 py-3">
                         <Link
                           to={`/dashboard/maintenance/schedule/${s.id}`}
                           className="text-xs font-semibold text-cyan-accent hover:underline"
                         >
-                          View
+                          {t.shared.view}
                         </Link>
                       </td>
                     </tr>
@@ -269,10 +275,10 @@ function SchedulePage() {
       </Panel>
 
       {showCreate && (
-        <Modal title="Schedule Preventive Visit" onClose={() => setShowCreate(false)}>
+        <Modal title={t.maint.schedule.newTitle} onClose={() => setShowCreate(false)}>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div>
-              <label className={labelClass}>CONTRACT</label>
+              <label className={labelClass}>{t.maint.schedule.contract}</label>
               <select
                 value={form.contractId}
                 onChange={(e) => setForm({ ...form, contractId: e.target.value })}
@@ -286,7 +292,7 @@ function SchedulePage() {
               </select>
             </div>
             <div>
-              <label className={labelClass}>SCHEDULED DATE</label>
+              <label className={labelClass}>{t.shared.scheduledDate}</label>
               <input
                 type="date"
                 value={form.scheduledDate}
@@ -296,10 +302,10 @@ function SchedulePage() {
               />
             </div>
             <div>
-              <label className={labelClass}>TECHNICIANS</label>
+              <label className={labelClass}>{t.shared.technicians}</label>
               <div className="mt-2 flex max-h-40 flex-col gap-1.5 overflow-y-auto rounded-md border border-ink-700 bg-ink-950 p-3">
                 {employees.length === 0 ? (
-                  <p className="text-xs text-ink-500">No employees yet.</p>
+                  <p className="text-xs text-ink-500">{t.shared.noEmployees}</p>
                 ) : (
                   employees.map((emp) => (
                     <label key={emp.id} className="flex items-center gap-2 text-sm text-ink-200">
@@ -320,7 +326,7 @@ function SchedulePage() {
             {formError && <p className="text-sm text-red-400">{formError}</p>}
 
             <button type="submit" disabled={submitting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
-              {submitting ? 'Scheduling…' : 'Schedule Visit'}
+              {submitting ? t.shared.scheduling : t.shared.scheduleVisit}
             </button>
           </form>
         </Modal>
