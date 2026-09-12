@@ -10,13 +10,11 @@ import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
 import { hasRole, HR_ROLES } from '../lib/permissions'
 import { formatMoney } from '../lib/format'
-
-const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-]
+import { useT } from '../i18n'
 
 function PayrollDetailPage() {
+  const t = useT()
+  const months = t.shared.months
   const { user } = useAuth()
   const canAccess = hasRole(user?.role, HR_ROLES)
   const { id } = useParams<{ id: string }>()
@@ -36,7 +34,7 @@ function PayrollDetailPage() {
     api
       .getPayrollRun(id)
       .then(({ run }) => setRun(run))
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load payroll run'))
+      .catch((err) => setError(err instanceof Error ? err.message : t.workforce.payrollDetail.loadFailed))
       .finally(() => setLoading(false))
   }
 
@@ -45,24 +43,24 @@ function PayrollDetailPage() {
   async function handleDelete() {
     if (!run) return
     const ok = await confirm({
-      title: 'Delete payroll run',
-      message: `Delete the payroll run for ${MONTHS[run.month - 1]} ${run.year}? This cannot be undone.`,
-      confirmLabel: 'Delete',
+      title: t.workforce.payroll.deleteTitle,
+      message: t.workforce.payroll.deleteMessage(`${months[run.month - 1]} ${run.year}`),
+      confirmLabel: t.shared.delete,
       tone: 'danger',
     })
     if (!ok) return
     try {
       await api.deletePayrollRun(run.id)
-      toast.success('Payroll run deleted')
+      toast.success(t.workforce.payroll.deleted)
       navigate('/dashboard/workforce/payroll')
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to delete payroll run')
+      toast.error(err instanceof Error ? err.message : t.workforce.payroll.deleteFailed)
     }
   }
 
   if (loading) return <TableSkeleton rows={6} cols={4} />
-  if (!canAccess) return <EmptyState icon={Lock} message="This section is restricted to HR staff." />
-  if (error || !run) return <EmptyState icon={X} message={error || 'Payroll run not found'} />
+  if (!canAccess) return <EmptyState icon={Lock} message={t.shared.restrictedToHr} />
+  if (error || !run) return <EmptyState icon={X} message={error || t.workforce.payrollDetail.notFound} />
 
   const totalNetPay = run.lines.reduce((sum, l) => sum + Number(l.netPay), 0)
 
@@ -73,44 +71,47 @@ function PayrollDetailPage() {
         className="flex w-fit items-center gap-2 text-sm text-ink-400 hover:text-ink-100"
       >
         <ArrowLeft className="h-4 w-4" />
-        Back to Payroll
+        {t.workforce.payrollDetail.back}
       </Link>
 
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
         <div>
           <h1 className="text-2xl font-bold text-ink-100">
-            {MONTHS[run.month - 1]} {run.year}
+            {months[run.month - 1]} {run.year}
           </h1>
           <p className="mt-1 text-sm text-ink-300">
-            Processed by {run.createdBy.name || run.createdBy.email} on {run.createdAt.slice(0, 10)}
+            {t.workforce.payrollDetail.processedBy(
+              run.createdBy.name || run.createdBy.email,
+              run.createdAt.slice(0, 10),
+            )}
           </p>
         </div>
         <button type="button" onClick={handleDelete} className={dangerButtonClass}>
           <Trash2 className="h-4 w-4" />
-          Delete Run
+          {t.workforce.payrollDetail.deleteRun}
         </button>
       </div>
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-        <StatCard label="TOTAL NET PAY" value={formatMoney(totalNetPay)} icon={Banknote} />
-        <StatCard label="EMPLOYEES" value={run.lines.length} icon={Banknote} />
+        <StatCard label={t.workforce.payrollDetail.totalNetPay} value={formatMoney(totalNetPay)} icon={Banknote} />
+        <StatCard label={t.workforce.payrollDetail.employees} value={run.lines.length} icon={Banknote} />
       </div>
 
-      <Panel title="Payroll Lines">
+      <Panel title={t.workforce.payrollDetail.lines}>
         {run.lines.length === 0 ? (
-          <p className="text-sm text-ink-400">No employees had a basic salary set when this run was processed.</p>
+          <p className="text-sm text-ink-400">{t.workforce.payrollDetail.empty}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
-                  <th className="px-3 py-3 font-semibold">EMPLOYEE</th>
-                  <th className="px-3 py-3 font-semibold">BASIC SALARY</th>
-                  <th className="px-3 py-3 font-semibold">HOURS</th>
-                  <th className="px-3 py-3 font-semibold">OVERTIME</th>
-                  <th className="px-3 py-3 font-semibold">UNPAID LEAVE</th>
-                  <th className="px-3 py-3 font-semibold">DEDUCTION</th>
-                  <th className="px-3 py-3 font-semibold">NET PAY</th>
+                  <th className="px-3 py-3 font-semibold">{t.shared.employeeCol}</th>
+                  <th className="px-3 py-3 font-semibold">{t.workforce.payrollDetail.colBasicSalary}</th>
+                  <th className="px-3 py-3 font-semibold">{t.workforce.payrollDetail.colHours}</th>
+                  <th className="px-3 py-3 font-semibold">{t.workforce.payrollDetail.colOvertime}</th>
+                  <th className="px-3 py-3 font-semibold">{t.workforce.payrollDetail.colUnpaidLeave}</th>
+                  <th className="px-3 py-3 font-semibold">{t.workforce.payrollDetail.colDeduction}</th>
+                  <th className="px-3 py-3 font-semibold">{t.workforce.payrollDetail.colNetPay}</th>
                 </tr>
               </thead>
               <tbody>
