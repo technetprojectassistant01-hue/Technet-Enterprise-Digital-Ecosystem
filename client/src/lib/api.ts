@@ -1748,14 +1748,6 @@ export type SiteVerificationStatus = 'ON_SITE' | 'OUTSIDE_SITE'
 export type LocationMatch = 'MATCHED' | 'MISMATCH' | 'UNCHECKABLE'
 export type SiteExitReason = 'MATERIALS' | 'ANOTHER_SITE' | 'SUPERVISOR_INSTRUCTION' | 'EMERGENCY' | 'OTHER'
 
-export const SITE_EXIT_REASON_LABELS: Record<SiteExitReason, string> = {
-  MATERIALS: 'Collecting materials',
-  ANOTHER_SITE: 'Travelling to another site',
-  SUPERVISOR_INSTRUCTION: 'Supervisor instruction',
-  EMERGENCY: 'Emergency',
-  OTHER: 'Other',
-}
-
 export interface SiteVerification {
   id: string
   siteAttendanceId: string
