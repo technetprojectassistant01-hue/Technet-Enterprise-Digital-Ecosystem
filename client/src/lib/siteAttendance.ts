@@ -47,7 +47,7 @@ export function locationMismatchLabel(
 ): string | null {
   if (match !== 'MISMATCH' || distanceMeters === null) return null
   const km = distanceMeters / 1000
-  return `${km < 10 ? km.toFixed(1) : Math.round(km)} km from stated`
+  return getT().attendance.kmFromStated(km < 10 ? km.toFixed(1) : String(Math.round(km)))
 }
 
 /** True when either leg of a visit was flagged. Used to tint a row for a manager scanning a list. */
