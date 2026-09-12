@@ -5,20 +5,19 @@ import { useAuth } from '../context/AuthContext'
 import { hasRole, HR_ROLES } from '../lib/permissions'
 import DailyRegisterTab from './DailyRegisterTab'
 import TimesheetTab from './TimesheetTab'
+import { useT } from '../i18n'
 
 type View = 'register' | 'timesheet'
 
-const VIEWS: { key: View; label: string }[] = [
-  { key: 'register', label: 'Daily Register' },
-  { key: 'timesheet', label: 'Timesheets' },
-]
+const VIEWS: View[] = ['register', 'timesheet']
 
 function AttendancePage() {
+  const t = useT()
   const { user } = useAuth()
   const [view, setView] = useState<View>('register')
 
   if (!hasRole(user?.role, HR_ROLES)) {
-    return <EmptyState icon={Lock} message="This section is restricted to HR staff." />
+    return <EmptyState icon={Lock} message={t.shared.restrictedToHr} />
   }
 
   return (
@@ -26,16 +25,16 @@ function AttendancePage() {
       <div className="flex flex-wrap gap-2">
         {VIEWS.map((v) => (
           <button
-            key={v.key}
+            key={v}
             type="button"
-            onClick={() => setView(v.key)}
+            onClick={() => setView(v)}
             className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
-              view === v.key
+              view === v
                 ? 'bg-cyan-accent/10 text-cyan-accent'
                 : 'text-ink-300 hover:bg-ink-800 hover:text-ink-100'
             }`}
           >
-            {v.label}
+            {v === 'register' ? t.workforce.attendance.dailyRegister : t.workforce.attendance.timesheets}
           </button>
         ))}
       </div>
