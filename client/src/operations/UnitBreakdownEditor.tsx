@@ -1,4 +1,5 @@
 import { Plus, Trash2 } from 'lucide-react'
+import { useT } from '../i18n'
 
 export interface UnitBreakdownRow {
   label: string
@@ -19,6 +20,8 @@ function UnitBreakdownEditor({
   units: UnitBreakdownRow[]
   onChange: (units: UnitBreakdownRow[]) => void
 }) {
+  const t = useT()
+
   function updateRow(index: number, patch: Partial<UnitBreakdownRow>) {
     onChange(units.map((row, i) => (i === index ? { ...row, ...patch } : row)))
   }
@@ -36,36 +39,36 @@ function UnitBreakdownEditor({
       {units.map((row, i) => (
         <div key={i} className="flex items-end gap-2 rounded-md border border-ink-700 bg-ink-950 p-3">
           <div className="flex-[1.5]">
-            <label className={fieldLabelClass}>LABEL</label>
+            <label className={fieldLabelClass}>{t.ops.units.label}</label>
             <input
               value={row.label}
               onChange={(e) => updateRow(i, { label: e.target.value })}
-              placeholder="e.g. Unit 1"
+              placeholder={t.ops.units.labelPlaceholder}
               className={fieldInputClass}
             />
           </div>
           <div className="flex-[2]">
-            <label className={fieldLabelClass}>PROBLEM</label>
+            <label className={fieldLabelClass}>{t.ops.units.problem}</label>
             <input
               value={row.problem}
               onChange={(e) => updateRow(i, { problem: e.target.value })}
-              placeholder="e.g. Leaking"
+              placeholder={t.ops.units.problemPlaceholder}
               className={fieldInputClass}
             />
           </div>
           <div className="flex-[2]">
-            <label className={fieldLabelClass}>ACTION (OPTIONAL)</label>
+            <label className={fieldLabelClass}>{t.ops.units.actionOptional}</label>
             <input
               value={row.action}
               onChange={(e) => updateRow(i, { action: e.target.value })}
-              placeholder="e.g. Sealed drain line"
+              placeholder={t.ops.units.actionPlaceholder}
               className={fieldInputClass}
             />
           </div>
           <button
             type="button"
             onClick={() => removeRow(i)}
-            aria-label="Remove unit"
+            aria-label={t.ops.units.remove}
             className="mb-1.5 shrink-0 text-ink-400 hover:text-red-400"
           >
             <Trash2 className="h-4 w-4" />
@@ -78,7 +81,7 @@ function UnitBreakdownEditor({
         className="flex items-center gap-1.5 self-start text-xs font-semibold text-cyan-accent hover:underline"
       >
         <Plus className="h-3.5 w-3.5" />
-        Add unit
+        {t.ops.units.add}
       </button>
     </div>
   )
