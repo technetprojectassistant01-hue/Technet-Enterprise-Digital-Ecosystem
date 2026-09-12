@@ -11,17 +11,15 @@ import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
 import { hasRole, HR_ROLES } from '../lib/permissions'
 import { formatMoney } from '../lib/format'
+import { useT } from '../i18n'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
 const labelClass = 'text-xs font-semibold tracking-widest text-ink-400'
 
-const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-]
-
 function PayrollPage() {
+  const t = useT()
+  const months = t.shared.months
   const { user } = useAuth()
   const canAccess = hasRole(user?.role, HR_ROLES)
   const toast = useToast()
@@ -46,7 +44,7 @@ function PayrollPage() {
     api
       .listPayrollRuns()
       .then(({ runs }) => setRuns(runs))
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load payroll runs'))
+      .catch((err) => setError(err instanceof Error ? err.message : t.workforce.payroll.loadFailed))
       .finally(() => setLoading(false))
   }
 
@@ -66,11 +64,11 @@ function PayrollPage() {
     setSubmitting(true)
     try {
       await api.processPayroll(year, month)
-      toast.success(`Payroll processed for ${MONTHS[month - 1]} ${year}`)
+      toast.success(t.workforce.payroll.processed(`${months[month - 1]} ${year}`))
       setShowProcess(false)
       load()
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Failed to process payroll')
+      setFormError(err instanceof Error ? err.message : t.workforce.payroll.processFailed)
     } finally {
       setSubmitting(false)
     }
@@ -78,18 +76,18 @@ function PayrollPage() {
 
   async function handleDelete(r: PayrollRun) {
     const ok = await confirm({
-      title: 'Delete payroll run',
-      message: `Delete the payroll run for ${MONTHS[r.month - 1]} ${r.year}? This cannot be undone.`,
-      confirmLabel: 'Delete',
+      title: t.workforce.payroll.deleteTitle,
+      message: t.workforce.payroll.deleteMessage(`${months[r.month - 1]} ${r.year}`),
+      confirmLabel: t.shared.delete,
       tone: 'danger',
     })
     if (!ok) return
     try {
       await api.deletePayrollRun(r.id)
-      toast.success('Payroll run deleted')
+      toast.success(t.workforce.payroll.deleted)
       load()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to delete payroll run')
+      toast.error(err instanceof Error ? err.message : t.workforce.payroll.deleteFailed)
     }
   }
 
@@ -100,7 +98,7 @@ function PayrollPage() {
     downloadCsv(
       'payroll-runs',
       [
-        { header: 'Period', accessor: (r: PayrollRun) => `${MONTHS[r.month - 1]} ${r.year}` },
+        { header: 'Period', accessor: (r: PayrollRun) => `${months[r.month - 1]} ${r.year}` },
         { header: 'Processed By', accessor: (r: PayrollRun) => r.createdBy.name || r.createdBy.email },
         { header: 'Date', accessor: (r: PayrollRun) => r.createdAt.slice(0, 10) },
         { header: 'Employees', accessor: (r: PayrollRun) => r.employeeCount },
@@ -111,50 +109,50 @@ function PayrollPage() {
   }
 
   if (!canAccess) {
-    return <EmptyState icon={Lock} message="This section is restricted to HR staff." />
+    return <EmptyState icon={Lock} message={t.shared.restrictedToHr} />
   }
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-ink-100">Payroll</h1>
-          <p className="mt-1 text-sm text-ink-300">Prepare monthly payroll from attendance and approved leave.</p>
+          <h1 className="text-2xl font-bold text-ink-100">{t.workforce.payroll.title}</h1>
+          <p className="mt-1 text-sm text-ink-300">{t.workforce.payroll.subtitle}</p>
         </div>
         <div className="flex items-center gap-3">
           <button type="button" onClick={exportCsv} className={secondaryButtonClass}>
             <Download className="h-4 w-4" />
-            Export CSV
+            {t.shared.exportCsv}
           </button>
           <button type="button" onClick={openProcess} className={primaryButtonClass}>
             <Plus className="h-4 w-4" />
-            Process Payroll
+            {t.workforce.payroll.process}
           </button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-        <StatCard label="LATEST RUN TOTAL" value={formatMoney(latestTotal)} icon={Banknote} />
-        <StatCard label="EMPLOYEES COVERED" value={latestCount} icon={Banknote} />
+        <StatCard label={t.workforce.payroll.latestTotal} value={formatMoney(latestTotal)} icon={Banknote} />
+        <StatCard label={t.workforce.payroll.employeesCovered} value={latestCount} icon={Banknote} />
       </div>
 
-      <Panel title="Payroll Runs">
+      <Panel title={t.workforce.payroll.runs}>
         {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
 
         {loading ? (
           <TableSkeleton cols={5} />
         ) : runs.length === 0 ? (
-          <EmptyState icon={Banknote} message="No payroll runs yet. Process your first run to get started." />
+          <EmptyState icon={Banknote} message={t.workforce.payroll.empty} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
-                  <th className="px-3 py-3 font-semibold">PERIOD</th>
-                  <th className="px-3 py-3 font-semibold">PROCESSED BY</th>
-                  <th className="px-3 py-3 font-semibold">DATE</th>
-                  <th className="px-3 py-3 font-semibold">EMPLOYEES</th>
-                  <th className="px-3 py-3 font-semibold">TOTAL NET PAY</th>
+                  <th className="px-3 py-3 font-semibold">{t.workforce.payroll.colPeriod}</th>
+                  <th className="px-3 py-3 font-semibold">{t.workforce.payroll.colProcessedBy}</th>
+                  <th className="px-3 py-3 font-semibold">{t.shared.date}</th>
+                  <th className="px-3 py-3 font-semibold">{t.workforce.payroll.colEmployees}</th>
+                  <th className="px-3 py-3 font-semibold">{t.workforce.payroll.colTotalNetPay}</th>
                   <th className="px-3 py-3" />
                 </tr>
               </thead>
@@ -166,7 +164,7 @@ function PayrollPage() {
                         to={`/dashboard/workforce/payroll/${r.id}`}
                         className="font-medium text-ink-100 hover:text-cyan-accent hover:underline"
                       >
-                        {MONTHS[r.month - 1]} {r.year}
+                        {months[r.month - 1]} {r.year}
                       </Link>
                     </td>
                     <td className="px-3 py-3 text-ink-300">{r.createdBy.name || r.createdBy.email}</td>
@@ -177,7 +175,7 @@ function PayrollPage() {
                       <button
                         type="button"
                         onClick={() => handleDelete(r)}
-                        aria-label="Delete payroll run"
+                        aria-label={t.workforce.payroll.deleteTitle}
                         className="text-ink-400 hover:text-red-400"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -192,13 +190,13 @@ function PayrollPage() {
       </Panel>
 
       {showProcess && (
-        <Modal title="Process Payroll" onClose={() => setShowProcess(false)}>
+        <Modal title={t.workforce.payroll.process} onClose={() => setShowProcess(false)}>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className={labelClass}>MONTH</label>
+                <label className={labelClass}>{t.workforce.payroll.month}</label>
                 <select value={month} onChange={(e) => setMonth(Number(e.target.value))} className={`mt-2 ${inputClass}`}>
-                  {MONTHS.map((m, i) => (
+                  {months.map((m, i) => (
                     <option key={m} value={i + 1}>
                       {m}
                     </option>
@@ -206,7 +204,7 @@ function PayrollPage() {
                 </select>
               </div>
               <div>
-                <label className={labelClass}>YEAR</label>
+                <label className={labelClass}>{t.workforce.payroll.year}</label>
                 <input
                   type="number"
                   value={year}
@@ -215,15 +213,12 @@ function PayrollPage() {
                 />
               </div>
             </div>
-            <p className="text-xs text-ink-500">
-              Computes net pay for every active employee with a basic salary set, from their recorded hours and
-              approved unpaid leave for the period.
-            </p>
+            <p className="text-xs text-ink-500">{t.workforce.payroll.processNote}</p>
 
             {formError && <p className="text-sm text-red-400">{formError}</p>}
 
             <button type="submit" disabled={submitting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
-              {submitting ? 'Processing…' : 'Process Payroll'}
+              {submitting ? t.workforce.payroll.processing : t.workforce.payroll.process}
             </button>
           </form>
         </Modal>
