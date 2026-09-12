@@ -6,23 +6,11 @@ import { Panel, StatCard, Badge, EmptyState, TableSkeleton } from '../dashboard/
 import { useEmployees } from '../erp/useEmployees'
 import { attendanceStatusTone } from '../erp/statusTones'
 import { inputClass } from './formStyles'
-
-const MONTHS = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-]
+import { enumLabel, useT } from '../i18n'
 
 function TimesheetTab() {
+  const t = useT()
+  const months = t.shared.months
   const employees = useEmployees()
 
   const now = new Date()
@@ -46,7 +34,7 @@ function TimesheetTab() {
     api
       .getTimesheet(employeeId, year, month)
       .then(setTimesheet)
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load timesheet'))
+      .catch((err) => setError(err instanceof Error ? err.message : t.workforce.timesheet.loadFailed))
       .finally(() => setLoading(false))
   }, [employeeId, year, month])
 
@@ -75,7 +63,7 @@ function TimesheetTab() {
             onChange={(e) => setMonth(Number(e.target.value))}
             className={`max-w-[10rem] ${inputClass}`}
           >
-            {MONTHS.map((label, index) => (
+            {months.map((label, index) => (
               <option key={label} value={index + 1}>
                 {label}
               </option>
@@ -101,62 +89,71 @@ function TimesheetTab() {
       {loading ? (
         <TableSkeleton rows={6} cols={5} />
       ) : !timesheet ? (
-        <EmptyState icon={CalendarRange} message="Select an employee to view their timesheet." />
+        <EmptyState icon={CalendarRange} message={t.workforce.timesheet.selectEmployee} />
       ) : (
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
-            <StatCard label="DAYS RECORDED" value={timesheet.records.length} icon={CalendarRange} />
-            <StatCard label="HOURS WORKED" value={timesheet.totals.hours.toFixed(2)} icon={CalendarRange} />
-            <StatCard label="OVERTIME HOURS" value={timesheet.totals.overtime.toFixed(2)} icon={CalendarRange} />
+            <StatCard label={t.workforce.timesheet.daysRecorded} value={timesheet.records.length} icon={CalendarRange} />
             <StatCard
-              label="DAYS PRESENT"
+              label={t.workforce.timesheet.hoursWorked}
+              value={timesheet.totals.hours.toFixed(2)}
+              icon={CalendarRange}
+            />
+            <StatCard
+              label={t.workforce.timesheet.overtimeHours}
+              value={timesheet.totals.overtime.toFixed(2)}
+              icon={CalendarRange}
+            />
+            <StatCard
+              label={t.workforce.timesheet.daysPresent}
               value={(timesheet.totals.byStatus.PRESENT ?? 0) + (timesheet.totals.byStatus.LATE ?? 0)}
               icon={CalendarRange}
             />
           </div>
 
           <Panel
-            title={`${timesheet.employee.firstName} ${timesheet.employee.lastName} — ${
-              MONTHS[timesheet.month - 1]
-            } ${timesheet.year}`}
+            title={t.workforce.timesheet.panelTitle(
+              `${timesheet.employee.firstName} ${timesheet.employee.lastName}`,
+              `${months[timesheet.month - 1]} ${timesheet.year}`,
+            )}
           >
             {timesheet.records.length === 0 ? (
               <EmptyState
                 icon={CalendarRange}
-                message="No attendance recorded for this month yet. Use the Daily Register to record it."
+                message={t.workforce.timesheet.empty}
               />
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
                   <thead>
                     <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
-                      <th className="px-3 py-3 font-semibold">DATE</th>
-                      <th className="px-3 py-3 font-semibold">STATUS</th>
-                      <th className="px-3 py-3 font-semibold">IN</th>
-                      <th className="px-3 py-3 font-semibold">OUT</th>
-                      <th className="px-3 py-3 font-semibold">BREAK</th>
-                      <th className="px-3 py-3 font-semibold">HOURS</th>
-                      <th className="px-3 py-3 font-semibold">OT</th>
-                      <th className="px-3 py-3 font-semibold">NOTE</th>
+                      <th className="px-3 py-3 font-semibold">{t.shared.date}</th>
+                      <th className="px-3 py-3 font-semibold">{t.shared.status}</th>
+                      <th className="px-3 py-3 font-semibold">{t.workforce.register.colIn}</th>
+                      <th className="px-3 py-3 font-semibold">{t.workforce.register.colOut}</th>
+                      <th className="px-3 py-3 font-semibold">{t.workforce.timesheet.colBreak}</th>
+                      <th className="px-3 py-3 font-semibold">{t.workforce.timesheet.colHours}</th>
+                      <th className="px-3 py-3 font-semibold">{t.workforce.timesheet.colOvertimeShort}</th>
+                      <th className="px-3 py-3 font-semibold">{t.shared.noteCol}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {timesheet.records.map((r) => (
                       <tr key={r.id} className="border-b border-ink-800 last:border-0">
                         <td className="px-3 py-3 text-ink-300">
-                          {new Date(r.date).toLocaleDateString('en-GB', {
+                          {new Date(r.date).toLocaleDateString(t.shared.dateLocale, {
                             weekday: 'short',
                             day: '2-digit',
                             month: 'short',
                           })}
                         </td>
                         <td className="px-3 py-3">
-                          <Badge tone={attendanceStatusTone[r.status]}>{r.status.replace('_', ' ')}</Badge>
+                          <Badge tone={attendanceStatusTone[r.status]}>{enumLabel(t.labels.attendanceStatus, r.status)}</Badge>
                         </td>
                         <td className="px-3 py-3 text-ink-300">{r.clockIn || '—'}</td>
                         <td className="px-3 py-3 text-ink-300">{r.clockOut || '—'}</td>
                         <td className="px-3 py-3 text-ink-300">
-                          {r.breakMinutes ? `${r.breakMinutes}m` : '—'}
+                          {r.breakMinutes ? t.workforce.timesheet.breakMinutes(r.breakMinutes) : '—'}
                         </td>
                         <td className="px-3 py-3 text-ink-100">{r.hoursWorked ?? '—'}</td>
                         <td className="px-3 py-3 text-ink-300">
@@ -169,7 +166,7 @@ function TimesheetTab() {
                   <tfoot>
                     <tr className="border-t border-ink-700 text-sm font-semibold text-ink-100">
                       <td className="px-3 py-3" colSpan={5}>
-                        Total
+                        {t.shared.total}
                       </td>
                       <td className="px-3 py-3">{timesheet.totals.hours.toFixed(2)}</td>
                       <td className="px-3 py-3">{timesheet.totals.overtime.toFixed(2)}</td>
