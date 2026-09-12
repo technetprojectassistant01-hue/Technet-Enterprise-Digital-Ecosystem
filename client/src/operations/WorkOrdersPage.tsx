@@ -16,6 +16,7 @@ import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
 import { hasRole, OPS_MANAGE_ROLES } from '../lib/permissions'
 import { workOrderStatusTone } from '../erp/statusTones'
+import { enumLabel, useT } from '../i18n'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -26,6 +27,7 @@ const JOB_CATEGORIES = Object.keys(JOB_CATEGORY_LABELS) as JobCategory[]
 function WorkOrdersPage() {
   const toast = useToast()
   const confirm = useConfirm()
+  const t = useT()
   const { user } = useAuth()
   const canWrite = hasRole(user?.role, OPS_MANAGE_ROLES)
   const customers = useCustomers()
@@ -74,8 +76,8 @@ function WorkOrdersPage() {
           navigator.onLine
             ? err instanceof Error
               ? err.message
-              : 'Failed to load work orders'
-            : "You're offline and this list hasn't been synced to this device yet.",
+              : t.ops.wo.loadFailed
+            : t.shared.offlineNotSynced,
         ),
       )
       .finally(() => setLoading(false))
@@ -106,7 +108,7 @@ function WorkOrdersPage() {
   }
 
   function toggleTechnician(id: string) {
-    setTechnicianIds((prev) => (prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]))
+    setTechnicianIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -114,19 +116,19 @@ function WorkOrdersPage() {
     setFormError(null)
 
     if (!customerId) {
-      setFormError('Select a customer')
+      setFormError(t.shared.selectCustomer)
       return
     }
     if (!workOrderNumber.trim()) {
-      setFormError('Work order number is required')
+      setFormError(t.ops.wo.numberRequired)
       return
     }
     if (!title.trim()) {
-      setFormError('Title is required')
+      setFormError(t.ops.wo.titleRequired)
       return
     }
     if (!scheduledDate) {
-      setFormError('Scheduled date is required')
+      setFormError(t.ops.wo.dateRequired)
       return
     }
 
@@ -143,11 +145,11 @@ function WorkOrdersPage() {
         technicianIds,
         siteQuery: siteQuery || undefined,
       })
-      toast.success('Work order created')
+      toast.success(t.ops.wo.created)
       setShowCreate(false)
       load()
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Failed to create work order')
+      setFormError(err instanceof Error ? err.message : t.ops.wo.createFailed)
     } finally {
       setSubmitting(false)
     }
@@ -155,24 +157,26 @@ function WorkOrdersPage() {
 
   async function handleDelete(wo: WorkOrder) {
     const ok = await confirm({
-      title: 'Delete work order',
-      message: `Delete work order ${wo.workOrderNumber}? This cannot be undone.`,
-      confirmLabel: 'Delete',
+      title: t.ops.wo.deleteTitle,
+      message: t.ops.wo.deleteMessage(wo.workOrderNumber),
+      confirmLabel: t.shared.delete,
       tone: 'danger',
     })
     if (!ok) return
     try {
       await api.deleteWorkOrder(wo.id)
-      toast.success(`Deleted ${wo.workOrderNumber}`)
+      toast.success(t.shared.deleted(wo.workOrderNumber))
       load()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to delete work order')
+      toast.error(err instanceof Error ? err.message : t.ops.wo.deleteFailed)
     }
   }
 
   const scheduledCount = workOrders.filter((w) => w.status === 'SCHEDULED').length
   const inProgressCount = workOrders.filter((w) => w.status === 'IN_PROGRESS').length
 
+  // CSV headers and values stay in English: it's a data file for Excel, and a column named the
+  // same way whoever exported it keeps reports and formulas working.
   function exportCsv() {
     downloadCsv(
       'work-orders',
@@ -184,7 +188,7 @@ function WorkOrdersPage() {
         { header: 'Scheduled', accessor: (w: WorkOrder) => w.scheduledDate.slice(0, 10) },
         {
           header: 'Technicians',
-          accessor: (w: WorkOrder) => w.technicians.map((t) => `${t.employee.firstName} ${t.employee.lastName}`).join('; '),
+          accessor: (w: WorkOrder) => w.technicians.map((x) => `${x.employee.firstName} ${x.employee.lastName}`).join('; '),
         },
         { header: 'Status', accessor: (w: WorkOrder) => w.status },
       ],
@@ -196,42 +200,40 @@ function WorkOrdersPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-ink-100">Work Order Registry</h1>
-          <p className="mt-1 text-sm text-ink-300">Dispatch and track field service work across active sites.</p>
+          <h1 className="text-2xl font-bold text-ink-100">{t.ops.wo.title}</h1>
+          <p className="mt-1 text-sm text-ink-300">{t.ops.wo.subtitle}</p>
         </div>
         <div className="flex items-center gap-3">
           <button type="button" onClick={exportCsv} className={secondaryButtonClass}>
             <Download className="h-4 w-4" />
-            Export CSV
+            {t.shared.exportCsv}
           </button>
           {canWrite && (
             <button type="button" onClick={openCreate} disabled={customers.length === 0} className={primaryButtonClass}>
               <Plus className="h-4 w-4" />
-              Create New Work Order
+              {t.ops.wo.createNew}
             </button>
           )}
         </div>
       </div>
 
-      {canWrite && customers.length === 0 && (
-        <p className="text-sm text-ink-400">Add a customer first before creating work orders.</p>
-      )}
+      {canWrite && customers.length === 0 && <p className="text-sm text-ink-400">{t.ops.wo.addCustomerFirst}</p>}
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-        <StatCard label="SCHEDULED" value={scheduledCount} icon={Wrench} />
-        <StatCard label="IN PROGRESS" value={inProgressCount} deltaTone="warning" icon={Wrench} />
+        <StatCard label={t.labels.workOrderStatus.SCHEDULED} value={scheduledCount} icon={Wrench} />
+        <StatCard label={t.labels.workOrderStatus.IN_PROGRESS} value={inProgressCount} deltaTone="warning" icon={Wrench} />
       </div>
 
-      <Panel title="Work Order Ledger">
+      <Panel title={t.ops.wo.ledger}>
         <div className="mb-4 flex flex-wrap items-end gap-4">
           <div className="flex max-w-xs flex-1 flex-col gap-1">
-            <label className="text-xs font-semibold tracking-widest text-ink-400">CUSTOMER</label>
+            <label className="text-xs font-semibold tracking-widest text-ink-400">{t.shared.customer}</label>
             <select
               value={filterCustomerId}
               onChange={(e) => setFilterCustomerId(e.target.value)}
               className={inputClass}
             >
-              <option value="">All customers</option>
+              <option value="">{t.shared.allCustomers}</option>
               {customers.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.company || c.name}
@@ -240,13 +242,13 @@ function WorkOrdersPage() {
             </select>
           </div>
           <div className="flex max-w-xs flex-1 flex-col gap-1">
-            <label className="text-xs font-semibold tracking-widest text-ink-400">TECHNICIAN</label>
+            <label className="text-xs font-semibold tracking-widest text-ink-400">{t.ops.wo.technician}</label>
             <select
               value={filterTechnicianId}
               onChange={(e) => setFilterTechnicianId(e.target.value)}
               className={inputClass}
             >
-              <option value="">All technicians</option>
+              <option value="">{t.ops.wo.allTechnicians}</option>
               {employees.map((emp) => (
                 <option key={emp.id} value={emp.id}>
                   {emp.firstName} {emp.lastName}
@@ -255,16 +257,16 @@ function WorkOrdersPage() {
             </select>
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold tracking-widest text-ink-400">FROM</label>
+            <label className="text-xs font-semibold tracking-widest text-ink-400">{t.shared.from}</label>
             <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className={inputClass} />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold tracking-widest text-ink-400">TO</label>
+            <label className="text-xs font-semibold tracking-widest text-ink-400">{t.shared.to}</label>
             <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className={inputClass} />
           </div>
           {(from || to || filterCustomerId || filterTechnicianId) && (
             <button type="button" onClick={clearFilters} className="text-xs font-semibold text-ink-400 hover:text-ink-100">
-              Clear filters
+              {t.shared.clearFilters}
             </button>
           )}
         </div>
@@ -274,18 +276,18 @@ function WorkOrdersPage() {
         {loading ? (
           <TableSkeleton cols={6} />
         ) : workOrders.length === 0 ? (
-          <EmptyState icon={Wrench} message="No work orders yet. Create your first work order to get started." />
+          <EmptyState icon={Wrench} message={t.ops.wo.empty} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
-                  <th className="px-3 py-3 font-semibold">WORK ORDER #</th>
-                  <th className="px-3 py-3 font-semibold">CUSTOMER</th>
-                  <th className="px-3 py-3 font-semibold">CATEGORY</th>
-                  <th className="px-3 py-3 font-semibold">SCHEDULED</th>
-                  <th className="px-3 py-3 font-semibold">TECHNICIANS</th>
-                  <th className="px-3 py-3 font-semibold">STATUS</th>
+                  <th className="px-3 py-3 font-semibold">{t.ops.wo.colNumber}</th>
+                  <th className="px-3 py-3 font-semibold">{t.shared.customer}</th>
+                  <th className="px-3 py-3 font-semibold">{t.shared.category}</th>
+                  <th className="px-3 py-3 font-semibold">{t.ops.wo.colScheduled}</th>
+                  <th className="px-3 py-3 font-semibold">{t.shared.technicians}</th>
+                  <th className="px-3 py-3 font-semibold">{t.shared.status}</th>
                   {canWrite && <th className="px-3 py-3" />}
                 </tr>
               </thead>
@@ -302,20 +304,25 @@ function WorkOrdersPage() {
                       <div className="text-xs text-ink-400">{wo.title}</div>
                     </td>
                     <td className="px-3 py-3 text-ink-300">{wo.customer.company || wo.customer.name}</td>
-                    <td className="px-3 py-3 text-ink-300">{JOB_CATEGORY_LABELS[wo.jobCategory]}</td>
+                    <td className="px-3 py-3 text-ink-300">{enumLabel(t.labels.jobCategory, wo.jobCategory)}</td>
                     <td className="px-3 py-3 text-ink-400">{wo.scheduledDate.slice(0, 10)}</td>
                     <td className="px-3 py-3 text-ink-300">
                       {wo.technicians.length === 0
                         ? '—'
-                        : wo.technicians.map((t) => `${t.employee.firstName} ${t.employee.lastName}`).join(', ')}
+                        : wo.technicians.map((x) => `${x.employee.firstName} ${x.employee.lastName}`).join(', ')}
                     </td>
                     <td className="px-3 py-3">
-                      <Badge tone={workOrderStatusTone[wo.status]}>{wo.status.replace('_', ' ')}</Badge>
+                      <Badge tone={workOrderStatusTone[wo.status]}>{enumLabel(t.labels.workOrderStatus, wo.status)}</Badge>
                     </td>
                     {canWrite && (
                       <td className="px-3 py-3">
                         <div className="flex items-center justify-end gap-3 text-ink-400">
-                          <button type="button" onClick={() => handleDelete(wo)} aria-label="Delete work order" className="hover:text-red-400">
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(wo)}
+                            aria-label={t.ops.wo.deleteTitle}
+                            className="hover:text-red-400"
+                          >
                             <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
@@ -330,13 +337,13 @@ function WorkOrdersPage() {
       </Panel>
 
       {showCreate && (
-        <Modal title="New Work Order" onClose={() => setShowCreate(false)}>
+        <Modal title={t.ops.wo.newTitle} onClose={() => setShowCreate(false)}>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className={labelClass}>CUSTOMER</label>
+                <label className={labelClass}>{t.shared.customer}</label>
                 <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className={`mt-2 ${inputClass}`}>
-                  <option value="">Select a customer</option>
+                  <option value="">{t.shared.selectCustomer}</option>
                   {customers.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.company || c.name}
@@ -345,7 +352,7 @@ function WorkOrdersPage() {
                 </select>
               </div>
               <div>
-                <label className={labelClass}>PROJECT (OPTIONAL)</label>
+                <label className={labelClass}>{t.ops.wo.project}</label>
                 <select value={projectId} onChange={(e) => setProjectId(e.target.value)} className={`mt-2 ${inputClass}`}>
                   <option value="">—</option>
                   {projects.map((p) => (
@@ -358,7 +365,7 @@ function WorkOrdersPage() {
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className={labelClass}>WORK ORDER NUMBER</label>
+                <label className={labelClass}>{t.ops.wo.number}</label>
                 <input
                   value={workOrderNumber}
                   onChange={(e) => setWorkOrderNumber(e.target.value)}
@@ -367,7 +374,7 @@ function WorkOrdersPage() {
                 />
               </div>
               <div>
-                <label className={labelClass}>JOB CATEGORY</label>
+                <label className={labelClass}>{t.shared.jobCategory}</label>
                 <select
                   value={jobCategory}
                   onChange={(e) => setJobCategory(e.target.value as JobCategory)}
@@ -375,18 +382,18 @@ function WorkOrdersPage() {
                 >
                   {JOB_CATEGORIES.map((c) => (
                     <option key={c} value={c}>
-                      {JOB_CATEGORY_LABELS[c]}
+                      {enumLabel(t.labels.jobCategory, c)}
                     </option>
                   ))}
                 </select>
               </div>
             </div>
             <div>
-              <label className={labelClass}>TITLE</label>
+              <label className={labelClass}>{t.shared.title}</label>
               <input value={title} onChange={(e) => setTitle(e.target.value)} required className={`mt-2 ${inputClass}`} />
             </div>
             <div>
-              <label className={labelClass}>DESCRIPTION (OPTIONAL)</label>
+              <label className={labelClass}>{t.ops.wo.descriptionOptional}</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -395,7 +402,7 @@ function WorkOrdersPage() {
               />
             </div>
             <div>
-              <label className={labelClass}>SCHEDULED DATE</label>
+              <label className={labelClass}>{t.shared.scheduledDate}</label>
               <input
                 type="date"
                 value={scheduledDate}
@@ -406,25 +413,21 @@ function WorkOrdersPage() {
             </div>
 
             <div>
-              <label className={labelClass}>SITE ADDRESS (OPTIONAL)</label>
+              <label className={labelClass}>{t.ops.wo.siteAddress}</label>
               <input
                 value={siteQuery}
                 onChange={(e) => setSiteQuery(e.target.value)}
-                placeholder="e.g. Ebene, Mauritius"
+                placeholder={t.ops.wo.sitePlaceholder}
                 className={`mt-2 ${inputClass}`}
               />
-              <p className="mt-1 text-xs text-ink-500">
-                We'll look up the location automatically — no need for exact coordinates. Use an area, street, or
-                town name, not a company name (e.g. "Ebene, Mauritius", not "Celero Ltd"). Setting this lets
-                technicians be shown as on-site when they check in.
-              </p>
+              <p className="mt-1 text-xs text-ink-500">{t.ops.wo.siteHint}</p>
             </div>
 
             <div>
-              <label className={labelClass}>TECHNICIANS</label>
+              <label className={labelClass}>{t.shared.technicians}</label>
               <div className="mt-2 flex flex-col gap-1.5 rounded-md border border-ink-700 bg-ink-950 p-3 max-h-40 overflow-y-auto">
                 {assignableEmployees.length === 0 ? (
-                  <p className="text-xs text-ink-500">No employees yet.</p>
+                  <p className="text-xs text-ink-500">{t.shared.noEmployees}</p>
                 ) : (
                   assignableEmployees.map((emp) => (
                     <label key={emp.id} className="flex items-center gap-2 text-sm text-ink-200">
@@ -445,7 +448,7 @@ function WorkOrdersPage() {
             {formError && <p className="text-sm text-red-400">{formError}</p>}
 
             <button type="submit" disabled={submitting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
-              {submitting ? 'Creating…' : 'Create Work Order'}
+              {submitting ? t.ops.wo.creating : t.ops.wo.create}
             </button>
           </form>
         </Modal>
