@@ -1003,6 +1003,36 @@ export const fr: Dict = {
       deleteFailed: 'Impossible de supprimer le jour férié',
       editAria: 'Modifier le jour férié',
     },
+    balances: {
+      panel: 'Soldes de congés',
+      allEmployees: 'Tous les employés',
+      generate: (year: number) => `Générer les soldes ${year}`,
+      generateNote:
+        "La génération crée les lignes de solde manquantes à partir du droit annuel de chaque type de congé. Les lignes existantes conservent leurs valeurs ajustées.",
+      loadFailed: 'Impossible de charger les soldes',
+      alreadyHave: (year: number) => `Tous les employés ont déjà des soldes ${year}`,
+      created: (count: number, year: number) =>
+        `${count} ligne${count === 1 ? '' : 's'} de solde créée${count === 1 ? '' : 's'} pour ${year}`,
+      initFailed: "Impossible d'initialiser les soldes",
+      empty: (year: number) =>
+        `Aucun solde ${year} pour le moment. Utilisez « Générer les soldes ${year} » pour les créer.`,
+      colLeaveType: 'TYPE DE CONGÉ',
+      colEntitled: 'DROIT',
+      colCarried: 'REPORTÉ',
+      colUsed: 'PRIS',
+      colRemaining: 'RESTANT',
+      adjustAria: 'Ajuster le solde',
+      adjustTitle: (type: string, employee: string) => `Ajuster ${type} — ${employee}`,
+      entitledDays: (year: number) => `JOURS DE DROIT (${year})`,
+      carriedOver: 'REPORTÉ',
+      usedNote: (days: string) =>
+        `${days} jour(s) déjà pris. Les jours pris ne changent que lorsqu'un congé est approuvé ou annulé.`,
+      entitledInvalid: 'Les jours de droit doivent être égaux ou supérieurs à zéro',
+      carriedInvalid: 'Les jours reportés doivent être égaux ou supérieurs à zéro',
+      updated: 'Solde mis à jour',
+      saveFailed: 'Impossible de mettre à jour le solde',
+      save: 'Enregistrer le solde',
+    },
     leaveTypes: {
       useDefaults: 'Utiliser les valeurs par défaut de Maurice',
       add: 'Ajouter un type de congé',
