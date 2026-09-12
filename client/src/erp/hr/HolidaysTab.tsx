@@ -6,6 +6,7 @@ import { Panel, Modal, EmptyState, TableSkeleton } from '../../dashboard/ui'
 import { useToast } from '../../dashboard/ToastContext'
 import { useConfirm } from '../../dashboard/ConfirmContext'
 import { inputClass, labelClass, primaryButtonClass } from './formStyles'
+import { useT } from '../../i18n'
 
 function currentYear(): number {
   return new Date().getUTCFullYear()
@@ -22,6 +23,7 @@ function formatDate(value: string): string {
 }
 
 function HolidaysTab() {
+  const t = useT()
   const toast = useToast()
   const confirm = useConfirm()
 
@@ -65,23 +67,23 @@ function HolidaysTab() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setFormError(null)
-    if (!date) return setFormError('Date is required')
-    if (!name.trim()) return setFormError('Name is required')
+    if (!date) return setFormError(t.hr.holidays.dateRequired)
+    if (!name.trim()) return setFormError(t.hr.holidays.nameRequired)
 
     setSubmitting(true)
     try {
       if (editing) {
         await api.updatePublicHoliday(editing.id, { date, name: name.trim() })
-        toast.success('Holiday updated')
+        toast.success(t.hr.holidays.updated)
       } else {
         await api.createPublicHoliday({ date, name: name.trim() })
-        toast.success('Holiday added')
+        toast.success(t.hr.holidays.added)
       }
       setShowForm(false)
       setEditing(null)
       load()
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Failed to save holiday')
+      setFormError(err instanceof Error ? err.message : t.hr.holidays.saveFailed)
     } finally {
       setSubmitting(false)
     }
@@ -89,33 +91,28 @@ function HolidaysTab() {
 
   async function handleDelete(holiday: PublicHoliday) {
     const ok = await confirm({
-      title: 'Delete holiday',
-      message: `Remove "${holiday.name}" from the calendar? Leave and payroll will start counting this date as a working day again.`,
-      confirmLabel: 'Delete',
+      title: t.hr.holidays.deleteTitle,
+      message: t.hr.holidays.deleteMessage(holiday.name),
+      confirmLabel: t.shared.delete,
       tone: 'danger',
     })
     if (!ok) return
     try {
       await api.deletePublicHoliday(holiday.id)
-      toast.success('Holiday removed')
+      toast.success(t.hr.holidays.removed)
       load()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to delete holiday')
+      toast.error(err instanceof Error ? err.message : t.hr.holidays.deleteFailed)
     }
   }
 
   return (
     <div className="flex flex-col gap-6">
-      <p className="text-sm text-ink-400">
-        Dates listed here are excluded from leave and payroll working-day counts. Several Mauritius
-        public holidays are tied to the lunar calendar and can shift by a day once officially
-        gazetted — any holiday named "(unconfirmed)" is a best estimate, not a confirmed date.
-        Edit it in place once the real date is announced; no need to delete and re-add.
-      </p>
+      <p className="text-sm text-ink-400">{t.hr.holidays.note}</p>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <label className={labelClass}>YEAR</label>
+          <label className={labelClass}>{t.hr.holidays.year}</label>
           <input
             type="number"
             value={year}
@@ -125,22 +122,22 @@ function HolidaysTab() {
         </div>
         <button type="button" onClick={openCreate} className={primaryButtonClass}>
           <Plus className="h-4 w-4" />
-          Add Holiday
+          {t.hr.holidays.add}
         </button>
       </div>
 
-      <Panel title={`Public Holidays — ${year}`}>
+      <Panel title={t.hr.holidays.panelTitle(year)}>
         {loading ? (
           <TableSkeleton rows={4} cols={2} />
         ) : holidays.length === 0 ? (
-          <EmptyState icon={CalendarDays} message={`No holidays recorded for ${year} yet.`} />
+          <EmptyState icon={CalendarDays} message={t.hr.holidays.empty(year)} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
-                  <th className="px-3 py-3 font-semibold">DATE</th>
-                  <th className="px-3 py-3 font-semibold">NAME</th>
+                  <th className="px-3 py-3 font-semibold">{t.shared.date}</th>
+                  <th className="px-3 py-3 font-semibold">{t.shared.name}</th>
                   <th className="px-3 py-3" />
                 </tr>
               </thead>
@@ -154,7 +151,7 @@ function HolidaysTab() {
                         <button
                           type="button"
                           onClick={() => openEdit(h)}
-                          aria-label="Edit holiday"
+                          aria-label={t.hr.holidays.editAria}
                           className="hover:text-ink-100"
                         >
                           <Pencil className="h-4 w-4" />
@@ -162,7 +159,7 @@ function HolidaysTab() {
                         <button
                           type="button"
                           onClick={() => handleDelete(h)}
-                          aria-label="Delete holiday"
+                          aria-label={t.hr.holidays.deleteTitle}
                           className="hover:text-red-400"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -179,7 +176,7 @@ function HolidaysTab() {
 
       {showForm && (
         <Modal
-          title={editing ? 'Edit Holiday' : 'Add Holiday'}
+          title={editing ? t.hr.holidays.edit : t.hr.holidays.add}
           onClose={() => {
             setShowForm(false)
             setEditing(null)
@@ -187,7 +184,7 @@ function HolidaysTab() {
         >
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div>
-              <label className={labelClass}>DATE</label>
+              <label className={labelClass}>{t.shared.date}</label>
               <input
                 type="date"
                 value={date}
@@ -197,11 +194,11 @@ function HolidaysTab() {
               />
             </div>
             <div>
-              <label className={labelClass}>NAME</label>
+              <label className={labelClass}>{t.shared.name}</label>
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Independence Day"
+                placeholder={t.hr.holidays.namePlaceholder}
                 required
                 className={`mt-2 ${inputClass}`}
               />
@@ -210,7 +207,7 @@ function HolidaysTab() {
             {formError && <p className="text-sm text-red-400">{formError}</p>}
 
             <button type="submit" disabled={submitting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
-              {submitting ? 'Saving…' : editing ? 'Save Changes' : 'Add Holiday'}
+              {submitting ? t.shared.saving : editing ? t.shared.saveChanges : t.hr.holidays.add}
             </button>
           </form>
         </Modal>
