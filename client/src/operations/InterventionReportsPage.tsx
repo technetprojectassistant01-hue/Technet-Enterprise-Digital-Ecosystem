@@ -11,6 +11,7 @@ import { useAuth } from '../context/AuthContext'
 import { hasRole, OPS_SUBMIT_ROLES } from '../lib/permissions'
 import { reportStatusTone } from '../erp/statusTones'
 import { useCustomers } from '../erp/useCustomers'
+import { enumLabel, navLabel, useT } from '../i18n'
 
 const STATUS_FILTERS: ReportStatus[] = ['SUBMITTED', 'APPROVED', 'REJECTED']
 const JOB_CATEGORIES = Object.keys(JOB_CATEGORY_LABELS) as JobCategory[]
@@ -41,6 +42,7 @@ const EMPTY_FILTERS: Filters = {
 
 function InterventionReportsPage() {
   const { user } = useAuth()
+  const t = useT()
   const canSubmit = hasRole(user?.role, OPS_SUBMIT_ROLES)
   const customers = useCustomers()
   const [reports, setReports] = useState<InterventionReport[]>([])
@@ -80,7 +82,7 @@ function InterventionReportsPage() {
       })
       .catch((err) => {
         if (thisRequest !== requestId.current) return
-        setError(err instanceof Error ? err.message : 'Failed to load intervention reports')
+        setError(err instanceof Error ? err.message : t.ops.ir.loadFailed)
       })
       .finally(() => {
         if (thisRequest !== requestId.current) return
@@ -107,10 +109,10 @@ function InterventionReportsPage() {
 
   /** Quick relative-date shortcuts for the common "how many in the last N months" phone-call question. */
   function applyQuickRange(months: number) {
-    const to = new Date()
-    const from = new Date()
-    from.setMonth(from.getMonth() - months)
-    updateFilters({ from: from.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10) })
+    const toDate = new Date()
+    const fromDate = new Date()
+    fromDate.setMonth(fromDate.getMonth() - months)
+    updateFilters({ from: fromDate.toISOString().slice(0, 10), to: toDate.toISOString().slice(0, 10) })
   }
 
   function jumpToPendingReview() {
@@ -125,6 +127,7 @@ function InterventionReportsPage() {
     load(next)
   }
 
+  // CSV stays in English — a data file for Excel (see WorkOrdersPage).
   function exportCsv() {
     downloadCsv(
       'intervention-reports',
@@ -142,22 +145,31 @@ function InterventionReportsPage() {
     )
   }
 
+  const noFilters =
+    filters.status === '' &&
+    !filters.dueRemindersOnly &&
+    !filters.customerId &&
+    !filters.jobCategory &&
+    !filters.workType &&
+    !filters.from &&
+    !filters.to
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-ink-100">Intervention Reports</h1>
-          <p className="mt-1 text-sm text-ink-300">Incident response, resolution, and follow-up tracking.</p>
+          <h1 className="text-2xl font-bold text-ink-100">{navLabel(t, 'Intervention Reports')}</h1>
+          <p className="mt-1 text-sm text-ink-300">{t.ops.ir.subtitle}</p>
         </div>
         <div className="flex items-center gap-3">
           <button type="button" onClick={exportCsv} className={secondaryButtonClass}>
             <Download className="h-4 w-4" />
-            Export CSV
+            {t.shared.exportCsv}
           </button>
           {canSubmit && (
             <Link to="/dashboard/operations/intervention-reports/new" className={primaryButtonClass}>
               <Plus className="h-4 w-4" />
-              Log New Intervention
+              {t.ops.ir.logNew}
             </Link>
           )}
         </div>
@@ -165,23 +177,28 @@ function InterventionReportsPage() {
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
         <button type="button" onClick={jumpToPendingReview} className="text-left">
-          <StatCard label="PENDING REVIEW" value={stats.pending} deltaTone="warning" icon={FileText} />
+          <StatCard label={t.ops.ir.pendingReview} value={stats.pending} deltaTone="warning" icon={FileText} />
         </button>
         <button type="button" onClick={jumpToRemindersDue} className="text-left">
-          <StatCard label="REMINDERS DUE" value={stats.due} deltaTone={stats.due > 0 ? 'warning' : undefined} icon={FileText} />
+          <StatCard
+            label={t.ops.ir.remindersDue}
+            value={stats.due}
+            deltaTone={stats.due > 0 ? 'warning' : undefined}
+            icon={FileText}
+          />
         </button>
       </div>
 
-      <Panel title="Intervention Registry">
+      <Panel title={t.ops.ir.registry}>
         <div className="mb-4 flex flex-wrap items-end gap-4">
           <div className="flex max-w-xs flex-1 flex-col gap-1">
-            <label className="text-xs font-semibold tracking-widest text-ink-400">CUSTOMER</label>
+            <label className="text-xs font-semibold tracking-widest text-ink-400">{t.shared.customer}</label>
             <select
               value={filters.customerId}
               onChange={(e) => updateFilters({ customerId: e.target.value })}
               className={inputClass}
             >
-              <option value="">All customers</option>
+              <option value="">{t.shared.allCustomers}</option>
               {customers.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.company || c.name}
@@ -191,39 +208,39 @@ function InterventionReportsPage() {
           </div>
 
           <div className="flex max-w-xs flex-1 flex-col gap-1">
-            <label className="text-xs font-semibold tracking-widest text-ink-400">JOB CATEGORY</label>
+            <label className="text-xs font-semibold tracking-widest text-ink-400">{t.shared.jobCategory}</label>
             <select
               value={filters.jobCategory}
               onChange={(e) => updateFilters({ jobCategory: e.target.value as JobCategory | '' })}
               className={inputClass}
             >
-              <option value="">All categories</option>
+              <option value="">{t.shared.allCategories}</option>
               {JOB_CATEGORIES.map((c) => (
                 <option key={c} value={c}>
-                  {JOB_CATEGORY_LABELS[c]}
+                  {enumLabel(t.labels.jobCategory, c)}
                 </option>
               ))}
             </select>
           </div>
 
           <div className="flex max-w-xs flex-1 flex-col gap-1">
-            <label className="text-xs font-semibold tracking-widest text-ink-400">WORK TYPE</label>
+            <label className="text-xs font-semibold tracking-widest text-ink-400">{t.shared.workType}</label>
             <select
               value={filters.workType}
               onChange={(e) => updateFilters({ workType: e.target.value as ServiceCategory | '' })}
               className={inputClass}
             >
-              <option value="">All work types</option>
+              <option value="">{t.ops.ir.allWorkTypes}</option>
               {WORK_TYPES.map((w) => (
                 <option key={w} value={w}>
-                  {WORK_TYPE_LABELS[w]}
+                  {enumLabel(t.labels.workType, w)}
                 </option>
               ))}
             </select>
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold tracking-widest text-ink-400">FROM</label>
+            <label className="text-xs font-semibold tracking-widest text-ink-400">{t.shared.from}</label>
             <input
               type="date"
               value={filters.from}
@@ -233,7 +250,7 @@ function InterventionReportsPage() {
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold tracking-widest text-ink-400">TO</label>
+            <label className="text-xs font-semibold tracking-widest text-ink-400">{t.shared.to}</label>
             <input
               type="date"
               value={filters.to}
@@ -243,17 +260,13 @@ function InterventionReportsPage() {
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold tracking-widest text-ink-400">QUICK RANGE</label>
+            <label className="text-xs font-semibold tracking-widest text-ink-400">{t.ops.ir.quickRange}</label>
             <div className="flex gap-2">
-              <button type="button" onClick={() => applyQuickRange(3)} className={secondaryButtonClass}>
-                3 mo
-              </button>
-              <button type="button" onClick={() => applyQuickRange(6)} className={secondaryButtonClass}>
-                6 mo
-              </button>
-              <button type="button" onClick={() => applyQuickRange(12)} className={secondaryButtonClass}>
-                12 mo
-              </button>
+              {[3, 6, 12].map((months) => (
+                <button key={months} type="button" onClick={() => applyQuickRange(months)} className={secondaryButtonClass}>
+                  {t.ops.ir.months(months)}
+                </button>
+              ))}
             </div>
           </div>
         </div>
@@ -263,12 +276,10 @@ function InterventionReportsPage() {
             type="button"
             onClick={clearAllFilters}
             className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
-              filters.status === '' && !filters.dueRemindersOnly && !filters.customerId && !filters.jobCategory && !filters.workType && !filters.from && !filters.to
-                ? 'bg-cyan-accent text-ink-950'
-                : 'bg-ink-800 text-ink-300 hover:bg-ink-700'
+              noFilters ? 'bg-cyan-accent text-ink-950' : 'bg-ink-800 text-ink-300 hover:bg-ink-700'
             }`}
           >
-            All
+            {t.shell.all}
           </button>
           {STATUS_FILTERS.map((s) => (
             <button
@@ -279,7 +290,7 @@ function InterventionReportsPage() {
                 filters.status === s ? 'bg-cyan-accent text-ink-950' : 'bg-ink-800 text-ink-300 hover:bg-ink-700'
               }`}
             >
-              {s}
+              {enumLabel(t.labels.reportStatus, s)}
             </button>
           ))}
           <button
@@ -289,7 +300,7 @@ function InterventionReportsPage() {
               filters.dueRemindersOnly ? 'bg-amber-400 text-ink-950' : 'bg-ink-800 text-ink-300 hover:bg-ink-700'
             }`}
           >
-            Reminders due only
+            {t.ops.ir.remindersDueOnly}
           </button>
         </div>
 
@@ -297,29 +308,27 @@ function InterventionReportsPage() {
 
         {!loading && (
           <p className="mb-3 text-sm text-ink-400">
-            {reports.length} intervention{reports.length === 1 ? '' : 's'} found
-            {filters.customerId && ' for this customer'}
-            {(filters.from || filters.to) && ' in this date range'}
+            {t.ops.ir.found(reports.length, !!filters.customerId, !!(filters.from || filters.to))}
           </p>
         )}
 
         {loading ? (
           <TableSkeleton cols={8} />
         ) : reports.length === 0 ? (
-          <EmptyState icon={FileText} message="No intervention reports match these filters." />
+          <EmptyState icon={FileText} message={t.ops.ir.empty} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
-                  <th className="px-3 py-3 font-semibold">INTERVENTION #</th>
-                  <th className="px-3 py-3 font-semibold">CUSTOMER</th>
-                  <th className="px-3 py-3 font-semibold">JOB CATEGORY</th>
-                  <th className="px-3 py-3 font-semibold">WORK TYPE</th>
-                  <th className="px-3 py-3 font-semibold">WORK ORDER</th>
-                  <th className="px-3 py-3 font-semibold">DATE</th>
-                  <th className="px-3 py-3 font-semibold">COMPLETED</th>
-                  <th className="px-3 py-3 font-semibold">STATUS</th>
+                  <th className="px-3 py-3 font-semibold">{t.ops.ir.colNumber}</th>
+                  <th className="px-3 py-3 font-semibold">{t.shared.customer}</th>
+                  <th className="px-3 py-3 font-semibold">{t.shared.jobCategory}</th>
+                  <th className="px-3 py-3 font-semibold">{t.shared.workType}</th>
+                  <th className="px-3 py-3 font-semibold">{t.ops.ir.colWorkOrder}</th>
+                  <th className="px-3 py-3 font-semibold">{t.shared.date}</th>
+                  <th className="px-3 py-3 font-semibold">{t.ops.ir.colCompleted}</th>
+                  <th className="px-3 py-3 font-semibold">{t.shared.status}</th>
                 </tr>
               </thead>
               <tbody>
@@ -336,18 +345,18 @@ function InterventionReportsPage() {
                         </Link>
                         {reminderDue && (
                           <span className="ml-2 rounded-full bg-amber-400/15 px-2 py-0.5 text-[10px] font-semibold text-amber-400">
-                            REMINDER DUE
+                            {t.ops.ir.reminderDue}
                           </span>
                         )}
                       </td>
                       <td className="px-3 py-3 text-ink-300">{r.customer.company || r.customer.name}</td>
-                      <td className="px-3 py-3 text-ink-300">{JOB_CATEGORY_LABELS[r.jobCategory]}</td>
-                      <td className="px-3 py-3 text-ink-300">{WORK_TYPE_LABELS[r.workType]}</td>
+                      <td className="px-3 py-3 text-ink-300">{enumLabel(t.labels.jobCategory, r.jobCategory)}</td>
+                      <td className="px-3 py-3 text-ink-300">{enumLabel(t.labels.workType, r.workType)}</td>
                       <td className="px-3 py-3 text-ink-400">{r.workOrder?.workOrderNumber || '—'}</td>
                       <td className="px-3 py-3 text-ink-400">{r.date.slice(0, 10)}</td>
-                      <td className="px-3 py-3 text-ink-300">{r.workCompleted ? 'Yes' : 'No'}</td>
+                      <td className="px-3 py-3 text-ink-300">{r.workCompleted ? t.shared.yes : t.shared.no}</td>
                       <td className="px-3 py-3">
-                        <Badge tone={reportStatusTone[r.status]}>{r.status}</Badge>
+                        <Badge tone={reportStatusTone[r.status]}>{enumLabel(t.labels.reportStatus, r.status)}</Badge>
                       </td>
                     </tr>
                   )
