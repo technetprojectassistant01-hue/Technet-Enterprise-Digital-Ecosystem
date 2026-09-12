@@ -51,6 +51,15 @@ export function navLabel(t: Dict, label: string): string {
   return (t.nav as Record<string, string>)[label] ?? label
 }
 
+/**
+ * Display name for an enum value the server sent, from one of the `t.labels` maps. Falls back to
+ * the raw value made readable ("WAITING_FOR_PARTS" → "WAITING FOR PARTS") rather than breaking if
+ * the server ever sends a value the dictionaries don't know yet.
+ */
+export function enumLabel(map: Record<string, string>, value: string): string {
+  return map[value] ?? value.replace(/_/g, ' ')
+}
+
 interface LanguageContextValue {
   language: Language
   setLanguage: (language: Language) => void
