@@ -71,6 +71,11 @@ function ForgotPassword() {
             <>
               <h1 className="text-center text-2xl font-semibold text-ink-100">{t.auth.resetYourAccess}</h1>
               <p className="mt-2 text-center text-sm text-ink-300">{t.auth.resetSubtitle}</p>
+              {/* The server sends a link only to ADMIN accounts but answers identically either way,
+                  so as not to reveal who the admins are. Saying so here is what makes that honest. */}
+              <p className="mt-4 rounded-md border border-ink-700 bg-ink-950 p-3 text-center text-xs text-ink-400">
+                {t.auth.adminOnlyNote}
+              </p>
 
               <form onSubmit={handleSubmit} className="mt-8">
                 <label
