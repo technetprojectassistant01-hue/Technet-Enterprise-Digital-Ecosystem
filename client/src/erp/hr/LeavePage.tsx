@@ -9,17 +9,14 @@ import LeaveRequestsTab from './LeaveRequestsTab'
 import LeaveBalancesTab from './LeaveBalancesTab'
 import LeaveTypesTab from './LeaveTypesTab'
 import HolidaysTab from './HolidaysTab'
+import { useT } from '../../i18n'
 
 type View = 'requests' | 'balances' | 'types' | 'holidays'
 
-const VIEWS: { key: View; label: string }[] = [
-  { key: 'requests', label: 'Requests' },
-  { key: 'balances', label: 'Balances' },
-  { key: 'types', label: 'Leave Types' },
-  { key: 'holidays', label: 'Public Holidays' },
-]
+const VIEWS: View[] = ['requests', 'balances', 'types', 'holidays']
 
 function LeavePage() {
+  const t = useT()
   const { user } = useAuth()
   const canAccess = hasRole(user?.role, HR_ROLES)
 
@@ -40,7 +37,7 @@ function LeavePage() {
   useEffect(loadTypes, [loadTypes])
 
   if (!canAccess) {
-    return <EmptyState icon={Lock} message="This section is restricted to HR staff." />
+    return <EmptyState icon={Lock} message={t.shared.restrictedToHr} />
   }
 
   return (
@@ -48,16 +45,16 @@ function LeavePage() {
       <div className="flex flex-wrap gap-2">
         {VIEWS.map((v) => (
           <button
-            key={v.key}
+            key={v}
             type="button"
-            onClick={() => setView(v.key)}
+            onClick={() => setView(v)}
             className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
-              view === v.key
+              view === v
                 ? 'bg-cyan-accent/10 text-cyan-accent'
                 : 'text-ink-300 hover:bg-ink-800 hover:text-ink-100'
             }`}
           >
-            {v.label}
+            {t.hr.leave[v]}
           </button>
         ))}
       </div>
