@@ -5,7 +5,7 @@ import { prisma } from "../lib/prisma";
 import { clearAuthCookieVariants, issueAuthCookie } from "../lib/authCookie";
 import { requireAuth } from "../middleware/auth";
 import { generateResetToken, hashResetToken } from "../lib/passwordReset";
-import { sendPasswordResetEmail } from "../lib/email";
+import { isEmailConfigured, sendPasswordResetEmail } from "../lib/email";
 import { logSecurityEvent } from "../lib/securityEvents";
 import type { Role } from "../lib/roles";
 
@@ -108,6 +108,17 @@ router.post("/forgot-password", forgotPasswordLimiter, async (req, res) => {
 
   if (typeof email !== "string" || !email.trim()) {
     return res.status(400).json({ error: "Email is required" });
+  }
+
+  // Say so rather than showing "check your inbox" for a mail that cannot be sent. This is a
+  // property of the deployment, not of the address, so answering before the lookup leaks nothing
+  // about who holds an account.
+  if (!isEmailConfigured) {
+    return res.status(503).json({
+      error:
+        "Password reset by email is not available on this system. Ask another administrator to " +
+        "reset your password from User Management.",
+    });
   }
 
   const user = await prisma.user.findUnique({ where: { email: email.trim() } });
