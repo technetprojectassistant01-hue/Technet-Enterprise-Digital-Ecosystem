@@ -4,6 +4,7 @@ import { Eye, EyeOff } from 'lucide-react'
 import { useAuth } from './context/AuthContext'
 import Logo from './components/Logo'
 import { InstallAppPrompt } from './dashboard/InstallAppDialog'
+import { Modal } from './dashboard/ui'
 import LanguageSwitcher from './dashboard/LanguageSwitcher'
 import { useT } from './i18n'
 
@@ -17,6 +18,7 @@ function Login() {
   const [remember, setRemember] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [showForgot, setShowForgot] = useState(false)
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -109,7 +111,7 @@ function Login() {
             </div>
           </div>
 
-          <div className="mt-5 text-sm">
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-2 text-sm">
             <label className="flex items-center gap-2 text-ink-300">
               <input
                 type="checkbox"
@@ -119,12 +121,16 @@ function Login() {
               />
               {t.auth.rememberSession}
             </label>
-            {/* Staff logins are created and reset by an admin, so the primary answer here is "ask
-                them". The email-reset link stays for admins, who have nobody else to ask. */}
-            <p className="mt-4 text-ink-400">{t.auth.forgotPasswordHint}</p>
-            <Link to="/forgot-password" className="mt-1 inline-block text-xs text-ink-500 hover:text-cyan-accent">
-              {t.auth.adminResetLink}
-            </Link>
+            {/* Staff logins are created and reset by an admin, so this opens a dialog telling them
+                to ask one. Nobody is signed in yet, so the page can't know who is an admin — the
+                dialog offers them the email route rather than the app guessing. */}
+            <button
+              type="button"
+              onClick={() => setShowForgot(true)}
+              className="text-cyan-accent hover:underline"
+            >
+              {t.auth.forgotPassword}
+            </button>
           </div>
 
           <button
@@ -163,6 +169,25 @@ function Login() {
           </Link>
         </div>
       </footer>
+
+      {showForgot && (
+        <Modal title={t.auth.forgotPassword} onClose={() => setShowForgot(false)}>
+          <p className="text-sm text-ink-200">{t.auth.contactAdminBody}</p>
+          <button
+            type="button"
+            onClick={() => setShowForgot(false)}
+            className="mt-6 w-full rounded-md bg-cyan-accent py-2.5 text-sm font-semibold text-ink-950 transition hover:bg-cyan-accent-dark"
+          >
+            {t.common.close}
+          </button>
+          <Link
+            to="/forgot-password"
+            className="mt-4 block text-center text-xs text-ink-500 hover:text-cyan-accent"
+          >
+            {t.auth.adminResetLink}
+          </Link>
+        </Modal>
+      )}
     </div>
   )
 }
