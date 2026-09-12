@@ -112,7 +112,7 @@ export function createUser(input: { email: string; password: string; name?: stri
 
 export function updateUser(
   id: string,
-  input: Partial<{ name: string; role: Role; password: string }>,
+  input: Partial<{ name: string; role: Role; password: string; email: string }>,
 ) {
   return request<{ user: ManagedUser }>(`/api/users/${id}`, {
     method: 'PATCH',
