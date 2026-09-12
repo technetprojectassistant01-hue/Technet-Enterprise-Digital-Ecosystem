@@ -893,9 +893,13 @@ email means contacting an admin. Don't reintroduce self-service credential manag
 - **Admin-side capability already existed** and is unchanged: `POST /api/users` creates with
   email/password/role, `PATCH /api/users/:id` sets a new password (logged as
   `ADMIN_PASSWORD_RESET_FORCED`), both surfaced on `/dashboard/users`.
-- **Known gap, not built:** `PATCH /api/users/:id` accepts `name`, `role` and `password` but
-  **not `email`** — an admin can create an account with an email and read it back, but cannot
-  correct a typo in an existing one. Nobody has asked for it; mention it rather than assuming.
+- **Admins can change any sign-in email, including their own** (added 2026-09-12): `PATCH
+  /api/users/:id` takes `email`, surfaced as "Change Email" on `/dashboard/users`. Emails are
+  trimmed and lowercased on create and update (same normalisation the portal needed, §9), a
+  duplicate returns 409, and the change is logged as `USER_EMAIL_CHANGED` (migration
+  `20260912100000_user_email_changed_security_event`). This exists because the alternative — delete
+  and recreate — unlinks the Employee record that GPS attendance and payroll depend on,
+  cascade-deletes notifications, and nulls the user out of the audit log.
 - **The customer portal was already correct** and was deliberately left alone: it has never had
   self-service password change or a forgot-password flow — staff grant, reset and revoke portal
   access from the Customers page (§5, §6).
