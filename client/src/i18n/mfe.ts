@@ -87,7 +87,8 @@ export const mfe: Dict = {
     showPassword: 'Montre mo de pas',
     hidePassword: 'Kasiet mo de pas',
     rememberSession: 'Res konekte',
-    forgotPassword: 'Ou finn bliye ou mo de pas?',
+    forgotPasswordHint: 'Ou finn bliye ou mo de pas? Demann ou administrater reinisializ li.',
+    adminResetLink: 'Administrater? Reinisializ par imel',
     signIn: 'Konekte',
     signingIn: 'Pe konekte…',
     loginFailed: 'Koneksion pa finn marse',
@@ -99,10 +100,13 @@ export const mfe: Dict = {
     contactSupport: 'Kontakte sipor',
     backToSignIn: 'Retourn lor koneksion',
     checkInbox: 'Get ou bwat imel',
-    ifAccountExistsBefore: 'Si ena enn kont pou ',
-    ifAccountExistsAfter: ', enn lien sekirize pe vini pou ou.',
+    ifAccountExistsBefore: 'Si ',
+    ifAccountExistsAfter:
+      ' se enn kont administrater, enn lien sekirize pe vini. Tou lezot dimounn bizin kontakte zot administrater.',
     resetYourAccess: 'Rekouver ou akse',
     resetSubtitle: 'Rant ou idantifian pou resevwar enn lien sekirize.',
+    adminOnlyNote:
+      'Zis bann kont administrater kapav reinisializ enn mo de pas isi. Bann teknisien ek staf biro bizin kontakte zot administrater, ki kre ek reinisializ bann login dan zestion itilizater.',
     sendRecovery: 'AVOY LIEN',
     sending: 'PE AVOYE…',
     invalidLink: 'Lien pa valid',
@@ -169,15 +173,9 @@ export const mfe: Dict = {
 
   settings: {
     title: 'Paramet',
-    changePassword: 'Sanz mo de pas',
-    currentPassword: 'MO DE PAS AKTIEL',
-    newPassword: 'NOUVO MO DE PAS',
-    confirmNewPassword: 'KONFIRM NOUVO MO DE PAS',
-    updatePassword: 'Sanz mo de pas',
-    updating: 'Pe sanze…',
-    mismatch: 'Nouvo mo de pas ek konfirmasion la pa parey',
-    updated: 'Mo de pas finn sanze.',
-    failed: 'Pa finn kapav sanz mo de pas',
+    password: 'Mo de pas',
+    passwordManagedByAdmin:
+      'Se ou administrater ki zer ou mo de pas. Kontakte li si ou bizin sanz li ouswa reinisializ li — li fer sa depi zestion itilizater.',
   },
 
   install: {
@@ -1040,8 +1038,8 @@ export const mfe: Dict = {
           {
             q: 'Mo finn bliye mo mo de pas',
             a: [
-              'Lor paz koneksion, tap "Ou finn bliye ou mo de pas?" e rant ou ladres imel. Ou pou resevwar enn imel avek enn lien pou met enn nouvo mo de pas.',
-              'Si imel la pa arive apre enn detrwa minit (get dan spam osi), apel sipor lor 5885 1000.',
+              'Kontakte ou administrater. Se enn administrater ki kre ek reinisializ bann login, alor li kapav met enn nouvo mo de pas pou ou depi zestion itilizater ek dir ou ki li ete.',
+              'Si ou pa gagn personn, apel sipor lor 5885 1000.',
             ],
           },
           {
@@ -1052,7 +1050,15 @@ export const mfe: Dict = {
           },
           {
             q: 'Kouma pou sanz mo mo de pas?',
-            a: ['Tap ikonn angrenaz ano adrwat pou ouver Paramet, apre servi kare "Sanz mo de pas".'],
+            a: [
+              'Ou pa kapav sanz li ou-mem — se ou administrater ki zer bann mo de pas. Demann li met enn nouvo pou ou.',
+            ],
+          },
+          {
+            q: 'Mo finn bliye ar ki imel mo konekte',
+            a: [
+              'Kontakte ou administrater — li trouv ladres imel ou kont dan zestion itilizater.',
+            ],
           },
         ],
       },
