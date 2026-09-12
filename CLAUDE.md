@@ -74,7 +74,7 @@ Everyone lands on **Overview** (`/dashboard`) — as of 2026-08-19 this is real,
 | **Technet Digital Marketing** | **Built — Phase 1 only** (2026-08-26) | `/dashboard/marketing` — Campaigns (`MarketingCampaign`) and a flat, filterable Content Calendar across all campaigns' `MarketingPost`s (title/platform/copy/scheduled date/status). Deliberately no AI, no auto-publish, no real platform integrations (Phases 2/3 of a 3-phase scoping plan — see §10a) — Marketing plans posts here and marks them Posted by hand after publishing elsewhere themselves. Gated to `MARKETING_ROLES` (ADMIN + SALES_OFFICER — no confirmed real owner yet, see §6). |
 | **Technet Insight** | **Built** (2026-08-19) | Read-only executive KPI dashboard (`/dashboard/insight`) — revenue, active projects/work orders, overdue invoices, open maintenance requests, low stock, technicians on site. **ADMIN-only** (no Managing Director role exists — see §11) |
 | **Security** (System nav) | **Built** (2026-08-24) | `/dashboard/security` — "My Account" tab (any authenticated user: their own recent login history, `SecurityEvent` model) + "Audit Log" tab (ADMIN-only: company-wide, filterable by event type/date, paginated). Scoped to genuinely security-relevant events only (login success/fail, password change/reset, user create/role-change/delete) — deliberately not a general change-history log across every ERP record. Also added a "Reset Password" action to User Management (`/dashboard/users`), which was already a supported API capability but never exposed in the UI. |
-| Settings, User Management | Built | Admin-only user management (`/dashboard/users`), self-service password change |
+| Settings, User Management | Built | Admin-only user management (`/dashboard/users`). **Logins are admin-managed — see §20. There is deliberately no self-service password change.** |
 | **Help Center** | **Built** (2026-09-11) | `client/src/HelpCenterPage.tsx` — support line **5885 1000** (tap-to-call `tel:+23058851000`) plus a searchable FAQ. One content component served twice: inside the shell at `/dashboard/help` (sidebar "Help Center", footer "Contact Support" → `#contact`; every role, outside the `FIELD_ONLY_ROLES` gate) and as a public page at `/help` (the sign-in / forgot / reset pages' "Help Center" + "Contact Support" links, previously dead `href="#"`). Static, so it opens offline. **Every FAQ answer describes real current behaviour — when a feature it mentions changes (attendance fields, offline sync, leave, install), update the answer too.** No support hours or email were given, so none are shown. |
 | **Notifications** | **Built** (2026-08-19), in-app only | `server/src/lib/notifications.ts` (`notifyUser`/`notifyEmployee`/`notifyRoles`), `/api/notifications`, bell icon in `Dashboard.tsx` header (`NotificationBell.tsx`) + Overview's Recent Activity panel. Triggers so far: leave approve/reject, requisition approve/reject, work order technician assignment, quotation accept/reject, intervention report submit+review, maintenance request schedule/cancel, maintenance report submit+review+completion, project assignment, supervisor-requested location check (§13 item 2). No email/SMS — in-app polling only (60s). |
 
@@ -869,3 +869,40 @@ wording complaints come in, they're one-line dictionary edits); **choice saved o
   `20260911150000_...` while this branch had `20260911100000_user_language` uncommitted — renamed to
   `…160000…` before committing so migrations stay in chronological order. Check `git fetch` for new
   migrations before committing one.
+
+## 20. Logins are admin-managed (2026-09-12)
+
+Stated by the user as a hard rule: **technicians and every other role cannot change their own
+password.** Emails, passwords and roles are created by an ADMIN, and a forgotten password or
+email means contacting an admin. Don't reintroduce self-service credential management here.
+
+- **Gone:** `POST /api/auth/change-password` (deleted, not disabled) and the Settings "Change
+  password" form, which is now a short panel saying the administrator manages it.
+- **Admins keep email recovery** — confirmed with the user as the deliberate exception, because an
+  admin has nobody to ask. `POST /api/auth/forgot-password` sends a link **only when the account's
+  role is ADMIN**, and `POST /api/auth/reset-password` re-checks the role when the token is
+  redeemed, so a token issued to a non-admin before this rule can't still be used.
+- **The response to `/forgot-password` is identical** whether the address is unknown, a non-admin,
+  or an admin. That's on purpose: differentiating would let anyone enumerate which accounts are
+  admins. The honesty comes from the page copy (`auth.adminOnlyNote`), which says plainly who the
+  form is for — **don't "improve" this by returning a specific error for non-admins.**
+- **Sign-in flow:** the "Forgot Password?" link stays for everyone and opens a dialog
+  (`auth.contactAdminBody`) telling the user to contact their administrator. Nobody is signed in
+  at that point, so the page genuinely cannot know the role — the dialog carries a quiet
+  "Administrator? Reset by email" link to `/forgot-password` rather than the app guessing.
+- **Admin-side capability already existed** and is unchanged: `POST /api/users` creates with
+  email/password/role, `PATCH /api/users/:id` sets a new password (logged as
+  `ADMIN_PASSWORD_RESET_FORCED`), both surfaced on `/dashboard/users`.
+- **Known gap, not built:** `PATCH /api/users/:id` accepts `name`, `role` and `password` but
+  **not `email`** — an admin can create an account with an email and read it back, but cannot
+  correct a typo in an existing one. Nobody has asked for it; mention it rather than assuming.
+- **The customer portal was already correct** and was deliberately left alone: it has never had
+  self-service password change or a forgot-password flow — staff grant, reset and revoke portal
+  access from the Customers page (§5, §6).
+- Help Center FAQ answers were rewritten to match in all three languages (§19's rule: an FAQ
+  answer must describe real behaviour). `PasswordResetToken`, `server/src/lib/email.ts` and the
+  Resend integration all stay in use — by admins only.
+- Verified 2026-09-12 with a disposable `server/scratch-password-policy.ts` (deleted): 11/11
+  against the real DB and a running dev server — change-password 404s for both roles, a token is
+  issued to the admin and not to the technician, both get byte-identical replies, a non-admin's
+  token is refused at redeem without consuming it, and an admin can still reset a technician.
