@@ -4,6 +4,7 @@ import ModuleHeader from '../dashboard/ModuleHeader'
 import { EmptyState } from '../dashboard/ui'
 import { useAuth } from '../context/AuthContext'
 import { hasRole, WORKFORCE_VIEW_ROLES } from '../lib/permissions'
+import { navLabel, useT } from '../i18n'
 
 const TABS = [
   { label: 'Availability', to: '/dashboard/workforce/availability' },
@@ -12,6 +13,7 @@ const TABS = [
 ]
 
 function WorkforceLayout() {
+  const t = useT()
   const { user } = useAuth()
   const canAccess = hasRole(user?.role, WORKFORCE_VIEW_ROLES)
 
@@ -19,14 +21,14 @@ function WorkforceLayout() {
     <div className="flex flex-col gap-6">
       <ModuleHeader
         title="Technet Workforce"
-        subtitle="Who's available, attendance, and payroll preparation"
-        tabs={TABS}
-        searchPlaceholder="Search payroll runs..."
+        subtitle={t.workforce.subtitle}
+        tabs={TABS.map((tab) => ({ ...tab, label: navLabel(t, tab.label) }))}
+        searchPlaceholder={t.workforce.searchPlaceholder}
       />
       {canAccess ? (
         <Outlet />
       ) : (
-        <EmptyState icon={Lock} message="This section is restricted to HR staff and Operations management." />
+        <EmptyState icon={Lock} message={t.workforce.restricted} />
       )}
     </div>
   )
