@@ -87,7 +87,8 @@ export const en = {
     showPassword: 'Show password',
     hidePassword: 'Hide password',
     rememberSession: 'Remember session',
-    forgotPassword: 'Forgot Password?',
+    forgotPasswordHint: 'Forgotten your password? Ask your administrator to reset it.',
+    adminResetLink: 'Administrator? Reset by email',
     signIn: 'Sign In',
     signingIn: 'Signing in…',
     loginFailed: 'Login failed',
@@ -100,10 +101,11 @@ export const en = {
     backToSignIn: 'Back to Sign In',
     // Forgot password
     checkInbox: 'Check Your Inbox',
-    ifAccountExistsBefore: 'If an account exists for ',
-    ifAccountExistsAfter: ', a secure recovery link is on its way.',
+    ifAccountExistsBefore: 'If ',
+    ifAccountExistsAfter: ' is an administrator account, a secure recovery link is on its way. Anyone else should contact their administrator.',
     resetYourAccess: 'Reset Your Access',
     resetSubtitle: 'Enter your user identifier to receive a secure recovery token.',
+    adminOnlyNote: 'Only administrator accounts can reset a password here. Technicians and office staff should contact their administrator, who creates and resets logins in User Management.',
     sendRecovery: 'SEND RECOVERY TOKEN',
     sending: 'SENDING…',
     // Reset password
@@ -171,15 +173,8 @@ export const en = {
 
   settings: {
     title: 'Settings',
-    changePassword: 'Change password',
-    currentPassword: 'CURRENT PASSWORD',
-    newPassword: 'NEW PASSWORD',
-    confirmNewPassword: 'CONFIRM NEW PASSWORD',
-    updatePassword: 'Update password',
-    updating: 'Updating…',
-    mismatch: 'New password and confirmation do not match',
-    updated: 'Password updated successfully.',
-    failed: 'Failed to change password',
+    password: 'Password',
+    passwordManagedByAdmin: 'Your password is managed by your administrator. Contact them if you need it changed or reset — they do it from User Management.',
   },
 
   install: {
@@ -1048,8 +1043,8 @@ export const en = {
           {
             q: 'I forgot my password',
             a: [
-              'On the sign-in page, tap "Forgot Password?" and enter your email address. You\'ll receive an email with a link to set a new password.',
-              "If the email doesn't arrive after a few minutes (check your spam folder too), call support on 5885 1000.",
+              'Contact your administrator. Logins are created and reset by an administrator, so they can set a new password for you from User Management and tell you what it is.',
+              'If you cannot reach anyone, call support on 5885 1000.',
             ],
           },
           {
@@ -1060,7 +1055,15 @@ export const en = {
           },
           {
             q: 'How do I change my password?',
-            a: ['Tap the gear icon at the top right to open Settings, then use the "Change password" box.'],
+            a: [
+              'You cannot change it yourself — passwords are managed by your administrator. Ask them to set a new one for you.',
+            ],
+          },
+          {
+            q: 'I forgot which email I sign in with',
+            a: [
+              'Contact your administrator — they can see the email address on your account in User Management.',
+            ],
           },
         ],
       },
