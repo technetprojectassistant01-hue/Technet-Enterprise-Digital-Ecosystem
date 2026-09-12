@@ -82,7 +82,8 @@ export const fr: Dict = {
     showPassword: 'Afficher le mot de passe',
     hidePassword: 'Masquer le mot de passe',
     rememberSession: 'Rester connecté',
-    forgotPassword: 'Mot de passe oublié ?',
+    forgotPasswordHint: 'Mot de passe oublié ? Demandez à votre administrateur de le réinitialiser.',
+    adminResetLink: 'Administrateur ? Réinitialiser par e-mail',
     signIn: 'Se connecter',
     signingIn: 'Connexion…',
     loginFailed: 'Échec de la connexion',
@@ -94,10 +95,13 @@ export const fr: Dict = {
     contactSupport: 'Contacter le support',
     backToSignIn: 'Retour à la connexion',
     checkInbox: 'Vérifiez votre boîte mail',
-    ifAccountExistsBefore: 'Si un compte existe pour ',
-    ifAccountExistsAfter: ', un lien de récupération sécurisé est en route.',
+    ifAccountExistsBefore: 'Si ',
+    ifAccountExistsAfter:
+      " est un compte administrateur, un lien de récupération sécurisé est en route. Toute autre personne doit contacter son administrateur.",
     resetYourAccess: 'Réinitialiser votre accès',
     resetSubtitle: 'Saisissez votre identifiant pour recevoir un lien de récupération sécurisé.',
+    adminOnlyNote:
+      "Seuls les comptes administrateur peuvent réinitialiser un mot de passe ici. Les techniciens et le personnel de bureau doivent contacter leur administrateur, qui crée et réinitialise les identifiants dans la gestion des utilisateurs.",
     sendRecovery: 'ENVOYER LE LIEN',
     sending: 'ENVOI…',
     invalidLink: 'Lien invalide',
@@ -165,15 +169,9 @@ export const fr: Dict = {
 
   settings: {
     title: 'Paramètres',
-    changePassword: 'Changer le mot de passe',
-    currentPassword: 'MOT DE PASSE ACTUEL',
-    newPassword: 'NOUVEAU MOT DE PASSE',
-    confirmNewPassword: 'CONFIRMER LE NOUVEAU MOT DE PASSE',
-    updatePassword: 'Mettre à jour le mot de passe',
-    updating: 'Mise à jour…',
-    mismatch: 'Le nouveau mot de passe et la confirmation ne correspondent pas',
-    updated: 'Mot de passe modifié avec succès.',
-    failed: 'Impossible de changer le mot de passe',
+    password: 'Mot de passe',
+    passwordManagedByAdmin:
+      "Votre mot de passe est géré par votre administrateur. Contactez-le si vous devez le changer ou le réinitialiser — il le fait depuis la gestion des utilisateurs.",
   },
 
   install: {
@@ -1044,8 +1042,8 @@ export const fr: Dict = {
           {
             q: "J'ai oublié mon mot de passe",
             a: [
-              'Sur la page de connexion, touchez « Mot de passe oublié ? » et saisissez votre adresse e-mail. Vous recevrez un e-mail avec un lien pour choisir un nouveau mot de passe.',
-              "Si l'e-mail n'arrive pas après quelques minutes (vérifiez aussi vos spams), appelez le support au 5885 1000.",
+              "Contactez votre administrateur. Les identifiants sont créés et réinitialisés par un administrateur : il peut vous définir un nouveau mot de passe depuis la gestion des utilisateurs et vous le communiquer.",
+              "Si vous ne joignez personne, appelez le support au 5885 1000.",
             ],
           },
           {
@@ -1057,7 +1055,13 @@ export const fr: Dict = {
           {
             q: 'Comment changer mon mot de passe ?',
             a: [
-              "Touchez l'icône d'engrenage en haut à droite pour ouvrir les Paramètres, puis utilisez la section « Changer le mot de passe ».",
+              "Vous ne pouvez pas le changer vous-même — les mots de passe sont gérés par votre administrateur. Demandez-lui de vous en définir un nouveau.",
+            ],
+          },
+          {
+            q: "J'ai oublié avec quel e-mail je me connecte",
+            a: [
+              "Contactez votre administrateur — il voit l'adresse e-mail de votre compte dans la gestion des utilisateurs.",
             ],
           },
         ],
