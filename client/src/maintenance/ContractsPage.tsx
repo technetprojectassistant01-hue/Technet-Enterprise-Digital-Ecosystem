@@ -12,12 +12,14 @@ import { hasRole, OPS_MANAGE_ROLES } from '../lib/permissions'
 import { useServiceableAssets } from './useAssets'
 import { useCustomers } from '../erp/useCustomers'
 import { maintenanceContractStatusTone } from './statusTones'
+import { enumLabel, useT } from '../i18n'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
 const labelClass = 'text-xs font-semibold tracking-widest text-ink-400'
 
 const FREQUENCIES: MaintenanceFrequency[] = ['MONTHLY', 'QUARTERLY', 'SEMI_ANNUAL', 'ANNUAL']
+const CONTRACT_STATUSES: MaintenanceContractStatus[] = ['ACTIVE', 'EXPIRED', 'CANCELLED']
 
 interface FormState {
   assetId: string
@@ -30,6 +32,7 @@ interface FormState {
 const EMPTY_FORM: FormState = { assetId: '', frequency: 'QUARTERLY', startDate: '', expiryDate: '', notes: '' }
 
 function ContractsPage() {
+  const t = useT()
   const toast = useToast()
   const confirm = useConfirm()
   const { user } = useAuth()
@@ -59,7 +62,7 @@ function ContractsPage() {
         expiringSoon: expiringSoonOnly || undefined,
       })
       .then(({ contracts }) => setContracts(contracts))
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load contracts'))
+      .catch((err) => setError(err instanceof Error ? err.message : t.maint.contracts.loadFailed))
       .finally(() => setLoading(false))
   }
 
@@ -83,11 +86,11 @@ function ContractsPage() {
     setFormError(null)
 
     if (!form.assetId) {
-      setFormError('Select an asset')
+      setFormError(t.shared.selectAsset)
       return
     }
     if (!form.startDate || !form.expiryDate) {
-      setFormError('Start and expiry dates are required')
+      setFormError(t.maint.contracts.datesRequired)
       return
     }
 
@@ -100,11 +103,11 @@ function ContractsPage() {
         expiryDate: form.expiryDate,
         notes: form.notes || undefined,
       })
-      toast.success('Contract created')
+      toast.success(t.maint.contracts.created)
       setShowCreate(false)
       load()
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Failed to save contract')
+      setFormError(err instanceof Error ? err.message : t.maint.contracts.saveFailed)
     } finally {
       setSubmitting(false)
     }
@@ -112,18 +115,18 @@ function ContractsPage() {
 
   async function handleDelete(c: MaintenanceContract) {
     const ok = await confirm({
-      title: 'Delete contract',
-      message: `Delete contract ${c.contractNumber}? This cannot be undone.`,
-      confirmLabel: 'Delete',
+      title: t.maint.contracts.deleteTitle,
+      message: t.maint.contracts.deleteMessage(c.contractNumber),
+      confirmLabel: t.shared.delete,
       tone: 'danger',
     })
     if (!ok) return
     try {
       await api.deleteMaintenanceContract(c.id)
-      toast.success(`Deleted ${c.contractNumber}`)
+      toast.success(t.shared.deleted(c.contractNumber))
       load()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to delete contract')
+      toast.error(err instanceof Error ? err.message : t.maint.contracts.deleteFailed)
     }
   }
 
@@ -153,43 +156,43 @@ function ContractsPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-ink-100">Maintenance Contracts</h1>
-          <p className="mt-1 text-sm text-ink-300">Track service agreements and renewal windows across all assets.</p>
+          <h1 className="text-2xl font-bold text-ink-100">{t.maint.contracts.title}</h1>
+          <p className="mt-1 text-sm text-ink-300">{t.maint.contracts.subtitle}</p>
         </div>
         <div className="flex items-center gap-3">
           <button type="button" onClick={exportCsv} className={secondaryButtonClass}>
             <Download className="h-4 w-4" />
-            Export Registry
+            {t.maint.contracts.exportRegistry}
           </button>
           {canWrite && (
             <button type="button" onClick={openCreate} disabled={assets.length === 0} className={primaryButtonClass}>
               <Plus className="h-4 w-4" />
-              New Contract
+              {t.maint.contracts.new}
             </button>
           )}
         </div>
       </div>
 
       {canWrite && assets.length === 0 && (
-        <p className="text-sm text-ink-400">Register an asset first before creating contracts.</p>
+        <p className="text-sm text-ink-400">{t.maint.contracts.assetFirst}</p>
       )}
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-        <StatCard label="TOTAL CONTRACTS" value={contracts.length} icon={ScrollText} />
+        <StatCard label={t.maint.contracts.total} value={contracts.length} icon={ScrollText} />
         <StatCard
-          label="EXPIRING SOON"
+          label={t.maint.contracts.expiringSoon}
           value={expiringSoonCount}
           deltaTone={expiringSoonCount > 0 ? 'warning' : undefined}
           icon={ScrollText}
         />
       </div>
 
-      <Panel title="Contract Ledger">
+      <Panel title={t.maint.contracts.ledger}>
         <div className="mb-4 flex flex-wrap items-end gap-4">
           <div className="flex max-w-xs flex-1 flex-col gap-1">
-            <label className={labelClass}>CUSTOMER</label>
+            <label className={labelClass}>{t.shared.customer}</label>
             <select value={customerFilter} onChange={(e) => setCustomerFilter(e.target.value)} className={inputClass}>
-              <option value="">All customers</option>
+              <option value="">{t.shared.allCustomers}</option>
               {customers.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.company || c.name}
@@ -198,29 +201,31 @@ function ContractsPage() {
             </select>
           </div>
           <div className="flex flex-col gap-1">
-            <label className={labelClass}>STATUS</label>
+            <label className={labelClass}>{t.shared.status}</label>
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value as MaintenanceContractStatus | '')}
               className={inputClass}
             >
-              <option value="">All statuses</option>
-              <option value="ACTIVE">ACTIVE</option>
-              <option value="EXPIRED">EXPIRED</option>
-              <option value="CANCELLED">CANCELLED</option>
+              <option value="">{t.shared.allStatuses}</option>
+              {CONTRACT_STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {enumLabel(t.labels.contractStatus, s)}
+                </option>
+              ))}
             </select>
           </div>
           <div className="flex flex-col gap-1">
-            <label className={labelClass}>FREQUENCY</label>
+            <label className={labelClass}>{t.maint.contracts.frequency}</label>
             <select
               value={frequencyFilter}
               onChange={(e) => setFrequencyFilter(e.target.value as MaintenanceFrequency | '')}
               className={inputClass}
             >
-              <option value="">All frequencies</option>
+              <option value="">{t.maint.contracts.allFrequencies}</option>
               {FREQUENCIES.map((f) => (
                 <option key={f} value={f}>
-                  {f.replace('_', ' ')}
+                  {enumLabel(t.labels.frequency, f)}
                 </option>
               ))}
             </select>
@@ -232,11 +237,11 @@ function ContractsPage() {
               onChange={(e) => setExpiringSoonOnly(e.target.checked)}
               className="accent-cyan-accent"
             />
-            Expiring within 30 days
+            {t.maint.contracts.expiringWithin30}
           </label>
           {(status || customerFilter || frequencyFilter || expiringSoonOnly) && (
             <button type="button" onClick={clearFilters} className="text-xs font-semibold text-ink-400 hover:text-ink-100">
-              Clear filters
+              {t.shared.clearFilters}
             </button>
           )}
         </div>
@@ -246,18 +251,18 @@ function ContractsPage() {
         {loading ? (
           <TableSkeleton cols={6} />
         ) : contracts.length === 0 ? (
-          <EmptyState icon={ScrollText} message="No contracts yet. Create your first contract to get started." />
+          <EmptyState icon={ScrollText} message={t.maint.contracts.empty} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
-                  <th className="px-3 py-3 font-semibold">CONTRACT #</th>
-                  <th className="px-3 py-3 font-semibold">ASSET</th>
-                  <th className="px-3 py-3 font-semibold">CUSTOMER</th>
-                  <th className="px-3 py-3 font-semibold">FREQUENCY</th>
-                  <th className="px-3 py-3 font-semibold">EXPIRES</th>
-                  <th className="px-3 py-3 font-semibold">STATUS</th>
+                  <th className="px-3 py-3 font-semibold">{t.maint.contracts.colNumber}</th>
+                  <th className="px-3 py-3 font-semibold">{t.shared.asset}</th>
+                  <th className="px-3 py-3 font-semibold">{t.shared.customer}</th>
+                  <th className="px-3 py-3 font-semibold">{t.maint.contracts.frequency}</th>
+                  <th className="px-3 py-3 font-semibold">{t.maint.contracts.colExpires}</th>
+                  <th className="px-3 py-3 font-semibold">{t.shared.status}</th>
                   {canWrite && <th className="px-3 py-3" />}
                 </tr>
               </thead>
@@ -267,17 +272,17 @@ function ContractsPage() {
                     <td className="px-3 py-3 font-mono font-medium text-ink-100">{c.contractNumber}</td>
                     <td className="px-3 py-3 font-mono text-ink-300">{c.asset.assetNumber}</td>
                     <td className="px-3 py-3 text-ink-300">{c.asset.customer.company || c.asset.customer.name}</td>
-                    <td className="px-3 py-3 text-ink-300">{c.frequency.replace('_', ' ')}</td>
+                    <td className="px-3 py-3 text-ink-300">{enumLabel(t.labels.frequency, c.frequency)}</td>
                     <td className="px-3 py-3 text-ink-400">{c.expiryDate.slice(0, 10)}</td>
                     <td className="px-3 py-3">
-                      <Badge tone={maintenanceContractStatusTone[c.status]}>{c.status}</Badge>
+                      <Badge tone={maintenanceContractStatusTone[c.status]}>{enumLabel(t.labels.contractStatus, c.status)}</Badge>
                     </td>
                     {canWrite && (
                       <td className="px-3 py-3">
                         <button
                           type="button"
                           onClick={() => handleDelete(c)}
-                          aria-label="Delete contract"
+                          aria-label={t.maint.contracts.deleteTitle}
                           className="text-ink-400 hover:text-red-400"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -293,10 +298,10 @@ function ContractsPage() {
       </Panel>
 
       {showCreate && (
-        <Modal title="New Contract" onClose={() => setShowCreate(false)}>
+        <Modal title={t.maint.contracts.new} onClose={() => setShowCreate(false)}>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div>
-              <label className={labelClass}>ASSET</label>
+              <label className={labelClass}>{t.shared.asset}</label>
               <select
                 value={form.assetId}
                 onChange={(e) => setForm({ ...form, assetId: e.target.value })}
@@ -311,7 +316,7 @@ function ContractsPage() {
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className={labelClass}>FREQUENCY</label>
+                <label className={labelClass}>{t.maint.contracts.frequency}</label>
                 <select
                   value={form.frequency}
                   onChange={(e) => setForm({ ...form, frequency: e.target.value as MaintenanceFrequency })}
@@ -319,14 +324,14 @@ function ContractsPage() {
                 >
                   {FREQUENCIES.map((f) => (
                     <option key={f} value={f}>
-                      {f.replace('_', ' ')}
+                      {enumLabel(t.labels.frequency, f)}
                     </option>
                   ))}
                 </select>
               </div>
               <div />
               <div>
-                <label className={labelClass}>START DATE</label>
+                <label className={labelClass}>{t.shared.startDate}</label>
                 <input
                   type="date"
                   value={form.startDate}
@@ -336,7 +341,7 @@ function ContractsPage() {
                 />
               </div>
               <div>
-                <label className={labelClass}>EXPIRY DATE</label>
+                <label className={labelClass}>{t.maint.contracts.expiryDate}</label>
                 <input
                   type="date"
                   value={form.expiryDate}
@@ -347,7 +352,7 @@ function ContractsPage() {
               </div>
             </div>
             <div>
-              <label className={labelClass}>NOTES</label>
+              <label className={labelClass}>{t.shared.notes}</label>
               <input
                 value={form.notes}
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
@@ -358,7 +363,7 @@ function ContractsPage() {
             {formError && <p className="text-sm text-red-400">{formError}</p>}
 
             <button type="submit" disabled={submitting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
-              {submitting ? 'Saving…' : 'Create Contract'}
+              {submitting ? t.shared.saving : t.maint.contracts.create}
             </button>
           </form>
         </Modal>
