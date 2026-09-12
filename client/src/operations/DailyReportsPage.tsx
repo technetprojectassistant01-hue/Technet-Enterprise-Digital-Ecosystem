@@ -14,6 +14,7 @@ import { reportStatusTone } from '../erp/statusTones'
 import { useWorkOrders } from './useWorkOrders'
 import { submitOrQueue } from '../lib/outbox'
 import { useReloadOnReconnect } from '../lib/useOnline'
+import { enumLabel, navLabel, useT } from '../i18n'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -26,6 +27,7 @@ function todayISO() {
 function DailyReportsPage() {
   const toast = useToast()
   const confirm = useConfirm()
+  const t = useT()
   const { user } = useAuth()
   const employees = useAssignableEmployees()
   const workOrders = useWorkOrders()
@@ -60,8 +62,8 @@ function DailyReportsPage() {
           navigator.onLine
             ? err instanceof Error
               ? err.message
-              : 'Failed to load daily reports'
-            : "You're offline and this list hasn't been synced to this device yet.",
+              : t.ops.daily.loadFailed
+            : t.shared.offlineNotSynced,
         ),
       )
       .finally(() => setLoading(false))
@@ -125,7 +127,7 @@ function DailyReportsPage() {
     setFormError(null)
 
     if (!summary.trim()) {
-      setFormError('Summary is required')
+      setFormError(t.ops.daily.summaryRequired)
       return
     }
 
@@ -133,7 +135,7 @@ function DailyReportsPage() {
     try {
       const { queued } = await submitOrQueue({
         kind: 'daily-report',
-        label: `Daily report — ${date}`,
+        label: t.ops.daily.outboxLabel(date),
         endpoint: '/api/daily-reports',
         body: {
           date,
@@ -143,15 +145,11 @@ function DailyReportsPage() {
           workOrderIds,
         },
       })
-      toast.success(
-        queued
-          ? "No signal — saved on your device. It'll upload automatically when you're back online."
-          : 'Daily report submitted',
-      )
+      toast.success(queued ? t.shared.savedOffline : t.ops.daily.submitted)
       setShowCreate(false)
       load()
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Failed to submit daily report')
+      setFormError(err instanceof Error ? err.message : t.ops.daily.submitFailed)
     } finally {
       setSubmitting(false)
     }
@@ -160,27 +158,27 @@ function DailyReportsPage() {
   async function handleApprove(r: DailyWorkReport) {
     try {
       await api.approveDailyReport(r.id)
-      toast.success('Report approved')
+      toast.success(t.shared.reportApproved)
       load()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to approve report')
+      toast.error(err instanceof Error ? err.message : t.shared.approveFailed)
     }
   }
 
   async function handleReject(r: DailyWorkReport) {
     const ok = await confirm({
-      title: 'Reject daily report',
-      message: `Reject the report from ${r.date.slice(0, 10)}?`,
-      confirmLabel: 'Reject',
+      title: t.ops.daily.rejectTitle,
+      message: t.ops.daily.rejectMessage(r.date.slice(0, 10)),
+      confirmLabel: t.shared.reject,
       tone: 'danger',
     })
     if (!ok) return
     try {
       await api.rejectDailyReport(r.id)
-      toast.success('Report rejected')
+      toast.success(t.shared.reportRejected)
       load()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to reject report')
+      toast.error(err instanceof Error ? err.message : t.shared.rejectFailed)
     }
   }
 
@@ -188,6 +186,7 @@ function DailyReportsPage() {
   const canSubmit = hasRole(user?.role, OPS_SUBMIT_ROLES)
   const pendingCount = reports.filter((r) => r.status === 'SUBMITTED').length
 
+  // CSV stays in English — a data file for Excel (see WorkOrdersPage).
   function exportCsv() {
     downloadCsv(
       'daily-reports',
@@ -196,7 +195,7 @@ function DailyReportsPage() {
         { header: 'Summary', accessor: (r: DailyWorkReport) => r.summary },
         {
           header: 'Technicians',
-          accessor: (r: DailyWorkReport) => r.technicians.map((t) => `${t.employee.firstName} ${t.employee.lastName}`).join('; '),
+          accessor: (r: DailyWorkReport) => r.technicians.map((x) => `${x.employee.firstName} ${x.employee.lastName}`).join('; '),
         },
         { header: 'Hours', accessor: (r: DailyWorkReport) => r.hours },
         { header: 'Status', accessor: (r: DailyWorkReport) => r.status },
@@ -209,38 +208,38 @@ function DailyReportsPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-ink-100">Daily Reports</h1>
-          <p className="mt-1 text-sm text-ink-300">Field technician logs, reviewed and approved daily.</p>
+          <h1 className="text-2xl font-bold text-ink-100">{navLabel(t, 'Daily Reports')}</h1>
+          <p className="mt-1 text-sm text-ink-300">{t.ops.daily.subtitle}</p>
         </div>
         <div className="flex items-center gap-3">
           <button type="button" onClick={exportCsv} className={secondaryButtonClass}>
             <Download className="h-4 w-4" />
-            Export
+            {t.shared.export}
           </button>
           {canSubmit && (
             <button type="button" onClick={openCreate} className={primaryButtonClass}>
               <Plus className="h-4 w-4" />
-              File Daily Report
+              {t.ops.daily.file}
             </button>
           )}
         </div>
       </div>
 
-      <StatCard label="PENDING REVIEW" value={pendingCount} deltaTone="warning" icon={ClipboardList} />
+      <StatCard label={t.ops.daily.pendingReview} value={pendingCount} deltaTone="warning" icon={ClipboardList} />
 
-      <Panel title="Operations Log Registry">
+      <Panel title={t.ops.daily.registry}>
         <div className="mb-4 flex flex-wrap items-end gap-4">
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold tracking-widest text-ink-400">FROM</label>
+            <label className="text-xs font-semibold tracking-widest text-ink-400">{t.shared.from}</label>
             <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className={inputClass} />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold tracking-widest text-ink-400">TO</label>
+            <label className="text-xs font-semibold tracking-widest text-ink-400">{t.shared.to}</label>
             <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className={inputClass} />
           </div>
           {(from || to) && (
             <button type="button" onClick={clearDateFilters} className="text-xs font-semibold text-ink-400 hover:text-ink-100">
-              Clear dates
+              {t.ops.daily.clearDates}
             </button>
           )}
         </div>
@@ -250,17 +249,17 @@ function DailyReportsPage() {
         {loading ? (
           <TableSkeleton cols={5} />
         ) : reports.length === 0 ? (
-          <EmptyState icon={ClipboardList} message="No daily reports yet." />
+          <EmptyState icon={ClipboardList} message={t.ops.daily.empty} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
-                  <th className="px-3 py-3 font-semibold">DATE</th>
-                  <th className="px-3 py-3 font-semibold">SUMMARY</th>
-                  <th className="px-3 py-3 font-semibold">TECHNICIANS</th>
-                  <th className="px-3 py-3 font-semibold">HOURS</th>
-                  <th className="px-3 py-3 font-semibold">STATUS</th>
+                  <th className="px-3 py-3 font-semibold">{t.shared.date}</th>
+                  <th className="px-3 py-3 font-semibold">{t.ops.daily.colSummary}</th>
+                  <th className="px-3 py-3 font-semibold">{t.shared.technicians}</th>
+                  <th className="px-3 py-3 font-semibold">{t.ops.daily.colHours}</th>
+                  <th className="px-3 py-3 font-semibold">{t.shared.status}</th>
                   <th className="px-3 py-3" />
                 </tr>
               </thead>
@@ -274,19 +273,29 @@ function DailyReportsPage() {
                     <td className="px-3 py-3 text-ink-300">
                       {r.technicians.length === 0
                         ? '—'
-                        : r.technicians.map((t) => `${t.employee.firstName} ${t.employee.lastName}`).join(', ')}
+                        : r.technicians.map((x) => `${x.employee.firstName} ${x.employee.lastName}`).join(', ')}
                     </td>
                     <td className="px-3 py-3 text-ink-400">{r.hours ? Number(r.hours) : '—'}</td>
                     <td className="px-3 py-3">
-                      <Badge tone={reportStatusTone[r.status]}>{r.status}</Badge>
+                      <Badge tone={reportStatusTone[r.status]}>{enumLabel(t.labels.reportStatus, r.status)}</Badge>
                     </td>
                     <td className="px-3 py-3">
                       {canManage && r.status === 'SUBMITTED' && (
                         <div className="flex items-center justify-end gap-3">
-                          <button type="button" onClick={() => handleApprove(r)} aria-label="Approve" className="text-ink-400 hover:text-cyan-accent">
+                          <button
+                            type="button"
+                            onClick={() => handleApprove(r)}
+                            aria-label={t.shared.approve}
+                            className="text-ink-400 hover:text-cyan-accent"
+                          >
                             <Check className="h-4 w-4" />
                           </button>
-                          <button type="button" onClick={() => handleReject(r)} aria-label="Reject" className="text-ink-400 hover:text-red-400">
+                          <button
+                            type="button"
+                            onClick={() => handleReject(r)}
+                            aria-label={t.shared.reject}
+                            className="text-ink-400 hover:text-red-400"
+                          >
                             <XIcon className="h-4 w-4" />
                           </button>
                         </div>
@@ -301,15 +310,15 @@ function DailyReportsPage() {
       </Panel>
 
       {showCreate && (
-        <Modal title="New Daily Report" onClose={() => setShowCreate(false)}>
+        <Modal title={t.ops.daily.newTitle} onClose={() => setShowCreate(false)}>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className={labelClass}>DATE</label>
+                <label className={labelClass}>{t.shared.date}</label>
                 <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required className={`mt-2 ${inputClass}`} />
               </div>
               <div>
-                <label className={labelClass}>HOURS (OPTIONAL)</label>
+                <label className={labelClass}>{t.ops.daily.hoursOptional}</label>
                 <input
                   type="number"
                   min={0}
@@ -322,22 +331,22 @@ function DailyReportsPage() {
             </div>
 
             <div>
-              <label className={labelClass}>SUMMARY</label>
+              <label className={labelClass}>{t.ops.daily.summary}</label>
               <textarea
                 value={summary}
                 onChange={(e) => setSummary(e.target.value)}
                 rows={3}
                 required
-                placeholder="What was done today..."
+                placeholder={t.ops.daily.summaryPlaceholder}
                 className={`mt-2 ${inputClass}`}
               />
             </div>
 
             <div>
-              <label className={labelClass}>TECHNICIANS (OPTIONAL)</label>
+              <label className={labelClass}>{t.ops.daily.techniciansOptional}</label>
               <div className="mt-2 flex max-h-32 flex-col gap-1.5 overflow-y-auto rounded-md border border-ink-700 bg-ink-950 p-3">
                 {employees.length === 0 ? (
-                  <p className="text-xs text-ink-500">No employees yet.</p>
+                  <p className="text-xs text-ink-500">{t.shared.noEmployees}</p>
                 ) : (
                   employees.map((emp) => (
                     <label key={emp.id} className="flex items-center gap-2 text-sm text-ink-200">
@@ -355,10 +364,10 @@ function DailyReportsPage() {
             </div>
 
             <div>
-              <label className={labelClass}>WORK ORDERS TOUCHED (OPTIONAL)</label>
+              <label className={labelClass}>{t.ops.daily.workOrdersTouched}</label>
               <div className="mt-2 flex max-h-32 flex-col gap-1.5 overflow-y-auto rounded-md border border-ink-700 bg-ink-950 p-3">
                 {workOrders.length === 0 ? (
-                  <p className="text-xs text-ink-500">No work orders yet.</p>
+                  <p className="text-xs text-ink-500">{t.ops.daily.noWorkOrders}</p>
                 ) : (
                   workOrders.map((wo) => (
                     <label key={wo.id} className="flex items-center gap-2 text-sm text-ink-200">
@@ -377,13 +386,11 @@ function DailyReportsPage() {
 
             {workOrderIds.length > 0 && (
               <div>
-                <label className={labelClass}>RELATED INTERVENTION REPORTS (SAME DATE)</label>
+                <label className={labelClass}>{t.ops.daily.related}</label>
                 {loadingRelated ? (
-                  <p className="mt-2 text-xs text-ink-500">Checking for related intervention reports…</p>
+                  <p className="mt-2 text-xs text-ink-500">{t.ops.daily.checkingRelated}</p>
                 ) : relatedReports.length === 0 ? (
-                  <p className="mt-2 text-xs text-ink-500">
-                    No intervention reports filed yet for these work orders on this date.
-                  </p>
+                  <p className="mt-2 text-xs text-ink-500">{t.ops.daily.noRelated}</p>
                 ) : (
                   <div className="mt-2 flex flex-col gap-2">
                     {relatedReports.map((report) => (
@@ -405,7 +412,7 @@ function DailyReportsPage() {
                             onClick={() => insertReportIntoSummary(report)}
                             className="shrink-0 text-xs font-semibold text-cyan-accent hover:underline"
                           >
-                            Insert
+                            {t.ops.daily.insert}
                           </button>
                         </div>
                       </div>
@@ -418,7 +425,7 @@ function DailyReportsPage() {
             {formError && <p className="text-sm text-red-400">{formError}</p>}
 
             <button type="submit" disabled={submitting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
-              {submitting ? 'Submitting…' : 'Submit Report'}
+              {submitting ? t.shared.submitting : t.shared.submitReport}
             </button>
           </form>
         </Modal>
