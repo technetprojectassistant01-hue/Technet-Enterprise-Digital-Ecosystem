@@ -6,6 +6,7 @@ import { Panel, Modal, Badge, EmptyState } from '../../dashboard/ui'
 import { useToast } from '../../dashboard/ToastContext'
 import { useConfirm } from '../../dashboard/ConfirmContext'
 import { inputClass, labelClass, primaryButtonClass, secondaryButtonClass } from './formStyles'
+import { useT } from '../../i18n'
 
 interface FormState {
   code: string
@@ -26,6 +27,7 @@ const EMPTY_FORM: FormState = {
 }
 
 function LeaveTypesTab({ leaveTypes, onChanged }: { leaveTypes: LeaveType[]; onChanged: () => void }) {
+  const t = useT()
   const toast = useToast()
   const confirm = useConfirm()
 
@@ -61,10 +63,10 @@ function LeaveTypesTab({ leaveTypes, onChanged }: { leaveTypes: LeaveType[]; onC
     setSeeding(true)
     try {
       await api.seedLeaveTypes()
-      toast.success('Default leave types created')
+      toast.success(t.hr.leaveTypes.seeded)
       onChanged()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to create defaults')
+      toast.error(err instanceof Error ? err.message : t.hr.leaveTypes.seedFailed)
     } finally {
       setSeeding(false)
     }
@@ -74,11 +76,11 @@ function LeaveTypesTab({ leaveTypes, onChanged }: { leaveTypes: LeaveType[]; onC
     e.preventDefault()
     setFormError(null)
 
-    if (!form.code.trim()) return setFormError('Code is required')
-    if (!form.name.trim()) return setFormError('Name is required')
+    if (!form.code.trim()) return setFormError(t.hr.leaveTypes.codeRequired)
+    if (!form.name.trim()) return setFormError(t.hr.leaveTypes.nameRequired)
 
     const days = Number(form.daysPerYear)
-    if (!Number.isFinite(days) || days < 0) return setFormError('Days per year must be zero or more')
+    if (!Number.isFinite(days) || days < 0) return setFormError(t.hr.leaveTypes.daysInvalid)
 
     setSubmitting(true)
     try {
@@ -95,12 +97,12 @@ function LeaveTypesTab({ leaveTypes, onChanged }: { leaveTypes: LeaveType[]; onC
       } else {
         await api.createLeaveType(input)
       }
-      toast.success(editing ? 'Leave type updated' : 'Leave type created')
+      toast.success(editing ? t.hr.leaveTypes.updated : t.hr.leaveTypes.created)
       setShowForm(false)
       setEditing(null)
       onChanged()
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Failed to save leave type')
+      setFormError(err instanceof Error ? err.message : t.hr.leaveTypes.saveFailed)
     } finally {
       setSubmitting(false)
     }
@@ -108,18 +110,18 @@ function LeaveTypesTab({ leaveTypes, onChanged }: { leaveTypes: LeaveType[]; onC
 
   async function handleDelete(type: LeaveType) {
     const ok = await confirm({
-      title: 'Delete leave type',
-      message: `Delete "${type.name}"? Types already used by requests cannot be deleted — deactivate them instead.`,
-      confirmLabel: 'Delete',
+      title: t.hr.leaveTypes.deleteTitle,
+      message: t.hr.leaveTypes.deleteMessage(type.name),
+      confirmLabel: t.shared.delete,
       tone: 'danger',
     })
     if (!ok) return
     try {
       await api.deleteLeaveType(type.id)
-      toast.success('Leave type deleted')
+      toast.success(t.hr.leaveTypes.deleted)
       onChanged()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to delete leave type')
+      toast.error(err instanceof Error ? err.message : t.hr.leaveTypes.deleteFailed)
     }
   }
 
@@ -129,62 +131,62 @@ function LeaveTypesTab({ leaveTypes, onChanged }: { leaveTypes: LeaveType[]; onC
         {leaveTypes.length === 0 && (
           <button type="button" onClick={handleSeed} disabled={seeding} className={secondaryButtonClass}>
             <Sparkles className="h-4 w-4" />
-            Use Mauritius defaults
+            {t.hr.leaveTypes.useDefaults}
           </button>
         )}
         <button type="button" onClick={openCreate} className={primaryButtonClass}>
           <Plus className="h-4 w-4" />
-          Add Leave Type
+          {t.hr.leaveTypes.add}
         </button>
       </div>
 
-      <Panel title="Leave Types">
+      <Panel title={t.hr.leaveTypes.panel}>
         {leaveTypes.length === 0 ? (
           <EmptyState
             icon={Layers}
-            message="No leave types yet. Start from the Mauritius defaults, or add your own."
+            message={t.hr.leaveTypes.empty}
           />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
-                  <th className="px-3 py-3 font-semibold">CODE</th>
-                  <th className="px-3 py-3 font-semibold">NAME</th>
-                  <th className="px-3 py-3 font-semibold">DAYS / YEAR</th>
-                  <th className="px-3 py-3 font-semibold">PAID</th>
-                  <th className="px-3 py-3 font-semibold">DOCS REQUIRED</th>
-                  <th className="px-3 py-3 font-semibold">STATUS</th>
+                  <th className="px-3 py-3 font-semibold">{t.hr.leaveTypes.colCode}</th>
+                  <th className="px-3 py-3 font-semibold">{t.shared.name}</th>
+                  <th className="px-3 py-3 font-semibold">{t.hr.leaveTypes.colDays}</th>
+                  <th className="px-3 py-3 font-semibold">{t.hr.leaveTypes.colPaid}</th>
+                  <th className="px-3 py-3 font-semibold">{t.hr.leaveTypes.colDocs}</th>
+                  <th className="px-3 py-3 font-semibold">{t.shared.status}</th>
                   <th className="px-3 py-3" />
                 </tr>
               </thead>
               <tbody>
-                {leaveTypes.map((t) => (
-                  <tr key={t.id} className="border-b border-ink-800 last:border-0">
-                    <td className="px-3 py-3 font-mono text-ink-300">{t.code}</td>
-                    <td className="px-3 py-3 font-medium text-ink-100">{t.name}</td>
-                    <td className="px-3 py-3 text-ink-300">{t.daysPerYear}</td>
-                    <td className="px-3 py-3 text-ink-300">{t.paid ? 'Yes' : 'No'}</td>
-                    <td className="px-3 py-3 text-ink-300">{t.requiresDocs ? 'Yes' : 'No'}</td>
+                {leaveTypes.map((type) => (
+                  <tr key={type.id} className="border-b border-ink-800 last:border-0">
+                    <td className="px-3 py-3 font-mono text-ink-300">{type.code}</td>
+                    <td className="px-3 py-3 font-medium text-ink-100">{type.name}</td>
+                    <td className="px-3 py-3 text-ink-300">{type.daysPerYear}</td>
+                    <td className="px-3 py-3 text-ink-300">{type.paid ? t.shared.yes : t.shared.no}</td>
+                    <td className="px-3 py-3 text-ink-300">{type.requiresDocs ? t.shared.yes : t.shared.no}</td>
                     <td className="px-3 py-3">
-                      <Badge tone={t.active ? 'accent' : 'neutral'}>
-                        {t.active ? 'ACTIVE' : 'INACTIVE'}
+                      <Badge tone={type.active ? 'accent' : 'neutral'}>
+                        {type.active ? t.hr.leaveTypes.active : t.hr.leaveTypes.inactive}
                       </Badge>
                     </td>
                     <td className="px-3 py-3">
                       <div className="flex items-center justify-end gap-3 text-ink-400">
                         <button
                           type="button"
-                          onClick={() => openEdit(t)}
-                          aria-label="Edit leave type"
+                          onClick={() => openEdit(type)}
+                          aria-label={t.hr.leaveTypes.editAria}
                           className="hover:text-ink-100"
                         >
                           <Pencil className="h-4 w-4" />
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleDelete(t)}
-                          aria-label="Delete leave type"
+                          onClick={() => handleDelete(type)}
+                          aria-label={t.hr.leaveTypes.deleteTitle}
                           className="hover:text-red-400"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -201,7 +203,7 @@ function LeaveTypesTab({ leaveTypes, onChanged }: { leaveTypes: LeaveType[]; onC
 
       {showForm && (
         <Modal
-          title={editing ? 'Edit Leave Type' : 'Add Leave Type'}
+          title={editing ? t.hr.leaveTypes.edit : t.hr.leaveTypes.add}
           onClose={() => {
             setShowForm(false)
             setEditing(null)
@@ -210,17 +212,17 @@ function LeaveTypesTab({ leaveTypes, onChanged }: { leaveTypes: LeaveType[]; onC
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className={labelClass}>CODE</label>
+                <label className={labelClass}>{t.hr.leaveTypes.colCode}</label>
                 <input
                   value={form.code}
                   onChange={(e) => setForm({ ...form, code: e.target.value })}
-                  placeholder="e.g. ANNUAL"
+                  placeholder={t.hr.leaveTypes.codePlaceholder}
                   required
                   className={`mt-2 ${inputClass}`}
                 />
               </div>
               <div>
-                <label className={labelClass}>DAYS PER YEAR</label>
+                <label className={labelClass}>{t.hr.leaveTypes.daysPerYear}</label>
                 <input
                   type="number"
                   min="0"
@@ -234,11 +236,11 @@ function LeaveTypesTab({ leaveTypes, onChanged }: { leaveTypes: LeaveType[]; onC
             </div>
 
             <div>
-              <label className={labelClass}>NAME</label>
+              <label className={labelClass}>{t.shared.name}</label>
               <input
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="e.g. Annual Leave"
+                placeholder={t.hr.leaveTypes.namePlaceholder}
                 required
                 className={`mt-2 ${inputClass}`}
               />
@@ -252,7 +254,7 @@ function LeaveTypesTab({ leaveTypes, onChanged }: { leaveTypes: LeaveType[]; onC
                   onChange={(e) => setForm({ ...form, paid: e.target.checked })}
                   className="h-4 w-4 rounded border-ink-600 bg-ink-950"
                 />
-                Paid leave
+                {t.hr.leaveTypes.paidLeave}
               </label>
               <label className="flex items-center gap-2 text-sm text-ink-300">
                 <input
@@ -261,7 +263,7 @@ function LeaveTypesTab({ leaveTypes, onChanged }: { leaveTypes: LeaveType[]; onC
                   onChange={(e) => setForm({ ...form, requiresDocs: e.target.checked })}
                   className="h-4 w-4 rounded border-ink-600 bg-ink-950"
                 />
-                Requires supporting documents (e.g. medical certificate)
+                {t.hr.leaveTypes.requiresDocs}
               </label>
               <label className="flex items-center gap-2 text-sm text-ink-300">
                 <input
@@ -270,14 +272,14 @@ function LeaveTypesTab({ leaveTypes, onChanged }: { leaveTypes: LeaveType[]; onC
                   onChange={(e) => setForm({ ...form, active: e.target.checked })}
                   className="h-4 w-4 rounded border-ink-600 bg-ink-950"
                 />
-                Active
+                {t.hr.leaveTypes.activeLabel}
               </label>
             </div>
 
             {formError && <p className="text-sm text-red-400">{formError}</p>}
 
             <button type="submit" disabled={submitting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
-              {submitting ? 'Saving…' : editing ? 'Save Changes' : 'Add Leave Type'}
+              {submitting ? t.shared.saving : editing ? t.shared.saveChanges : t.hr.leaveTypes.add}
             </button>
           </form>
         </Modal>
