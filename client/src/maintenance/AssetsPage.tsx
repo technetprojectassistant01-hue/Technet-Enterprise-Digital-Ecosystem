@@ -12,10 +12,13 @@ import { useAuth } from '../context/AuthContext'
 import { hasRole, OPS_MANAGE_ROLES } from '../lib/permissions'
 import { useCustomers } from '../erp/useCustomers'
 import { assetStatusTone } from './statusTones'
+import { enumLabel, useT } from '../i18n'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
 const labelClass = 'text-xs font-semibold tracking-widest text-ink-400'
+
+const ASSET_STATUSES: AssetStatus[] = ['ACTIVE', 'DECOMMISSIONED']
 
 interface FormState {
   name: string
@@ -42,6 +45,7 @@ function toFormState(a: Asset): FormState {
 function AssetsPage() {
   const toast = useToast()
   const confirm = useConfirm()
+  const t = useT()
   const { user } = useAuth()
   const canWrite = hasRole(user?.role, OPS_MANAGE_ROLES)
   const customers = useCustomers()
@@ -72,7 +76,7 @@ function AssetsPage() {
         category: categoryFilter || undefined,
       })
       .then(({ assets }) => setAssets(assets))
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load assets'))
+      .catch((err) => setError(err instanceof Error ? err.message : t.maint.assets.loadFailed))
       .finally(() => setLoading(false))
   }
 
@@ -116,11 +120,11 @@ function AssetsPage() {
     setFormError(null)
 
     if (!form.name.trim()) {
-      setFormError('Name is required')
+      setFormError(t.maint.assets.nameRequired)
       return
     }
     if (!editing && !form.customerId) {
-      setFormError('Select a customer')
+      setFormError(t.shared.selectCustomer)
       return
     }
 
@@ -144,11 +148,11 @@ function AssetsPage() {
           notes: form.notes || undefined,
         })
       }
-      toast.success(editing ? 'Asset updated' : 'Asset created')
+      toast.success(editing ? t.maint.assets.updated : t.maint.assets.created)
       closeForm()
       load()
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Failed to save asset')
+      setFormError(err instanceof Error ? err.message : t.maint.assets.saveFailed)
     } finally {
       setSubmitting(false)
     }
@@ -156,24 +160,25 @@ function AssetsPage() {
 
   async function handleDelete(a: Asset) {
     const ok = await confirm({
-      title: 'Delete asset',
-      message: `Delete "${a.name}"? This cannot be undone.`,
-      confirmLabel: 'Delete',
+      title: t.maint.assets.deleteTitle,
+      message: t.maint.assets.deleteMessage(a.name),
+      confirmLabel: t.shared.delete,
       tone: 'danger',
     })
     if (!ok) return
     try {
       await api.deleteAsset(a.id)
-      toast.success(`Deleted ${a.name}`)
+      toast.success(t.shared.deleted(a.name))
       load()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to delete asset')
+      toast.error(err instanceof Error ? err.message : t.maint.assets.deleteFailed)
     }
   }
 
   const activeCount = assets.filter((a) => a.status === 'ACTIVE').length
   const decommissionedCount = assets.filter((a) => a.status === 'DECOMMISSIONED').length
 
+  // CSV stays in English — a data file for Excel (see WorkOrdersPage).
   function exportCsv() {
     downloadCsv(
       'assets',
@@ -194,42 +199,40 @@ function AssetsPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-ink-100">Asset Registry</h1>
-          <p className="mt-1 text-sm text-ink-300">Manage customer equipment covered under maintenance.</p>
+          <h1 className="text-2xl font-bold text-ink-100">{t.maint.assets.title}</h1>
+          <p className="mt-1 text-sm text-ink-300">{t.maint.assets.subtitle}</p>
         </div>
         <div className="flex items-center gap-3">
           <button type="button" onClick={exportCsv} className={secondaryButtonClass}>
             <Download className="h-4 w-4" />
-            Export CSV
+            {t.shared.exportCsv}
           </button>
           {canWrite && (
             <button type="button" onClick={openCreate} disabled={customers.length === 0} className={primaryButtonClass}>
               <Plus className="h-4 w-4" />
-              Add Asset
+              {t.maint.assets.add}
             </button>
           )}
         </div>
       </div>
 
-      {canWrite && customers.length === 0 && (
-        <p className="text-sm text-ink-400">Add a customer first before registering assets.</p>
-      )}
+      {canWrite && customers.length === 0 && <p className="text-sm text-ink-400">{t.maint.assets.addCustomerFirst}</p>}
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
-        <StatCard label="TOTAL ASSETS" value={assets.length} icon={Box} />
-        <StatCard label="ACTIVE" value={activeCount} icon={Box} />
-        <StatCard label="DECOMMISSIONED" value={decommissionedCount} icon={Box} />
+        <StatCard label={t.maint.assets.total} value={assets.length} icon={Box} />
+        <StatCard label={t.labels.assetStatus.ACTIVE} value={activeCount} icon={Box} />
+        <StatCard label={t.labels.assetStatus.DECOMMISSIONED} value={decommissionedCount} icon={Box} />
       </div>
 
-      <Panel title="Asset Ledger">
+      <Panel title={t.maint.assets.ledger}>
         <div className="mb-4 flex flex-wrap items-end gap-4">
           <div className="flex max-w-xs flex-1 flex-col gap-1">
-            <label className={labelClass}>SEARCH</label>
+            <label className={labelClass}>{t.maint.assets.search}</label>
             <div className="flex items-center gap-2 rounded-md border border-ink-700 bg-ink-950 px-3 py-2">
               <Search className="h-4 w-4 text-ink-400" />
               <input
                 type="text"
-                placeholder="Name, serial number, or location..."
+                placeholder={t.maint.assets.searchPlaceholder}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full bg-transparent text-sm text-ink-100 placeholder-ink-500 outline-none"
@@ -237,9 +240,9 @@ function AssetsPage() {
             </div>
           </div>
           <div className="flex max-w-xs flex-1 flex-col gap-1">
-            <label className={labelClass}>CUSTOMER</label>
+            <label className={labelClass}>{t.shared.customer}</label>
             <select value={customerFilter} onChange={(e) => setCustomerFilter(e.target.value)} className={inputClass}>
-              <option value="">All customers</option>
+              <option value="">{t.shared.allCustomers}</option>
               {customers.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.company || c.name}
@@ -248,22 +251,25 @@ function AssetsPage() {
             </select>
           </div>
           <div className="flex flex-col gap-1">
-            <label className={labelClass}>STATUS</label>
+            <label className={labelClass}>{t.shared.status}</label>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as AssetStatus | '')}
               className={inputClass}
             >
-              <option value="">All statuses</option>
-              <option value="ACTIVE">ACTIVE</option>
-              <option value="DECOMMISSIONED">DECOMMISSIONED</option>
+              <option value="">{t.shared.allStatuses}</option>
+              {ASSET_STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {enumLabel(t.labels.assetStatus, s)}
+                </option>
+              ))}
             </select>
           </div>
           {categoryOptions.length > 0 && (
             <div className="flex flex-col gap-1">
-              <label className={labelClass}>CATEGORY</label>
+              <label className={labelClass}>{t.shared.category}</label>
               <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className={inputClass}>
-                <option value="">All categories</option>
+                <option value="">{t.shared.allCategories}</option>
                 {categoryOptions.map((c) => (
                   <option key={c} value={c}>
                     {c}
@@ -274,7 +280,7 @@ function AssetsPage() {
           )}
           {(search || customerFilter || statusFilter || categoryFilter) && (
             <button type="button" onClick={clearFilters} className="text-xs font-semibold text-ink-400 hover:text-ink-100">
-              Clear filters
+              {t.shared.clearFilters}
             </button>
           )}
         </div>
@@ -284,17 +290,17 @@ function AssetsPage() {
         {loading ? (
           <TableSkeleton cols={6} />
         ) : assets.length === 0 ? (
-          <EmptyState icon={Box} message="No assets yet. Register your first asset to get started." />
+          <EmptyState icon={Box} message={t.maint.assets.empty} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
-                  <th className="px-3 py-3 font-semibold">ASSET #</th>
-                  <th className="px-3 py-3 font-semibold">NAME</th>
-                  <th className="px-3 py-3 font-semibold">CUSTOMER</th>
-                  <th className="px-3 py-3 font-semibold">LOCATION</th>
-                  <th className="px-3 py-3 font-semibold">STATUS</th>
+                  <th className="px-3 py-3 font-semibold">{t.maint.assets.colNumber}</th>
+                  <th className="px-3 py-3 font-semibold">{t.shared.name}</th>
+                  <th className="px-3 py-3 font-semibold">{t.shared.customer}</th>
+                  <th className="px-3 py-3 font-semibold">{t.shared.location}</th>
+                  <th className="px-3 py-3 font-semibold">{t.shared.status}</th>
                   {canWrite && <th className="px-3 py-3" />}
                 </tr>
               </thead>
@@ -313,15 +319,15 @@ function AssetsPage() {
                     <td className="px-3 py-3 text-ink-300">{a.customer.company || a.customer.name}</td>
                     <td className="px-3 py-3 text-ink-300">{a.location || '—'}</td>
                     <td className="px-3 py-3">
-                      <Badge tone={assetStatusTone[a.status]}>{a.status}</Badge>
+                      <Badge tone={assetStatusTone[a.status]}>{enumLabel(t.labels.assetStatus, a.status)}</Badge>
                     </td>
                     {canWrite && (
                       <td className="px-3 py-3">
                         <div className="flex items-center justify-end gap-3 text-ink-400">
-                          <button type="button" onClick={() => openEdit(a)} aria-label="Edit asset" className="hover:text-ink-100">
+                          <button type="button" onClick={() => openEdit(a)} aria-label={t.maint.assets.editAria} className="hover:text-ink-100">
                             <Pencil className="h-4 w-4" />
                           </button>
-                          <button type="button" onClick={() => handleDelete(a)} aria-label="Delete asset" className="hover:text-red-400">
+                          <button type="button" onClick={() => handleDelete(a)} aria-label={t.maint.assets.deleteTitle} className="hover:text-red-400">
                             <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
@@ -336,11 +342,11 @@ function AssetsPage() {
       </Panel>
 
       {(showCreate || editing) && (
-        <Modal title={editing ? 'Edit Asset' : 'Add Asset'} onClose={closeForm}>
+        <Modal title={editing ? t.maint.assets.editTitle : t.maint.assets.add} onClose={closeForm}>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="col-span-2">
-                <label className={labelClass}>NAME</label>
+                <label className={labelClass}>{t.shared.name}</label>
                 <input
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -350,7 +356,7 @@ function AssetsPage() {
               </div>
               {!editing && (
                 <div>
-                  <label className={labelClass}>CUSTOMER</label>
+                  <label className={labelClass}>{t.shared.customer}</label>
                   <select
                     value={form.customerId}
                     onChange={(e) => setForm({ ...form, customerId: e.target.value })}
@@ -365,16 +371,16 @@ function AssetsPage() {
                 </div>
               )}
               <div>
-                <label className={labelClass}>CATEGORY</label>
+                <label className={labelClass}>{t.shared.category}</label>
                 <input
                   value={form.category}
                   onChange={(e) => setForm({ ...form, category: e.target.value })}
-                  placeholder="e.g. HVAC"
+                  placeholder={t.maint.assets.categoryPlaceholder}
                   className={`mt-2 ${inputClass}`}
                 />
               </div>
               <div>
-                <label className={labelClass}>SERIAL NUMBER</label>
+                <label className={labelClass}>{t.shared.serialNumber}</label>
                 <input
                   value={form.serialNumber}
                   onChange={(e) => setForm({ ...form, serialNumber: e.target.value })}
@@ -382,7 +388,7 @@ function AssetsPage() {
                 />
               </div>
               <div>
-                <label className={labelClass}>LOCATION</label>
+                <label className={labelClass}>{t.shared.location}</label>
                 <input
                   value={form.location}
                   onChange={(e) => setForm({ ...form, location: e.target.value })}
@@ -390,7 +396,7 @@ function AssetsPage() {
                 />
               </div>
               <div className="col-span-2">
-                <label className={labelClass}>NOTES</label>
+                <label className={labelClass}>{t.shared.notes}</label>
                 <input
                   value={form.notes}
                   onChange={(e) => setForm({ ...form, notes: e.target.value })}
@@ -402,7 +408,7 @@ function AssetsPage() {
             {formError && <p className="text-sm text-red-400">{formError}</p>}
 
             <button type="submit" disabled={submitting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
-              {submitting ? 'Saving…' : editing ? 'Save Changes' : 'Create Asset'}
+              {submitting ? t.shared.saving : editing ? t.shared.saveChanges : t.maint.assets.create}
             </button>
           </form>
         </Modal>
