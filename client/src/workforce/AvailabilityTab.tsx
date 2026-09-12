@@ -4,6 +4,7 @@ import * as api from '../lib/api'
 import type { AttendanceRosterRow, AttendanceStatus } from '../lib/api'
 import { Panel, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { inputClass } from './formStyles'
+import { useT } from '../i18n'
 
 function today(): string {
   return new Date().toISOString().slice(0, 10)
@@ -40,6 +41,7 @@ function EmployeeList({ rows, empty, detail }: { rows: AttendanceRosterRow[]; em
 }
 
 function AvailabilityTab() {
+  const t = useT()
   const [date, setDate] = useState(today())
   const [roster, setRoster] = useState<AttendanceRosterRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -51,7 +53,7 @@ function AvailabilityTab() {
     api
       .getAttendanceDay(forDate)
       .then(({ roster }) => setRoster(roster))
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load availability'))
+      .catch((err) => setError(err instanceof Error ? err.message : t.workforce.availability.loadFailed))
       .finally(() => setLoading(false))
   }, [])
 
@@ -67,18 +69,14 @@ function AvailabilityTab() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <p className="text-sm text-ink-400">
-          Who's available to work today, based on HR's attendance register and approved leave — not a
-          live feed. Anyone not yet recorded for today defaults to "Available." For live GPS
-          location of technicians already on a job, see Operations → Field Operations.
-        </p>
+        <p className="text-sm text-ink-400">{t.workforce.availability.note}</p>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"
           onClick={() => setDate(shiftDate(date, -1))}
-          aria-label="Previous day"
+          aria-label={t.shared.previousDay}
           className="rounded-md border border-ink-600 p-2 text-ink-300 hover:text-ink-100"
         >
           <ChevronLeft className="h-4 w-4" />
@@ -87,14 +85,14 @@ function AvailabilityTab() {
         <button
           type="button"
           onClick={() => setDate(shiftDate(date, 1))}
-          aria-label="Next day"
+          aria-label={t.shared.nextDay}
           className="rounded-md border border-ink-600 p-2 text-ink-300 hover:text-ink-100"
         >
           <ChevronRight className="h-4 w-4" />
         </button>
         {date !== today() && (
           <button type="button" onClick={() => setDate(today())} className="text-sm text-ink-300 hover:text-ink-100">
-            Today
+            {t.shared.today}
           </button>
         )}
       </div>
@@ -104,28 +102,41 @@ function AvailabilityTab() {
       {loading ? (
         <TableSkeleton rows={4} cols={3} />
       ) : roster.length === 0 && !error ? (
-        <EmptyState icon={UserCheck} message="No employees to show for this date." />
+        <EmptyState icon={UserCheck} message={t.workforce.availability.noEmployees} />
       ) : (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <Panel title="Available" icon={UserCheck} badge={<Badge tone="success">{available.length}</Badge>}>
-            <EmployeeList rows={available} empty="Nobody available today." />
+          <Panel
+            title={t.workforce.availability.available}
+            icon={UserCheck}
+            badge={<Badge tone="success">{available.length}</Badge>}
+          >
+            <EmployeeList rows={available} empty={t.workforce.availability.nobodyAvailable} />
           </Panel>
 
-          <Panel title="On Leave" icon={CalendarDays} badge={<Badge tone="warning">{onLeave.length}</Badge>}>
-            <EmployeeList rows={onLeave} empty="Nobody on leave today." detail={(r) => r.onLeaveType} />
+          <Panel
+            title={t.workforce.availability.onLeave}
+            icon={CalendarDays}
+            badge={<Badge tone="warning">{onLeave.length}</Badge>}
+          >
+            <EmployeeList
+              rows={onLeave}
+              empty={t.workforce.availability.nobodyOnLeave}
+              detail={(r) => r.onLeaveType}
+            />
           </Panel>
 
-          <Panel title="Absent" icon={UserX} badge={<Badge tone="danger">{absent.length}</Badge>}>
-            <EmployeeList rows={absent} empty="Nobody marked absent today." />
+          <Panel
+            title={t.workforce.availability.absent}
+            icon={UserX}
+            badge={<Badge tone="danger">{absent.length}</Badge>}
+          >
+            <EmployeeList rows={absent} empty={t.workforce.availability.nobodyAbsent} />
           </Panel>
         </div>
       )}
 
       {!loading && restOrHoliday.length > 0 && (
-        <p className="text-xs text-ink-500">
-          {restOrHoliday.length} employee{restOrHoliday.length === 1 ? '' : 's'} have a rest day or public
-          holiday today and aren't shown above.
-        </p>
+        <p className="text-xs text-ink-500">{t.workforce.availability.restOrHoliday(restOrHoliday.length)}</p>
       )}
     </div>
   )
