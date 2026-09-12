@@ -109,7 +109,7 @@ function Login() {
             </div>
           </div>
 
-          <div className="mt-5 flex flex-wrap items-center justify-between gap-2 text-sm">
+          <div className="mt-5 text-sm">
             <label className="flex items-center gap-2 text-ink-300">
               <input
                 type="checkbox"
@@ -119,8 +119,11 @@ function Login() {
               />
               {t.auth.rememberSession}
             </label>
-            <Link to="/forgot-password" className="text-cyan-accent hover:underline">
-              {t.auth.forgotPassword}
+            {/* Staff logins are created and reset by an admin, so the primary answer here is "ask
+                them". The email-reset link stays for admins, who have nobody else to ask. */}
+            <p className="mt-4 text-ink-400">{t.auth.forgotPasswordHint}</p>
+            <Link to="/forgot-password" className="mt-1 inline-block text-xs text-ink-500 hover:text-cyan-accent">
+              {t.auth.adminResetLink}
             </Link>
           </div>
 
