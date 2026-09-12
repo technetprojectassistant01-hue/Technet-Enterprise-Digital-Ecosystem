@@ -1,5 +1,6 @@
 import { Outlet } from 'react-router-dom'
 import ModuleHeader from '../../dashboard/ModuleHeader'
+import { navLabel, useT } from '../../i18n'
 
 const TABS: { label: string; to: string; end?: boolean }[] = [
   { label: 'Overview', to: '/dashboard/erp/hr', end: true },
@@ -9,9 +10,15 @@ const TABS: { label: string; to: string; end?: boolean }[] = [
 ]
 
 function HrLayout() {
+  const t = useT()
   return (
     <div className="flex flex-col gap-6">
-      <ModuleHeader title="HR" subtitle="Management" tabs={TABS} searchPlaceholder="Search resources..." />
+      <ModuleHeader
+        title="HR"
+        subtitle={t.hr.subtitle}
+        tabs={TABS.map((tab) => ({ ...tab, label: navLabel(t, tab.label) }))}
+        searchPlaceholder={t.hr.searchPlaceholder}
+      />
       <Outlet />
     </div>
   )
