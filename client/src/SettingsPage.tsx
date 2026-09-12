@@ -1,5 +1,4 @@
-import { useState, type FormEvent } from 'react'
-import * as api from './lib/api'
+import { useState } from 'react'
 import { Panel } from './dashboard/ui'
 import { primaryButtonClass } from './dashboard/buttonStyles'
 import { InstallAppDialog } from './dashboard/InstallAppDialog'
@@ -42,36 +41,6 @@ function InstallAppPanel() {
 
 function SettingsPage() {
   const t = useT()
-  const [currentPassword, setCurrentPassword] = useState('')
-  const [newPassword, setNewPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
-
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault()
-    setError(null)
-    setSuccess(false)
-
-    if (newPassword !== confirmPassword) {
-      setError(t.settings.mismatch)
-      return
-    }
-
-    setSubmitting(true)
-    try {
-      await api.changePassword(currentPassword, newPassword)
-      setCurrentPassword('')
-      setNewPassword('')
-      setConfirmPassword('')
-      setSuccess(true)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t.settings.failed)
-    } finally {
-      setSubmitting(false)
-    }
-  }
 
   return (
     <div className="max-w-md">
@@ -83,63 +52,8 @@ function SettingsPage() {
       </Panel>
 
       <div className="mt-6">
-        <Panel title={t.settings.changePassword}>
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <div>
-              <label htmlFor="currentPassword" className="text-xs font-semibold tracking-widest text-ink-400">
-                {t.settings.currentPassword}
-              </label>
-              <input
-                id="currentPassword"
-                type="password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                required
-                className="mt-2 w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-ink-100 outline-none focus:border-cyan-accent"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="newPassword" className="text-xs font-semibold tracking-widest text-ink-400">
-                {t.settings.newPassword}
-              </label>
-              <input
-                id="newPassword"
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                minLength={8}
-                required
-                className="mt-2 w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-ink-100 outline-none focus:border-cyan-accent"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="confirmPassword" className="text-xs font-semibold tracking-widest text-ink-400">
-                {t.settings.confirmNewPassword}
-              </label>
-              <input
-                id="confirmPassword"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                minLength={8}
-                required
-                className="mt-2 w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-ink-100 outline-none focus:border-cyan-accent"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={submitting}
-              className="rounded-md bg-cyan-accent py-2.5 text-sm font-semibold text-ink-950 transition hover:bg-cyan-accent-dark disabled:cursor-not-allowed disabled:opacity-70"
-            >
-              {submitting ? t.settings.updating : t.settings.updatePassword}
-            </button>
-
-            {error && <p className="text-center text-sm text-red-400">{error}</p>}
-            {success && <p className="text-center text-sm text-cyan-accent">{t.settings.updated}</p>}
-          </form>
+        <Panel title={t.settings.password}>
+          <p className="text-sm text-ink-300">{t.settings.passwordManagedByAdmin}</p>
         </Panel>
       </div>
 
