@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { UserCog, KeyRound, Copy } from 'lucide-react'
+import { UserCog, KeyRound, Copy, AtSign } from 'lucide-react'
 import * as api from './lib/api'
 import type { ManagedUser, Role } from './lib/api'
 import { useAuth } from './context/AuthContext'
@@ -46,6 +46,13 @@ function UsersPage() {
   const [resetResult, setResetResult] = useState<{ email: string; password: string } | null>(null)
   const [copied, setCopied] = useState(false)
 
+  // Changing an email changes how that person signs in, so it gets its own deliberate dialog
+  // rather than an inline edit — including when an admin is changing their own.
+  const [editingEmail, setEditingEmail] = useState<ManagedUser | null>(null)
+  const [nextEmail, setNextEmail] = useState('')
+  const [emailError, setEmailError] = useState<string | null>(null)
+  const [savingEmail, setSavingEmail] = useState(false)
+
   function loadUsers() {
     setLoading(true)
     api
@@ -84,6 +91,34 @@ function UsersPage() {
       loadUsers()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to update role')
+    }
+  }
+
+  function openEmailEditor(u: ManagedUser) {
+    setEditingEmail(u)
+    setNextEmail(u.email)
+    setEmailError(null)
+  }
+
+  async function handleSaveEmail(e: FormEvent) {
+    e.preventDefault()
+    if (!editingEmail) return
+    setEmailError(null)
+    setSavingEmail(true)
+    try {
+      await api.updateUser(editingEmail.id, { email: nextEmail })
+      const changingOwn = editingEmail.id === currentUser?.id
+      toast.success(
+        changingOwn
+          ? `You now sign in as ${nextEmail.trim().toLowerCase()}`
+          : `${editingEmail.email} now signs in as ${nextEmail.trim().toLowerCase()}`,
+      )
+      setEditingEmail(null)
+      loadUsers()
+    } catch (err) {
+      setEmailError(err instanceof Error ? err.message : 'Failed to change the email')
+    } finally {
+      setSavingEmail(false)
     }
   }
 
@@ -226,6 +261,15 @@ function UsersPage() {
                     <div className="flex items-center justify-end gap-2">
                       <button
                         type="button"
+                        onClick={() => openEmailEditor(u)}
+                        title="Change sign-in email"
+                        className="flex items-center gap-1 rounded-md border border-ink-600 px-3 py-1 text-xs text-ink-300 hover:bg-ink-800 hover:text-ink-100"
+                      >
+                        <AtSign className="h-3.5 w-3.5" />
+                        Change Email
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => handleResetPassword(u.id, u.email)}
                         title="Reset password"
                         className="flex items-center gap-1 rounded-md border border-ink-600 px-3 py-1 text-xs text-ink-300 hover:bg-ink-800 hover:text-ink-100"
@@ -248,6 +292,41 @@ function UsersPage() {
             </tbody>
           </table>
         </Panel>
+      )}
+
+      {editingEmail && (
+        <Modal title="Change Sign-In Email" onClose={() => setEditingEmail(null)}>
+          <form onSubmit={handleSaveEmail} className="flex flex-col gap-4">
+            <p className="text-sm text-ink-300">
+              {editingEmail.id === currentUser?.id
+                ? 'This is the address you sign in with, and where a password reset link would be sent. Make sure you can actually receive mail at the new one.'
+                : `This is the address ${editingEmail.name || editingEmail.email} signs in with. Tell them it has changed — their old address stops working immediately.`}
+            </p>
+            <div>
+              <label htmlFor="next-email" className="text-xs font-semibold tracking-widest text-ink-400">
+                EMAIL
+              </label>
+              <input
+                id="next-email"
+                type="email"
+                value={nextEmail}
+                onChange={(e) => setNextEmail(e.target.value)}
+                required
+                className={`mt-2 w-full ${inputClass}`}
+              />
+            </div>
+
+            {emailError && <p className="text-sm text-red-400">{emailError}</p>}
+
+            <button
+              type="submit"
+              disabled={savingEmail || nextEmail.trim().toLowerCase() === editingEmail.email}
+              className="rounded-md bg-cyan-accent py-2.5 text-sm font-semibold text-ink-950 transition hover:bg-cyan-accent-dark disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {savingEmail ? 'Saving…' : 'Save Email'}
+            </button>
+          </form>
+        </Modal>
       )}
 
       {resetResult && (
