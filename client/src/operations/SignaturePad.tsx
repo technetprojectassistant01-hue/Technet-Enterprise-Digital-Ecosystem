@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Eraser } from 'lucide-react'
+import { useT } from '../i18n'
 
 function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) => void }) {
+  const t = useT()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const drawingRef = useRef(false)
   const [hasStroke, setHasStroke] = useState(false)
@@ -76,7 +78,7 @@ function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) => void
         />
       </div>
       <div className="flex items-center justify-between">
-        <span className="text-xs text-ink-500">Sign with mouse, stylus, or touch.</span>
+        <span className="text-xs text-ink-500">{t.ops.signature.hint}</span>
         <button
           type="button"
           onClick={handleClear}
@@ -84,7 +86,7 @@ function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) => void
           className="flex items-center gap-1.5 text-xs font-semibold text-ink-400 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-40"
         >
           <Eraser className="h-3.5 w-3.5" />
-          Clear
+          {t.ops.signature.clear}
         </button>
       </div>
     </div>
