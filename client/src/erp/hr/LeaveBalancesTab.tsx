@@ -6,12 +6,14 @@ import { Panel, Modal, EmptyState, TableSkeleton } from '../../dashboard/ui'
 import { useToast } from '../../dashboard/ToastContext'
 import { useEmployees } from '../useEmployees'
 import { inputClass, labelClass, primaryButtonClass, secondaryButtonClass } from './formStyles'
+import { useT } from '../../i18n'
 
 function remainingOf(balance: LeaveBalance): number {
   return Number(balance.entitledDays) + Number(balance.carriedOverDays) - Number(balance.usedDays)
 }
 
 function LeaveBalancesTab({ leaveTypes }: { leaveTypes: LeaveType[] }) {
+  const t = useT()
   const toast = useToast()
   const employees = useEmployees()
 
@@ -39,7 +41,7 @@ function LeaveBalancesTab({ leaveTypes }: { leaveTypes: LeaveType[] }) {
       api
         .listLeaveBalances({ year: nextYear, employeeId: nextEmployee || undefined })
         .then(({ balances }) => setBalances(balances))
-        .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load balances'))
+        .catch((err) => setError(err instanceof Error ? err.message : t.hr.balances.loadFailed))
         .finally(() => setLoading(false))
     },
     [year, employeeId],
@@ -55,13 +57,11 @@ function LeaveBalancesTab({ leaveTypes }: { leaveTypes: LeaveType[] }) {
     try {
       const { created } = await api.initializeLeaveBalances(year)
       toast.success(
-        created === 0
-          ? `Every employee already has ${year} balances`
-          : `Created ${created} balance record${created === 1 ? '' : 's'} for ${year}`,
+        created === 0 ? t.hr.balances.alreadyHave(year) : t.hr.balances.created(created, year),
       )
       load()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to initialize balances')
+      toast.error(err instanceof Error ? err.message : t.hr.balances.initFailed)
     } finally {
       setInitializing(false)
     }
@@ -82,10 +82,10 @@ function LeaveBalancesTab({ leaveTypes }: { leaveTypes: LeaveType[] }) {
     const entitledDays = Number(entitled)
     const carriedOverDays = Number(carried || 0)
     if (!Number.isFinite(entitledDays) || entitledDays < 0) {
-      return setFormError('Entitled days must be zero or more')
+      return setFormError(t.hr.balances.entitledInvalid)
     }
     if (!Number.isFinite(carriedOverDays) || carriedOverDays < 0) {
-      return setFormError('Carried-over days must be zero or more')
+      return setFormError(t.hr.balances.carriedInvalid)
     }
 
     setSubmitting(true)
@@ -97,11 +97,11 @@ function LeaveBalancesTab({ leaveTypes }: { leaveTypes: LeaveType[] }) {
         entitledDays,
         carriedOverDays,
       })
-      toast.success('Balance updated')
+      toast.success(t.hr.balances.updated)
       setEditing(null)
       load()
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Failed to update balance')
+      setFormError(err instanceof Error ? err.message : t.hr.balances.saveFailed)
     } finally {
       setSubmitting(false)
     }
@@ -111,7 +111,7 @@ function LeaveBalancesTab({ leaveTypes }: { leaveTypes: LeaveType[] }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <Panel title="Leave Balances">
+      <Panel title={t.hr.balances.panel}>
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <select
             value={year}
@@ -137,7 +137,7 @@ function LeaveBalancesTab({ leaveTypes }: { leaveTypes: LeaveType[] }) {
             }}
             className={`max-w-[16rem] ${inputClass}`}
           >
-            <option value="">All employees</option>
+            <option value="">{t.hr.balances.allEmployees}</option>
             {employees.map((e) => (
               <option key={e.id} value={e.id}>
                 {e.firstName} {e.lastName}
@@ -152,14 +152,11 @@ function LeaveBalancesTab({ leaveTypes }: { leaveTypes: LeaveType[] }) {
             className={`ml-auto ${secondaryButtonClass}`}
           >
             <RefreshCw className={`h-4 w-4 ${initializing ? 'animate-spin' : ''}`} />
-            Generate {year} balances
+            {t.hr.balances.generate(year)}
           </button>
         </div>
 
-        <p className="mb-4 text-xs text-ink-400">
-          Generating creates any missing balance rows from each leave type's yearly entitlement. Existing
-          rows keep their adjusted values.
-        </p>
+        <p className="mb-4 text-xs text-ink-400">{t.hr.balances.generateNote}</p>
 
         {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
 
@@ -168,19 +165,19 @@ function LeaveBalancesTab({ leaveTypes }: { leaveTypes: LeaveType[] }) {
         ) : balances.length === 0 ? (
           <EmptyState
             icon={Scale}
-            message={`No ${year} balances yet. Use "Generate ${year} balances" to create them.`}
+            message={t.hr.balances.empty(year)}
           />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
-                  <th className="px-3 py-3 font-semibold">EMPLOYEE</th>
-                  <th className="px-3 py-3 font-semibold">LEAVE TYPE</th>
-                  <th className="px-3 py-3 font-semibold">ENTITLED</th>
-                  <th className="px-3 py-3 font-semibold">CARRIED OVER</th>
-                  <th className="px-3 py-3 font-semibold">USED</th>
-                  <th className="px-3 py-3 font-semibold">REMAINING</th>
+                  <th className="px-3 py-3 font-semibold">{t.shared.employeeCol}</th>
+                  <th className="px-3 py-3 font-semibold">{t.hr.balances.colLeaveType}</th>
+                  <th className="px-3 py-3 font-semibold">{t.hr.balances.colEntitled}</th>
+                  <th className="px-3 py-3 font-semibold">{t.hr.balances.colCarried}</th>
+                  <th className="px-3 py-3 font-semibold">{t.hr.balances.colUsed}</th>
+                  <th className="px-3 py-3 font-semibold">{t.hr.balances.colRemaining}</th>
                   <th className="px-3 py-3" />
                 </tr>
               </thead>
@@ -208,7 +205,7 @@ function LeaveBalancesTab({ leaveTypes }: { leaveTypes: LeaveType[] }) {
                           <button
                             type="button"
                             onClick={() => openEdit(b)}
-                            aria-label="Adjust balance"
+                            aria-label={t.hr.balances.adjustAria}
                             className="hover:text-ink-100"
                           >
                             <Pencil className="h-4 w-4" />
@@ -226,15 +223,16 @@ function LeaveBalancesTab({ leaveTypes }: { leaveTypes: LeaveType[] }) {
 
       {editing && (
         <Modal
-          title={`Adjust ${editing.leaveType.name} — ${editing.employee?.firstName ?? ''} ${
-            editing.employee?.lastName ?? ''
-          }`}
+          title={t.hr.balances.adjustTitle(
+            editing.leaveType.name,
+            `${editing.employee?.firstName ?? ''} ${editing.employee?.lastName ?? ''}`.trim(),
+          )}
           onClose={() => setEditing(null)}
         >
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className={labelClass}>ENTITLED DAYS ({editing.year})</label>
+                <label className={labelClass}>{t.hr.balances.entitledDays(editing.year)}</label>
                 <input
                   type="number"
                   min="0"
@@ -246,7 +244,7 @@ function LeaveBalancesTab({ leaveTypes }: { leaveTypes: LeaveType[] }) {
                 />
               </div>
               <div>
-                <label className={labelClass}>CARRIED OVER</label>
+                <label className={labelClass}>{t.hr.balances.carriedOver}</label>
                 <input
                   type="number"
                   min="0"
@@ -258,15 +256,12 @@ function LeaveBalancesTab({ leaveTypes }: { leaveTypes: LeaveType[] }) {
               </div>
             </div>
 
-            <p className="text-xs text-ink-400">
-              {editing.usedDays} day(s) already used. Used days only change when leave is approved or
-              cancelled.
-            </p>
+            <p className="text-xs text-ink-400">{t.hr.balances.usedNote(editing.usedDays)}</p>
 
             {formError && <p className="text-sm text-red-400">{formError}</p>}
 
             <button type="submit" disabled={submitting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
-              {submitting ? 'Saving…' : 'Save Balance'}
+              {submitting ? t.shared.saving : t.hr.balances.save}
             </button>
           </form>
         </Modal>
