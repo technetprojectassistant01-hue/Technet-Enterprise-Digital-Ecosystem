@@ -853,9 +853,15 @@ wording complaints come in, they're one-line dictionary edits); **choice saved o
   Technician" instead of the raw enum), sync indicator, notification panel chrome, confirm dialog,
   Settings, install pop-up + iPhone guide, Help Center (its FAQ lives in `help.sections` per
   language — **FAQ answers quote each language's own button labels, keep them in step**).
-  Overview / My Attendance / My Leave, then the Operations and Maintenance screens technicians use,
-  are the next Phase 1 steps; ERP, HR, Workforce, Marketing, Insight, Connect and the customer
-  portal are later phases.
+  Overview, My Attendance and My Leave. **Phase 1 finished 2026-09-12 with all of Technet
+  Operations and all of Technet Maintenance** — Work Orders (+ detail), Daily Reports, the three
+  Intervention Report screens, the signature pad, the unit-breakdown editor, Team Attendance, Field
+  Operations, Assets (+ detail), Contracts, Requests, Schedule (+ visit detail), both module
+  headers. Enum values the server sends (statuses, priorities, job categories, exit reasons) render
+  through `t.labels.*` via `enumLabel()` in `i18n/index.tsx`, which falls back to the raw value made
+  readable; `SITE_EXIT_REASON_LABELS` was deleted from `lib/api.ts` because that map now lives in
+  the dictionaries. ERP, HR, Workforce, Marketing, Insight, Connect and the customer portal are
+  later phases.
 - **Still English everywhere:** server-generated text — API error messages (~490 of them, shown
   in toasts), in-app notification titles/messages, push reminder text, and PDFs. Dates/numbers are
   not yet locale-formatted. Say so plainly if asked; don't imply full coverage.
