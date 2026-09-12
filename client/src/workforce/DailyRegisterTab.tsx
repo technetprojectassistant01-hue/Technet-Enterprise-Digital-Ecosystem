@@ -5,6 +5,7 @@ import type { AttendanceRecordInput, AttendanceRosterRow, AttendanceStatus } fro
 import { Panel, StatCard, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { useToast } from '../dashboard/ToastContext'
 import { inputClass, primaryButtonClass } from './formStyles'
+import { enumLabel, useT } from '../i18n'
 
 const STATUSES: AttendanceStatus[] = [
   'PRESENT',
@@ -47,6 +48,7 @@ function rowFrom(entry: AttendanceRosterRow): RowState {
 }
 
 function DailyRegisterTab() {
+  const t = useT()
   const toast = useToast()
 
   const [date, setDate] = useState(today())
@@ -65,7 +67,7 @@ function DailyRegisterTab() {
         setRoster(roster)
         setRows(Object.fromEntries(roster.map((entry) => [entry.employee.id, rowFrom(entry)])))
       })
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load the register'))
+      .catch((err) => setError(err instanceof Error ? err.message : t.workforce.register.loadFailed))
       .finally(() => setLoading(false))
   }, [])
 
@@ -94,10 +96,10 @@ function DailyRegisterTab() {
       })
 
       const { saved } = await api.saveAttendanceDay(date, records)
-      toast.success(`Saved attendance for ${saved} employee${saved === 1 ? '' : 's'}`)
+      toast.success(t.workforce.register.saved(saved))
       load(date)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to save attendance')
+      toast.error(err instanceof Error ? err.message : t.workforce.register.saveFailed)
     } finally {
       setSaving(false)
     }
@@ -112,18 +114,18 @@ function DailyRegisterTab() {
   return (
     <div className="flex flex-col gap-6">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
-        <StatCard label="HEADCOUNT" value={roster.length} icon={ClipboardCheck} />
-        <StatCard label="PRESENT" value={presentCount} icon={ClipboardCheck} />
-        <StatCard label="ON LEAVE" value={onLeaveCount} icon={ClipboardCheck} />
-        <StatCard label="ABSENT" value={absentCount} icon={ClipboardCheck} />
+        <StatCard label={t.workforce.register.headcount} value={roster.length} icon={ClipboardCheck} />
+        <StatCard label={t.workforce.register.present} value={presentCount} icon={ClipboardCheck} />
+        <StatCard label={t.workforce.register.onLeave} value={onLeaveCount} icon={ClipboardCheck} />
+        <StatCard label={t.workforce.register.absent} value={absentCount} icon={ClipboardCheck} />
       </div>
 
-      <Panel title="Daily Register">
+      <Panel title={t.workforce.attendance.dailyRegister}>
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <button
             type="button"
             onClick={() => setDate(shiftDate(date, -1))}
-            aria-label="Previous day"
+            aria-label={t.shared.previousDay}
             className="rounded-md border border-ink-600 p-2 text-ink-300 hover:text-ink-100"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -139,7 +141,7 @@ function DailyRegisterTab() {
           <button
             type="button"
             onClick={() => setDate(shiftDate(date, 1))}
-            aria-label="Next day"
+            aria-label={t.shared.nextDay}
             className="rounded-md border border-ink-600 p-2 text-ink-300 hover:text-ink-100"
           >
             <ChevronRight className="h-4 w-4" />
@@ -150,7 +152,7 @@ function DailyRegisterTab() {
             onClick={() => setDate(today())}
             className="text-sm text-ink-300 hover:text-ink-100"
           >
-            Today
+            {t.shared.today}
           </button>
 
           <button
@@ -160,7 +162,7 @@ function DailyRegisterTab() {
             className={`ml-auto ${primaryButtonClass}`}
           >
             <Save className="h-4 w-4" />
-            {saving ? 'Saving…' : 'Save Register'}
+            {saving ? t.shared.saving : t.workforce.register.save}
           </button>
         </div>
 
@@ -169,18 +171,18 @@ function DailyRegisterTab() {
         {loading ? (
           <TableSkeleton cols={6} />
         ) : roster.length === 0 ? (
-          <EmptyState icon={ClipboardCheck} message="No employees to record attendance for." />
+          <EmptyState icon={ClipboardCheck} message={t.workforce.register.empty} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
-                  <th className="px-2 py-3 font-semibold">EMPLOYEE</th>
-                  <th className="px-2 py-3 font-semibold">STATUS</th>
-                  <th className="px-2 py-3 font-semibold">IN</th>
-                  <th className="px-2 py-3 font-semibold">OUT</th>
-                  <th className="px-2 py-3 font-semibold">BREAK (MIN)</th>
-                  <th className="px-2 py-3 font-semibold">NOTE</th>
+                  <th className="px-2 py-3 font-semibold">{t.shared.employeeCol}</th>
+                  <th className="px-2 py-3 font-semibold">{t.shared.status}</th>
+                  <th className="px-2 py-3 font-semibold">{t.workforce.register.colIn}</th>
+                  <th className="px-2 py-3 font-semibold">{t.workforce.register.colOut}</th>
+                  <th className="px-2 py-3 font-semibold">{t.workforce.register.colBreak}</th>
+                  <th className="px-2 py-3 font-semibold">{t.shared.noteCol}</th>
                 </tr>
               </thead>
               <tbody>
@@ -210,7 +212,7 @@ function DailyRegisterTab() {
                         >
                           {STATUSES.map((s) => (
                             <option key={s} value={s}>
-                              {s.replace('_', ' ')}
+                              {enumLabel(t.labels.attendanceStatus, s)}
                             </option>
                           ))}
                         </select>
@@ -259,10 +261,7 @@ function DailyRegisterTab() {
           </div>
         )}
 
-        <p className="mt-4 text-xs text-ink-400">
-          Hours and overtime are calculated on save from the clock times, minus the break. Anything over 8
-          hours counts as overtime. Employees with approved leave are pre-marked.
-        </p>
+        <p className="mt-4 text-xs text-ink-400">{t.workforce.register.footnote}</p>
       </Panel>
     </div>
   )
