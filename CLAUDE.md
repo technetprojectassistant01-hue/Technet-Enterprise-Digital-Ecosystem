@@ -902,6 +902,15 @@ email means contacting an admin. Don't reintroduce self-service credential manag
 - Help Center FAQ answers were rewritten to match in all three languages (§19's rule: an FAQ
   answer must describe real behaviour). `PasswordResetToken`, `server/src/lib/email.ts` and the
   Resend integration all stay in use — by admins only.
+- **RESEND_API_KEY is NOT set on Render (confirmed with the user 2026-09-12), and there is
+  exactly ONE ADMIN account (`admin@technet.com`).** So admin email recovery does not work at all:
+  before this was handled, `/forgot-password` logged the link to the server console and still
+  answered `{ok:true}`, so the admin saw "Check Your Inbox" for a mail that was never coming. It
+  now returns 503 with a message telling them to ask another administrator, and the server warns
+  at boot in production. **The real fix is a second ADMIN account** so admins can reset each other
+  — with one admin and no email, a forgotten admin password can only be undone by editing the
+  database directly. This predates §20; removing self-service did not cause it, but it removed the
+  last path that masked it.
 - Verified 2026-09-12 with a disposable `server/scratch-password-policy.ts` (deleted): 11/11
   against the real DB and a running dev server — change-password 404s for both roles, a token is
   issued to the admin and not to the technician, both get byte-identical replies, a non-admin's
