@@ -87,7 +87,9 @@ export const mfe: Dict = {
     showPassword: 'Montre mo de pas',
     hidePassword: 'Kasiet mo de pas',
     rememberSession: 'Res konekte',
-    forgotPasswordHint: 'Ou finn bliye ou mo de pas? Demann ou administrater reinisializ li.',
+    forgotPassword: 'Ou finn bliye ou mo de pas?',
+    contactAdminBody:
+      'Se ou administrater ki zer ou mo de pas. Kontakte li — li kapav met enn nouvo pou ou ek dir ou ki li ete.',
     adminResetLink: 'Administrater? Reinisializ par imel',
     signIn: 'Konekte',
     signingIn: 'Pe konekte…',
