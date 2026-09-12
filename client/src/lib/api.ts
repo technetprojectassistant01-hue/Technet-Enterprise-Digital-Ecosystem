@@ -84,13 +84,7 @@ export function updateMyLanguage(language: Language) {
   })
 }
 
-export function changePassword(currentPassword: string, newPassword: string) {
-  return request<{ ok: true }>('/api/auth/change-password', {
-    method: 'POST',
-    body: JSON.stringify({ currentPassword, newPassword }),
-  })
-}
-
+/** Admin accounts only — every other login is reset by an admin in User Management. */
 export function forgotPassword(email: string) {
   return request<{ ok: true }>('/api/auth/forgot-password', {
     method: 'POST',
