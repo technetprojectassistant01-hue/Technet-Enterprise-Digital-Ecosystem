@@ -82,7 +82,9 @@ export const fr: Dict = {
     showPassword: 'Afficher le mot de passe',
     hidePassword: 'Masquer le mot de passe',
     rememberSession: 'Rester connecté',
-    forgotPasswordHint: 'Mot de passe oublié ? Demandez à votre administrateur de le réinitialiser.',
+    forgotPassword: 'Mot de passe oublié ?',
+    contactAdminBody:
+      "Votre mot de passe est géré par votre administrateur. Contactez-le : il peut vous en définir un nouveau et vous le communiquer.",
     adminResetLink: 'Administrateur ? Réinitialiser par e-mail',
     signIn: 'Se connecter',
     signingIn: 'Connexion…',
