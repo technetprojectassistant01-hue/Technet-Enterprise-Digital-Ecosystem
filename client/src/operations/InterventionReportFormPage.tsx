@@ -15,6 +15,7 @@ import { useCustomers } from '../erp/useCustomers'
 import { useWorkOrders } from './useWorkOrders'
 import SignaturePad from './SignaturePad'
 import UnitBreakdownEditor, { type UnitBreakdownRow } from './UnitBreakdownEditor'
+import { enumLabel, useT } from '../i18n'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -22,6 +23,7 @@ const labelClass = 'text-xs font-semibold tracking-widest text-ink-400'
 
 const JOB_CATEGORIES = Object.keys(JOB_CATEGORY_LABELS) as JobCategory[]
 const WORK_TYPES = Object.keys(WORK_TYPE_LABELS) as ServiceCategory[]
+const WARRANTY_OPTIONS: WarrantyStatus[] = ['YES', 'NO', 'UNKNOWN']
 const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024
 const DRAFT_STORAGE_KEY = 'intervention-report-draft'
 
@@ -90,6 +92,8 @@ function PhotoPicker({
   files: File[]
   onChange: (files: File[]) => void
 }) {
+  const t = useT()
+
   function handleSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const selected = Array.from(e.target.files || []).filter((f) => f.size <= MAX_ATTACHMENT_BYTES)
     onChange([...files, ...selected])
@@ -118,14 +122,19 @@ function PhotoPicker({
           {files.map((f, i) => (
             <span key={i} className="flex items-center gap-1.5 rounded-full bg-ink-800 px-3 py-1 text-xs text-ink-200">
               {f.name}
-              <button type="button" onClick={() => removeAt(i)} aria-label={`Remove ${f.name}`} className="text-ink-400 hover:text-red-400">
+              <button
+                type="button"
+                onClick={() => removeAt(i)}
+                aria-label={t.ops.irForm.remove(f.name)}
+                className="text-ink-400 hover:text-red-400"
+              >
                 <XIcon className="h-3 w-3" />
               </button>
             </span>
           ))}
         </div>
       )}
-      <p className="mt-1 text-xs text-ink-500">Images only. Max 8MB each.</p>
+      <p className="mt-1 text-xs text-ink-500">{t.ops.irForm.imagesOnly}</p>
     </div>
   )
 }
@@ -133,6 +142,7 @@ function PhotoPicker({
 function InterventionReportFormPage() {
   const toast = useToast()
   const navigate = useNavigate()
+  const t = useT()
   const { user } = useAuth()
   const canSubmit = hasRole(user?.role, OPS_SUBMIT_ROLES)
   const [searchParams] = useSearchParams()
@@ -296,14 +306,14 @@ function InterventionReportFormPage() {
   }, [preselectedWorkOrderId, workOrders])
 
   function toggleTechnician(id: string) {
-    setTechnicianIds((prev) => (prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]))
+    setTechnicianIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
   }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     setAttachmentError(null)
     const file = e.target.files?.[0] || null
     if (file && file.size > MAX_ATTACHMENT_BYTES) {
-      setAttachmentError('File must be 8MB or smaller')
+      setAttachmentError(t.ops.irForm.fileTooLarge)
       setAttachmentFile(null)
       e.target.value = ''
       return
@@ -321,23 +331,23 @@ function InterventionReportFormPage() {
     setFormError(null)
 
     if (!customerId) {
-      setFormError('Select a customer')
+      setFormError(t.shared.selectCustomer)
       return
     }
     if (!natureOfIntervention.trim()) {
-      setFormError('Nature of intervention is required')
+      setFormError(t.ops.irForm.natureRequired)
       return
     }
     if (!actionTaken.trim()) {
-      setFormError('Action taken is required')
+      setFormError(t.ops.irForm.actionRequired)
       return
     }
     if (!signatureData) {
-      setFormError('Sign the report before submitting')
+      setFormError(t.ops.irForm.signRequired)
       return
     }
     if (!signedByName.trim()) {
-      setFormError('Enter the name of the person signing')
+      setFormError(t.ops.irForm.signerRequired)
       return
     }
     const cleanedUnits = units
@@ -345,7 +355,7 @@ function InterventionReportFormPage() {
       .map((u) => ({ label: u.label.trim(), problem: u.problem.trim(), action: u.action.trim() }))
     for (const u of cleanedUnits) {
       if (!u.label || !u.problem) {
-        setFormError('Each unit needs a label and a problem')
+        setFormError(t.ops.irForm.unitIncomplete)
         return
       }
     }
@@ -376,7 +386,7 @@ function InterventionReportFormPage() {
 
       const { queued, data } = await submitOrQueue<{ interventionReport: InterventionReport }>({
         kind: 'intervention-report',
-        label: `Intervention report — ${customerName || 'customer'}`,
+        label: t.ops.irForm.outboxLabel(customerName || t.ops.irForm.customerFallback),
         endpoint: '/api/intervention-reports',
         body: {
           customerId,
@@ -414,23 +424,21 @@ function InterventionReportFormPage() {
 
       localStorage.removeItem(DRAFT_STORAGE_KEY)
       if (queued || !data?.interventionReport) {
-        toast.success(
-          "No signal — saved on your device. It'll upload automatically when you're back online.",
-        )
+        toast.success(t.shared.savedOffline)
         navigate('/dashboard/operations/intervention-reports')
       } else {
-        toast.success('Intervention report submitted')
+        toast.success(t.ops.irForm.submitted)
         navigate(`/dashboard/operations/intervention-reports/${data.interventionReport.id}`)
       }
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Failed to submit intervention report')
+      setFormError(err instanceof Error ? err.message : t.ops.irForm.submitFailed)
     } finally {
       setSubmitting(false)
     }
   }
 
   if (!canSubmit) {
-    return <EmptyState icon={Lock} message="You don't have permission to file intervention reports." />
+    return <EmptyState icon={Lock} message={t.ops.irForm.noPermission} />
   }
 
   return (
@@ -440,40 +448,37 @@ function InterventionReportFormPage() {
         className="flex w-fit items-center gap-2 text-sm text-ink-400 hover:text-ink-100"
       >
         <ArrowLeft className="h-4 w-4" />
-        Back to Intervention Reports
+        {t.ops.irForm.back}
       </Link>
 
       <div>
-        <h1 className="text-2xl font-bold text-ink-100">New Intervention Report</h1>
-        <p className="mt-1 text-sm text-ink-300">Fill this in right after the site visit.</p>
+        <h1 className="text-2xl font-bold text-ink-100">{t.ops.irForm.title}</h1>
+        <p className="mt-1 text-sm text-ink-300">{t.ops.irForm.subtitle}</p>
         <p className="mt-1 text-xs text-ink-500">
-          <span className="text-red-400">*</span> required field
+          <span className="text-red-400">*</span> {t.ops.irForm.requiredField}
         </p>
       </div>
 
       {draftRestored && (
         <div className="flex items-center justify-between gap-3 rounded-md border border-cyan-accent/40 bg-cyan-accent/10 px-4 py-3 text-sm text-ink-200">
-          <p>
-            We restored your unsaved draft from last time. Photos, the attached file, and the signature couldn't be
-            restored — you'll need to re-add those.
-          </p>
+          <p>{t.ops.irForm.draftRestored}</p>
           <button type="button" onClick={discardDraft} className={`shrink-0 ${secondaryButtonClass}`}>
-            Discard draft
+            {t.ops.irForm.discardDraft}
           </button>
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-        <Panel title="Customer & Contact">
+        <Panel title={t.ops.irForm.customerContact}>
           <div className="flex flex-col gap-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className={labelClass}>
-                  CUSTOMER
+                  {t.shared.customer}
                   <RequiredMark />
                 </label>
                 <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className={`mt-2 ${inputClass}`}>
-                  <option value="">Select a customer</option>
+                  <option value="">{t.shared.selectCustomer}</option>
                   {customers.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.company || c.name}
@@ -482,9 +487,9 @@ function InterventionReportFormPage() {
                 </select>
               </div>
               <div>
-                <label className={labelClass}>WORK ORDER (OPTIONAL)</label>
+                <label className={labelClass}>{t.ops.irForm.workOrderOptional}</label>
                 <select value={workOrderId} onChange={(e) => setWorkOrderId(e.target.value)} className={`mt-2 ${inputClass}`}>
-                  <option value="">— link now, or add later —</option>
+                  <option value="">{t.ops.irForm.linkLater}</option>
                   {workOrders.map((wo) => (
                     <option key={wo.id} value={wo.id}>
                       {wo.workOrderNumber} — {wo.title}
@@ -493,35 +498,35 @@ function InterventionReportFormPage() {
                 </select>
               </div>
             </div>
-            <p className="text-xs text-ink-500">The intervention number is assigned automatically on submit.</p>
+            <p className="text-xs text-ink-500">{t.ops.irForm.autoNumber}</p>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <div>
-                <label className={labelClass}>CONTACT PERSON</label>
+                <label className={labelClass}>{t.ops.irForm.contactPerson}</label>
                 <input value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} className={`mt-2 ${inputClass}`} />
               </div>
               <div>
-                <label className={labelClass}>CONTACT PHONE</label>
+                <label className={labelClass}>{t.ops.irForm.contactPhone}</label>
                 <input
                   value={contactPhone}
                   onChange={(e) => setContactPhone(e.target.value)}
-                  placeholder="e.g. 054 123 4567"
+                  placeholder={t.ops.irForm.phonePlaceholder}
                   className={`mt-2 ${inputClass}`}
                 />
               </div>
               <div>
-                <label className={labelClass}>CONTACT EMAIL</label>
+                <label className={labelClass}>{t.ops.irForm.contactEmail}</label>
                 <input
                   type="email"
                   value={contactEmail}
                   onChange={(e) => setContactEmail(e.target.value)}
-                  placeholder="e.g. name@company.com"
+                  placeholder={t.ops.irForm.emailPlaceholder}
                   className={`mt-2 ${inputClass}`}
                 />
               </div>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className={labelClass}>JOB CATEGORY</label>
+                <label className={labelClass}>{t.shared.jobCategory}</label>
                 <select
                   value={jobCategory}
                   onChange={(e) => setJobCategory(e.target.value as JobCategory)}
@@ -529,21 +534,21 @@ function InterventionReportFormPage() {
                 >
                   {JOB_CATEGORIES.map((c) => (
                     <option key={c} value={c}>
-                      {JOB_CATEGORY_LABELS[c]}
+                      {enumLabel(t.labels.jobCategory, c)}
                     </option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className={labelClass}>WORK TYPE</label>
+                <label className={labelClass}>{t.shared.workType}</label>
                 <select
                   value={workType}
                   onChange={(e) => setWorkType(e.target.value as ServiceCategory)}
                   className={`mt-2 ${inputClass}`}
                 >
-                  {WORK_TYPES.map((t) => (
-                    <option key={t} value={t}>
-                      {WORK_TYPE_LABELS[t]}
+                  {WORK_TYPES.map((w) => (
+                    <option key={w} value={w}>
+                      {enumLabel(t.labels.workType, w)}
                     </option>
                   ))}
                 </select>
@@ -551,11 +556,11 @@ function InterventionReportFormPage() {
             </div>
             {workType === 'OTHER' && (
               <div>
-                <label className={labelClass}>DESCRIBE THE WORK PERFORMED</label>
+                <label className={labelClass}>{t.ops.irForm.describeWork}</label>
                 <input
                   value={workTypeOther}
                   onChange={(e) => setWorkTypeOther(e.target.value)}
-                  placeholder="e.g. CCTV cable re-routing"
+                  placeholder={t.ops.irForm.describePlaceholder}
                   className={`mt-2 ${inputClass}`}
                 />
               </div>
@@ -563,41 +568,41 @@ function InterventionReportFormPage() {
           </div>
         </Panel>
 
-        <Panel title="Equipment / System (optional)">
+        <Panel title={t.ops.irForm.equipmentPanel}>
           <div className="flex flex-col gap-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className={labelClass}>EQUIPMENT</label>
+                <label className={labelClass}>{t.ops.irForm.equipment}</label>
                 <input value={equipment} onChange={(e) => setEquipment(e.target.value)} className={`mt-2 ${inputClass}`} />
               </div>
               <div>
-                <label className={labelClass}>MAKE</label>
+                <label className={labelClass}>{t.ops.irForm.make}</label>
                 <input value={make} onChange={(e) => setMake(e.target.value)} className={`mt-2 ${inputClass}`} />
               </div>
               <div>
-                <label className={labelClass}>MODEL</label>
+                <label className={labelClass}>{t.ops.irForm.model}</label>
                 <input value={model} onChange={(e) => setModel(e.target.value)} className={`mt-2 ${inputClass}`} />
               </div>
               <div>
-                <label className={labelClass}>SERIAL NUMBER(S)</label>
+                <label className={labelClass}>{t.ops.irForm.serialNumbers}</label>
                 <input
                   value={serialNo}
                   onChange={(e) => setSerialNo(e.target.value)}
-                  placeholder="Comma-separated if multiple"
+                  placeholder={t.ops.irForm.serialsPlaceholder}
                   className={`mt-2 ${inputClass}`}
                 />
               </div>
             </div>
-            <PhotoPicker label="EQUIPMENT PHOTOS" files={equipmentPhotos} onChange={setEquipmentPhotos} />
+            <PhotoPicker label={t.ops.irForm.equipmentPhotos} files={equipmentPhotos} onChange={setEquipmentPhotos} />
           </div>
         </Panel>
 
-        <Panel title="Fault & Work Done">
+        <Panel title={t.ops.irForm.faultPanel}>
           <div className="flex flex-col gap-4">
-            <PhotoPicker label="BEFORE PHOTOS" files={beforePhotos} onChange={setBeforePhotos} />
+            <PhotoPicker label={t.ops.irForm.beforePhotos} files={beforePhotos} onChange={setBeforePhotos} />
             <div>
               <label className={labelClass}>
-                NATURE OF INTERVENTION / FAULT REPORTED
+                {t.ops.irForm.nature}
                 <RequiredMark />
               </label>
               <textarea
@@ -610,7 +615,7 @@ function InterventionReportFormPage() {
             </div>
             <div>
               <label className={labelClass}>
-                ACTION TAKEN / WORK DONE
+                {t.ops.irForm.action}
                 <RequiredMark />
               </label>
               <textarea
@@ -622,21 +627,21 @@ function InterventionReportFormPage() {
               />
             </div>
             <div>
-              <label className={labelClass}>WORK COMPLETED?</label>
+              <label className={labelClass}>{t.shared.workCompletedQuestion}</label>
               <div className="mt-2 flex gap-4">
                 <label className="flex items-center gap-2 text-sm text-ink-200">
                   <input type="radio" checked={workCompleted} onChange={() => setWorkCompleted(true)} className="accent-cyan-accent" />
-                  Yes
+                  {t.shared.yes}
                 </label>
                 <label className="flex items-center gap-2 text-sm text-ink-200">
                   <input type="radio" checked={!workCompleted} onChange={() => setWorkCompleted(false)} className="accent-cyan-accent" />
-                  No
+                  {t.shared.no}
                 </label>
               </div>
             </div>
             {!workCompleted && (
               <div>
-                <label className={labelClass}>PLEASE GIVE DETAILS</label>
+                <label className={labelClass}>{t.ops.irForm.giveDetails}</label>
                 <textarea
                   value={incompleteDetails}
                   onChange={(e) => setIncompleteDetails(e.target.value)}
@@ -646,38 +651,34 @@ function InterventionReportFormPage() {
               </div>
             )}
             <div>
-              <label className={labelClass}>
-                PER-UNIT BREAKDOWN (OPTIONAL — for visits covering multiple pieces of equipment)
-              </label>
-              <p className="mt-1 text-xs text-ink-500">
-                e.g. "Unit 1 — leaking" / "Unit 2 — not blowing air". Leave this empty for a single-equipment visit.
-              </p>
+              <label className={labelClass}>{t.ops.irForm.perUnit}</label>
+              <p className="mt-1 text-xs text-ink-500">{t.ops.irForm.perUnitHint}</p>
               <div className="mt-2">
                 <UnitBreakdownEditor units={units} onChange={setUnits} />
               </div>
             </div>
-            <PhotoPicker label="PHOTOS OF WORK DONE" files={workDonePhotos} onChange={setWorkDonePhotos} />
-            <PhotoPicker label="AFTER PHOTOS" files={afterPhotos} onChange={setAfterPhotos} />
+            <PhotoPicker label={t.ops.irForm.workDonePhotos} files={workDonePhotos} onChange={setWorkDonePhotos} />
+            <PhotoPicker label={t.ops.irForm.afterPhotos} files={afterPhotos} onChange={setAfterPhotos} />
             <div>
-              <label className={labelClass}>MATERIALS USED (OPTIONAL)</label>
+              <label className={labelClass}>{t.ops.irForm.materials}</label>
               <textarea
                 value={materialsUsed}
                 onChange={(e) => setMaterialsUsed(e.target.value)}
                 rows={2}
-                placeholder="e.g. 2x contactor 25A, 5m cable, 1x filter"
+                placeholder={t.ops.irForm.materialsPlaceholder}
                 className={`mt-2 ${inputClass}`}
               />
             </div>
           </div>
         </Panel>
 
-        <Panel title="Technicians & Time">
+        <Panel title={t.ops.irForm.techTimePanel}>
           <div className="flex flex-col gap-4">
             <div>
-              <label className={labelClass}>TECHNICIAN(S) INVOLVED</label>
+              <label className={labelClass}>{t.ops.irForm.techniciansInvolved}</label>
               <div className="mt-2 flex max-h-32 flex-col gap-1.5 overflow-y-auto rounded-md border border-ink-700 bg-ink-950 p-3">
                 {employees.length === 0 ? (
-                  <p className="text-xs text-ink-500">No employees yet.</p>
+                  <p className="text-xs text-ink-500">{t.shared.noEmployees}</p>
                 ) : (
                   employees.map((emp) => (
                     <label key={emp.id} className="flex items-center gap-2 text-sm text-ink-200">
@@ -695,29 +696,23 @@ function InterventionReportFormPage() {
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className={labelClass}>TIME IN</label>
+                <label className={labelClass}>{t.attendance.timeIn}</label>
                 <input type="time" value={timeIn} onChange={(e) => setTimeIn(e.target.value)} className={`mt-2 ${inputClass}`} />
               </div>
               <div>
-                <label className={labelClass}>TIME OUT</label>
+                <label className={labelClass}>{t.attendance.timeOut}</label>
                 <input type="time" value={timeOut} onChange={(e) => setTimeOut(e.target.value)} className={`mt-2 ${inputClass}`} />
               </div>
             </div>
           </div>
         </Panel>
 
-        <Panel title="Warranty & Report">
+        <Panel title={t.ops.irForm.warrantyPanel}>
           <div className="flex flex-col gap-4">
             <div>
-              <label className={labelClass}>EQUIPMENT UNDER WARRANTY</label>
+              <label className={labelClass}>{t.ops.irForm.underWarranty}</label>
               <div className="mt-2 flex gap-4">
-                {(
-                  [
-                    ['YES', 'Yes'],
-                    ['NO', 'No'],
-                    ['UNKNOWN', "D.N"],
-                  ] as [WarrantyStatus, string][]
-                ).map(([value, label]) => (
+                {WARRANTY_OPTIONS.map((value) => (
                   <label key={value} className="flex items-center gap-2 text-sm text-ink-200">
                     <input
                       type="radio"
@@ -725,13 +720,13 @@ function InterventionReportFormPage() {
                       onChange={() => setWarrantyStatus(value)}
                       className="accent-cyan-accent"
                     />
-                    {label}
+                    {enumLabel(t.labels.warranty, value)}
                   </label>
                 ))}
               </div>
             </div>
             <div>
-              <label className={labelClass}>TECHNICIAN'S REPORT</label>
+              <label className={labelClass}>{t.ops.irForm.technicianReport}</label>
               <textarea
                 value={technicianReport}
                 onChange={(e) => setTechnicianReport(e.target.value)}
@@ -740,40 +735,40 @@ function InterventionReportFormPage() {
               />
             </div>
             <div>
-              <label className={labelClass}>COMMENTS / RECOMMENDATIONS</label>
+              <label className={labelClass}>{t.ops.irForm.comments}</label>
               <textarea value={comments} onChange={(e) => setComments(e.target.value)} rows={2} className={`mt-2 ${inputClass}`} />
             </div>
             <div>
-              <label className={labelClass}>OTHER IMPORTANT INFORMATION</label>
+              <label className={labelClass}>{t.ops.irForm.otherInfo}</label>
               <textarea
                 value={additionalInfo}
                 onChange={(e) => setAdditionalInfo(e.target.value)}
                 rows={2}
-                placeholder="Anything else worth recording for this customer/equipment's history..."
+                placeholder={t.ops.irForm.otherInfoPlaceholder}
                 className={`mt-2 ${inputClass}`}
               />
             </div>
           </div>
         </Panel>
 
-        <Panel title="Sign & Attach">
+        <Panel title={t.ops.irForm.signPanel}>
           <div className="flex flex-col gap-4">
             <div>
               <label className={labelClass}>
-                SIGNED BY
+                {t.ops.irForm.signedBy}
                 <RequiredMark />
               </label>
               <input
                 value={signedByName}
                 onChange={(e) => setSignedByName(e.target.value)}
-                placeholder="Your name"
+                placeholder={t.ops.irForm.yourName}
                 required
                 className={`mt-2 ${inputClass}`}
               />
             </div>
             <div>
               <label className={labelClass}>
-                SIGNATURE
+                {t.ops.irForm.signature}
                 <RequiredMark />
               </label>
               <div className="mt-2">
@@ -781,7 +776,7 @@ function InterventionReportFormPage() {
               </div>
             </div>
             <div>
-              <label className={labelClass}>UPLOAD SIGNED INTERVENTION SHEET</label>
+              <label className={labelClass}>{t.ops.irForm.uploadSheet}</label>
               <div className="mt-2 flex items-center gap-3 rounded-md border border-dashed border-ink-600 bg-ink-950 px-4 py-3">
                 <Paperclip className="h-4 w-4 shrink-0 text-ink-400" />
                 <input
@@ -793,7 +788,7 @@ function InterventionReportFormPage() {
               </div>
               {attachmentFile && <p className="mt-1 text-xs text-ink-400">{attachmentFile.name}</p>}
               {attachmentError && <p className="mt-1 text-xs text-red-400">{attachmentError}</p>}
-              <p className="mt-1 text-xs text-ink-500">Photo or PDF of the paper form, signed by the customer. Max 8MB.</p>
+              <p className="mt-1 text-xs text-ink-500">{t.ops.irForm.sheetHint}</p>
             </div>
           </div>
         </Panel>
@@ -801,7 +796,7 @@ function InterventionReportFormPage() {
         {formError && <p className="text-sm text-red-400">{formError}</p>}
 
         <button type="submit" disabled={submitting} className={`self-start px-6 py-2.5 ${primaryButtonClass}`}>
-          {submitting ? 'Submitting…' : 'Submit Report'}
+          {submitting ? t.shared.submitting : t.shared.submitReport}
         </button>
       </form>
     </div>
