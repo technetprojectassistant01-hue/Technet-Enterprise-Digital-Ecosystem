@@ -11,6 +11,8 @@ import { useAuth } from '../context/AuthContext'
 import { hasRole, TOOL_MANAGE_ROLES } from '../lib/permissions'
 import { useT } from '../i18n'
 import { dayOf, isOverdue, toolConditionTone, toolStatusTone } from './toolTones'
+import { Hammer as HammerIcon } from 'lucide-react'
+import PageTitle from '../dashboard/PageTitle'
 
 const TOOL_STATUSES: ToolStatus[] = ['AVAILABLE', 'CHECKED_OUT', 'UNDER_REPAIR', 'RETIRED']
 const MANUAL_STATUSES: ToolStatus[] = ['AVAILABLE', 'UNDER_REPAIR', 'RETIRED']
@@ -269,10 +271,7 @@ function ToolsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-ink-100">{t.tools.title}</h1>
-          <p className="mt-1 text-sm text-ink-300">{canManage ? t.tools.subtitleManager : t.tools.subtitle}</p>
-        </div>
+        <PageTitle icon={HammerIcon} title={t.tools.title} subtitle={canManage ? t.tools.subtitleManager : t.tools.subtitle} />
         <div className="flex flex-wrap items-center gap-3">
           <button type="button" onClick={exportCsv} className={secondaryButtonClass}>
             <Download className="h-4 w-4" />
