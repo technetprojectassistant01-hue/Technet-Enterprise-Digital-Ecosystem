@@ -273,9 +273,9 @@ export const en = {
 
   leaveApprovals: {
     title: 'Leave Approvals',
-    subtitle: 'Approve or reject leave requests, and see every leave request across the company.',
+    subtitle: 'Approve or reject leave requests, and see leave that has been approved.',
     pending: 'Awaiting Approval',
-    all: 'All Leave',
+    approved: 'Approved',
   },
 
   myLeave: {
