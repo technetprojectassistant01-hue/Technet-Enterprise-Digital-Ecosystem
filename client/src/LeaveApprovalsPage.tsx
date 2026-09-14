@@ -5,12 +5,14 @@ import { TableSkeleton } from './dashboard/ui'
 import LeaveRequestsTab from './erp/hr/LeaveRequestsTab'
 import { useT } from './i18n'
 
-type View = 'pending' | 'all'
+type View = 'pending' | 'approved'
 
 /**
  * Admin's leave screen, in place of My Leave in the admin menu: requests awaiting approval, and
- * every leave request. Both reuse the HR requests table (approve, reject, edit, cancel), so the
- * rules are identical to Technet ERP → HR → Leave. Guarded by AdminRoute in App.tsx.
+ * approved leave. Deliberately nothing else — the admin asked not to see technicians' cancelled
+ * (or rejected) requests here, as that felt personal. Both tabs reuse the HR requests table locked
+ * to one status, so approve/reject/cancel follow the same rules as Technet ERP → HR → Leave.
+ * Guarded by AdminRoute in App.tsx.
  */
 function LeaveApprovalsPage() {
   const t = useT()
@@ -36,7 +38,7 @@ function LeaveApprovalsPage() {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {(['pending', 'all'] as View[]).map((v) => (
+        {(['pending', 'approved'] as View[]).map((v) => (
           <button
             key={v}
             type="button"
@@ -45,7 +47,7 @@ function LeaveApprovalsPage() {
               view === v ? 'bg-cyan-accent/10 text-cyan-accent' : 'text-ink-300 hover:bg-ink-800 hover:text-ink-100'
             }`}
           >
-            {v === 'pending' ? t.leaveApprovals.pending : t.leaveApprovals.all}
+            {v === 'pending' ? t.leaveApprovals.pending : t.leaveApprovals.approved}
           </button>
         ))}
       </div>
@@ -55,7 +57,7 @@ function LeaveApprovalsPage() {
       ) : view === 'pending' ? (
         <LeaveRequestsTab key="pending" leaveTypes={leaveTypes} initialStatus="PENDING" lockStatus />
       ) : (
-        <LeaveRequestsTab key="all" leaveTypes={leaveTypes} />
+        <LeaveRequestsTab key="approved" leaveTypes={leaveTypes} initialStatus="APPROVED" lockStatus />
       )}
     </div>
   )
