@@ -50,10 +50,10 @@ function ModuleHeader({
                 to={tab.to}
                 end={tab.end}
                 className={({ isActive }: { isActive: boolean }) =>
-                  `shrink-0 border-b-2 px-3 py-1.5 text-sm font-medium transition ${
+                  `shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium transition ${
                     isActive
-                      ? 'border-cyan-accent text-cyan-accent'
-                      : 'border-transparent text-ink-300 hover:text-ink-100'
+                      ? 'bg-cyan-accent/15 text-cyan-accent ring-1 ring-inset ring-cyan-accent/30'
+                      : 'text-ink-300 hover:bg-ink-800 hover:text-ink-100'
                   }`
                 }
               >
