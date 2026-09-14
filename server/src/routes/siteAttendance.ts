@@ -353,8 +353,8 @@ router.get("/my-work-orders", requireRole(...OPS_SUBMIT_ROLES), async (req, res)
 router.post("/check-in", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
   const coords = parseCoords(req.body);
   if (!coords) return res.status(400).json({ error: "A valid lat and lng are required" });
+  // The typed location is optional (user request, 2026-09-14); the GPS fix is still required.
   const note = parseNote(req.body);
-  if (!note) return res.status(400).json({ error: "A location is required to check in" });
 
   const declaredTime = parseDeclaredTime((req.body as { timeIn?: unknown })?.timeIn);
   if ("error" in declaredTime) return res.status(400).json({ error: declaredTime.error });
@@ -435,7 +435,7 @@ router.post("/check-in", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
       OPS_MANAGE_ROLES,
       "SITE_CHECKIN_RECORDED",
       `${employee.firstName} ${employee.lastName} checked in`,
-      { message: note, link: "/dashboard/operations/field-tracking" },
+      { message: note ?? undefined, link: "/dashboard/operations/field-tracking" },
     );
 
     res.status(201).json({ siteAttendance });

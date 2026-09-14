@@ -2,119 +2,119 @@ import { Router } from "express";
 import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { HR_ROLES, OPS_SUBMIT_ROLES } from "../lib/roles";
-import { notifyEmployee, notifyRoles } from "../lib/notifications";
-import { dayToDate } from "../lib/overtime";
-import { buildAttendanceReport, dayOf, isStale, parseRange, rangeFingerprint, todayInMauritius } from "../lib/attendanceReport";
+import { notifyEmployee } from "../lib/notifications";
+import { dayToDate, mauritiusMonthRange } from "../lib/overtime";
+import { buildAttendanceReport, dayOf, isStale, rangeFingerprint, todayInMauritius } from "../lib/attendanceReport";
 
 /**
- * Attendance validation. An employee asks Admin/HR to validate their attendance for a date range
- * (My Attendance → Export PDF); Admin/HR review it on Technet Workforce → Validations and validate
- * or reject it. The attendance PDF prints as DRAFT until a validation covers the range — and goes
- * back to DRAFT if the attendance changes after it was validated (`stale`).
+ * Attendance validation, done by Admin/HR at the end of each month (Technet Workforce →
+ * Validations): for each employee with attendance that month, open the PDF and validate it. The
+ * employee's attendance PDF (My Attendance → Export PDF) is marked DRAFT until a validation covers
+ * the dates — and goes back to DRAFT if the attendance changes after it was validated (`stale`).
+ * Employees don't request validation themselves (user decision, 2026-09-14).
  */
 const router = Router();
 router.use(requireAuth);
 
 const DECIDER_SELECT = { select: { id: true, name: true, email: true } } as const;
 
-type ValidationRow = Awaited<ReturnType<typeof prisma.attendanceValidation.findMany>>[number];
-
-/** The shape the client gets: days as "YYYY-MM-DD", plus whether a validated range has since changed. */
-async function present<T extends ValidationRow>(row: T) {
-  return {
-    ...row,
-    fromDate: dayOf(row.fromDate),
-    toDate: dayOf(row.toDate),
-    fingerprint: undefined,
-    stale: row.status === "VALIDATED" ? await isStale(row) : false,
-  };
+function isMonth(value: unknown): value is string {
+  return typeof value === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(value);
 }
 
-function rangeLabel(from: string, to: string) {
-  return from === to ? from : `${from} to ${to}`;
+/** First and last Mauritius day of a "YYYY-MM" month. */
+function monthDays(month: string): { from: string; to: string } {
+  const [y, m] = month.split("-").map(Number);
+  const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  return { from: `${month}-01`, to: `${month}-${String(last).padStart(2, "0")}` };
 }
 
-// ---- The employee's own requests ------------------------------------------------------------
-
-async function ownEmployee(userId: string) {
-  return prisma.employee.findUnique({ where: { userId }, select: { id: true, firstName: true, lastName: true } });
+const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+function monthLabel(month: string) {
+  const [y, m] = month.split("-").map(Number);
+  return `${MONTH_NAMES[m - 1]} ${y}`;
 }
+
+/** The validation row for exactly this employee and month, if any. */
+function findMonthValidation(employeeId: string, month: string) {
+  const { from, to } = monthDays(month);
+  return prisma.attendanceValidation.findFirst({
+    where: { employeeId, status: "VALIDATED", fromDate: dayToDate(from), toDate: dayToDate(to) },
+    include: { decidedBy: DECIDER_SELECT },
+    orderBy: { decidedAt: "desc" },
+  });
+}
+
+// ---- The employee's own validated periods (for the export dialog) ---------------------------
 
 router.get("/mine", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
-  const employee = await ownEmployee(req.user!.sub);
+  const employee = await prisma.employee.findUnique({ where: { userId: req.user!.sub }, select: { id: true } });
   if (!employee) return res.status(403).json({ error: "No employee record is linked to your account" });
   const rows = await prisma.attendanceValidation.findMany({
-    where: { employeeId: employee.id },
-    include: { decidedBy: DECIDER_SELECT },
-    orderBy: { requestedAt: "desc" },
-    take: 50,
+    where: { employeeId: employee.id, status: "VALIDATED" },
+    orderBy: { fromDate: "desc" },
+    take: 36,
   });
-  res.json({ validations: await Promise.all(rows.map(present)) });
+  const validations = await Promise.all(
+    rows.map(async (row) => ({ id: row.id, fromDate: dayOf(row.fromDate), toDate: dayOf(row.toDate), stale: await isStale(row) })),
+  );
+  res.json({ validations });
 });
 
-router.post("/mine", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
-  const employee = await ownEmployee(req.user!.sub);
-  if (!employee) return res.status(403).json({ error: "No employee record is linked to your account" });
+// ---- Admin/HR: validate a month per employee ------------------------------------------------
 
-  const range = parseRange(req.body?.from, req.body?.to);
-  if ("error" in range) return res.status(400).json({ error: range.error });
-  if (range.to > todayInMauritius()) return res.status(400).json({ error: "You can't ask to validate days that haven't happened yet" });
+router.use(requireRole(...HR_ROLES));
 
-  const pending = await prisma.attendanceValidation.findFirst({
-    where: { employeeId: employee.id, status: "PENDING", fromDate: dayToDate(range.from), toDate: dayToDate(range.to) },
+/** Everyone with attendance in the month (?month=YYYY-MM), with their validation state. */
+router.get("/month", async (req, res) => {
+  if (!isMonth(req.query.month)) return res.status(400).json({ error: "month (YYYY-MM) is required" });
+  const month = req.query.month;
+  const { start, end } = mauritiusMonthRange(month);
+
+  const visits = await prisma.siteAttendance.findMany({
+    where: { checkInAt: { gte: start, lt: end } },
+    select: { employeeId: true, checkInAt: true },
   });
-  if (pending) return res.status(409).json({ error: "You've already asked for this range to be validated" });
-
-  const covering = await prisma.attendanceValidation.findMany({
-    where: { employeeId: employee.id, status: "VALIDATED", fromDate: { lte: dayToDate(range.from) }, toDate: { gte: dayToDate(range.to) } },
-  });
-  for (const c of covering) {
-    if (!(await isStale(c))) return res.status(409).json({ error: "This range is already validated" });
+  const byEmployee = new Map<string, { checkIns: number; days: Set<string> }>();
+  for (const v of visits) {
+    const entry = byEmployee.get(v.employeeId) ?? { checkIns: 0, days: new Set<string>() };
+    entry.checkIns += 1;
+    entry.days.add(new Date(v.checkInAt.getTime() + 4 * 3_600_000).toISOString().slice(0, 10));
+    byEmployee.set(v.employeeId, entry);
   }
 
-  const created = await prisma.attendanceValidation.create({
-    data: { employeeId: employee.id, fromDate: dayToDate(range.from), toDate: dayToDate(range.to) },
-    include: { decidedBy: DECIDER_SELECT },
+  const employees = await prisma.employee.findMany({
+    where: { id: { in: [...byEmployee.keys()] } },
+    select: { id: true, firstName: true, lastName: true, employeeCode: true },
+    orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
   });
-  await notifyRoles(HR_ROLES, "ATTENDANCE_VALIDATION_REQUESTED", `${employee.firstName} ${employee.lastName} asked to validate their attendance`, {
-    message: rangeLabel(range.from, range.to),
-    link: "/dashboard/workforce/validations",
-  });
-  res.status(201).json({ validation: await present(created) });
+
+  const items = await Promise.all(
+    employees.map(async (employee) => {
+      const validation = await findMonthValidation(employee.id, month);
+      const stale = validation ? await isStale(validation) : false;
+      const stats = byEmployee.get(employee.id)!;
+      return {
+        employee,
+        checkIns: stats.checkIns,
+        daysPresent: stats.days.size,
+        state: !validation ? "NOT_VALIDATED" : stale ? "CHANGED" : "VALIDATED",
+        validatedAt: validation?.decidedAt ?? null,
+        validatedBy: validation?.decidedBy ?? null,
+      };
+    }),
+  );
+
+  const { to } = monthDays(month);
+  res.json({ month, monthEnded: to <= todayInMauritius(), items });
 });
 
-/** Withdraws a pending request or clears a rejected one. A validated request stays on record. */
-router.delete("/mine/:id", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
-  const employee = await ownEmployee(req.user!.sub);
-  if (!employee) return res.status(403).json({ error: "No employee record is linked to your account" });
-  const { count } = await prisma.attendanceValidation.deleteMany({
-    where: { id: req.params.id as string, employeeId: employee.id, status: { in: ["PENDING", "REJECTED"] } },
-  });
-  if (count === 0) return res.status(404).json({ error: "Request not found, or it has already been validated" });
-  res.status(204).end();
-});
-
-// ---- Admin/HR review ------------------------------------------------------------------------
-
-const EMPLOYEE_SELECT = { select: { id: true, firstName: true, lastName: true, employeeCode: true } } as const;
-
-router.get("/", requireRole(...HR_ROLES), async (req, res) => {
-  const status = req.query.status;
-  const where = status === "PENDING" || status === "VALIDATED" || status === "REJECTED" ? { status: status as typeof status } : {};
-  const rows = await prisma.attendanceValidation.findMany({
-    where,
-    include: { decidedBy: DECIDER_SELECT, employee: EMPLOYEE_SELECT },
-    orderBy: { requestedAt: "desc" },
-    take: 200,
-  });
-  res.json({ validations: await Promise.all(rows.map(present)) });
-});
-
-/** The report for a request, as it prints right now — so HR can check it before deciding. */
-router.get("/:id/pdf", requireRole(...HR_ROLES), async (req, res) => {
-  const row = await prisma.attendanceValidation.findUnique({ where: { id: req.params.id as string } });
-  if (!row) return res.status(404).json({ error: "Validation request not found" });
-  const report = await buildAttendanceReport(row.employeeId, dayOf(row.fromDate), dayOf(row.toDate));
+/** The employee's PDF for the month, as it prints right now. */
+router.get("/month/pdf", async (req, res) => {
+  const { employeeId, month } = req.query;
+  if (typeof employeeId !== "string" || !isMonth(month)) return res.status(400).json({ error: "employeeId and month are required" });
+  const { from, to } = monthDays(month);
+  const report = await buildAttendanceReport(employeeId, from, to);
   if (!report) return res.status(404).json({ error: "Employee not found" });
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Disposition", `attachment; filename="${report.filename}"`);
@@ -122,63 +122,68 @@ router.get("/:id/pdf", requireRole(...HR_ROLES), async (req, res) => {
 });
 
 /**
- * Validates a request, or re-validates one whose attendance changed since. The fingerprint of the
- * range is taken now, so the validation covers exactly what HR could see at this moment.
+ * Validates one employee's month (or re-validates it after a change). Only once the month's last
+ * day has arrived — attendance mid-month is still being filled in. The fingerprint is taken now,
+ * so the validation covers exactly what HR could see at this moment.
  */
-router.post("/:id/validate", requireRole(...HR_ROLES), async (req, res) => {
-  const row = await prisma.attendanceValidation.findUnique({ where: { id: req.params.id as string } });
-  if (!row) return res.status(404).json({ error: "Validation request not found" });
-  if (row.status === "VALIDATED" && !(await isStale(row))) return res.status(409).json({ error: "This request is already validated" });
-
-  const from = dayOf(row.fromDate);
-  const to = dayOf(row.toDate);
-  const validation = await prisma.attendanceValidation.update({
-    where: { id: row.id },
-    data: {
-      status: "VALIDATED",
-      fingerprint: await rangeFingerprint(row.employeeId, from, to),
-      note: null,
-      decidedById: req.user!.sub,
-      decidedAt: new Date(),
-    },
-    include: { decidedBy: DECIDER_SELECT, employee: EMPLOYEE_SELECT },
-  });
-  await notifyEmployee(row.employeeId, "ATTENDANCE_VALIDATED", `Your attendance for ${rangeLabel(from, to)} was validated`, {
+async function validateMonth(employeeId: string, month: string, userId: string) {
+  const { from, to } = monthDays(month);
+  const fingerprint = await rangeFingerprint(employeeId, from, to);
+  const existing = await findMonthValidation(employeeId, month);
+  if (existing && existing.fingerprint === fingerprint) return { changed: false };
+  if (existing) {
+    await prisma.attendanceValidation.update({
+      where: { id: existing.id },
+      data: { fingerprint, decidedById: userId, decidedAt: new Date() },
+    });
+  } else {
+    await prisma.attendanceValidation.create({
+      data: { employeeId, fromDate: dayToDate(from), toDate: dayToDate(to), status: "VALIDATED", fingerprint, decidedById: userId, decidedAt: new Date() },
+    });
+  }
+  await notifyEmployee(employeeId, "ATTENDANCE_VALIDATED", `Your attendance for ${monthLabel(month)} was validated`, {
     message: "You can now download it without the DRAFT mark.",
     link: "/dashboard",
   });
-  res.json({ validation: await present(validation) });
+  return { changed: true };
+}
+
+function monthNotOver(month: string) {
+  return monthDays(month).to > todayInMauritius();
+}
+
+router.post("/month/validate", async (req, res) => {
+  const { employeeId, month } = req.body ?? {};
+  if (typeof employeeId !== "string" || !isMonth(month)) return res.status(400).json({ error: "employeeId and month are required" });
+  if (monthNotOver(month)) return res.status(400).json({ error: "A month can be validated from its last day" });
+  const employee = await prisma.employee.findUnique({ where: { id: employeeId }, select: { id: true } });
+  if (!employee) return res.status(404).json({ error: "Employee not found" });
+  res.json(await validateMonth(employeeId, month, req.user!.sub));
 });
 
-router.post("/:id/reject", requireRole(...HR_ROLES), async (req, res) => {
-  const row = await prisma.attendanceValidation.findUnique({ where: { id: req.params.id as string } });
-  if (!row) return res.status(404).json({ error: "Validation request not found" });
-  const note = typeof req.body?.note === "string" && req.body.note.trim() ? req.body.note.trim().slice(0, 500) : null;
-
-  const validation = await prisma.attendanceValidation.update({
-    where: { id: row.id },
-    data: { status: "REJECTED", fingerprint: null, note, decidedById: req.user!.sub, decidedAt: new Date() },
-    include: { decidedBy: DECIDER_SELECT, employee: EMPLOYEE_SELECT },
-  });
-  await notifyEmployee(
-    row.employeeId,
-    "ATTENDANCE_VALIDATION_REJECTED",
-    `Your attendance for ${rangeLabel(dayOf(row.fromDate), dayOf(row.toDate))} was not validated`,
-    { message: note ?? undefined, link: "/dashboard" },
-  );
-  res.json({ validation: await present(validation) });
+/** Validates every employee with attendance in the month who isn't already validated (or has changed). */
+router.post("/month/validate-all", async (req, res) => {
+  const { month } = req.body ?? {};
+  if (!isMonth(month)) return res.status(400).json({ error: "month (YYYY-MM) is required" });
+  if (monthNotOver(month)) return res.status(400).json({ error: "A month can be validated from its last day" });
+  const { start, end } = mauritiusMonthRange(month);
+  const employeeIds = (
+    await prisma.siteAttendance.findMany({ where: { checkInAt: { gte: start, lt: end } }, select: { employeeId: true }, distinct: ["employeeId"] })
+  ).map((v) => v.employeeId);
+  let validated = 0;
+  for (const employeeId of employeeIds) {
+    if ((await validateMonth(employeeId, month, req.user!.sub)).changed) validated += 1;
+  }
+  res.json({ validated });
 });
 
-/** Undoes a decision: back to pending. */
-router.post("/:id/reopen", requireRole(...HR_ROLES), async (req, res) => {
-  const row = await prisma.attendanceValidation.findUnique({ where: { id: req.params.id as string } });
-  if (!row) return res.status(404).json({ error: "Validation request not found" });
-  const validation = await prisma.attendanceValidation.update({
-    where: { id: row.id },
-    data: { status: "PENDING", fingerprint: null, note: null, decidedById: null, decidedAt: null },
-    include: { decidedBy: DECIDER_SELECT, employee: EMPLOYEE_SELECT },
-  });
-  res.json({ validation: await present(validation) });
+/** Removes a month's validation, so the employee's PDF is DRAFT again. */
+router.post("/month/unvalidate", async (req, res) => {
+  const { employeeId, month } = req.body ?? {};
+  if (typeof employeeId !== "string" || !isMonth(month)) return res.status(400).json({ error: "employeeId and month are required" });
+  const { from, to } = monthDays(month);
+  await prisma.attendanceValidation.deleteMany({ where: { employeeId, fromDate: dayToDate(from), toDate: dayToDate(to) } });
+  res.status(204).end();
 });
 
 export default router;

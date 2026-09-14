@@ -1944,60 +1944,59 @@ export function myAttendanceReportPdfUrl(from: string, to: string) {
   return `${API_URL}/api/site-attendance/me/report/pdf?from=${from}&to=${to}`
 }
 
-export type AttendanceValidationStatus = 'PENDING' | 'VALIDATED' | 'REJECTED'
-
-export interface AttendanceValidation {
+/** A period of the signed-in user's attendance that HR has validated. */
+export interface MyAttendanceValidation {
   id: string
-  employeeId: string
-  employee?: { id: string; firstName: string; lastName: string; employeeCode: string }
   /** "YYYY-MM-DD" */
   fromDate: string
   toDate: string
-  status: AttendanceValidationStatus
-  /** Validated, but the attendance has changed since — prints as DRAFT again until re-validated. */
+  /** The attendance changed after validation — the PDF is DRAFT again until HR re-validates. */
   stale: boolean
-  note: string | null
-  requestedAt: string
-  decidedAt: string | null
-  decidedBy: { id: string; name: string | null; email: string } | null
 }
 
 export function listMyAttendanceValidations() {
-  return request<{ validations: AttendanceValidation[] }>('/api/attendance-validations/mine')
+  return request<{ validations: MyAttendanceValidation[] }>('/api/attendance-validations/mine')
 }
 
-export function requestAttendanceValidation(from: string, to: string) {
-  return request<{ validation: AttendanceValidation }>('/api/attendance-validations/mine', {
+export type MonthValidationState = 'NOT_VALIDATED' | 'VALIDATED' | 'CHANGED'
+
+export interface MonthValidationItem {
+  employee: { id: string; firstName: string; lastName: string; employeeCode: string }
+  checkIns: number
+  daysPresent: number
+  state: MonthValidationState
+  validatedAt: string | null
+  validatedBy: { id: string; name: string | null; email: string } | null
+}
+
+/** `month` is "YYYY-MM". */
+export function listMonthValidations(month: string) {
+  return request<{ month: string; monthEnded: boolean; items: MonthValidationItem[] }>(`/api/attendance-validations/month?month=${month}`)
+}
+
+export function monthValidationPdfUrl(employeeId: string, month: string) {
+  return `${API_URL}/api/attendance-validations/month/pdf?employeeId=${employeeId}&month=${month}`
+}
+
+export function validateMonth(employeeId: string, month: string) {
+  return request<{ changed: boolean }>('/api/attendance-validations/month/validate', {
     method: 'POST',
-    body: JSON.stringify({ from, to }),
+    body: JSON.stringify({ employeeId, month }),
   })
 }
 
-export function deleteMyAttendanceValidation(id: string) {
-  return request<void>(`/api/attendance-validations/mine/${id}`, { method: 'DELETE' })
-}
-
-export function listAttendanceValidations(status?: AttendanceValidationStatus) {
-  return request<{ validations: AttendanceValidation[] }>(`/api/attendance-validations${status ? `?status=${status}` : ''}`)
-}
-
-export function attendanceValidationPdfUrl(id: string) {
-  return `${API_URL}/api/attendance-validations/${id}/pdf`
-}
-
-export function validateAttendance(id: string) {
-  return request<{ validation: AttendanceValidation }>(`/api/attendance-validations/${id}/validate`, { method: 'POST' })
-}
-
-export function rejectAttendanceValidation(id: string, note?: string) {
-  return request<{ validation: AttendanceValidation }>(`/api/attendance-validations/${id}/reject`, {
+export function validateWholeMonth(month: string) {
+  return request<{ validated: number }>('/api/attendance-validations/month/validate-all', {
     method: 'POST',
-    body: JSON.stringify({ note }),
+    body: JSON.stringify({ month }),
   })
 }
 
-export function reopenAttendanceValidation(id: string) {
-  return request<{ validation: AttendanceValidation }>(`/api/attendance-validations/${id}/reopen`, { method: 'POST' })
+export function unvalidateMonth(employeeId: string, month: string) {
+  return request<void>('/api/attendance-validations/month/unvalidate', {
+    method: 'POST',
+    body: JSON.stringify({ employeeId, month }),
+  })
 }
 
 /** Fetches a PDF with the session cookie and hands it to the browser as a download. */
