@@ -844,8 +844,11 @@ wording complaints come in, they're one-line dictionary edits); **choice saved o
 - **Where the choice lives:** the device (localStorage `technet-language`, so the sign-in page is
   already right) and `User.language` (nullable string, migration `20260911160000_user_language`,
   validated against `SUPPORTED_LANGUAGES` in `routes/auth.ts`; `PUT /api/auth/language`). On
-  sign-in `AuthContext.adoptLanguage` applies the account's language, or — if the account has none —
-  saves the device's choice to it. `changeLanguage()` (used by `LanguageSwitcher`) does both.
+  sign-in `AuthContext.adoptLanguage`: a language **picked while signed out** (flag
+  `technet-language-picked` in localStorage) wins and is saved to the account; otherwise the
+  account's language is applied, or — if the account has none — the device's choice is saved to it.
+  (Fixed 2026-09-14: the account's language used to always win, so switching to English on the
+  sign-in page flipped back to French on login.) `changeLanguage()` (used by `LanguageSwitcher`) does both.
   Switchers: compact in the sign-in / forgot / reset / public Help headers (replacing the old static
   "EN"), full-width in Settings → Language. `LanguageProvider` sits **outside** `AuthProvider` in
   `main.tsx`.
