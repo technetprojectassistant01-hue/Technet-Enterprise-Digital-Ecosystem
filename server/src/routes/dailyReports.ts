@@ -19,7 +19,42 @@ const INCLUDE = {
   reviewedBy: { select: USER_SELECT },
   technicians: { include: { employee: { select: EMPLOYEE_SELECT } } },
   workOrders: { include: { workOrder: { select: { id: true, workOrderNumber: true, title: true } } } },
+  // Never the bytes — those are served one at a time by GET /:id/photos/:photoId.
+  photos: { select: { id: true, fileName: true, mimeType: true }, orderBy: { createdAt: "asc" as const } },
 };
+
+/** Photos a daily report can carry. The client shrinks them before upload; this is the hard limit. */
+export const MAX_DAILY_REPORT_PHOTOS = 3;
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+const ALLOWED_PHOTO_MIME = ["image/jpeg", "image/png", "image/webp", "image/heic"];
+
+function decodeDataUrl(input: unknown): { buffer: Buffer; mimeType: string } | null {
+  if (typeof input !== "string" || !input) return null;
+  const match = /^data:([^;]+);base64,(.+)$/.exec(input);
+  if (!match) return null;
+  const [, mimeType, data] = match;
+  return { buffer: Buffer.from(data, "base64"), mimeType };
+}
+
+type ParsedPhoto = { buffer: Buffer; mimeType: string; fileName: string };
+
+/** Validates the optional `photos` array sent with a new report. */
+export function parseDailyReportPhotos(input: unknown): { photos: ParsedPhoto[] } | { error: string } {
+  if (input === undefined || input === null) return { photos: [] };
+  if (!Array.isArray(input)) return { error: "photos must be a list" };
+  if (input.length > MAX_DAILY_REPORT_PHOTOS) return { error: `You can attach up to ${MAX_DAILY_REPORT_PHOTOS} photos` };
+  const photos: ParsedPhoto[] = [];
+  for (const item of input) {
+    const { fileData, fileName } = (item ?? {}) as { fileData?: unknown; fileName?: unknown };
+    const file = decodeDataUrl(fileData);
+    if (!file) return { error: "Each photo needs its image data" };
+    if (!ALLOWED_PHOTO_MIME.includes(file.mimeType)) return { error: "Photos must be JPEG, PNG, WEBP or HEIC images" };
+    if (file.buffer.byteLength > MAX_PHOTO_BYTES) return { error: "Each photo must be 5MB or smaller" };
+    const name = typeof fileName === "string" && fileName.trim() ? fileName.trim().slice(0, 200) : "photo.jpg";
+    photos.push({ ...file, fileName: name });
+  }
+  return { photos };
+}
 
 router.use(requireAuth);
 
@@ -61,6 +96,16 @@ router.get("/:id", async (req, res) => {
   res.json({ dailyWorkReport });
 });
 
+router.get("/:id/photos/:photoId", async (req, res) => {
+  const { id, photoId } = req.params as { id: string; photoId: string };
+  const photo = await prisma.dailyWorkReportPhoto.findFirst({ where: { id: photoId, dailyWorkReportId: id } });
+  if (!photo) return res.status(404).json({ error: "Photo not found" });
+  res.setHeader("Content-Type", photo.mimeType);
+  res.setHeader("Content-Disposition", `inline; filename="${photo.fileName.replace(/"/g, "")}"`);
+  res.setHeader("Cache-Control", "private, max-age=86400");
+  res.send(Buffer.from(photo.data));
+});
+
 router.post("/", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
   const { date, summary, hours, technicianIds, workOrderIds } = req.body ?? {};
 
@@ -73,6 +118,9 @@ router.post("/", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
   if (hours !== undefined && hours !== null && (!Number.isFinite(hours) || hours < 0)) {
     return res.status(400).json({ error: "Hours must be a non-negative number" });
   }
+
+  const parsedPhotos = parseDailyReportPhotos((req.body as { photos?: unknown })?.photos);
+  if ("error" in parsedPhotos) return res.status(400).json({ error: parsedPhotos.error });
 
   const techIds = Array.isArray(technicianIds) ? (technicianIds as string[]).filter((v) => typeof v === "string") : [];
   const woIds = Array.isArray(workOrderIds) ? (workOrderIds as string[]).filter((v) => typeof v === "string") : [];
@@ -92,6 +140,13 @@ router.post("/", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
         submittedById: req.user!.sub,
         technicians: { create: techIds.map((employeeId) => ({ employeeId })) },
         workOrders: { create: woIds.map((workOrderId) => ({ workOrderId })) },
+        photos: {
+          create: parsedPhotos.photos.map((p) => ({
+            data: p.buffer as unknown as Uint8Array<ArrayBuffer>,
+            mimeType: p.mimeType,
+            fileName: p.fileName,
+          })),
+        },
       },
       include: INCLUDE,
     });

@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Plus, Check, X as XIcon, ClipboardList, Download } from 'lucide-react'
+import { Plus, Check, X as XIcon, ClipboardList, Download, ImagePlus, Images } from 'lucide-react'
 import * as api from '../lib/api'
 import type { DailyWorkReport, InterventionReport } from '../lib/api'
 import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
@@ -17,6 +17,7 @@ import { useReloadOnReconnect } from '../lib/useOnline'
 import { enumLabel, navLabel, useT } from '../i18n'
 import { ClipboardList as ClipboardListIcon } from 'lucide-react'
 import PageTitle from '../dashboard/PageTitle'
+import { shrinkImage } from '../lib/imageResize'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -47,6 +48,9 @@ function DailyReportsPage() {
   const [workOrderIds, setWorkOrderIds] = useState<string[]>([])
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [photos, setPhotos] = useState<{ fileData: string; fileName: string }[]>([])
+  const [addingPhotos, setAddingPhotos] = useState(false)
+  const [viewing, setViewing] = useState<DailyWorkReport | null>(null)
 
   const [relatedReports, setRelatedReports] = useState<InterventionReport[]>([])
   const [loadingRelated, setLoadingRelated] = useState(false)
@@ -116,8 +120,27 @@ function DailyReportsPage() {
     setHours('')
     setTechnicianIds([])
     setWorkOrderIds([])
+    setPhotos([])
     setFormError(null)
     setShowCreate(true)
+  }
+
+  /** Adds picked photos (shrunk on the device first), never more than the maximum. */
+  async function addPhotos(files: FileList | null) {
+    if (!files?.length) return
+    const room = api.MAX_DAILY_REPORT_PHOTOS - photos.length
+    const picked = Array.from(files).filter((f) => f.type.startsWith('image/') || /\.hei[cf]$/i.test(f.name))
+    if (picked.length > room) toast.error(t.ops.daily.photosLimit(api.MAX_DAILY_REPORT_PHOTOS))
+    if (room <= 0) return
+    setAddingPhotos(true)
+    try {
+      const shrunk = await Promise.all(picked.slice(0, room).map(shrinkImage))
+      setPhotos((prev) => [...prev, ...shrunk].slice(0, api.MAX_DAILY_REPORT_PHOTOS))
+    } catch {
+      toast.error(t.ops.daily.photoReadFailed)
+    } finally {
+      setAddingPhotos(false)
+    }
   }
 
   function toggle(list: string[], set: (v: string[]) => void, id: string) {
@@ -145,6 +168,7 @@ function DailyReportsPage() {
           hours: hours ? Number(hours) : undefined,
           technicianIds,
           workOrderIds,
+          photos: photos.length ? photos : undefined,
         },
       })
       toast.success(queued ? t.shared.savedOffline : t.ops.daily.submitted)
@@ -258,6 +282,7 @@ function DailyReportsPage() {
                   <th className="px-3 py-3 font-semibold">{t.ops.daily.colSummary}</th>
                   <th className="px-3 py-3 font-semibold">{t.shared.technicians}</th>
                   <th className="px-3 py-3 font-semibold">{t.ops.daily.colHours}</th>
+                  <th className="px-3 py-3 font-semibold">{t.ops.daily.colPhotos}</th>
                   <th className="px-3 py-3 font-semibold">{t.shared.status}</th>
                   <th className="px-3 py-3" />
                 </tr>
@@ -275,6 +300,20 @@ function DailyReportsPage() {
                         : r.technicians.map((x) => `${x.employee.firstName} ${x.employee.lastName}`).join(', ')}
                     </td>
                     <td className="px-3 py-3 text-ink-400">{r.hours ? Number(r.hours) : '—'}</td>
+                    <td className="px-3 py-3">
+                      {r.photos?.length ? (
+                        <button
+                          type="button"
+                          onClick={() => setViewing(r)}
+                          className="inline-flex items-center gap-1.5 text-xs font-semibold text-cyan-accent hover:underline"
+                        >
+                          <Images className="h-4 w-4" />
+                          {r.photos.length}
+                        </button>
+                      ) : (
+                        <span className="text-ink-400">—</span>
+                      )}
+                    </td>
                     <td className="px-3 py-3">
                       <Badge tone={reportStatusTone[r.status]}>{enumLabel(t.labels.reportStatus, r.status)}</Badge>
                     </td>
@@ -383,6 +422,42 @@ function DailyReportsPage() {
               </div>
             </div>
 
+            <div>
+              <label className={labelClass}>{t.ops.daily.photosLabel(photos.length, api.MAX_DAILY_REPORT_PHOTOS)}</label>
+              <div className="mt-2 grid grid-cols-3 gap-2">
+                {photos.map((p, i) => (
+                  <div key={i} className="relative aspect-square max-w-full overflow-hidden rounded-md border border-ink-700 bg-ink-950">
+                    <img src={p.fileData} alt={p.fileName} className="h-full w-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setPhotos((prev) => prev.filter((_, j) => j !== i))}
+                      aria-label={t.ops.daily.removePhoto}
+                      className="absolute right-1 top-1 rounded-full bg-ink-950/80 p-1 text-ink-100 hover:text-red-400"
+                    >
+                      <XIcon className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+                {photos.length < api.MAX_DAILY_REPORT_PHOTOS && (
+                  <label className="flex aspect-square max-w-full cursor-pointer flex-col items-center justify-center gap-1 rounded-md border border-dashed border-ink-600 bg-ink-950 text-center text-xs text-ink-400 hover:border-cyan-accent hover:text-cyan-accent">
+                    <ImagePlus className="h-5 w-5" />
+                    {addingPhotos ? t.ops.daily.addingPhotos : t.ops.daily.addPhoto}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      disabled={addingPhotos}
+                      onChange={(e) => {
+                        void addPhotos(e.target.files)
+                        e.target.value = ''
+                      }}
+                      className="hidden"
+                    />
+                  </label>
+                )}
+              </div>
+            </div>
+
             {workOrderIds.length > 0 && (
               <div>
                 <label className={labelClass}>{t.ops.daily.related}</label>
@@ -423,10 +498,26 @@ function DailyReportsPage() {
 
             {formError && <p className="text-sm text-red-400">{formError}</p>}
 
-            <button type="submit" disabled={submitting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
+            <button type="submit" disabled={submitting || addingPhotos} className={`justify-center py-2.5 ${primaryButtonClass}`}>
               {submitting ? t.shared.submitting : t.shared.submitReport}
             </button>
           </form>
+        </Modal>
+      )}
+
+      {viewing && (
+        <Modal title={t.ops.daily.photosTitle(viewing.date.slice(0, 10))} onClose={() => setViewing(null)}>
+          <div className="flex flex-col gap-3">
+            {viewing.photos.map((p) => (
+              <img
+                key={p.id}
+                src={api.dailyReportPhotoUrl(viewing.id, p.id)}
+                alt={p.fileName}
+                loading="lazy"
+                className="max-h-[60vh] w-full rounded-md border border-ink-700 bg-ink-950 object-contain"
+              />
+            ))}
+          </div>
         </Modal>
       )}
     </div>

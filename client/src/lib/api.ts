@@ -2158,7 +2158,15 @@ export interface DailyWorkReport {
   reviewNote: string | null
   technicians: { id: string; employee: EmployeeSummary }[]
   workOrders: { id: string; workOrder: { id: string; workOrderNumber: string; title: string } }[]
+  photos: { id: string; fileName: string; mimeType: string }[]
   createdAt: string
+}
+
+/** The most photos a daily report can carry (enforced by the server too). */
+export const MAX_DAILY_REPORT_PHOTOS = 3
+
+export function dailyReportPhotoUrl(reportId: string, photoId: string) {
+  return `${API_URL}/api/daily-reports/${reportId}/photos/${photoId}`
 }
 
 export interface DailyWorkReportInput {

@@ -157,6 +157,17 @@ Intervention Reports, Work Orders, and Daily Reports all support `from`/`to` dat
 - Work Orders: + customer, assigned technician.
 - Daily Reports: date range only so far.
 
+**Daily report photos** (2026-09-14, user request): a daily report can carry **up to 3 photos**
+(`DailyWorkReportPhoto`, migration `20260914240000_daily_report_photos`). Unlike intervention reports (photos
+uploaded one by one after the report), they travel **inline in the create body** as `photos: [{ fileData,
+fileName }]` — so the whole report, photos included, is one offline-outbox item and one idempotent POST.
+The client shrinks each image first (`client/src/lib/imageResize.ts`: longest side 1600px, JPEG 0.82, falls
+back to the original if the browser can't decode it, e.g. HEIC outside Safari), which keeps the body far
+under the 20MB JSON limit; the server still enforces max 3, image types only, 5MB each
+(`parseDailyReportPhotos`, tested). Bytes never appear in list JSON — `GET /api/daily-reports/:id/photos/:photoId`
+serves each one; the Daily Reports table shows a photo count that opens a viewer. Photos can't be added to
+an existing report.
+
 Pattern to reuse if asked to add more filters anywhere: a `parseDateOnly()` helper per route file (regex-matches `YYYY-MM-DD`, inclusive end-of-day via `+24h - 1ms`), a `Filters` state object or individual `useState`s on the client wired to a `load()` call in a `useEffect`, and a filter row (`label` + `select`/`input[type=date]`) above the table inside the existing `Panel`.
 
 Same pattern applied to the **Asset Registry** (2026-08-26, `dd8d288`/`734dfba`): Customer, Status, and Category filters (search broadened to also match `location`, not just name/serial). One thing worth remembering for any filter whose options come from the data itself (not a fixed enum) — Category here is a free string, not an enum, so its dropdown options are derived from a **separate, one-time unfiltered fetch** on mount, not from the currently-filtered `assets` list. Deriving options from the filtered list creates a real bug: picking a category narrows the list to just that category, which then narrows the dropdown down to just the one option left visible, hiding every other choice from the user.
