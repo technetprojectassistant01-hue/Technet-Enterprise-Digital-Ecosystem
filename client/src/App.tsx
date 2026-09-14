@@ -43,9 +43,9 @@ import InterventionReportFormPage from './operations/InterventionReportFormPage'
 import InterventionReportDetailPage from './operations/InterventionReportDetailPage'
 import TeamAttendancePage from './operations/TeamAttendancePage'
 import FieldOperationsPage from './operations/FieldOperationsPage'
-import MaintenanceLayout from './maintenance/MaintenanceLayout'
-import ToolsPage from './maintenance/ToolsPage'
-import ToolRequestsPage from './maintenance/ToolRequestsPage'
+import StoreLayout from './store/StoreLayout'
+import ToolsPage from './store/ToolsPage'
+import ToolRequestsPage from './store/ToolRequestsPage'
 import WorkforceLayout from './workforce/WorkforceLayout'
 import AvailabilityTab from './workforce/AvailabilityTab'
 import AttendancePage from './workforce/AttendancePage'
@@ -125,14 +125,17 @@ function App() {
               <Route path="documents" element={<DocumentsPage />} />
             </Route>
           </Route>
-          <Route path="maintenance" element={<MaintenanceLayout />}>
+          <Route path="store" element={<StoreLayout />}>
             <Route index element={<Navigate to="tools" replace />} />
             <Route path="tools" element={<ToolsPage />} />
             <Route path="requests" element={<ToolRequestsPage />} />
-            {/* The old customer-maintenance screens (assets, contracts, schedule) were replaced by
-                tools & equipment; links to them in older notifications land here instead. */}
             <Route path="*" element={<Navigate to="tools" replace />} />
           </Route>
+          {/* Technet Store used to be Technet Maintenance. Older notifications still link to
+              /dashboard/maintenance/... - tool request links keep their page, anything else
+              (the removed assets/contracts/schedule screens) lands on the tool register. */}
+          <Route path="maintenance/requests" element={<Navigate to="/dashboard/store/requests" replace />} />
+          <Route path="maintenance/*" element={<Navigate to="/dashboard/store/tools" replace />} />
           <Route element={<RoleRoute blockedRoles={FIELD_ONLY_ROLES} />}>
             <Route path="connect" element={<ConnectInfoPage />} />
           </Route>
