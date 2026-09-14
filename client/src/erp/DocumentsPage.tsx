@@ -253,10 +253,10 @@ function DocumentsPage() {
                   <tr key={doc.id} className="border-b border-ink-800 last:border-0">
                     <td className="px-3 py-3">
                       <div className="flex items-center gap-2 font-medium text-ink-100">
-                        <Paperclip className="h-3.5 w-3.5 shrink-0 text-ink-500" />
+                        <Paperclip className="h-3.5 w-3.5 shrink-0 text-ink-400" />
                         {doc.title}
                       </div>
-                      <div className="mt-0.5 text-xs text-ink-500">{doc.fileName}</div>
+                      <div className="mt-0.5 text-xs text-ink-400">{doc.fileName}</div>
                     </td>
                     <td className="px-3 py-3">
                       <Badge tone={categoryTone[doc.category]}>{DOCUMENT_CATEGORY_LABELS[doc.category]}</Badge>
@@ -267,7 +267,7 @@ function DocumentsPage() {
                     <td className="px-3 py-3 text-ink-400">{formatSize(doc.sizeBytes)}</td>
                     <td className="px-3 py-3 text-ink-400">
                       {doc.createdAt.slice(0, 10)}
-                      {doc.uploadedBy.name && <span className="text-ink-500"> · {doc.uploadedBy.name}</span>}
+                      {doc.uploadedBy.name && <span className="text-ink-400"> · {doc.uploadedBy.name}</span>}
                     </td>
                     <td className="px-3 py-3">
                       <div className="flex items-center justify-end gap-3 text-ink-400">
@@ -309,7 +309,7 @@ function DocumentsPage() {
                 />
               </div>
               {fileError && <p className="mt-1 text-xs text-red-400">{fileError}</p>}
-              <p className="mt-1 text-xs text-ink-500">Any document type. Max 15MB.</p>
+              <p className="mt-1 text-xs text-ink-400">Any document type. Max 15MB.</p>
             </div>
             <div>
               <label className={labelClass}>TITLE</label>
