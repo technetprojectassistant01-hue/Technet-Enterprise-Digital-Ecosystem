@@ -459,7 +459,7 @@ function QuotationDetailPage() {
         </div>
       </div>
 
-      <p className="text-xs text-ink-500">
+      <p className="text-xs text-ink-400">
         "Email Customer" downloads the PDF and opens a draft email addressed to the customer - browsers can't
         auto-attach a file for security reasons, so you'll need to attach the downloaded PDF yourself before sending.
       </p>
@@ -475,7 +475,7 @@ function QuotationDetailPage() {
           </div>
           <div className="mt-4 border-t border-ink-800 pt-4">
             <label className={labelClass}>CONTACT PERSON</label>
-            <p className="mt-1 text-xs text-ink-500">Who to talk to about this quotation - defaults for logged calls below.</p>
+            <p className="mt-1 text-xs text-ink-400">Who to talk to about this quotation - defaults for logged calls below.</p>
             <div className="mt-2 flex items-end gap-2">
               <input
                 value={contactPersonInput}
@@ -518,14 +518,14 @@ function QuotationDetailPage() {
         <Panel title="Terms" className="lg:col-span-2">
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <span className="text-xs font-semibold tracking-widest text-ink-500">PAYMENT TERMS</span>
+              <span className="text-xs font-semibold tracking-widest text-ink-400">PAYMENT TERMS</span>
               <p className="mt-1 text-ink-200">
                 {quotation.paymentTermsLines.map((l) => `${l.label} ${l.percentage}%`).join(', ')}
               </p>
             </div>
             {quotation.availabilityStatus && (
               <div>
-                <span className="text-xs font-semibold tracking-widest text-ink-500">AVAILABILITY</span>
+                <span className="text-xs font-semibold tracking-widest text-ink-400">AVAILABILITY</span>
                 <p className="mt-1 text-ink-200">
                   {quotation.availabilityStatus === 'IN_STOCK'
                     ? 'In stock'
@@ -551,7 +551,7 @@ function QuotationDetailPage() {
         }
       >
         {canWrite && quotation.status === 'DRAFT' && !editingItems && (
-          <p className="mb-3 text-xs text-ink-500">
+          <p className="mb-3 text-xs text-ink-400">
             Draft - click Edit to change the customer, terms, or line items.
           </p>
         )}
@@ -652,7 +652,7 @@ function QuotationDetailPage() {
                 <tbody>
                   {quotation.items.map((item, i) => (
                     <tr key={item.id} className="border-b border-ink-800 last:border-0">
-                      <td className="px-3 py-3 align-top font-mono text-xs text-ink-500">{String(i + 1).padStart(2, '0')}</td>
+                      <td className="px-3 py-3 align-top font-mono text-xs text-ink-400">{String(i + 1).padStart(2, '0')}</td>
                       <td className="whitespace-pre-wrap px-3 py-3 font-medium text-ink-100">{item.description}</td>
                       <td className="px-3 py-3 align-top text-ink-300">{item.quantity}</td>
                       <td className="px-3 py-3 align-top text-ink-300">{formatMoney(item.unitPrice)}</td>
@@ -695,8 +695,8 @@ function QuotationDetailPage() {
                   disabled={downloadingAttachmentId === doc.id}
                   className="text-left text-ink-100 hover:text-cyan-accent hover:underline disabled:opacity-60"
                 >
-                  {doc.title} <span className="text-ink-500">({formatSize(doc.sizeBytes)})</span>
-                  {downloadingAttachmentId === doc.id && <span className="text-ink-500"> · downloading…</span>}
+                  {doc.title} <span className="text-ink-400">({formatSize(doc.sizeBytes)})</span>
+                  {downloadingAttachmentId === doc.id && <span className="text-ink-400"> · downloading…</span>}
                 </button>
                 {canWrite && (
                   <button type="button" onClick={() => handleDeleteAttachment(doc)} className="text-ink-400 hover:text-red-400">
@@ -777,14 +777,14 @@ function QuotationDetailPage() {
             {followUpsLoading ? (
               <TableSkeleton rows={2} cols={2} />
             ) : followUps.length === 0 ? (
-              <p className="mt-2 text-sm text-ink-500">No calls logged yet.</p>
+              <p className="mt-2 text-sm text-ink-400">No calls logged yet.</p>
             ) : (
               <ul className="mt-2 flex flex-col gap-2">
                 {followUps.map((f) => (
                   <li key={f.id} className="rounded-md bg-ink-800 px-3 py-2 text-sm">
                     <div className="flex items-center justify-between">
                       <span className="text-ink-100">{f.spokenTo}</span>
-                      <span className="text-xs text-ink-500">{new Date(f.calledAt).toLocaleString()}</span>
+                      <span className="text-xs text-ink-400">{new Date(f.calledAt).toLocaleString()}</span>
                     </div>
                     <p className="mt-1 text-ink-300">{FOLLOWUP_LABEL[f.outcome]}</p>
                     {f.callScheduledOn && (
