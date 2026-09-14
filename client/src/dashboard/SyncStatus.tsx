@@ -68,7 +68,7 @@ function SyncStatus() {
                     className="flex items-center justify-between gap-3 rounded-md border border-ink-800 px-3 py-2 text-sm"
                   >
                     <span className="text-ink-200">{item.label}</span>
-                    <span className="shrink-0 text-xs text-ink-500">
+                    <span className="shrink-0 text-xs text-ink-400">
                       {item.lastError
                         ? item.lastError
                         : item.attempts > 0
