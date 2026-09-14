@@ -78,7 +78,7 @@ function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) => void
         />
       </div>
       <div className="flex items-center justify-between">
-        <span className="text-xs text-ink-500">{t.ops.signature.hint}</span>
+        <span className="text-xs text-ink-400">{t.ops.signature.hint}</span>
         <button
           type="button"
           onClick={handleClear}
