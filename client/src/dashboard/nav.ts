@@ -26,6 +26,7 @@ import {
   ClipboardCheck,
   CalendarDays,
   CalendarCheck,
+  Clock,
   BadgeCheck,
   Hammer,
   Banknote,
@@ -48,7 +49,8 @@ export interface NavItem {
 }
 
 export const MAIN_NAV: NavItem[] = [
-  { label: 'Overview', to: '/dashboard', icon: LayoutGrid, end: true },
+  // The landing page is mainly the check-in/check-out card, so it's named for that.
+  { label: 'Attendance', to: '/dashboard', icon: Clock, end: true },
   // Admin approves leave rather than requesting it here, so they get Leave Approvals instead.
   { label: 'My Leave', to: '/dashboard/my-leave', icon: CalendarDays, hiddenFrom: ['ADMIN'] },
   { label: 'Leave Approvals', to: '/dashboard/leave-approvals', icon: CalendarCheck, hiddenFrom: NON_ADMIN_ROLES },
