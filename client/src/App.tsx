@@ -50,6 +50,7 @@ import ToolRequestsPage from './store/ToolRequestsPage'
 import WorkforceLayout from './workforce/WorkforceLayout'
 import AvailabilityTab from './workforce/AvailabilityTab'
 import AttendancePage from './workforce/AttendancePage'
+import OvertimePage from './workforce/OvertimePage'
 import PayrollPage from './workforce/PayrollPage'
 import PayrollDetailPage from './workforce/PayrollDetailPage'
 import MarketingLayout from './marketing/MarketingLayout'
@@ -155,6 +156,7 @@ function App() {
             <Route index element={<Navigate to="availability" replace />} />
             <Route path="availability" element={<AvailabilityTab />} />
             <Route path="attendance" element={<AttendancePage />} />
+            <Route path="overtime" element={<OvertimePage />} />
             <Route path="payroll" element={<PayrollPage />} />
             <Route path="payroll/:id" element={<PayrollDetailPage />} />
           </Route>
