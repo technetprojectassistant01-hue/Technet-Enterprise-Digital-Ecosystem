@@ -78,6 +78,28 @@ export function mauritiusMonthRange(month: string): { start: Date; end: Date } {
 }
 
 /**
+ * Minutes late per day, keyed by the id of that day's first check-in: how far the shown time-in
+ * runs past the start of the working day. Sundays are never late. Mirrors computeDayFlags' `late`
+ * in client/src/lib/workSchedule.ts, for the printable attendance report.
+ */
+export function computeLateByVisit(visits: (OvertimeVisit & { id: string })[]): Map<string, number> {
+  const firstByDay = new Map<string, OvertimeVisit & { id: string }>();
+  for (const v of visits) {
+    const key = `${v.employeeId}|${local(v.checkInAt).day}`;
+    const current = firstByDay.get(key);
+    if (!current || v.checkInAt < current.checkInAt) firstByDay.set(key, v);
+  }
+  const late = new Map<string, number>();
+  for (const v of firstByDay.values()) {
+    const schedule = SCHEDULE[local(v.checkInAt).weekday];
+    if (!schedule) continue;
+    const by = shown(v.checkInDeclaredTime, v.checkInAt) - schedule.start;
+    if (by > 0) late.set(v.id, by);
+  }
+  return late;
+}
+
+/**
  * Overtime per employee per day. The day's last check-out past closing time counts; on a Sunday
  * every minute worked counts. Days with a session still open are skipped (not finished yet).
  * Days are grouped by the Mauritius date of the check-in.

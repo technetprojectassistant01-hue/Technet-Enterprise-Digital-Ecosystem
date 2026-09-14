@@ -161,7 +161,7 @@ function FieldOperationsPage() {
                           rel="noreferrer"
                           className="text-cyan-accent hover:underline"
                         >
-                          {entry.checkInNote || t.ops.field.locationNotGiven}
+                          {[entry.checkInSite, entry.checkInNote].filter(Boolean).join(' — ') || t.ops.field.locationNotGiven}
                         </a>
                       </div>
                       {flag && <div className="mt-0.5 text-[11px] font-medium text-amber-400">⚠ {flag}</div>}
@@ -206,7 +206,7 @@ function FieldOperationsPage() {
                       <td className="px-3 py-3 text-ink-100">
                         {entry.employee.firstName} {entry.employee.lastName}
                       </td>
-                      <td className="px-3 py-3 text-ink-300">{entry.checkInNote || '—'}</td>
+                      <td className="px-3 py-3 text-ink-300">{[entry.checkInSite, entry.checkInNote].filter(Boolean).join(' — ') || '—'}</td>
                       <td className="px-3 py-3 text-ink-400">
                         {entry.checkOutAt ? formatDuration(entry.checkInAt, entry.checkOutAt) : '—'}
                       </td>

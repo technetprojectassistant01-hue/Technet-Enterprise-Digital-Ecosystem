@@ -10,6 +10,7 @@ const TABS = [
   { label: 'Availability', to: '/dashboard/workforce/availability' },
   { label: 'Attendance', to: '/dashboard/workforce/attendance' },
   { label: 'Overtime', to: '/dashboard/workforce/overtime' },
+  { label: 'Validations', to: '/dashboard/workforce/validations' },
   { label: 'Payroll', to: '/dashboard/workforce/payroll' },
 ]
 

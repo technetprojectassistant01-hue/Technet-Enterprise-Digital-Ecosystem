@@ -1786,6 +1786,8 @@ export interface SiteAttendance {
   checkInLng: string
   /** Where the technician says they are. */
   checkInNote: string | null
+  /** The site name they typed ("Celero, Level 5"). Display only, never geocoded. */
+  checkInSite: string | null
   /** Arrival time as typed, "HH:MM". Sits beside checkInAt rather than replacing it. */
   checkInDeclaredTime: string | null
   /** Whether checkInNote resolved near the GPS fix. UNCHECKABLE means the text had no
@@ -1798,6 +1800,7 @@ export interface SiteAttendance {
   checkOutLat: string | null
   checkOutLng: string | null
   checkOutNote: string | null
+  checkOutSite: string | null
   checkOutDeclaredTime: string | null
   checkOutTransportCost: string | null
   checkOutLocationMatch: LocationMatch | null
@@ -1917,10 +1920,12 @@ export interface MyAttendanceVisit {
   checkInAt: string
   checkInDeclaredTime: string | null
   checkInNote: string | null
+  checkInSite: string | null
   checkInTransportCost: string | null
   checkOutAt: string | null
   checkOutDeclaredTime: string | null
   checkOutNote: string | null
+  checkOutSite: string | null
   checkOutTransportCost: string | null
   checkOutByManager: boolean
   workOrder: { id: string; workOrderNumber: string; title: string } | null
@@ -1932,6 +1937,85 @@ export function getMyAttendanceHistory(month?: string) {
   return request<{ visits: MyAttendanceVisit[]; approvedOvertime: { date: string; minutes: number }[] }>(
     `/api/site-attendance/me/history${qs}`,
   )
+}
+
+/** The signed-in user's attendance PDF for a range of "YYYY-MM-DD" days (DRAFT unless validated). */
+export function myAttendanceReportPdfUrl(from: string, to: string) {
+  return `${API_URL}/api/site-attendance/me/report/pdf?from=${from}&to=${to}`
+}
+
+export type AttendanceValidationStatus = 'PENDING' | 'VALIDATED' | 'REJECTED'
+
+export interface AttendanceValidation {
+  id: string
+  employeeId: string
+  employee?: { id: string; firstName: string; lastName: string; employeeCode: string }
+  /** "YYYY-MM-DD" */
+  fromDate: string
+  toDate: string
+  status: AttendanceValidationStatus
+  /** Validated, but the attendance has changed since — prints as DRAFT again until re-validated. */
+  stale: boolean
+  note: string | null
+  requestedAt: string
+  decidedAt: string | null
+  decidedBy: { id: string; name: string | null; email: string } | null
+}
+
+export function listMyAttendanceValidations() {
+  return request<{ validations: AttendanceValidation[] }>('/api/attendance-validations/mine')
+}
+
+export function requestAttendanceValidation(from: string, to: string) {
+  return request<{ validation: AttendanceValidation }>('/api/attendance-validations/mine', {
+    method: 'POST',
+    body: JSON.stringify({ from, to }),
+  })
+}
+
+export function deleteMyAttendanceValidation(id: string) {
+  return request<void>(`/api/attendance-validations/mine/${id}`, { method: 'DELETE' })
+}
+
+export function listAttendanceValidations(status?: AttendanceValidationStatus) {
+  return request<{ validations: AttendanceValidation[] }>(`/api/attendance-validations${status ? `?status=${status}` : ''}`)
+}
+
+export function attendanceValidationPdfUrl(id: string) {
+  return `${API_URL}/api/attendance-validations/${id}/pdf`
+}
+
+export function validateAttendance(id: string) {
+  return request<{ validation: AttendanceValidation }>(`/api/attendance-validations/${id}/validate`, { method: 'POST' })
+}
+
+export function rejectAttendanceValidation(id: string, note?: string) {
+  return request<{ validation: AttendanceValidation }>(`/api/attendance-validations/${id}/reject`, {
+    method: 'POST',
+    body: JSON.stringify({ note }),
+  })
+}
+
+export function reopenAttendanceValidation(id: string) {
+  return request<{ validation: AttendanceValidation }>(`/api/attendance-validations/${id}/reopen`, { method: 'POST' })
+}
+
+/** Fetches a PDF with the session cookie and hands it to the browser as a download. */
+export async function downloadPdf(url: string, fallbackName: string) {
+  const res = await fetch(url, { credentials: 'include' })
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    throw new Error(body?.error || 'Failed to download PDF')
+  }
+  const name = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') ?? '')?.[1] ?? fallbackName
+  const blobUrl = URL.createObjectURL(await res.blob())
+  const a = document.createElement('a')
+  a.href = blobUrl
+  a.download = name
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 10_000)
 }
 
 // ---------- Overtime approval (HR) ----------
@@ -2714,6 +2798,9 @@ export type NotificationType =
   | 'OVERTIME_APPROVED'
   | 'OVERTIME_REJECTED'
   | 'OVERTIME_PENDING'
+  | 'ATTENDANCE_VALIDATION_REQUESTED'
+  | 'ATTENDANCE_VALIDATED'
+  | 'ATTENDANCE_VALIDATION_REJECTED'
 
 export interface Notification {
   id: string

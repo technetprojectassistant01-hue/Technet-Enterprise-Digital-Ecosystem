@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeOvertimeDays, mauritiusMonthRange, type OvertimeVisit } from "./overtime";
+import { computeLateByVisit, computeOvertimeDays, mauritiusMonthRange, type OvertimeVisit } from "./overtime";
 
 /** A Mauritius wall-clock time (UTC+4) as a UTC Date. */
 const mu = (day: string, time: string) => new Date(`${day}T${time}:00+04:00`);
@@ -53,5 +53,17 @@ describe("mauritiusMonthRange", () => {
     const { start, end } = mauritiusMonthRange("2026-09");
     expect(start.toISOString()).toBe("2026-08-31T20:00:00.000Z");
     expect(end.toISOString()).toBe("2026-09-30T20:00:00.000Z");
+  });
+});
+
+describe("computeLateByVisit", () => {
+  it("flags only the day's first check-in, by the shown time, and never on Sunday", () => {
+    const late = computeLateByVisit([
+      { id: "a", ...visit("2026-09-14", "08:20", "12:00") },
+      { id: "b", ...visit("2026-09-14", "13:30", "17:00") },
+      { id: "c", ...visit("2026-09-15", "08:40", "17:00", { checkInDeclaredTime: "08:00" }) },
+      { id: "d", ...visit("2026-09-20", "10:00", "11:00") },
+    ]);
+    expect([...late.entries()]).toEqual([["a", 20]]);
   });
 });
