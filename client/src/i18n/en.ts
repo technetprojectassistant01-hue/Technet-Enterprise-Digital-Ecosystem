@@ -200,15 +200,8 @@ export const en = {
   },
 
   overview: {
-    eyebrow: 'TECHNET ECOSYSTEM',
-    title: 'Attendance',
-    companyProfile: 'COMPANY PROFILE',
-    companyBlurb:
-      'A Mauritius-based multi-service engineering firm with over 10 years of history in delivering digital kineticism and enterprise solutions across the region.',
-    welcomeBack: (name: string) => ` Welcome back, ${name}.`,
-    established: 'ESTABLISHED',
-    hq: 'HQ',
-    hqValue: 'Mauritius',
+    welcome: 'Welcome back',
+    welcomeBack: (name: string) => `Welcome back, ${name}`,
     recentActivity: 'Recent Activity',
     noRecentActivity: 'No recent activity.',
     activeWorkOrders: 'Active Work Orders',
@@ -275,6 +268,27 @@ export const en = {
     subtitle: 'Approve or reject leave requests, and see leave that has been approved.',
     pending: 'Awaiting Approval',
     approved: 'Approved',
+  },
+
+  myAttendance: {
+    title: 'My Attendance',
+    empty: 'No check-ins recorded this month.',
+    loadFailed: 'Failed to load your attendance',
+    previousMonth: 'Previous month',
+    nextMonth: 'Next month',
+    statDays: 'DAYS',
+    statCheckIns: 'CHECK-INS',
+    statHours: 'HOURS',
+    statTransport: 'TRANSPORT (MUR)',
+    colDate: 'DATE',
+    colIn: 'IN',
+    colOut: 'OUT',
+    colWhere: 'WHERE',
+    colHours: 'HOURS',
+    colTransport: 'TRANSPORT',
+    stillIn: 'Still checked in',
+    closedByManager: 'Closed by manager',
+    leftFrom: (place: string) => `Left from ${place}`,
   },
 
   myLeave: {
