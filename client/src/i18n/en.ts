@@ -142,7 +142,6 @@ export const en = {
     systemStable: 'SYSTEM STABLE:',
     mainMenu: 'MAIN MENU',
     system: 'SYSTEM',
-    newProject: 'New Project',
     helpCenter: 'Help Center',
     logOut: 'Log out',
     all: 'All',
