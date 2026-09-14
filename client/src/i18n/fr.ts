@@ -198,15 +198,8 @@ export const fr: Dict = {
   },
 
   overview: {
-    eyebrow: 'ÉCOSYSTÈME TECHNET',
-    title: 'Présence',
-    companyProfile: "PROFIL DE L'ENTREPRISE",
-    companyBlurb:
-      "Une entreprise d'ingénierie multiservices basée à Maurice, forte de plus de 10 ans d'expérience dans la fourniture de solutions techniques et d'entreprise dans toute la région.",
-    welcomeBack: (name: string) => ` Bon retour, ${name}.`,
-    established: 'FONDÉE EN',
-    hq: 'SIÈGE',
-    hqValue: 'Maurice',
+    welcome: 'Bon retour',
+    welcomeBack: (name: string) => `Bon retour, ${name}`,
     recentActivity: 'Activité récente',
     noRecentActivity: 'Aucune activité récente.',
     activeWorkOrders: 'Ordres de travail actifs',
@@ -273,6 +266,27 @@ export const fr: Dict = {
     subtitle: 'Approuvez ou refusez les demandes de congé, et consultez les congés approuvés.',
     pending: 'En attente de validation',
     approved: 'Approuvés',
+  },
+
+  myAttendance: {
+    title: 'Ma présence',
+    empty: 'Aucun pointage enregistré ce mois-ci.',
+    loadFailed: 'Impossible de charger votre présence',
+    previousMonth: 'Mois précédent',
+    nextMonth: 'Mois suivant',
+    statDays: 'JOURS',
+    statCheckIns: 'POINTAGES',
+    statHours: 'HEURES',
+    statTransport: 'TRANSPORT (MUR)',
+    colDate: 'DATE',
+    colIn: 'ARRIVÉE',
+    colOut: 'DÉPART',
+    colWhere: 'LIEU',
+    colHours: 'DURÉE',
+    colTransport: 'TRANSPORT',
+    stillIn: 'Toujours pointé',
+    closedByManager: 'Clôturé par un responsable',
+    leftFrom: (place: string) => `Parti de ${place}`,
   },
 
   myLeave: {
