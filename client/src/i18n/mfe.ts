@@ -226,8 +226,6 @@ export const mfe: Dict = {
     timeOut: 'LER DEPAR',
     transport: 'TRANSPOR (MUR)',
     transportPlaceholder: '0 si pena',
-    leavingFrom: 'KOT OU PE KITE (OPSIONEL)',
-    leavingFromPlaceholder: 'Kot ou pe kite',
     location: 'LANDRWA',
     wherePlaceholder: 'Biro, sit kliyan…',
     checkIn: 'Pointe lariver',
