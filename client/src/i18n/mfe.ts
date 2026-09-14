@@ -143,7 +143,6 @@ export const mfe: Dict = {
     systemStable: 'SISTEM STAB:',
     mainMenu: 'MENI PRINSIPAL',
     system: 'SISTEM',
-    newProject: 'Nouvo proze',
     helpCenter: 'Sant Led',
     logOut: 'Dekonekte',
     all: 'Tou',
