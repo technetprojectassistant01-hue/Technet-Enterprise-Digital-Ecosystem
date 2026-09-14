@@ -44,7 +44,15 @@ const EMPTY_FORM: FormState = {
   reason: '',
 }
 
-function LeaveRequestsTab({ leaveTypes }: { leaveTypes: LeaveType[] }) {
+interface LeaveRequestsTabProps {
+  leaveTypes: LeaveType[]
+  /** Status filter to start on, e.g. PENDING for an approvals queue. */
+  initialStatus?: LeaveRequestStatus | ''
+  /** Keep the list on initialStatus and hide the status filter. */
+  lockStatus?: boolean
+}
+
+function LeaveRequestsTab({ leaveTypes, initialStatus = '', lockStatus = false }: LeaveRequestsTabProps) {
   const t = useT()
   const toast = useToast()
   const confirm = useConfirm()
@@ -54,7 +62,7 @@ function LeaveRequestsTab({ leaveTypes }: { leaveTypes: LeaveType[] }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const [status, setStatus] = useState<LeaveRequestStatus | ''>('')
+  const [status, setStatus] = useState<LeaveRequestStatus | ''>(initialStatus)
   const [employeeId, setEmployeeId] = useState('')
 
   const [showForm, setShowForm] = useState(false)
@@ -82,7 +90,7 @@ function LeaveRequestsTab({ leaveTypes }: { leaveTypes: LeaveType[] }) {
   )
 
   useEffect(() => {
-    load({ status: '', employeeId: '' })
+    load({ status: initialStatus, employeeId: '' })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -269,21 +277,23 @@ function LeaveRequestsTab({ leaveTypes }: { leaveTypes: LeaveType[] }) {
 
       <Panel title={t.hr.requests.panel}>
         <div className="mb-4 flex flex-wrap items-center gap-3">
-          <select
-            value={status}
-            onChange={(e) => {
-              const next = e.target.value as LeaveRequestStatus | ''
-              setStatus(next)
-              load({ status: next })
-            }}
-            className={`max-w-[12rem] ${inputClass}`}
-          >
-            {STATUS_FILTERS.map((s) => (
-              <option key={s} value={s}>
-                {s ? enumLabel(t.labels.leaveStatus, s) : t.shared.allStatuses}
-              </option>
-            ))}
-          </select>
+          {!lockStatus && (
+            <select
+              value={status}
+              onChange={(e) => {
+                const next = e.target.value as LeaveRequestStatus | ''
+                setStatus(next)
+                load({ status: next })
+              }}
+              className={`max-w-[12rem] ${inputClass}`}
+            >
+              {STATUS_FILTERS.map((s) => (
+                <option key={s} value={s}>
+                  {s ? enumLabel(t.labels.leaveStatus, s) : t.shared.allStatuses}
+                </option>
+              ))}
+            </select>
+          )}
 
           <select
             value={employeeId}
