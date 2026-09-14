@@ -271,9 +271,9 @@ export const fr: Dict = {
 
   leaveApprovals: {
     title: 'Validation des congés',
-    subtitle: "Approuvez ou refusez les demandes de congé, et consultez toutes les demandes de l'entreprise.",
+    subtitle: 'Approuvez ou refusez les demandes de congé, et consultez les congés approuvés.',
     pending: 'En attente de validation',
-    all: 'Tous les congés',
+    approved: 'Approuvés',
   },
 
   myLeave: {
