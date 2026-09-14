@@ -67,7 +67,7 @@ Everyone lands on **Overview** (`/dashboard`) — as of 2026-08-19 this is real,
 | — HR | Built | Employee profiles, Leave (types/balances/requests/timesheet, public holiday calendar excluded from working-day counts — added 2026-08-20, manually maintained since several Mauritius holidays are lunar/gazette-dependent), Certifications & Training. **Attendance moved to Technet Workforce 2026-08-20** — see below. Self-service leave requests for employees added 2026-08-26 — see §10b. |
 | — Projects | Built | Project registry, assignments, status history |
 | — Documents | Built | File storage (DB `Bytes` column, not S3/cloud storage), categorized by Contract/Invoice/HR/Project/General/Quotation |
-| **Technet Maintenance** | **Rebuilt as Tools & Equipment** (2026-09-14) | See §21. Two tabs: **Tools & Equipment** (`/dashboard/maintenance/tools`, the individually-tracked tool register with who holds what) and **Tool Requests** (`/dashboard/maintenance/requests`). It used to be customer-equipment maintenance (Assets/Contracts/Requests/Schedule + maintenance visit reports) — those **screens were removed at the user's request**, but the tables, data and `/api/maintenance-*` routes were deliberately kept (see §21). |
+| **Technet Store** (was Technet Maintenance) | **Rebuilt as Tools & Equipment** (2026-09-14) | See §21. Two tabs: **Tools & Equipment** (`/dashboard/store/tools`, the individually-tracked tool register with who holds what) and **Tool Requests** (`/dashboard/store/requests`). It used to be customer-equipment maintenance (Assets/Contracts/Requests/Schedule + maintenance visit reports) — those **screens were removed at the user's request**, but the tables, data and `/api/maintenance-*` routes were deliberately kept (see §21). |
 | **Technet Operations** | Built | Work Orders (now with a `WAITING_FOR_PARTS`/`REOPENED` lifecycle, added 2026-08-19), Daily Reports, Intervention Reports, Team Attendance, Field Operations — see §7, this is where most recent work has concentrated |
 | **Technet Workforce** | Built | Restructured 2026-08-20 per manager/stakeholder discussion, to stop ERP HR and Workforce covering the same ground. Three tabs: **Availability** (`/dashboard/workforce/availability`, default landing page) — read-only "who's available today" grouped into Available/On Leave/Absent, built on the existing manual attendance register (no real biometric attendance-machine integration exists — see §11), visible to HR **and Operations Managers** (`WORKFORCE_VIEW_ROLES`) since Operations consults it before assigning jobs, though job assignment itself stays in Operations, not Workforce. **Attendance** (moved from ERP HR — daily register + timesheets, HR-only edit rights). **Payroll** (run creation, per-employee line breakdown, net pay computation, HR-only). |
 | **Technet Connect** | **Built** (2026-08-24) | Customer self-service portal at `/portal/*` — a fully separate auth domain from staff, not the internal `Role` enum (see §6). Customers view their own quotations/invoices (SENT+ only, drafts hidden) with PDF download, track job/work-order status (customer-safe field subset — no GPS, no technician names), and submit quote requests. Staff grants/resets/revokes portal access from the Customers page (`/dashboard/erp/finance/customers`), and manages incoming requests from a new "Quote Requests" tab on the Quotations page, converting one into a real draft `Quotation`. No self-registration — staff-granted only. |
@@ -928,7 +928,12 @@ email means contacting an admin. Don't reintroduce self-service credential manag
   issued to the admin and not to the technician, both get byte-identical replies, a non-admin's
   token is refused at redeem without consuming it, and an admin can still reset a technician.
 
-## 21. Technet Maintenance = tools & equipment (2026-09-14)
+## 21. Technet Store — tools & equipment (2026-09-14, formerly Technet Maintenance)
+
+Renamed from **Technet Maintenance** to **Technet Store** the same day at the user's request (their pick of four
+names): menu/header label, URL `/dashboard/store/*` (old `/dashboard/maintenance/requests` redirects to
+`/dashboard/store/requests`, any other `/dashboard/maintenance/*` to the register) and client folder
+`client/src/store/` (`StoreLayout.tsx`). API paths `/api/tools` and `/api/tool-requests` are unchanged.
 
 The user asked for Technet Maintenance to hold "registered tools and equipment taken by the
 technician, and requests for tools and equipment". Decisions confirmed with the user before
@@ -947,13 +952,17 @@ managed by **Admin + Storekeeper**; every tool tracked **individually** (not by 
   → store records the return from the register (`POST /api/tools/checkouts/:id/return`). A tool
   returned DAMAGED goes to UNDER_REPAIR. `CHECKED_OUT` is never set by hand, and status can't be
   edited while a tool is out. A tool that has ever been issued can't be deleted (history kept) —
-  retire it instead. The requester can withdraw a PENDING request. No direct hand-out without a
-  request (user's choice).
-- **Screens**: `client/src/maintenance/ToolsPage.tsx` ("Tools I Have" panel for the signed-in
+  retire it instead. **Requesters have their own edit/delete** (user request, same day): `PUT
+  /api/tool-requests/:id` edits only while PENDING (conditional update; notifies the store), `DELETE`
+  works whenever no tools were issued (pending, rejected or old withdrawn ones) — an issued request is
+  the record of who took what and can't be deleted. This replaced the Withdraw action and its
+  `/cancel` route. Requests carry an optional `typeOrBrand` (migration
+  `20260914120000_tool_request_type_or_brand`). No direct hand-out without a request (user's choice).
+- **Screens**: `client/src/store/ToolsPage.tsx` ("Tools I Have" panel for the signed-in
   employee, stat cards, filterable register with holder + due/overdue, manager Return/History/
-  Edit/Delete) and `ToolRequestsPage.tsx` (managers see all + Issue/Reject; others see their own +
-  Withdraw). Overview and Insight "open maintenance requests" tiles became "pending tool requests".
-  Unknown `/dashboard/maintenance/*` paths (old notification links) redirect to the register.
+  Edit/Delete) and `ToolRequestsPage.tsx` (managers see all + Issue/Reject; the requester sees Edit on
+  their pending requests and Delete on any of theirs with nothing issued). Overview and Insight "open maintenance requests" tiles became "pending tool requests".
+  Old `/dashboard/maintenance/*` links (past notifications) redirect into `/dashboard/store/*`.
 - **What was removed vs kept**: the client pages (Assets, Asset detail, Contracts, Requests,
   Schedule, visit report), their hooks/tones/API client functions and `maint` strings are gone.
   The **server routes `/api/maintenance-*`, their tests and all the tables/data are kept on
