@@ -270,6 +270,8 @@ export const fr: Dict = {
 
   myAttendance: {
     title: 'Ma présence',
+    todayTitle: "Aujourd'hui",
+    todayEmpty: "Vous n'avez pas encore pointé aujourd'hui.",
     empty: 'Aucun pointage enregistré ce mois-ci.',
     loadFailed: 'Impossible de charger votre présence',
     previousMonth: 'Mois précédent',
