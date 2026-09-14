@@ -36,6 +36,7 @@ export const en = {
   nav: {
     Overview: 'Overview',
     'My Leave': 'My Leave',
+    'Leave Approvals': 'Leave Approvals',
     'Technet ERP': 'Technet ERP',
     Inventory: 'Inventory',
     Finance: 'Finance',
@@ -268,6 +269,13 @@ export const en = {
     unsupported: 'Geolocation is not supported by this browser',
     denied: 'Location access is blocked. Allow location for this site in your phone or browser settings, then try again.',
     unavailable: 'Unable to determine your location. Move outdoors or near a window and try again.',
+  },
+
+  leaveApprovals: {
+    title: 'Leave Approvals',
+    subtitle: 'Approve or reject leave requests, and see every leave request across the company.',
+    pending: 'Awaiting Approval',
+    all: 'All Leave',
   },
 
   myLeave: {
