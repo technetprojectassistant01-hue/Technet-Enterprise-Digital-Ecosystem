@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Search, Plus, Pencil, Trash2, Wrench, Download, History, Undo2, PackageCheck } from 'lucide-react'
+import { Search, Plus, Pencil, Trash2, Wrench, Download, History, Undo2, PackageCheck, CircleCheck } from 'lucide-react'
 import * as api from '../lib/api'
 import type { MyToolCheckout, Tool, ToolCondition, ToolHistoryEntry, ToolStatus } from '../lib/api'
 import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
@@ -314,16 +314,10 @@ function ToolsPage() {
         </Panel>
       )}
 
-      <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4">
+      <div className={`grid grid-cols-1 gap-4 sm:gap-6 ${user?.employeeId ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
         <StatCard label={t.tools.statTotal} value={tools.length} icon={Wrench} />
-        <StatCard label={t.tools.status.AVAILABLE.toUpperCase()} value={count('AVAILABLE')} icon={Wrench} />
-        <StatCard label={t.tools.status.CHECKED_OUT.toUpperCase()} value={count('CHECKED_OUT')} icon={Wrench} />
-        <StatCard
-          label={t.tools.status.UNDER_REPAIR.toUpperCase()}
-          value={count('UNDER_REPAIR')}
-          deltaTone={count('UNDER_REPAIR') > 0 ? 'warning' : undefined}
-          icon={Wrench}
-        />
+        <StatCard label={t.tools.statAvailable} value={count('AVAILABLE')} icon={CircleCheck} />
+        {user?.employeeId && <StatCard label={t.tools.statMine} value={mine.length} icon={PackageCheck} />}
       </div>
 
       <Panel title={t.tools.register}>

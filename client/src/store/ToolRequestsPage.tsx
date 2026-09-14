@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { Plus, Pencil, Trash2, ClipboardList, PackageCheck, X, Search } from 'lucide-react'
+import { Plus, Pencil, Trash2, ClipboardList, PackageCheck, X, Search, Clock, CircleCheck } from 'lucide-react'
 import * as api from '../lib/api'
 import type { Tool, ToolRequest, ToolRequestStatus } from '../lib/api'
 import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
@@ -68,13 +68,23 @@ function ToolRequestsPage() {
   function load() {
     setLoading(true)
     api
-      .listToolRequests({ status: statusFilter || undefined })
+      .listToolRequests()
       .then(({ requests }) => setRequests(requests))
       .catch((err) => setError(err instanceof Error ? err.message : t.toolRequests.loadFailed))
       .finally(() => setLoading(false))
   }
 
-  useEffect(load, [statusFilter]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(load, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** How many tools the signed-in person holds right now, for the My Tools card. */
+  const [myToolCount, setMyToolCount] = useState<number | null>(null)
+  useEffect(() => {
+    if (!user?.employeeId) return
+    api
+      .listMyTools()
+      .then(({ checkouts }) => setMyToolCount(checkouts.length))
+      .catch(() => setMyToolCount(null))
+  }, [user?.employeeId])
 
   function openForm() {
     setEditing(null)
@@ -217,6 +227,8 @@ function ToolRequestsPage() {
   }
 
   const pendingCount = requests.filter((r) => r.status === 'PENDING').length
+  const approvedCount = requests.filter((r) => r.status === 'ISSUED').length
+  const shownRequests = statusFilter ? requests.filter((r) => r.status === statusFilter) : requests
 
   return (
     <div className="flex flex-col gap-6">
@@ -232,16 +244,14 @@ function ToolRequestsPage() {
 
       {!canRequest && !canManage && <p className="text-sm text-ink-400">{t.toolRequests.notLinked}</p>}
 
-      {!statusFilter && (
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-          <StatCard
-            label={t.toolRequests.statPending}
-            value={pendingCount}
-            deltaTone={pendingCount > 0 ? 'warning' : undefined}
-            icon={ClipboardList}
-          />
-        </div>
-      )}
+      <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4">
+        <StatCard label={t.toolRequests.statPending} value={loading ? '—' : pendingCount} icon={Clock} />
+        <StatCard label={t.toolRequests.statApproved} value={loading ? '—' : approvedCount} icon={CircleCheck} />
+        <StatCard label={t.toolRequests.statAll} value={loading ? '—' : requests.length} icon={ClipboardList} />
+        {user?.employeeId && (
+          <StatCard label={t.tools.statMine} value={myToolCount === null ? '—' : myToolCount} icon={PackageCheck} />
+        )}
+      </div>
 
       <Panel title={canManage ? t.toolRequests.allRequests : t.toolRequests.myRequests}>
         <div className="mb-4 flex flex-wrap items-end gap-4">
@@ -266,7 +276,7 @@ function ToolRequestsPage() {
 
         {loading ? (
           <TableSkeleton cols={5} />
-        ) : requests.length === 0 ? (
+        ) : shownRequests.length === 0 ? (
           <EmptyState icon={ClipboardList} message={canManage ? t.toolRequests.emptyManager : t.toolRequests.empty} />
         ) : (
           <div className="overflow-x-auto">
@@ -282,7 +292,7 @@ function ToolRequestsPage() {
                 </tr>
               </thead>
               <tbody>
-                {requests.map((r) => (
+                {shownRequests.map((r) => (
                   <tr key={r.id} className="border-b border-ink-800 align-top last:border-0">
                     <td className="px-3 py-3">
                       <div className="font-mono font-medium text-ink-100">{r.requestNumber}</div>
