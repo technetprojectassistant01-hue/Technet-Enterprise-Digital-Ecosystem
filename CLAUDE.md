@@ -432,9 +432,11 @@ before, unchanged.
   caller's own `Employee` via `prisma.employee.findUnique({ where: { userId: req.user!.sub } })`,
   403 "No employee record is linked to your account" if unlinked — same helper pattern and message
   already established in `siteAttendance.ts`, reused verbatim for consistency.
-- **Scope is deliberately create + cancel(withdraw) only, no edit-in-place** — matches this project's
-  established anti-over-engineering bias; withdrawing and resubmitting covers mistake-correction
-  without a second edit code path to validate. Cancelling only works while `status === PENDING`
+- **Edit added 2026-09-14 at the user's request** (originally create + withdraw only): each PENDING
+  row on My Leave now has **Edit** and **Withdraw** buttons. `PUT /api/my-leave/requests/:id` →
+  `updateLeaveRequestRecord`, which shares `validateLeaveRequestInput` with create (the clash check
+  excludes the request itself), refuses anything not `PENDING` (409), and notifies HR that the
+  request was updated. Once HR has decided, a request can only be withdrawn, not edited. Cancelling only works while `status === PENDING`
   (`restrictToEmployeeId` on `cancelLeaveRequestRecord` also enforces ownership — 404, not 403, if a
   request isn't the caller's own, matching the "don't reveal existence" pattern used elsewhere).
 - Submitting notifies HR (`notifyRoles(HR_ROLES, "LEAVE_REQUEST_SUBMITTED", ...)`, new
