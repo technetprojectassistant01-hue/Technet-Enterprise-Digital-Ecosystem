@@ -816,7 +816,6 @@ export const fr: Dict = {
   },
 
   tools: {
-    moduleSubtitle: 'Outils & équipements',
     moduleSearchPlaceholder: 'Rechercher des outils...',
     title: 'Outils & équipements',
     subtitle: 'Les outils et équipements enregistrés de Technet — ce qui est disponible et qui a quoi.',
