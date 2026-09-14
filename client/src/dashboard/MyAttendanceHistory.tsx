@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, History } from 'lucide-react'
 import * as api from '../lib/api'
 import type { MyAttendanceVisit } from '../lib/api'
 import { Panel, EmptyState, TableSkeleton } from './ui'
-import { clockOf, totalTransportCost } from '../lib/siteAttendance'
+import { ATTENDANCE_CHANGED_EVENT, clockOf, totalTransportCost } from '../lib/siteAttendance'
 import { useT } from '../i18n'
 
 function monthKey(date: Date): string {
@@ -30,6 +30,14 @@ function MyAttendanceHistory() {
   const [visits, setVisits] = useState<MyAttendanceVisit[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  /** Bumped when the check-in card checks in or out, to reload the month on screen. */
+  const [reloadKey, setReloadKey] = useState(0)
+
+  useEffect(() => {
+    const bump = () => setReloadKey((k) => k + 1)
+    window.addEventListener(ATTENDANCE_CHANGED_EVENT, bump)
+    return () => window.removeEventListener(ATTENDANCE_CHANGED_EVENT, bump)
+  }, [])
 
   const isCurrentMonth = monthKey(cursor) === monthKey(new Date())
 
@@ -51,7 +59,7 @@ function MyAttendanceHistory() {
     return () => {
       cancelled = true
     }
-  }, [cursor]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [cursor, reloadKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function shiftMonth(delta: number) {
     setCursor((c) => new Date(c.getFullYear(), c.getMonth() + delta, 1))
