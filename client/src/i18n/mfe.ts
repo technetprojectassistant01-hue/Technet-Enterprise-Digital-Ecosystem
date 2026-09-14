@@ -204,8 +204,6 @@ export const mfe: Dict = {
   overview: {
     welcome: 'Byenveni ankor',
     welcomeBack: (name: string) => `Byenveni ankor, ${name}`,
-    recentActivity: 'Aktivite resan',
-    noRecentActivity: 'Pena aktivite resan.',
     activeWorkOrders: 'Bon travay aktif',
     pendingToolRequests: 'Demann zouti pe atann',
     activeProjects: 'Proze aktif',
