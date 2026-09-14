@@ -996,3 +996,13 @@ counts; a day with an open session gets none yet). Calculated from the times as 
 typed time if any, else the recorded one) so a badge always matches its row — so a technician's typed time
 decides it, not the GPS timestamp. Public holidays are not treated specially yet. Month export is CSV
 (opens in Excel); `client/src/lib/csv.ts` now writes a UTF-8 BOM so Excel keeps accented text.
+
+**Overtime needs HR approval** (added the same day, user request). Overtime is calculated on the
+server in `server/src/lib/overtime.ts` (mirrors `client/src/lib/workSchedule.ts` — keep both in step;
+Mauritius is treated as a fixed UTC+4) and listed for HR/Admin on **Technet Workforce → Overtime**
+(`workforce/OvertimePage.tsx`, `GET /api/overtime?month=`, `HR_ROLES`). Each overtime day is pending until HR
+approves or rejects it (`POST /api/overtime/decide` recalculates the minutes server-side and stores them on
+an `OvertimeDecision`, one per employee per day; `DELETE /api/overtime/:employeeId/:date` undoes it) and
+the technician is notified (`OVERTIME_APPROVED`/`OVERTIME_REJECTED`). My Attendance shows an Overtime badge,
+total and CSV value **only for approved days** (`approvedOvertime` on `/me/history`); Late is still
+calculated client-side with no approval step. Overtime isn't fed into Payroll yet.
