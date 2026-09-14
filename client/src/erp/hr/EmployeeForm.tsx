@@ -199,7 +199,7 @@ function EmployeeForm({
       <Section title="IDENTITY & CONTACT">
         <Field label="EMPLOYEE CODE">
           {isCreate ? (
-            <p className="text-sm text-ink-500">Assigned automatically on save.</p>
+            <p className="text-sm text-ink-400">Assigned automatically on save.</p>
           ) : (
             <input
               value={form.employeeCode}
@@ -411,7 +411,7 @@ function EmployeeForm({
           className="flex w-full items-center justify-between px-4 py-3 text-xs font-semibold tracking-widest text-ink-400 hover:text-ink-100"
         >
           PAYROLL DETAILS
-          <span className="text-ink-500">{showPayroll ? 'Hide' : 'Show'}</span>
+          <span className="text-ink-400">{showPayroll ? 'Hide' : 'Show'}</span>
         </button>
         {showPayroll && (
           <div className="grid grid-cols-1 gap-4 px-4 pb-4 sm:grid-cols-2">
