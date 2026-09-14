@@ -57,6 +57,11 @@ function shown(declared: string | null, recorded: Date): number {
   return m ? Number(m[1]) * 60 + Number(m[2]) : local(recorded).minutes;
 }
 
+/** The Mauritius calendar day ("YYYY-MM-DD") a timestamp falls on. */
+export function mauritiusDay(date: Date): string {
+  return local(date).day;
+}
+
 /** "YYYY-MM-DD" of a Mauritius day → UTC midnight of that date, the form OvertimeDecision.date uses. */
 export function dayToDate(day: string): Date {
   return new Date(`${day}T00:00:00.000Z`);
