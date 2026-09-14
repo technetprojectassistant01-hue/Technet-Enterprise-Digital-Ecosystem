@@ -56,7 +56,7 @@ function ExitEvents({ entry }: { entry: SiteTrackingEntry }) {
                   {v.exitReasonNote && <span> ({v.exitReasonNote})</span>}
                 </>
               ) : (
-                <span className="text-ink-500">{t.ops.field.noReasonYet}</span>
+                <span className="text-ink-400">{t.ops.field.noReasonYet}</span>
               )}
             </li>
           ))}
@@ -151,7 +151,7 @@ function FieldOperationsPage() {
                     <div>
                       <div className="text-sm font-medium text-ink-100">
                         {entry.employee.firstName} {entry.employee.lastName}
-                        {entry.employee.position && <span className="text-ink-500"> · {entry.employee.position}</span>}
+                        {entry.employee.position && <span className="text-ink-400"> · {entry.employee.position}</span>}
                       </div>
                       <div className="mt-1 flex items-center gap-1.5 text-xs text-ink-400">
                         <MapPin className="h-3.5 w-3.5 shrink-0" />
@@ -165,7 +165,7 @@ function FieldOperationsPage() {
                         </a>
                       </div>
                       {flag && <div className="mt-0.5 text-[11px] font-medium text-amber-400">⚠ {flag}</div>}
-                      <div className="mt-1 text-xs text-ink-500">
+                      <div className="mt-1 text-xs text-ink-400">
                         {t.ops.field.onSiteFor(formatDuration(entry.checkInAt))}
                         {t.ops.field.checkedInAt(new Date(entry.checkInAt).toLocaleTimeString())}
                         {statedTimeSuffix(entry.checkInDeclaredTime, entry.checkInAt)}
