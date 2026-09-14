@@ -134,7 +134,7 @@ function PhotoPicker({
           ))}
         </div>
       )}
-      <p className="mt-1 text-xs text-ink-500">{t.ops.irForm.imagesOnly}</p>
+      <p className="mt-1 text-xs text-ink-400">{t.ops.irForm.imagesOnly}</p>
     </div>
   )
 }
@@ -454,7 +454,7 @@ function InterventionReportFormPage() {
       <div>
         <h1 className="text-2xl font-bold text-ink-100">{t.ops.irForm.title}</h1>
         <p className="mt-1 text-sm text-ink-300">{t.ops.irForm.subtitle}</p>
-        <p className="mt-1 text-xs text-ink-500">
+        <p className="mt-1 text-xs text-ink-400">
           <span className="text-red-400">*</span> {t.ops.irForm.requiredField}
         </p>
       </div>
@@ -498,7 +498,7 @@ function InterventionReportFormPage() {
                 </select>
               </div>
             </div>
-            <p className="text-xs text-ink-500">{t.ops.irForm.autoNumber}</p>
+            <p className="text-xs text-ink-400">{t.ops.irForm.autoNumber}</p>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <div>
                 <label className={labelClass}>{t.ops.irForm.contactPerson}</label>
@@ -652,7 +652,7 @@ function InterventionReportFormPage() {
             )}
             <div>
               <label className={labelClass}>{t.ops.irForm.perUnit}</label>
-              <p className="mt-1 text-xs text-ink-500">{t.ops.irForm.perUnitHint}</p>
+              <p className="mt-1 text-xs text-ink-400">{t.ops.irForm.perUnitHint}</p>
               <div className="mt-2">
                 <UnitBreakdownEditor units={units} onChange={setUnits} />
               </div>
@@ -678,7 +678,7 @@ function InterventionReportFormPage() {
               <label className={labelClass}>{t.ops.irForm.techniciansInvolved}</label>
               <div className="mt-2 flex max-h-32 flex-col gap-1.5 overflow-y-auto rounded-md border border-ink-700 bg-ink-950 p-3">
                 {employees.length === 0 ? (
-                  <p className="text-xs text-ink-500">{t.shared.noEmployees}</p>
+                  <p className="text-xs text-ink-400">{t.shared.noEmployees}</p>
                 ) : (
                   employees.map((emp) => (
                     <label key={emp.id} className="flex items-center gap-2 text-sm text-ink-200">
@@ -788,7 +788,7 @@ function InterventionReportFormPage() {
               </div>
               {attachmentFile && <p className="mt-1 text-xs text-ink-400">{attachmentFile.name}</p>}
               {attachmentError && <p className="mt-1 text-xs text-red-400">{attachmentError}</p>}
-              <p className="mt-1 text-xs text-ink-500">{t.ops.irForm.sheetHint}</p>
+              <p className="mt-1 text-xs text-ink-400">{t.ops.irForm.sheetHint}</p>
             </div>
           </div>
         </Panel>
