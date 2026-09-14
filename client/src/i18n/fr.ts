@@ -198,8 +198,8 @@ export const fr: Dict = {
   },
 
   overview: {
-    eyebrow: "VUE D'ENSEMBLE",
-    title: 'Écosystème Technet',
+    eyebrow: 'ÉCOSYSTÈME TECHNET',
+    title: 'Présence',
     companyProfile: "PROFIL DE L'ENTREPRISE",
     companyBlurb:
       "Une entreprise d'ingénierie multiservices basée à Maurice, forte de plus de 10 ans d'expérience dans la fourniture de solutions techniques et d'entreprise dans toute la région.",
@@ -1272,7 +1272,7 @@ export const fr: Dict = {
           {
             q: 'Comment pointer mon arrivée et mon départ ?',
             a: [
-              "Utilisez la carte « Ma présence » sur la page Vue d'ensemble. Vérifiez l'heure d'arrivée (elle est remplie pour vous), indiquez où vous êtes, saisissez vos frais de transport (0 si vous n'en avez pas), puis touchez « Pointer l'arrivée ».",
+              "Utilisez la carte « Ma présence » sur la page Présence. Vérifiez l'heure d'arrivée (elle est remplie pour vous), indiquez où vous êtes, saisissez vos frais de transport (0 si vous n'en avez pas), puis touchez « Pointer l'arrivée ».",
               'En partant, faites de même avec « Pointer le départ ». Vous pouvez pointer plusieurs fois par jour si vous passez sur plusieurs sites.',
             ],
           },
