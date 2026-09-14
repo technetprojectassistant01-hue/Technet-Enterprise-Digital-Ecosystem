@@ -7,6 +7,9 @@ import { getT } from '../i18n'
  * drift between them.
  */
 
+/** Fired on window after the check-in card checks in or out, so "Today" and "My Attendance" refresh. */
+export const ATTENDANCE_CHANGED_EVENT = 'technet:attendance-changed'
+
 /** Local wall-clock "HH:MM". Built from date parts, not toLocaleTimeString, so it can be compared
  * against a stored declared time without locale formatting getting in the way. */
 export function clockOf(date: Date): string {
