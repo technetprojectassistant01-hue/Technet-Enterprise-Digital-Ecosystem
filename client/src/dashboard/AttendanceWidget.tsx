@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react'
 import { BellOff, BellRing, Briefcase, LogIn, LogOut } from 'lucide-react'
 import * as api from '../lib/api'
-import type { MyWorkOrderOption, SiteAttendance } from '../lib/api'
+import type { SiteAttendance } from '../lib/api'
 import { getPosition } from '../lib/geolocation'
-import { clockOf, currentClockTime, statedTimeSuffix, totalTransportCost, ATTENDANCE_CHANGED_EVENT } from '../lib/siteAttendance'
-import { formatMoney } from '../lib/format'
+import { clockOf, currentClockTime, statedTimeSuffix, ATTENDANCE_CHANGED_EVENT } from '../lib/siteAttendance'
 import { Panel } from './ui'
 import { useToast } from './ToastContext'
 import { disablePushReminders, enablePushReminders, pushSupport } from '../lib/pushNotifications'
@@ -102,8 +101,6 @@ function AttendanceWidget() {
   const toast = useToast()
   const t = useT()
   const [current, setCurrent] = useState<SiteAttendance | null>(null)
-  const [history, setHistory] = useState<SiteAttendance[]>([])
-  const [myWorkOrders, setMyWorkOrders] = useState<MyWorkOrderOption[]>([])
   const [loading, setLoading] = useState(true)
   const [actioning, setActioning] = useState(false)
   const [now, setNow] = useState(() => Date.now())
@@ -111,7 +108,6 @@ function AttendanceWidget() {
   const [pendingKinds, setPendingKinds] = useState<string[]>([])
 
   const [note, setNote] = useState('')
-  const [workOrderId, setWorkOrderId] = useState('')
   const [declaredTime, setDeclaredTime] = useState(currentClockTime)
   // The box is prefilled with the clock, so a technician who just opens the app and taps through
   // gets the right time with no typing. If they never touched it, we re-read the clock at submit
@@ -123,21 +119,12 @@ function AttendanceWidget() {
     setLoading(true)
     api
       .getMyAttendance()
-      .then(({ current, history }) => {
-        setCurrent(current)
-        setHistory(history)
-      })
-      .catch(() => {
-        setCurrent(null)
-        setHistory([])
-      })
+      .then(({ current }) => setCurrent(current))
+      .catch(() => setCurrent(null))
       .finally(() => setLoading(false))
   }
 
   useEffect(load, [])
-  useEffect(() => {
-    api.getMyWorkOrders().then(({ workOrders }) => setMyWorkOrders(workOrders)).catch(() => setMyWorkOrders([]))
-  }, [])
 
   // Tick the on-site duration once a minute while checked in.
   useEffect(() => {
@@ -163,7 +150,6 @@ function AttendanceWidget() {
 
   function resetForm() {
     setNote('')
-    setWorkOrderId('')
     setTransportCost('')
     setDeclaredTime(currentClockTime())
     setDeclaredTimeEdited(false)
@@ -202,7 +188,6 @@ function AttendanceWidget() {
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
           note,
-          workOrderId: workOrderId || undefined,
           timeIn: declaredTimeEdited ? declaredTime : currentClockTime(),
           transportCost: transport.value,
         },
@@ -364,9 +349,14 @@ function AttendanceWidget() {
             </div>
           ) : (
             <div className="flex flex-col gap-3">
+              <div className="grid grid-cols-2 gap-3">
+                {time}
+                {transport}
+              </div>
+
               <div className="flex flex-col gap-1">
                 <label htmlFor="att-location" className={fieldLabelClass}>
-                  {t.attendance.whereAreYou}
+                  {t.attendance.location}
                 </label>
                 <input
                   id="att-location"
@@ -378,32 +368,6 @@ function AttendanceWidget() {
                 />
               </div>
 
-              {myWorkOrders.length > 0 && (
-                <div className="flex flex-col gap-1">
-                  <label htmlFor="att-wo" className={fieldLabelClass}>
-                    {t.attendance.whichJob}
-                  </label>
-                  <select
-                    id="att-wo"
-                    value={workOrderId}
-                    onChange={(e) => setWorkOrderId(e.target.value)}
-                    className={inputClass}
-                  >
-                    <option value="">{t.attendance.noSpecificJob}</option>
-                    {myWorkOrders.map((wo) => (
-                      <option key={wo.id} value={wo.id}>
-                        {wo.workOrderNumber} — {wo.title}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-3">
-                {time}
-                {transport}
-              </div>
-
               <button type="button" onClick={handleCheckIn} disabled={actioning} className={primaryButton}>
                 <LogIn className="h-5 w-5" />
                 {actioning ? t.attendance.checkingIn : t.attendance.checkIn}
@@ -412,30 +376,6 @@ function AttendanceWidget() {
           )
         })()}
 
-        {/* Today */}
-        {history.length > 0 && (
-          <div className="border-t border-ink-800 pt-3">
-            <div className="mb-2 text-[11px] font-semibold tracking-widest text-ink-400">{t.attendance.recent}</div>
-            <div className="flex flex-col gap-2.5">
-              {history.slice(0, 5).map((v) => (
-                <div key={v.id} className="flex items-start gap-2.5 text-xs">
-                  <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-cyan-accent/70" />
-                  <div className="min-w-0 flex-1 text-ink-400">
-                    <span className="text-ink-200">
-                      {clockOf(new Date(v.checkInAt))}
-                      {v.checkOutAt ? ` – ${clockOf(new Date(v.checkOutAt))}` : t.attendance.stillIn}
-                    </span>
-                    {v.checkInNote && <span> · {v.checkInNote}</span>}
-                    {totalTransportCost(v) > 0 && (
-                      <span className="text-ink-300"> · {formatMoney(totalTransportCost(v))}</span>
-                    )}
-                    <span className="block text-ink-400">{new Date(v.checkInAt).toLocaleDateString()}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </Panel>
   )
