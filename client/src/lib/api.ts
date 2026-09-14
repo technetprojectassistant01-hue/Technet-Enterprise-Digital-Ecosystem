@@ -2476,12 +2476,25 @@ export function listToolRequests(params: { status?: ToolRequestStatus } = {}) {
   return request<{ requests: ToolRequest[] }>(`/api/tool-requests${qs}`)
 }
 
-export function createToolRequest(input: { items: string; typeOrBrand?: string; purpose?: string; neededBy?: string }) {
+export interface ToolRequestInput {
+  items: string
+  typeOrBrand?: string
+  purpose?: string
+  neededBy?: string
+}
+
+export function createToolRequest(input: ToolRequestInput) {
   return request<{ request: ToolRequest }>('/api/tool-requests', { method: 'POST', body: JSON.stringify(input) })
 }
 
-export function cancelToolRequest(id: string) {
-  return request<{ request: ToolRequest }>(`/api/tool-requests/${id}/cancel`, { method: 'POST' })
+/** Only while the request is still pending. */
+export function updateToolRequest(id: string, input: ToolRequestInput) {
+  return request<{ request: ToolRequest }>(`/api/tool-requests/${id}`, { method: 'PUT', body: JSON.stringify(input) })
+}
+
+/** Refused once tools have been issued against the request. */
+export function deleteToolRequest(id: string) {
+  return request<void>(`/api/tool-requests/${id}`, { method: 'DELETE' })
 }
 
 export function issueToolRequest(id: string, input: { toolIds: string[]; expectedReturnAt?: string; note?: string }) {
