@@ -10,6 +10,8 @@ import { useConfirm } from './dashboard/ConfirmContext'
 import { useAuth } from './context/AuthContext'
 import { leaveRequestStatusTone } from './erp/statusTones'
 import { useT } from './i18n'
+import { CalendarDays as CalendarDaysIcon } from 'lucide-react'
+import PageTitle from './dashboard/PageTitle'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -171,10 +173,7 @@ function MyLeavePage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-ink-100">{t.myLeave.title}</h1>
-          <p className="mt-1 text-sm text-ink-300">{t.myLeave.subtitle}</p>
-        </div>
+        <PageTitle icon={CalendarDaysIcon} title={t.myLeave.title} subtitle={t.myLeave.subtitle} />
         <button type="button" onClick={openForm} className={primaryButtonClass}>
           <Plus className="h-4 w-4" />
           {t.myLeave.requestLeave}
