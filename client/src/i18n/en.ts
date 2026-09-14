@@ -225,8 +225,6 @@ export const en = {
     timeOut: 'TIME OUT',
     transport: 'TRANSPORT (MUR)',
     transportPlaceholder: '0 if none',
-    leavingFrom: 'LEAVING FROM (OPTIONAL)',
-    leavingFromPlaceholder: 'Where you are leaving from',
     location: 'LOCATION',
     wherePlaceholder: 'Office, client site…',
     checkIn: 'Check In',
