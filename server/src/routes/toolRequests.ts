@@ -114,7 +114,7 @@ router.post("/", async (req, res) => {
     TOOL_MANAGE_ROLES,
     "TOOL_REQUEST_SUBMITTED",
     `${employee.firstName} ${employee.lastName} requested tools`,
-    { message: request.items, link: "/dashboard/maintenance/requests" },
+    { message: request.items, link: "/dashboard/store/requests" },
   );
   res.status(201).json({ request: serializeRequest(request) });
 });
@@ -150,7 +150,7 @@ router.put("/:id", async (req, res) => {
     TOOL_MANAGE_ROLES,
     "TOOL_REQUEST_SUBMITTED",
     `${employee.firstName} ${employee.lastName} updated their tool request ${formatToolRequestNumber(request.sequenceNumber)}`,
-    { message: request.items, link: "/dashboard/maintenance/requests" },
+    { message: request.items, link: "/dashboard/store/requests" },
   );
   res.json({ request: serializeRequest(request) });
 });
@@ -243,7 +243,7 @@ router.post("/:id/issue", requireRole(...TOOL_MANAGE_ROLES), async (req, res) =>
     `Your tool request ${formatToolRequestNumber(request.sequenceNumber)} is ready to collect`,
     {
       message: request.checkouts.map((c) => `${formatToolNumber(c.tool.sequenceNumber)} ${c.tool.name}`).join(", "),
-      link: "/dashboard/maintenance/requests",
+      link: "/dashboard/store/requests",
     },
   );
   res.json({ request: serializeRequest(request) });
@@ -270,7 +270,7 @@ router.post("/:id/reject", requireRole(...TOOL_MANAGE_ROLES), async (req, res) =
     request.employeeId,
     "TOOL_REQUEST_REJECTED",
     `Your tool request ${formatToolRequestNumber(request.sequenceNumber)} was not approved`,
-    { message: reviewNote ?? undefined, link: "/dashboard/maintenance/requests" },
+    { message: reviewNote ?? undefined, link: "/dashboard/store/requests" },
   );
   res.json({ request: serializeRequest(request) });
 });
