@@ -280,14 +280,18 @@ model User {
 
   payrollRunsCreated PayrollRun[] @relation("PayrollRunCreator")
 
+  toolRequestsReviewed  ToolRequest[]  @relation("ToolRequestReviewer")
+  toolCheckoutsIssued   ToolCheckout[] @relation("ToolCheckoutIssuer")
+  toolCheckoutsReturned ToolCheckout[] @relation("ToolCheckoutReceiver")
+
   quotationsCreated Quotation[] @relation("QuotationCreator")
 
   marketingCampaignsCreated MarketingCampaign[] @relation("MarketingCampaignCreator")
   marketingPostsCreated     MarketingPost[]     @relation("MarketingPostCreator")
 
   customerPortalUsersGranted CustomerPortalUser[]
-  quotationRequestsReviewed  QuotationRequest[] @relation("QuotationRequestReviewer")
-  quotationRequestsLogged    QuotationRequest[] @relation("QuotationRequestLogger")
+  quotationRequestsReviewed  QuotationRequest[]   @relation("QuotationRequestReviewer")
+  quotationRequestsLogged    QuotationRequest[]   @relation("QuotationRequestLogger")
   quotationFollowUpsLogged   QuotationFollowUp[]
 
   notifications Notification[]
@@ -309,8 +313,10 @@ enum SecurityEventType {
   USER_DELETED
 }
 
-/** Security-relevant events only (auth, password, user/role management) - not a general
- * change-history log across every ERP record. */
+/**
+ * Security-relevant events only (auth, password, user/role management) - not a general
+ * change-history log across every ERP record.
+ */
 model SecurityEvent {
   id           String            @id @default(uuid())
   type         SecurityEventType
@@ -331,7 +337,6 @@ model SecurityEvent {
  * A browser's Web Push subscription, so the server can reach a technician's device when the app
  * is closed. One row per browser/device, not per user - somebody with a phone and a desktop has
  * two, and both should get the morning check-in reminder.
- *
  * `endpoint` is the push service's URL for that device and is what identifies it, hence unique:
  * re-subscribing the same browser must update the existing row rather than pile up duplicates.
  * Subscriptions expire or are revoked silently, so a send that comes back 404/410 means the row
@@ -422,6 +427,9 @@ model Employee {
   payrollLines PayrollLine[]
 
   siteAttendance SiteAttendance[]
+
+  toolRequests  ToolRequest[]
+  toolCheckouts ToolCheckout[]
 }
 
 model Certification {
@@ -490,12 +498,14 @@ model AttendanceRecord {
   @@index([date])
 }
 
-/** A single non-working calendar day (public holiday), excluded from working-day counts used by
+/**
+ * A single non-working calendar day (public holiday), excluded from working-day counts used by
  * leave requests and payroll. Several Mauritius holidays shift every year (lunar calendar,
  * moon-sighting-dependent, or otherwise re-gazetted annually) so this is a manually maintained
  * list, not a computed rule. Not unique on date alone: some years genuinely have two distinct
  * holidays coincide on the same day (e.g. Abolition of Slavery and Thaipoosam Cavadee both fall
- * on 1 February 2026 per the official gazette). */
+ * on 1 February 2026 per the official gazette).
+ */
 model PublicHoliday {
   id        String   @id @default(uuid())
   date      DateTime
@@ -612,9 +622,11 @@ model Quotation {
   customer           Customer               @relation(fields: [customerId], references: [id])
   quotationNumber    String                 @unique
   title              String
-  /** Internal-only background categorization (Air Conditioning Unit, Plumbing, etc.) - never
+  /**
+   * Internal-only background categorization (Air Conditioning Unit, Plumbing, etc.) - never
    * printed in the PDF. A future autocomplete/lookup against a real product database is deferred
-   * ("not now" - the manager was explicit this is forward-looking, not a request to build today). */
+   * ("not now" - the manager was explicit this is forward-looking, not a request to build today).
+   */
   productLine        String?
   contactPerson      String?
   status             QuotationStatus        @default(DRAFT)
@@ -626,9 +638,11 @@ model Quotation {
   orderDays          Int?
   poReference        String?
   issuedAt           DateTime               @default(now())
-  /** How many days the quoted prices stay valid from issuedAt, not an absolute expiry date -
+  /**
+   * How many days the quoted prices stay valid from issuedAt, not an absolute expiry date -
    * exchange-rate risk means "valid for a period" is what the office actually communicates.
-   * Default 15 matches what every historical quotation already prints in its PDF. */
+   * Default 15 matches what every historical quotation already prints in its PDF.
+   */
   validityDays       Int                    @default(15)
   createdById        String?
   createdBy          User?                  @relation("QuotationCreator", fields: [createdById], references: [id])
@@ -642,10 +656,12 @@ model Quotation {
   followUps         QuotationFollowUp[]
 }
 
-/** Arbitrary label+percentage payment-terms splits, replacing the old 3-fixed-preset enum -
+/**
+ * Arbitrary label+percentage payment-terms splits, replacing the old 3-fixed-preset enum -
  * percentages across a quotation's lines must sum to 100. New labels can only be introduced by
  * ADMIN (validated in the route, not the schema) - everyday quotation creation picks from labels
- * already used elsewhere, to avoid free-text drift in this data ("AC" vs "Ac" vs "A/C"). */
+ * already used elsewhere, to avoid free-text drift in this data ("AC" vs "Ac" vs "A/C").
+ */
 model QuotationPaymentTermsLine {
   id          String    @id @default(uuid())
   quotationId String
@@ -655,8 +671,10 @@ model QuotationPaymentTermsLine {
   sortOrder   Int       @default(0)
 }
 
-/** A logged call chasing a client after a Quotation has gone out - outcome is a validated free
- * string, not a DB enum, since the office expects this list to keep growing. */
+/**
+ * A logged call chasing a client after a Quotation has gone out - outcome is a validated free
+ * string, not a DB enum, since the office expects this list to keep growing.
+ */
 model QuotationFollowUp {
   id              String    @id @default(uuid())
   quotationId     String
@@ -670,7 +688,9 @@ model QuotationFollowUp {
   createdAt       DateTime  @default(now())
 }
 
-/** Staff-granted customer login - one per Customer company for v1, not per individual contact. */
+/**
+ * Staff-granted customer login - one per Customer company for v1, not per individual contact.
+ */
 model CustomerPortalUser {
   id           String   @id @default(uuid())
   customerId   String   @unique
@@ -688,9 +708,11 @@ enum QuotationRequestStatus {
   DECLINED
 }
 
-/** A raw, unpriced request for a quotation - either customer-submitted via the portal, or logged by
+/**
+ * A raw, unpriced request for a quotation - either customer-submitted via the portal, or logged by
  * staff from a phone call / email / referral before a Customer record necessarily exists. Not a
- * real Quotation until staff converts it. */
+ * real Quotation until staff converts it.
+ */
 model QuotationRequest {
   id                   String                 @id @default(uuid())
   customerId           String?
@@ -712,14 +734,20 @@ model QuotationRequest {
   reviewedById         String?
   reviewedBy           User?                  @relation("QuotationRequestReviewer", fields: [reviewedById], references: [id])
   reviewNote           String?
-  /** Who took the call/logged the request - set automatically at creation, not user-entered.
-   * Null for portal-submitted requests, since no staff member "answered" those. */
+  /**
+   * Who took the call/logged the request - set automatically at creation, not user-entered.
+   * Null for portal-submitted requests, since no staff member "answered" those.
+   */
   loggedById           String?
   loggedBy             User?                  @relation("QuotationRequestLogger", fields: [loggedById], references: [id])
-  /** Free-text "what's happening right now" note, editable anytime while PENDING - lets management
-   * see why a request is still pending without having to call whoever's handling it. */
+  /**
+   * Free-text "what's happening right now" note, editable anytime while PENDING - lets management
+   * see why a request is still pending without having to call whoever's handling it.
+   */
   statusNote           String?
-  /** The acknowledgement email step: draft first, send later, satisfies the 24h SLA once sent. */
+  /**
+   * The acknowledgement email step: draft first, send later, satisfies the 24h SLA once sent.
+   */
   ackEmailBody         String?
   ackDraftSavedAt      DateTime?
   acknowledgedAt       DateTime?
@@ -1029,49 +1057,71 @@ model WorkOrderTechnician {
 }
 
 model SiteAttendance {
-  id          String     @id @default(uuid())
-  workOrderId String?
-  workOrder   WorkOrder? @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
-  employeeId  String
-  employee    Employee   @relation(fields: [employeeId], references: [id])
-  /** When the server actually received the check-in. Set by the DB, never client-supplied - this
+  id                            String         @id @default(uuid())
+  workOrderId                   String?
+  workOrder                     WorkOrder?     @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  employeeId                    String
+  employee                      Employee       @relation(fields: [employeeId], references: [id])
+  /**
+   * When the server actually received the check-in. Set by the DB, never client-supplied - this
    * is the verifiable half of the record, and the reason checkInDeclaredTime sits beside it
-   * rather than replacing it. */
-  checkInAt   DateTime   @default(now())
-  checkInLat  Decimal    @db.Decimal(9, 6)
-  checkInLng  Decimal    @db.Decimal(9, 6)
-  /** Where the technician says they are - "Office", "Celero site", etc. */
-  checkInNote String?
-  /** The arrival time the technician types, as an "HH:MM" local wall-clock string (same single
+   * rather than replacing it.
+   */
+  checkInAt                     DateTime       @default(now())
+  checkInLat                    Decimal        @db.Decimal(9, 6)
+  checkInLng                    Decimal        @db.Decimal(9, 6)
+  /**
+   * Where the technician says they are - "Office", "Celero site", etc.
+   */
+  checkInNote                   String?
+  /**
+   * The arrival time the technician types, as an "HH:MM" local wall-clock string (same single
    * timezone convention as AttendanceRecord.clockIn). Deliberately distinct from checkInAt:
    * somebody who arrives at 08:00 and opens the app at 08:20 should have both on record, and a
-   * typed value must never overwrite the timestamp the trust reporting depends on. */
-  checkInDeclaredTime  String?
-  /** Travel cost for the trip out, in MUR. Optional - not every visit has one. */
-  checkInTransportCost Decimal? @db.Decimal(10, 2)
-  /** Whether checkInNote resolved to somewhere near the GPS fix. Advisory only, never blocking. */
+   * typed value must never overwrite the timestamp the trust reporting depends on.
+   */
+  checkInDeclaredTime           String?
+  /**
+   * Travel cost for the trip out, in MUR. Optional - not every visit has one.
+   */
+  checkInTransportCost          Decimal?       @db.Decimal(10, 2)
+  /**
+   * Whether checkInNote resolved to somewhere near the GPS fix. Advisory only, never blocking.
+   */
   checkInLocationMatch          LocationMatch?
-  /** How far the typed place sat from the GPS fix, when it could be resolved at all. */
+  /**
+   * How far the typed place sat from the GPS fix, when it could be resolved at all.
+   */
   checkInLocationDistanceMeters Int?
 
-  /** Server-set on check-out, alongside the GPS fix - both are required to close a session. */
-  checkOutAt   DateTime?
-  checkOutLat  Decimal?  @db.Decimal(9, 6)
-  checkOutLng  Decimal?  @db.Decimal(9, 6)
-  /** Where the technician says they are leaving from. Optional, unlike checkInNote - by the time
-   * somebody is checking out the site is usually already established by the check-in. */
-  checkOutNote String?
-  /** Departure time as typed, mirroring checkInDeclaredTime. */
-  checkOutDeclaredTime  String?
-  /** Travel cost for the return trip, in MUR. */
-  checkOutTransportCost Decimal? @db.Decimal(10, 2)
+  /**
+   * Server-set on check-out, alongside the GPS fix - both are required to close a session.
+   */
+  checkOutAt                     DateTime?
+  checkOutLat                    Decimal?       @db.Decimal(9, 6)
+  checkOutLng                    Decimal?       @db.Decimal(9, 6)
+  /**
+   * Where the technician says they are leaving from. Optional, unlike checkInNote - by the time
+   * somebody is checking out the site is usually already established by the check-in.
+   */
+  checkOutNote                   String?
+  /**
+   * Departure time as typed, mirroring checkInDeclaredTime.
+   */
+  checkOutDeclaredTime           String?
+  /**
+   * Travel cost for the return trip, in MUR.
+   */
+  checkOutTransportCost          Decimal?       @db.Decimal(10, 2)
   checkOutLocationMatch          LocationMatch?
   checkOutLocationDistanceMeters Int?
-  /** True when a manager closed a forgotten session rather than the technician checking out.
+  /**
+   * True when a manager closed a forgotten session rather than the technician checking out.
    * Such a row has no checkOutLat/Lng - nobody observed where they were, and inventing a
    * position would put a fabricated location into the record this system exists to be trusted
-   * on. The distinction has to survive into reporting, hence a column rather than a note. */
-  checkOutByManager Boolean @default(false)
+   * on. The distinction has to survive into reporting, hence a column rather than a note.
+   */
+  checkOutByManager              Boolean        @default(false)
 
   verifications SiteVerification[]
 
@@ -1084,11 +1134,12 @@ enum SiteVerificationStatus {
   OUTSIDE_SITE
 }
 
-/** Whether the place a technician typed matches where their GPS put them.
- *
+/**
+ * Whether the place a technician typed matches where their GPS put them.
  * UNCHECKABLE is the common case and is NOT a suspicion: free text like "Office" or "Closed
  * early" has no coordinates to compare against, and OpenStreetMap does not resolve business
- * names either (see CLAUDE.md §7b). Only a resolvable place name can be checked at all. */
+ * names either (see CLAUDE.md §7b). Only a resolvable place name can be checked at all.
+ */
 enum LocationMatch {
   MATCHED
   MISMATCH
@@ -1401,6 +1452,9 @@ enum NotificationType {
   WORK_ORDER_STATUS_CHANGED
   QUOTATION_REQUEST_SUBMITTED
   SITE_CHECKIN_RECORDED
+  TOOL_REQUEST_SUBMITTED
+  TOOL_REQUEST_ISSUED
+  TOOL_REQUEST_REJECTED
 }
 
 model Notification {
@@ -1458,4 +1512,96 @@ model MarketingPost {
   updatedAt     DateTime            @updatedAt
 
   @@index([scheduledDate])
+}
+
+// ---------------------------------------------------------------------------------------------
+// Technet Maintenance: tools & equipment (2026-09-14). Replaced the customer-maintenance screens
+// (Asset/MaintenanceContract/... above stay in the database, no longer surfaced). Every tool is
+// tracked individually. A technician requests tools, an Admin/Storekeeper issues specific units
+// against the request (one ToolCheckout per tool), and later records the return.
+// ---------------------------------------------------------------------------------------------
+
+enum ToolStatus {
+  AVAILABLE
+  CHECKED_OUT
+  UNDER_REPAIR
+  RETIRED
+}
+
+enum ToolCondition {
+  GOOD
+  FAIR
+  DAMAGED
+}
+
+enum ToolRequestStatus {
+  PENDING
+  ISSUED
+  REJECTED
+  CANCELLED
+}
+
+model Tool {
+  id             String        @id @default(uuid())
+  /// Shown as TL-0001 - generated, so nobody has to invent tag numbers.
+  sequenceNumber Int           @unique @default(autoincrement())
+  name           String
+  category       String?
+  serialNumber   String?       @unique
+  /// Kept in step with open checkouts by the routes: CHECKED_OUT exactly while one is open.
+  status         ToolStatus    @default(AVAILABLE)
+  condition      ToolCondition @default(GOOD)
+  location       String?
+  notes          String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  checkouts ToolCheckout[]
+
+  @@index([status])
+}
+
+model ToolRequest {
+  id             String            @id @default(uuid())
+  sequenceNumber Int               @unique @default(autoincrement())
+  employeeId     String
+  employee       Employee          @relation(fields: [employeeId], references: [id])
+  /// What they need, in their own words - the storekeeper picks the actual units when issuing.
+  items          String
+  purpose        String?
+  neededBy       DateTime?
+  status         ToolRequestStatus @default(PENDING)
+  reviewedById   String?
+  reviewedBy     User?             @relation("ToolRequestReviewer", fields: [reviewedById], references: [id])
+  reviewedAt     DateTime?
+  reviewNote     String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  checkouts ToolCheckout[]
+
+  @@index([employeeId])
+  @@index([status])
+}
+
+model ToolCheckout {
+  id               String         @id @default(uuid())
+  toolId           String
+  tool             Tool           @relation(fields: [toolId], references: [id])
+  employeeId       String
+  employee         Employee       @relation(fields: [employeeId], references: [id])
+  requestId        String?
+  request          ToolRequest?   @relation(fields: [requestId], references: [id], onDelete: SetNull)
+  issuedById       String
+  issuedBy         User           @relation("ToolCheckoutIssuer", fields: [issuedById], references: [id])
+  issuedAt         DateTime       @default(now())
+  expectedReturnAt DateTime?
+  returnedAt       DateTime?
+  returnedById     String?
+  returnedBy       User?          @relation("ToolCheckoutReceiver", fields: [returnedById], references: [id])
+  returnCondition  ToolCondition?
+  returnNote       String?
+
+  @@index([toolId, returnedAt])
+  @@index([employeeId, returnedAt])
 }
