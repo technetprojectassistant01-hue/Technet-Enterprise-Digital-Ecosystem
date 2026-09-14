@@ -420,14 +420,14 @@ function WorkOrdersPage() {
                 placeholder={t.ops.wo.sitePlaceholder}
                 className={`mt-2 ${inputClass}`}
               />
-              <p className="mt-1 text-xs text-ink-500">{t.ops.wo.siteHint}</p>
+              <p className="mt-1 text-xs text-ink-400">{t.ops.wo.siteHint}</p>
             </div>
 
             <div>
               <label className={labelClass}>{t.shared.technicians}</label>
               <div className="mt-2 flex flex-col gap-1.5 rounded-md border border-ink-700 bg-ink-950 p-3 max-h-40 overflow-y-auto">
                 {assignableEmployees.length === 0 ? (
-                  <p className="text-xs text-ink-500">{t.shared.noEmployees}</p>
+                  <p className="text-xs text-ink-400">{t.shared.noEmployees}</p>
                 ) : (
                   assignableEmployees.map((emp) => (
                     <label key={emp.id} className="flex items-center gap-2 text-sm text-ink-200">
@@ -438,7 +438,7 @@ function WorkOrdersPage() {
                         className="accent-cyan-accent"
                       />
                       {emp.firstName} {emp.lastName}
-                      {emp.position && <span className="text-xs text-ink-500">— {emp.position}</span>}
+                      {emp.position && <span className="text-xs text-ink-400">— {emp.position}</span>}
                     </label>
                   ))
                 )}
