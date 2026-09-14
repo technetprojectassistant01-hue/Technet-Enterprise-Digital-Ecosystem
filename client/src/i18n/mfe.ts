@@ -202,15 +202,8 @@ export const mfe: Dict = {
   },
 
   overview: {
-    eyebrow: 'EKOSISTEM TECHNET',
-    title: 'Prezans',
-    companyProfile: 'PROFIL KONPANI',
-    companyBlurb:
-      'Enn konpani lenzenyri multi-servis ki baze Moris, avek plis ki 10 an lexperians pou fourni solision teknik ek biznes partou dan rezion la.',
-    welcomeBack: (name: string) => ` Byenveni ankor, ${name}.`,
-    established: 'FONDE AN',
-    hq: 'SIEZ',
-    hqValue: 'Moris',
+    welcome: 'Byenveni ankor',
+    welcomeBack: (name: string) => `Byenveni ankor, ${name}`,
     recentActivity: 'Aktivite resan',
     noRecentActivity: 'Pena aktivite resan.',
     activeWorkOrders: 'Bon travay aktif',
@@ -276,6 +269,27 @@ export const mfe: Dict = {
     subtitle: 'Aksepte ouswa refiz demann konze, ek get konze ki finn aksepte.',
     pending: 'Pe atann aprobasion',
     approved: 'Aksepte',
+  },
+
+  myAttendance: {
+    title: 'Mo prezans',
+    empty: 'Pena okenn pointaz anrezistre sa mwa la.',
+    loadFailed: 'Pa finn kapav sarz ou prezans',
+    previousMonth: 'Mwa avan',
+    nextMonth: 'Mwa apre',
+    statDays: 'ZOUR',
+    statCheckIns: 'POINTAZ',
+    statHours: 'LER',
+    statTransport: 'TRANSPOR (MUR)',
+    colDate: 'DAT',
+    colIn: 'LARIVER',
+    colOut: 'DEPAR',
+    colWhere: 'KOT',
+    colHours: 'DIRE',
+    colTransport: 'TRANSPOR',
+    stillIn: 'Ankor pointe',
+    closedByManager: 'Manazer finn ferm li',
+    leftFrom: (place: string) => `Sorti depi ${place}`,
   },
 
   myLeave: {
