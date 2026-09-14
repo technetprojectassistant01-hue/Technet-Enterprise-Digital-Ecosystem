@@ -331,13 +331,13 @@ function AttendanceWidget() {
               </div>
               <div className="flex flex-col gap-1">
                 <label htmlFor="att-out-note" className={fieldLabelClass}>
-                  {t.attendance.leavingFrom}
+                  {t.attendance.location}
                 </label>
                 <input
                   id="att-out-note"
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
-                  placeholder={t.attendance.leavingFromPlaceholder}
+                  placeholder={t.attendance.wherePlaceholder}
                   maxLength={200}
                   className={inputClass}
                 />
