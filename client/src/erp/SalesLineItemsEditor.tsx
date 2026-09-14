@@ -11,7 +11,7 @@ export const EMPTY_SALES_LINE_ITEM: SalesLineItemRow = { description: '', quanti
 
 const fieldInputClass =
   'mt-1 w-full rounded border border-ink-600 bg-ink-900 px-2 py-1.5 text-xs text-ink-100 outline-none focus:border-cyan-accent'
-const fieldLabelClass = 'text-[10px] tracking-wide text-ink-500'
+const fieldLabelClass = 'text-[10px] tracking-wide text-ink-400'
 
 function SalesLineItemsEditor({
   items,
@@ -40,7 +40,7 @@ function SalesLineItemsEditor({
         return (
           <div key={i} className="rounded-md border border-ink-700 bg-ink-950 p-3">
             <div className="flex items-start gap-2">
-              <span className="mt-1.5 w-6 shrink-0 font-mono text-[10px] text-ink-500">{String(i + 1).padStart(2, '0')}</span>
+              <span className="mt-1.5 w-6 shrink-0 font-mono text-[10px] text-ink-400">{String(i + 1).padStart(2, '0')}</span>
               <div className="flex-1">
                 <label className={fieldLabelClass}>DESCRIPTION</label>
                 <textarea
