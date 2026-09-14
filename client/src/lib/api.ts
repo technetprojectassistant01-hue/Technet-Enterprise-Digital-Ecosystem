@@ -1050,6 +1050,14 @@ export function createMyLeaveRequest(input: MyLeaveRequestInput) {
   })
 }
 
+/** Only works while the request is still PENDING. */
+export function updateMyLeaveRequest(id: string, input: MyLeaveRequestInput) {
+  return request<{ request: LeaveRequest }>(`/api/my-leave/requests/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(input),
+  })
+}
+
 export function cancelMyLeaveRequest(id: string) {
   return request<{ request: LeaveRequest }>(`/api/my-leave/requests/${id}/cancel`, { method: 'POST' })
 }
