@@ -981,18 +981,18 @@ managed by **Admin + Storekeeper**; every tool tracked **individually** (not by 
 ## 22. The landing page is Attendance (2026-09-14)
 
 Renamed from Overview at the user's request, because for technicians it is really the check-in page.
-Top to bottom: ; the centred check-in card (form order: time + transport, then
-**Location**; no job picker); **Today** (); two stat cards for office roles
-only (Active Projects, Pending Requisitions); **My Attendance** (). The
+Top to bottom: `Welcome back, {name}`; the centred check-in card (form order: time + transport, then
+**Location**; no job picker); **Today** (`dashboard/TodayAttendance.tsx`); two stat cards for office roles
+only (Active Projects, Pending Requisitions); **My Attendance** (`dashboard/MyAttendanceHistory.tsx`). The
 company profile, Recent Activity, Active Work Orders and Pending Tool Requests were removed on request.
-Today and My Attendance read , which returns only what
+Today and My Attendance read `GET /api/site-attendance/me/history?month=YYYY-MM`, which returns only what
 the person entered plus recorded times — **no coordinates or location-match fields** (§7a) — and both
-refresh on the  the card fires after a check-in/out.
+refresh on the `ATTENDANCE_CHANGED_EVENT` the card fires after a check-in/out.
 
-**Work hours** live in  (given by management): Mon–Fri 08:00–17:00,
+**Work hours** live in `client/src/lib/workSchedule.ts` (given by management): Mon–Fri 08:00–17:00,
 Sat 08:00–13:00, Sunday not a working day. My Attendance shows a **Late** badge when the day's first
 check-in is after the start, and **Overtime** for the day's last check-out past closing (all of a Sunday
 counts; a day with an open session gets none yet). Calculated from the times as shown in the table (the
 typed time if any, else the recorded one) so a badge always matches its row — so a technician's typed time
 decides it, not the GPS timestamp. Public holidays are not treated specially yet. Month export is CSV
-(opens in Excel);  now writes a UTF-8 BOM so Excel keeps accented text.
+(opens in Excel); `client/src/lib/csv.ts` now writes a UTF-8 BOM so Excel keeps accented text.
