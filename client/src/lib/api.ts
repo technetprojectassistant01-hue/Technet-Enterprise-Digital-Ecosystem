@@ -1908,6 +1908,27 @@ export function getMyAttendance() {
   return request<{ current: SiteAttendance | null; history: SiteAttendance[] }>('/api/site-attendance/me')
 }
 
+/** One row of the signed-in user's own attendance history — no coordinates or location flags. */
+export interface MyAttendanceVisit {
+  id: string
+  checkInAt: string
+  checkInDeclaredTime: string | null
+  checkInNote: string | null
+  checkInTransportCost: string | null
+  checkOutAt: string | null
+  checkOutDeclaredTime: string | null
+  checkOutNote: string | null
+  checkOutTransportCost: string | null
+  checkOutByManager: boolean
+  workOrder: { id: string; workOrderNumber: string; title: string } | null
+}
+
+/** `month` is "YYYY-MM"; omit for the current month. */
+export function getMyAttendanceHistory(month?: string) {
+  const qs = month ? `?month=${month}` : ''
+  return request<{ visits: MyAttendanceVisit[] }>(`/api/site-attendance/me/history${qs}`)
+}
+
 /**
  * Closes a session the technician forgot to check out of. `checkOutAt` is an ISO string for when
  * they actually left - omit it and "now" is used, which is usually wrong for a session that has
