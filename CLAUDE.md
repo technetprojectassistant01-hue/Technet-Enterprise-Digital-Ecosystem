@@ -67,7 +67,7 @@ Everyone lands on **Overview** (`/dashboard`) — as of 2026-08-19 this is real,
 | — HR | Built | Employee profiles, Leave (types/balances/requests/timesheet, public holiday calendar excluded from working-day counts — added 2026-08-20, manually maintained since several Mauritius holidays are lunar/gazette-dependent), Certifications & Training. **Attendance moved to Technet Workforce 2026-08-20** — see below. Self-service leave requests for employees added 2026-08-26 — see §10b. |
 | — Projects | Built | Project registry, assignments, status history |
 | — Documents | Built | File storage (DB `Bytes` column, not S3/cloud storage), categorized by Contract/Invoice/HR/Project/General/Quotation |
-| **Technet Maintenance** | Built | Assets, Maintenance Contracts, Maintenance Requests, Maintenance Schedule/Reports — built explicitly "from the SDD" per commit history |
+| **Technet Maintenance** | **Rebuilt as Tools & Equipment** (2026-09-14) | See §21. Two tabs: **Tools & Equipment** (`/dashboard/maintenance/tools`, the individually-tracked tool register with who holds what) and **Tool Requests** (`/dashboard/maintenance/requests`). It used to be customer-equipment maintenance (Assets/Contracts/Requests/Schedule + maintenance visit reports) — those **screens were removed at the user's request**, but the tables, data and `/api/maintenance-*` routes were deliberately kept (see §21). |
 | **Technet Operations** | Built | Work Orders (now with a `WAITING_FOR_PARTS`/`REOPENED` lifecycle, added 2026-08-19), Daily Reports, Intervention Reports, Team Attendance, Field Operations — see §7, this is where most recent work has concentrated |
 | **Technet Workforce** | Built | Restructured 2026-08-20 per manager/stakeholder discussion, to stop ERP HR and Workforce covering the same ground. Three tabs: **Availability** (`/dashboard/workforce/availability`, default landing page) — read-only "who's available today" grouped into Available/On Leave/Absent, built on the existing manual attendance register (no real biometric attendance-machine integration exists — see §11), visible to HR **and Operations Managers** (`WORKFORCE_VIEW_ROLES`) since Operations consults it before assigning jobs, though job assignment itself stays in Operations, not Workforce. **Attendance** (moved from ERP HR — daily register + timesheets, HR-only edit rights). **Payroll** (run creation, per-employee line breakdown, net pay computation, HR-only). |
 | **Technet Connect** | **Built** (2026-08-24) | Customer self-service portal at `/portal/*` — a fully separate auth domain from staff, not the internal `Role` enum (see §6). Customers view their own quotations/invoices (SENT+ only, drafts hidden) with PDF download, track job/work-order status (customer-safe field subset — no GPS, no technician names), and submit quote requests. Staff grants/resets/revokes portal access from the Customers page (`/dashboard/erp/finance/customers`), and manages incoming requests from a new "Quote Requests" tab on the Quotations page, converting one into a real draft `Quotation`. No self-registration — staff-granted only. |
@@ -99,6 +99,7 @@ Role groups used for gating (server `roles.ts` / client `permissions.ts`):
 - `OPS_SUBMIT_ROLES` = ADMIN, OPERATIONS_MANAGER, FIELD_TECHNICIAN, EMPLOYEE — submitting field-generated records (check-ins, daily reports, intervention reports).
 - `NON_FIELD_ROLES` / `FIELD_ONLY_ROLES` — as of 2026-08-13, **FIELD_TECHNICIAN and EMPLOYEE are restricted client- and server-side to Overview + Technet Operations + Technet Maintenance only**. They cannot see or hit the API for ERP/Connect/Workforce/Marketing/Insight. This was an explicit request ("everyone is not supposed to see everything") — enforced both by hiding nav items (`NavItem.hiddenFrom`) and by blocking the actual routes server-side (`requireRole(...NON_FIELD_ROLES)` prepended to 11 route files), not just cosmetically. `RoleRoute.tsx` (client) is the reusable route-level gate; `AdminRoute.tsx` is the older admin-only equivalent kept for `/dashboard/users`.
 - Various per-module role groups: `SALES_ROLES`, `FINANCE_ROLES`, `PROCUREMENT_ROLES`, `HR_ROLES`, `DOCUMENT_ROLES`.
+- `TOOL_MANAGE_ROLES` = ADMIN, STOREKEEPER — added 2026-09-14 (§21): add/edit/delete tools, issue or reject tool requests, record returns. Viewing the register and requesting tools is open to every signed-in user (requesting needs a linked employee record).
 - `WORKFORCE_VIEW_ROLES` = ADMIN, HR_OFFICER, OPERATIONS_MANAGER — added 2026-08-20 for Technet Workforce's Availability view specifically; Attendance edit rights and Payroll stay `HR_ROLES`-only.
 - `CUSTOMER_MANAGE_ROLES` = ADMIN, SALES_OFFICER, FINANCE_OFFICER — added 2026-08-25, customer create/edit access, separate from `SALES_ROLES` since that's also used for Quotations (Finance wasn't asked to gain write access there).
 - `QUOTE_REQUEST_VIEW_ROLES` = ADMIN, SALES_OFFICER, OPERATIONS_MANAGER — added 2026-08-25, read-only visibility into the Quote Request queue for Operations Managers; creating/converting/declining stays `SALES_ROLES`-only. See §10.
@@ -176,7 +177,8 @@ Grouped by domain (not exhaustive on fields — read the schema for that):
 - **Procurement**: `Supplier`, `PurchaseOrder`/`PurchaseOrderItem`, `PurchaseRequisition`/`PurchaseRequisitionItem`/`RequisitionStatusHistory`, `GoodsReceipt`/`GoodsReceiptItem`, `InventoryItem`, `StockMovement`.
 - **Projects/Documents**: `Project`, `ProjectAssignment`, `ProjectStatusHistory`, `Document` (bytes stored in-DB).
 - **Operations**: `WorkOrder` (+ `siteLat`/`siteLng`/`siteAddress`), `WorkOrderTechnician`, `SiteAttendance` (declared times, transport cost, location-match result, `checkOutByManager`; `workOrderId` is set only when the technician picks a job at check-in — never auto-detected, see §7a), `SiteVerification` (**inert since 2026-09-03, no new rows are written**), `DailyWorkReport`/`DailyWorkReportTechnician`/`DailyWorkReportWorkOrder`, `InterventionReport`/`InterventionReportTechnician`/`InterventionReportPhoto`.
-- **Maintenance**: `Asset`, `MaintenanceContract`, `MaintenanceRequest`, `MaintenanceSchedule`/`MaintenanceScheduleTechnician`, `MaintenanceReport`.
+- **Maintenance (tools)**: `Tool`, `ToolRequest`, `ToolCheckout` — §21.
+- **Legacy customer maintenance (no UI since 2026-09-14)**: `Asset`, `MaintenanceContract`, `MaintenanceRequest`, `MaintenanceSchedule`/`MaintenanceScheduleTechnician`, `MaintenanceReport`.
 - **Workforce**: `PayrollRun`, `PayrollLine`.
 - **Marketing**: `MarketingCampaign`, `MarketingPost` — Phase 1 only, see §10a.
 
@@ -925,3 +927,43 @@ email means contacting an admin. Don't reintroduce self-service credential manag
   against the real DB and a running dev server — change-password 404s for both roles, a token is
   issued to the admin and not to the technician, both get byte-identical replies, a non-admin's
   token is refused at redeem without consuming it, and an admin can still reset a technician.
+
+## 21. Technet Maintenance = tools & equipment (2026-09-14)
+
+The user asked for Technet Maintenance to hold "registered tools and equipment taken by the
+technician, and requests for tools and equipment". Decisions confirmed with the user before
+building: **replace** the old customer-maintenance screens; **request → approve → hand out**;
+managed by **Admin + Storekeeper**; every tool tracked **individually** (not by quantity).
+
+- **Data** (migration `20260914100000_tools_and_equipment`): `Tool` (auto tag `TL-0001` from
+  `sequenceNumber`, optional unique serial, `status` AVAILABLE/CHECKED_OUT/UNDER_REPAIR/RETIRED,
+  `condition` GOOD/FAIR/DAMAGED), `ToolRequest` (`TR-0001`; free-text `items` in the
+  technician's own words, optional purpose/neededBy; PENDING/ISSUED/REJECTED/CANCELLED) and
+  `ToolCheckout` (one row per tool handed out; open while `returnedAt` is null — that is "who
+  holds it"; `returnCondition`/`returnNote` on return).
+- **Flow**: technician requests (`POST /api/tool-requests`, notifies `TOOL_MANAGE_ROLES`) → store
+  picks specific AVAILABLE tools and issues (`POST /:id/issue`, transactional + conditional
+  updates so two people can't issue the same request or tool; notifies the requester) or rejects
+  → store records the return from the register (`POST /api/tools/checkouts/:id/return`). A tool
+  returned DAMAGED goes to UNDER_REPAIR. `CHECKED_OUT` is never set by hand, and status can't be
+  edited while a tool is out. A tool that has ever been issued can't be deleted (history kept) —
+  retire it instead. The requester can withdraw a PENDING request. No direct hand-out without a
+  request (user's choice).
+- **Screens**: `client/src/maintenance/ToolsPage.tsx` ("Tools I Have" panel for the signed-in
+  employee, stat cards, filterable register with holder + due/overdue, manager Return/History/
+  Edit/Delete) and `ToolRequestsPage.tsx` (managers see all + Issue/Reject; others see their own +
+  Withdraw). Overview and Insight "open maintenance requests" tiles became "pending tool requests".
+  Unknown `/dashboard/maintenance/*` paths (old notification links) redirect to the register.
+- **What was removed vs kept**: the client pages (Assets, Asset detail, Contracts, Requests,
+  Schedule, visit report), their hooks/tones/API client functions and `maint` strings are gone.
+  The **server routes `/api/maintenance-*`, their tests and all the tables/data are kept on
+  purpose**: a maintenance report still queued in a technician's offline outbox (§14) replays by
+  its stored URL and would otherwise fail, and nothing historical is lost. The `maintenance-report`
+  outbox kind stays for the same reason. Removing the server side is a separate, later decision.
+- **Verified**: disposable `server/scratch-tools.ts` (deleted) — 23/23 against the real DB and a
+  running dev server (roles, request → issue → hold → damaged return → repair, double-issue and
+  double-return refused, failed issue rolls back, delete-with-history refused, withdraw, reject,
+  notifications). Client `tsc -b` + `npm run build` clean. **Not verified in a browser** (no
+  browser automation on this machine).
+- Commit `a19a49a` ("Add the tool management role group to the client") also contains the
+  deletion of the old maintenance pages — they were staged by `git rm` before that commit.
