@@ -6,7 +6,7 @@ export const EMPTY_PAYMENT_TERMS_LINE: PaymentTermsLine = { label: '', percentag
 
 const fieldInputClass =
   'mt-1 w-full rounded border border-ink-600 bg-ink-900 px-2 py-1.5 text-xs text-ink-100 outline-none focus:border-cyan-accent'
-const fieldLabelClass = 'text-[10px] tracking-wide text-ink-500'
+const fieldLabelClass = 'text-[10px] tracking-wide text-ink-400'
 
 const NEW_LABEL_VALUE = '__new__'
 
