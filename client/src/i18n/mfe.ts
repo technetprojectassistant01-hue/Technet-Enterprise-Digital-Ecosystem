@@ -813,7 +813,6 @@ export const mfe: Dict = {
   },
 
   tools: {
-    moduleSubtitle: 'Zouti ek lekipman',
     moduleSearchPlaceholder: 'Rod zouti...',
     title: 'Zouti ek lekipman',
     subtitle: 'Zouti ek lekipman ki Technet ena dan so rezis — seki disponib ek kisannla ena ki.',
