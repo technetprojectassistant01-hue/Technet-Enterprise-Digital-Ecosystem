@@ -9,6 +9,7 @@ import { navLabel, useT } from '../i18n'
 const TABS = [
   { label: 'Availability', to: '/dashboard/workforce/availability' },
   { label: 'Attendance', to: '/dashboard/workforce/attendance' },
+  { label: 'Overtime', to: '/dashboard/workforce/overtime' },
   { label: 'Payroll', to: '/dashboard/workforce/payroll' },
 ]
 
