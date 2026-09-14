@@ -348,13 +348,13 @@ function LeaveRequestsTab({ leaveTypes, initialStatus = '', lockStatus = false }
                     <td className="px-3 py-3 text-ink-300">
                       {r.leaveType.name}
                       {!r.leaveType.paid && (
-                        <span className="ml-1 text-xs text-ink-500">{t.hr.requests.unpaid}</span>
+                        <span className="ml-1 text-xs text-ink-400">{t.hr.requests.unpaid}</span>
                       )}
                     </td>
                     <td className="px-3 py-3 text-ink-300">
                       {formatRange(r, locale)}
                       {r.halfDay && (
-                        <span className="ml-1 text-xs text-ink-500">{t.hr.requests.halfDayMark}</span>
+                        <span className="ml-1 text-xs text-ink-400">{t.hr.requests.halfDayMark}</span>
                       )}
                     </td>
                     <td className="px-3 py-3 text-ink-300">{r.days}</td>
