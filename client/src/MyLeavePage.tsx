@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Plus, Ban, CalendarHeart, Lock } from 'lucide-react'
+import { Plus, Ban, CalendarHeart, Lock, Pencil } from 'lucide-react'
 import * as api from './lib/api'
 import type { LeaveType, LeaveBalance, LeaveRequest, MyLeaveRequestInput } from './lib/api'
 import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton } from './dashboard/ui'
@@ -38,6 +38,8 @@ function MyLeavePage() {
   const [error, setError] = useState<string | null>(null)
 
   const [showForm, setShowForm] = useState(false)
+  /** The request being edited, or null when the form is creating a new one. */
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -76,7 +78,22 @@ function MyLeavePage() {
   }, [showForm, form.halfDay, form.startDate, form.endDate])
 
   function openForm() {
+    setEditingId(null)
     setForm(EMPTY_FORM)
+    setFormError(null)
+    setShowForm(true)
+  }
+
+  function openEdit(r: LeaveRequest) {
+    setEditingId(r.id)
+    setForm({
+      leaveTypeId: r.leaveType.id,
+      startDate: r.startDate.slice(0, 10),
+      endDate: r.endDate.slice(0, 10),
+      halfDay: r.halfDay,
+      days: String(r.days),
+      reason: r.reason ?? '',
+    })
     setFormError(null)
     setShowForm(true)
   }
@@ -105,12 +122,18 @@ function MyLeavePage() {
 
     setSubmitting(true)
     try {
-      await api.createMyLeaveRequest(input)
-      toast.success(t.myLeave.submitted)
+      if (editingId) {
+        await api.updateMyLeaveRequest(editingId, input)
+        toast.success(t.myLeave.updated)
+      } else {
+        await api.createMyLeaveRequest(input)
+        toast.success(t.myLeave.submitted)
+      }
       setShowForm(false)
       load()
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : t.myLeave.submitFailed)
+      const fallback = editingId ? t.myLeave.updateFailed : t.myLeave.submitFailed
+      setFormError(err instanceof Error ? err.message : fallback)
     } finally {
       setSubmitting(false)
     }
@@ -232,14 +255,25 @@ function MyLeavePage() {
                     </td>
                     <td className="px-3 py-3">
                       {r.status === 'PENDING' && (
-                        <button
-                          type="button"
-                          onClick={() => handleCancel(r)}
-                          aria-label={t.myLeave.withdrawLabel}
-                          className="text-ink-400 hover:text-red-400"
-                        >
-                          <Ban className="h-4 w-4" />
-                        </button>
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openEdit(r)}
+                            className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md border border-ink-600 px-2.5 py-1.5 text-xs font-semibold text-ink-200 transition hover:border-cyan-accent hover:text-cyan-accent"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                            {t.myLeave.edit}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleCancel(r)}
+                            aria-label={t.myLeave.withdrawLabel}
+                            className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md border border-ink-600 px-2.5 py-1.5 text-xs font-semibold text-ink-200 transition hover:border-red-400 hover:text-red-400"
+                          >
+                            <Ban className="h-3.5 w-3.5" />
+                            {t.myLeave.withdraw}
+                          </button>
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -251,7 +285,7 @@ function MyLeavePage() {
       </Panel>
 
       {showForm && (
-        <Modal title={t.myLeave.requestLeave} onClose={() => setShowForm(false)}>
+        <Modal title={editingId ? t.myLeave.editTitle : t.myLeave.requestLeave} onClose={() => setShowForm(false)}>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div>
               <label className={labelClass}>{t.myLeave.colLeaveType}</label>
@@ -344,7 +378,7 @@ function MyLeavePage() {
             {formError && <p className="text-sm text-red-400">{formError}</p>}
 
             <button type="submit" disabled={submitting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
-              {submitting ? t.myLeave.submitting : t.myLeave.submit}
+              {submitting ? t.myLeave.submitting : editingId ? t.myLeave.saveChanges : t.myLeave.submit}
             </button>
           </form>
         </Modal>
