@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { Plus, Ban, ClipboardList, PackageCheck, X, Search } from 'lucide-react'
+import { Plus, Pencil, Trash2, ClipboardList, PackageCheck, X, Search } from 'lucide-react'
 import * as api from '../lib/api'
 import type { Tool, ToolRequest, ToolRequestStatus } from '../lib/api'
 import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
@@ -22,8 +22,9 @@ function fullName(e: { firstName: string; lastName: string }) {
 
 /**
  * Tool requests. A technician (anyone with a linked employee record) says what they need; an
- * Admin/Storekeeper issues specific available tools against it or rejects it. The requester can
- * withdraw a request while it's still pending. Managers see every request, others only their own.
+ * Admin/Storekeeper issues specific available tools against it or rejects it. The requester can edit
+ * their request while it's pending and delete it as long as no tools were issued against it.
+ * Managers see every request, others only their own.
  */
 function ToolRequestsPage() {
   const toast = useToast()
@@ -39,8 +40,10 @@ function ToolRequestsPage() {
   const [statusFilter, setStatusFilter] = useState<ToolRequestStatus | ''>('')
   const [submitting, setSubmitting] = useState(false)
 
-  // New request
+  // New request / editing one
   const [showForm, setShowForm] = useState(false)
+  /** The request being edited, or null when the form is creating a new one. */
+  const [editing, setEditing] = useState<ToolRequest | null>(null)
   const [items, setItems] = useState('')
   const [typeOrBrand, setTypeOrBrand] = useState('')
   const [purpose, setPurpose] = useState('')
@@ -72,10 +75,21 @@ function ToolRequestsPage() {
   useEffect(load, [statusFilter]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function openForm() {
+    setEditing(null)
     setItems('')
     setTypeOrBrand('')
     setPurpose('')
     setNeededBy('')
+    setFormError(null)
+    setShowForm(true)
+  }
+
+  function openEdit(r: ToolRequest) {
+    setEditing(r)
+    setItems(r.items)
+    setTypeOrBrand(r.typeOrBrand ?? '')
+    setPurpose(r.purpose ?? '')
+    setNeededBy(r.neededBy ? dayOf(r.neededBy) : '')
     setFormError(null)
     setShowForm(true)
   }
@@ -89,36 +103,42 @@ function ToolRequestsPage() {
     }
     setSubmitting(true)
     try {
-      await api.createToolRequest({
+      const input = {
         items,
         typeOrBrand: typeOrBrand || undefined,
         purpose: purpose || undefined,
         neededBy: neededBy || undefined,
-      })
-      toast.success(t.toolRequests.submitted)
+      }
+      if (editing) {
+        await api.updateToolRequest(editing.id, input)
+        toast.success(t.toolRequests.updated)
+      } else {
+        await api.createToolRequest(input)
+        toast.success(t.toolRequests.submitted)
+      }
       setShowForm(false)
       load()
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : t.toolRequests.submitFailed)
+      setFormError(err instanceof Error ? err.message : editing ? t.toolRequests.updateFailed : t.toolRequests.submitFailed)
     } finally {
       setSubmitting(false)
     }
   }
 
-  async function handleWithdraw(r: ToolRequest) {
+  async function handleDelete(r: ToolRequest) {
     const ok = await confirm({
-      title: t.toolRequests.withdrawTitle,
-      message: t.toolRequests.withdrawMessage(r.requestNumber),
-      confirmLabel: t.toolRequests.withdraw,
+      title: t.toolRequests.deleteTitle,
+      message: t.toolRequests.deleteMessage(r.requestNumber),
+      confirmLabel: t.shared.delete,
       tone: 'danger',
     })
     if (!ok) return
     try {
-      await api.cancelToolRequest(r.id)
-      toast.success(t.toolRequests.withdrawn)
+      await api.deleteToolRequest(r.id)
+      toast.success(t.toolRequests.deleted)
       load()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t.toolRequests.withdrawFailed)
+      toast.error(err instanceof Error ? err.message : t.toolRequests.deleteFailed)
     }
   }
 
@@ -305,9 +325,8 @@ function ToolRequestsPage() {
                       <Badge tone={toolRequestStatusTone[r.status]}>{t.toolRequests.status[r.status]}</Badge>
                     </td>
                     <td className="px-3 py-3">
-                      {r.status === 'PENDING' && (
-                        <div className="flex flex-wrap justify-end gap-2">
-                          {canManage && (
+                      <div className="flex flex-wrap justify-end gap-2">
+                        {canManage && r.status === 'PENDING' && (
                             <>
                               <button
                                 type="button"
@@ -330,18 +349,28 @@ function ToolRequestsPage() {
                               </button>
                             </>
                           )}
-                          {r.employeeId === user?.employeeId && (
-                            <button
-                              type="button"
-                              onClick={() => handleWithdraw(r)}
-                              className={`${smallButton} hover:border-red-400 hover:text-red-400`}
-                            >
-                              <Ban className="h-3.5 w-3.5" />
-                              {t.toolRequests.withdraw}
-                            </button>
-                          )}
-                        </div>
-                      )}
+                        {/* The requester's own edit/delete: edit while pending, delete while nothing was issued. */}
+                        {r.employeeId === user?.employeeId && r.status === 'PENDING' && (
+                          <button
+                            type="button"
+                            onClick={() => openEdit(r)}
+                            className={`${smallButton} hover:border-cyan-accent hover:text-cyan-accent`}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                            {t.toolRequests.edit}
+                          </button>
+                        )}
+                        {r.employeeId === user?.employeeId && r.status !== 'ISSUED' && (
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(r)}
+                            className={`${smallButton} hover:border-red-400 hover:text-red-400`}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            {t.shared.delete}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -352,7 +381,10 @@ function ToolRequestsPage() {
       </Panel>
 
       {showForm && (
-        <Modal title={t.toolRequests.requestTools} onClose={() => setShowForm(false)}>
+        <Modal
+          title={editing ? t.toolRequests.editTitle(editing.requestNumber) : t.toolRequests.requestTools}
+          onClose={() => setShowForm(false)}
+        >
           <form onSubmit={handleCreate} className="flex flex-col gap-4">
             <div>
               <label className={labelClass}>{t.toolRequests.itemsLabel}</label>
@@ -391,7 +423,7 @@ function ToolRequestsPage() {
             {formError && <p className="text-sm text-red-400">{formError}</p>}
 
             <button type="submit" disabled={submitting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
-              {submitting ? t.shared.submitting : t.toolRequests.submit}
+              {submitting ? t.shared.submitting : editing ? t.shared.saveChanges : t.toolRequests.submit}
             </button>
           </form>
         </Modal>
