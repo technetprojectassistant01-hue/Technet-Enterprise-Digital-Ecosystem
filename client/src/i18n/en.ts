@@ -817,7 +817,6 @@ export const en = {
   },
 
   tools: {
-    moduleSubtitle: 'Tools & Equipment',
     moduleSearchPlaceholder: 'Search tools...',
     title: 'Tools & Equipment',
     subtitle: "Technet's registered tools and equipment — what's available and who has what.",
