@@ -12,7 +12,7 @@ export const EMPTY_LINE_ITEM: LineItemRow = { description: '', quantity: '1', un
 
 const fieldInputClass =
   'mt-1 w-full rounded border border-ink-600 bg-ink-900 px-2 py-1.5 text-xs text-ink-100 outline-none focus:border-cyan-accent'
-const fieldLabelClass = 'text-[10px] tracking-wide text-ink-500'
+const fieldLabelClass = 'text-[10px] tracking-wide text-ink-400'
 
 function LineItemsEditor({
   items,
