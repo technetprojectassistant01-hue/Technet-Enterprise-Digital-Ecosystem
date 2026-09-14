@@ -2407,6 +2407,46 @@ export function documentDownloadUrl(id: string) {
   return `${API_URL}/api/documents/${id}/download`
 }
 
+// ---------- Personal documents (My Documents) ----------
+
+export type EmployeeDocumentType = 'DRIVING_LICENCE' | 'NATIONAL_ID' | 'PASSPORT' | 'CERTIFICATE' | 'MEDICAL' | 'OTHER'
+
+export interface EmployeeDocument {
+  id: string
+  employeeId: string
+  type: EmployeeDocumentType
+  title: string | null
+  fileName: string
+  mimeType: string
+  sizeBytes: number
+  createdAt: string
+}
+
+export function listMyDocuments() {
+  return request<{ documents: EmployeeDocument[] }>('/api/my-documents')
+}
+
+export function uploadMyDocument(input: { type: EmployeeDocumentType; title: string; fileName: string; fileData: string }) {
+  return request<{ document: EmployeeDocument }>('/api/my-documents', { method: 'POST', body: JSON.stringify(input) })
+}
+
+export function deleteMyDocument(id: string) {
+  return request<void>(`/api/my-documents/${id}`, { method: 'DELETE' })
+}
+
+export function myDocumentDownloadUrl(id: string) {
+  return `${API_URL}/api/my-documents/${id}/download`
+}
+
+/** HR only: an employee's personal documents. */
+export function listEmployeeDocuments(employeeId: string) {
+  return request<{ documents: EmployeeDocument[] }>(`/api/employee-documents?employeeId=${employeeId}`)
+}
+
+export function employeeDocumentDownloadUrl(id: string) {
+  return `${API_URL}/api/employee-documents/${id}/download`
+}
+
 // ---------- Tools & equipment (Technet Store) ----------
 
 export type ToolStatus = 'AVAILABLE' | 'CHECKED_OUT' | 'UNDER_REPAIR' | 'RETIRED'

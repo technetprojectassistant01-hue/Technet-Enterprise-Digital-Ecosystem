@@ -284,7 +284,8 @@ model User {
   toolCheckoutsIssued   ToolCheckout[] @relation("ToolCheckoutIssuer")
   toolCheckoutsReturned ToolCheckout[] @relation("ToolCheckoutReceiver")
 
-  overtimeDecisionsMade OvertimeDecision[] @relation("OvertimeDecider")
+  overtimeDecisionsMade     OvertimeDecision[] @relation("OvertimeDecider")
+  employeeDocumentsUploaded EmployeeDocument[] @relation("EmployeeDocumentUploader")
 
   quotationsCreated Quotation[] @relation("QuotationCreator")
 
@@ -434,6 +435,7 @@ model Employee {
   toolCheckouts ToolCheckout[]
 
   overtimeDecisions OvertimeDecision[]
+  personalDocuments EmployeeDocument[]
 }
 
 model Certification {
@@ -1642,4 +1644,30 @@ model OvertimeDecision {
 
   @@unique([employeeId, date])
   @@index([date])
+}
+
+// ---------------------------------------------------------------------------------------------
+// Personal documents (2026-09-14): driving licence, ID card, passport, certificates… uploaded by
+// the employee themselves on My Documents. Kept apart from the business `Document` table on
+// purpose — that one is listed and downloadable by every office role, and these are personal data
+// (Data Protection Act 2017). Only the employee and HR_ROLES can reach them.
+// ---------------------------------------------------------------------------------------------
+
+model EmployeeDocument {
+  id           String    @id @default(uuid())
+  employeeId   String
+  employee     Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  /// DRIVING_LICENCE | NATIONAL_ID | PASSPORT | CERTIFICATE | MEDICAL | OTHER — validated in the route.
+  type         String
+  title        String?
+  expiryDate   DateTime?
+  data         Bytes
+  fileName     String
+  mimeType     String
+  sizeBytes    Int
+  uploadedById String?
+  uploadedBy   User?     @relation("EmployeeDocumentUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime  @default(now())
+
+  @@index([employeeId])
 }

@@ -26,6 +26,7 @@ import {
   certificationStateLabel,
   certificationStateTone,
 } from './certificationStatus'
+import EmployeeDocumentsPanel from './EmployeeDocumentsPanel'
 
 function formatDate(value: string | null): string {
   if (!value) return '—'
@@ -383,6 +384,8 @@ function EmployeeDetailPage() {
             )}
           </Panel>
         )}
+
+        {canSeeSensitive && id && <EmployeeDocumentsPanel employeeId={id} />}
 
         <Panel title="Project Involvement" icon={FolderKanban}>
           {employee.managedProjects.length === 0 && employee.projectAssignments.length === 0 ? (

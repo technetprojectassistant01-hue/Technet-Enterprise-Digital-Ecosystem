@@ -1006,3 +1006,20 @@ an `OvertimeDecision`, one per employee per day; `DELETE /api/overtime/:employee
 the technician is notified (`OVERTIME_APPROVED`/`OVERTIME_REJECTED`). My Attendance shows an Overtime badge,
 total and CSV value **only for approved days** (`approvedOvertime` on `/me/history`); Late is still
 calculated client-side with no approval step. Overtime isn't fed into Payroll yet.
+
+## 23. Technician-side tidy-up and My Documents (2026-09-14)
+
+- **Commits are now per finished menu, not per file** — the user's explicit instruction this day,
+  replacing §9's per-file rule. Batch a menu's changes, verify, then commit and push together.
+- **Module headers can be tabs-only**: `ModuleHeader` title/subtitle are optional. Technet Store and
+  Technet Operations show just their tab buttons (user request).
+- **Menu items can be hidden at any depth**: `visibleNav()` in `dashboard/nav.ts` (used by the sidebar
+  and the phone strip). Team Attendance and Field Operations are hidden from everyone but ADMIN and
+  OPERATIONS_MANAGER (`NON_OPS_MANAGE_ROLES`); the pages and API were already restricted.
+- **My Documents** (`/dashboard/my-documents`, `MyDocumentsPage.tsx`, every role with a linked employee
+  record): upload a photo or PDF (≤10MB) with **Name, Type, Upload media** — the three fields the user
+  asked for — then download or delete it. Stored in its own `EmployeeDocument` table, **not** the business
+  `Document` table, because that one is listed and downloadable by every office role and these are
+  personal data. `/api/my-documents` only ever touches the caller's own rows; HR_ROLES get a read-only
+  "Personal Documents" panel on the HR employee profile via `/api/employee-documents`. The table has an
+  `expiryDate` column that is currently unused (the form dropped it at the user's request).
