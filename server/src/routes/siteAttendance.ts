@@ -259,6 +259,38 @@ router.get("/me", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
   res.json({ current, history });
 });
 
+/**
+ * The caller's own attendance for a month (?month=YYYY-MM, default this month) — the "My
+ * Attendance" history on their landing page. Deliberately only what they entered themselves plus
+ * the recorded times: no coordinates and no location-match result, since the technician's own
+ * screen doesn't surface the tracking back at them (CLAUDE.md §7a). Managers see all of it.
+ */
+router.get("/me/history", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
+  const employee = await prisma.employee.findUnique({ where: { userId: req.user!.sub } });
+  if (!employee) return res.status(403).json({ error: "No employee record is linked to your account" });
+
+  const { start, end } = monthRange(req.query.month);
+  const visits = await prisma.siteAttendance.findMany({
+    where: { employeeId: employee.id, checkInAt: { gte: start, lt: end } },
+    select: {
+      id: true,
+      checkInAt: true,
+      checkInDeclaredTime: true,
+      checkInNote: true,
+      checkInTransportCost: true,
+      checkOutAt: true,
+      checkOutDeclaredTime: true,
+      checkOutNote: true,
+      checkOutTransportCost: true,
+      checkOutByManager: true,
+      workOrder: { select: { id: true, workOrderNumber: true, title: true } },
+    },
+    orderBy: { checkInAt: "desc" },
+  });
+
+  res.json({ visits });
+});
+
 /** The caller's own assigned, still-open work orders — for the "which job?" picker on check-in. */
 router.get("/my-work-orders", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
   const employee = await prisma.employee.findUnique({ where: { userId: req.user!.sub } });
