@@ -274,9 +274,9 @@ export const mfe: Dict = {
 
   leaveApprovals: {
     title: 'Aprouv konze',
-    subtitle: 'Aksepte ouswa refiz demann konze, ek get tou demann konze dan konpani la.',
+    subtitle: 'Aksepte ouswa refiz demann konze, ek get konze ki finn aksepte.',
     pending: 'Pe atann aprobasion',
-    all: 'Tou konze',
+    approved: 'Aksepte',
   },
 
   myLeave: {
