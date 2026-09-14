@@ -64,7 +64,7 @@ Everyone lands on **Overview** (`/dashboard`) — as of 2026-08-19 this is real,
 | — Inventory | Built | Items, stock movements |
 | — Finance | Built | Customers, Invoices (+PDF), Quotations (+PDF, see the Quotation-rework note below, and §10d for the 2026-08-27 Call Log/payment-terms/validity/Product Line addendum), Follow-Up of Quotation, Expenses, Contracts |
 | — Procurement | Built | Suppliers, Requisitions, Purchase Orders (+PDF), goods receipt |
-| — HR | Built | Employee profiles, Leave (types/balances/requests/timesheet, public holiday calendar excluded from working-day counts — added 2026-08-20, manually maintained since several Mauritius holidays are lunar/gazette-dependent), Certifications & Training. **Attendance moved to Technet Workforce 2026-08-20** — see below. Self-service leave requests for employees added 2026-08-26 — see §10b. |
+| — HR | Built | Employee profiles, Leave (types/balances/requests/timesheet, public holiday calendar excluded from working-day counts — added 2026-08-20, manually maintained since several Mauritius holidays are lunar/gazette-dependent), Certifications & Training. **Attendance moved to Technet Workforce 2026-08-20** — see below. The default leave type "Unpaid Leave" was renamed **"Local Leave"** (code LOCAL) 2026-09-14 by migration — name only; HR sets whether it is paid in Leave Types. Self-service leave requests for employees added 2026-08-26 — see §10b. |
 | — Projects | Built | Project registry, assignments, status history |
 | — Documents | Built | File storage (DB `Bytes` column, not S3/cloud storage), categorized by Contract/Invoice/HR/Project/General/Quotation |
 | **Technet Store** (was Technet Maintenance) | **Rebuilt as Tools & Equipment** (2026-09-14) | See §21. Two tabs: **Tools & Equipment** (`/dashboard/store/tools`, the individually-tracked tool register with who holds what) and **Tool Requests** (`/dashboard/store/requests`). It used to be customer-equipment maintenance (Assets/Contracts/Requests/Schedule + maintenance visit reports) — those **screens were removed at the user's request**, but the tables, data and `/api/maintenance-*` routes were deliberately kept (see §21). |
@@ -743,8 +743,9 @@ only — never integrate with, call, or fix it).
   - **Round 1 (done 2026-09-10):** `AttendanceWidget.tsx` redesigned (one big CHECKED IN /
     ticking-duration readout, one full-width primary action, an optional "Which job?" picker whose
     choice shows as a chip; capped at `max-w-md` so it stays a compact card on wide screens).
-    **Required fields on both check-in and check-out: location (check-in only), time, and
-    transport** — a technician with no travel enters 0. (These were briefly behind an optional
+    **Required fields on both check-in and check-out: time and transport** (location was required on
+    check-in until 2026-09-14, when the user made it optional — shown as "LOCATION (OPTIONAL)"; the GPS fix
+    is still mandatory, and an empty location simply records as UNCHECKABLE) — a technician with no travel enters 0. (These were briefly behind an optional
     "Trip details" disclosure; the manager wanted the data captured every time.) Location tracking
     stays **off** the technician's screen (§7a) — the p8 mockup's "on site / verified / map" card
     was not built. The dormant periodic verify-location effect was removed. Also this pass:
@@ -1001,7 +1002,7 @@ managed by **Admin + Storekeeper**; every tool tracked **individually** (not by 
 
 Renamed from Overview at the user's request, because for technicians it is really the check-in page.
 Top to bottom: `Welcome back, {name}` (centred); the centred check-in card (form order: time + transport, then
-**Site** (optional), then **Location**; no job picker — the same Site field is on check-out); **Today** (`dashboard/TodayAttendance.tsx`); two stat cards for office roles
+**Site** (optional), then **Location (optional)**; no job picker — the same Site field is on check-out); **Today** (`dashboard/TodayAttendance.tsx`); two stat cards for office roles
 only (Active Projects, Pending Requisitions); **My Attendance** (`dashboard/MyAttendanceHistory.tsx`). The
 company profile, Recent Activity, Active Work Orders and Pending Tool Requests were removed on request.
 Today and My Attendance read `GET /api/site-attendance/me/history?month=YYYY-MM`, which returns only what
@@ -1035,21 +1036,25 @@ Field Operations.
 
 **Attendance PDF + validation** (added the same day, user request — replaces My Attendance's CSV export for
 the technician). My Attendance → **Export PDF** opens `dashboard/AttendanceExportDialog.tsx`: pick a from/to
-range (not after today), **Download PDF** (`GET /api/site-attendance/me/report/pdf?from=&to=`) and **Request
-validation**. The PDF (`server/src/lib/pdf/attendancePdf.ts`, built by `lib/attendanceReport.ts`) uses the
-quotation letterhead/table style: employee details, summary, a day-by-day register with Late/Overtime/
-Not-checked-out remarks, and signature lines. It carries a diagonal **DRAFT** watermark and a red DRAFT line
-until Admin/HR validates the range; once validated it prints "VALIDATED by X on date" instead. Workflow
-(user's choice of three offered): the employee requests a range (`AttendanceValidation`, migration
-`20260914230000_attendance_validation`, `/api/attendance-validations/mine`, notifies `HR_ROLES`); Admin/HR
-review it on **Technet Workforce → Validations** (`workforce/AttendanceValidationPage.tsx`, `HR_ROLES`: view
-PDF, Validate, Reject with reason, Undo) and the employee is notified. **A range is final only if a VALIDATED
-request covers it and its data is unchanged**: validating stores a SHA-256 `fingerprint` of the range's visits
-(times, typed values, transport, site/location, manager close) plus approved overtime; if any of that changes
-later the validation shows as "changed since" (`stale`), the PDF is DRAFT again, and HR can "Validate again".
-A sub-range of a validated range is final; a wider one is not. PDF text is English like every other PDF.
-Verified with a disposable scratch script (29/29) against the real DB plus rendered PDFs; the dialog and
-Workforce tab were not clicked through in a browser (no browser automation here).
+range (not after today) and **Download PDF** (`GET /api/site-attendance/me/report/pdf?from=&to=`); a status line
+says whether HR has validated those dates. The PDF (`server/src/lib/pdf/attendancePdf.ts`, built by
+`lib/attendanceReport.ts`) uses the quotation letterhead/table style: employee details, summary, a day-by-day
+register with Late/Overtime/Not-checked-out remarks, and signature lines. It carries a diagonal **DRAFT**
+watermark and a red DRAFT line until HR validates it; once validated it prints "VALIDATED by X on date".
+**Validation is done by HR at month end, per employee — employees do not request it** (the user first had a
+request → validate/reject flow, then replaced it the same day; migration
+`20260914250100_drop_attendance_validation_requests` deleted the request rows). **Technet Workforce →
+Validations** (`workforce/AttendanceValidationPage.tsx`, `HR_ROLES`, defaults to last month) lists every employee
+with site attendance in the month: view PDF, **Validate** / **Validate again**, **Undo**, and **Validate all**
+(`/api/attendance-validations/month`, `/month/pdf`, `/month/validate`, `/month/validate-all`, `/month/unvalidate`).
+A month can only be validated from its last day. Each validation is an `AttendanceValidation` row (status
+VALIDATED, from = 1st, to = last day of the month) and notifies the employee. Technicians can still download a
+DRAFT copy any time (user's choice). **A range is final only if a validation covers it and its data is
+unchanged**: validating stores a SHA-256 `fingerprint` of the range's visits (times, typed values, transport,
+site/location, manager close) plus approved overtime; if any of that changes later the row shows "Changed since
+validation" (`stale`), the PDF is DRAFT again, and HR can validate again. Part of a validated month is final; a
+range crossing into an unvalidated month is not. PDF text is English like every other PDF. Verified with
+disposable scratch scripts against the real DB plus rendered PDFs; the dialog and Workforce tab were not clicked through in a browser (no browser automation here).
 
 ## 23. Technician-side tidy-up and My Documents (2026-09-14)
 

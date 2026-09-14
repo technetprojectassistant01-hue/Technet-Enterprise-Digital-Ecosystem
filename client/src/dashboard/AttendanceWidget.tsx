@@ -116,9 +116,8 @@ function ReminderToggle() {
 
 /**
  * The technician's own attendance screen — the one used most, often one-handed and outdoors, so:
- * one big unambiguous status, one primary action, minimal required fields (only the location, on
- * check-in). Transport and a departure note sit behind a "Trip details" disclosure so a normal
- * check-out is a single tap.
+ * one big unambiguous status, one primary action, few required fields (time and transport; site and
+ * location are optional since 2026-09-14). The GPS fix is still taken on every check-in and out.
  *
  * It deliberately does NOT surface the location tracking back at the technician — no coordinates,
  * no map, no on-site/off-site verdict, no "explain why you left" prompt. All of that is still
@@ -255,10 +254,6 @@ function AttendanceWidget() {
   }
 
   async function handleCheckIn() {
-    if (!note.trim()) {
-      toast.error(t.attendance.enterLocation)
-      return
-    }
     if (!declaredTime) {
       toast.error(t.attendance.enterTimeIn)
       return
@@ -271,12 +266,12 @@ function AttendanceWidget() {
     await withLocation(async (pos) => {
       const { queued } = await submitOrQueue({
         kind: 'check-in',
-        label: t.attendance.outboxCheckIn(note.trim()),
+        label: t.attendance.outboxCheckIn(site.trim() || note.trim()),
         endpoint: '/api/site-attendance/check-in',
         body: {
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
-          note,
+          note: note.trim() || undefined,
           site: site.trim() || undefined,
           timeIn: declaredTimeEdited ? declaredTime : currentClockTime(),
           transportCost: transport.value,
