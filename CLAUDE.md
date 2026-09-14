@@ -1023,3 +1023,12 @@ calculated client-side with no approval step. Overtime isn't fed into Payroll ye
   personal data. `/api/my-documents` only ever touches the caller's own rows; HR_ROLES get a read-only
   "Personal Documents" panel on the HR employee profile via `/api/employee-documents`. The table has an
   `expiryDate` column that is currently unused (the form dropped it at the user's request).
+- **Location dialogs on the check-in card** (`AttendanceWidget.tsx`, `lib/geolocation.ts`): the phone's own
+  permission prompt can't be restyled, so our dialogs wrap it — "Allow location?" (Allow / Don't allow) before
+  it, "Allow location to check in" after a decline, and "Location is blocked" with settings steps + Try again
+  when the browser has denied it (`locationPermission()` via the Permissions API; `LocationDeniedError`).
+  Location is still mandatory for check-in/out; the dialogs only explain that instead of erroring.
+- **Leave requests have an optional `remarks`** column (e.g. "Medical certificate obtained") next to
+  `reason`, on My Leave and HR's leave requests tab.
+- **The technician side was declared finished by the user on 2026-09-14.** Next work is expected to move to
+  other roles (admin/HR/office) menu by menu.
