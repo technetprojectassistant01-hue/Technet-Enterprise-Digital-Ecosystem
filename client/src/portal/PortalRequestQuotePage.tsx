@@ -88,7 +88,7 @@ function PortalRequestQuotePage() {
               <li key={r.id} className="flex items-start justify-between gap-3 border-b border-ink-800 pb-3 last:border-0 last:pb-0">
                 <div>
                   <p className="text-sm text-ink-100">{r.description}</p>
-                  <p className="mt-1 text-xs text-ink-500">{new Date(r.createdAt).toLocaleDateString()}</p>
+                  <p className="mt-1 text-xs text-ink-400">{new Date(r.createdAt).toLocaleDateString()}</p>
                 </div>
                 <Badge tone={STATUS_TONE[r.status]}>{r.status}</Badge>
               </li>
