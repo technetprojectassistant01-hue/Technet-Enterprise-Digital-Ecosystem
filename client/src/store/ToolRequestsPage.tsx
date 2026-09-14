@@ -309,7 +309,7 @@ function ToolRequestsPage() {
                             >
                               <PackageCheck className="h-3 w-3 text-cyan-accent" />
                               {c.tool.toolNumber} {c.tool.name}
-                              {c.returnedAt && <span className="text-ink-500">· {t.toolRequests.returnedShort}</span>}
+                              {c.returnedAt && <span className="text-ink-400">· {t.toolRequests.returnedShort}</span>}
                             </span>
                           ))}
                         </div>
@@ -475,7 +475,7 @@ function ToolRequestsPage() {
                       />
                       <span className="font-mono text-xs text-ink-400">{tool.toolNumber}</span>
                       <span className="text-ink-100">{tool.name}</span>
-                      {tool.category && <span className="ml-auto text-xs text-ink-500">{tool.category}</span>}
+                      {tool.category && <span className="ml-auto text-xs text-ink-400">{tool.category}</span>}
                     </label>
                   ))
                 )}
