@@ -2670,6 +2670,7 @@ export type NotificationType =
   | 'TOOL_REQUEST_REJECTED'
   | 'OVERTIME_APPROVED'
   | 'OVERTIME_REJECTED'
+  | 'OVERTIME_PENDING'
 
 export interface Notification {
   id: string
