@@ -53,7 +53,7 @@ function fullName(e: { firstName: string; lastName: string }) {
 }
 
 /**
- * Technet Maintenance — the tools & equipment register. Everyone sees what exists, what's
+ * Technet Store — the tools & equipment register. Everyone sees what exists, what's
  * available and who holds what (plus their own tools at the top). Admin/Storekeeper also add,
  * edit and retire tools and record returns. Tools are handed out from Tool Requests, not here.
  */
