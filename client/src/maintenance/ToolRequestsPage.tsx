@@ -42,6 +42,7 @@ function ToolRequestsPage() {
   // New request
   const [showForm, setShowForm] = useState(false)
   const [items, setItems] = useState('')
+  const [typeOrBrand, setTypeOrBrand] = useState('')
   const [purpose, setPurpose] = useState('')
   const [neededBy, setNeededBy] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
@@ -72,6 +73,7 @@ function ToolRequestsPage() {
 
   function openForm() {
     setItems('')
+    setTypeOrBrand('')
     setPurpose('')
     setNeededBy('')
     setFormError(null)
@@ -87,7 +89,12 @@ function ToolRequestsPage() {
     }
     setSubmitting(true)
     try {
-      await api.createToolRequest({ items, purpose: purpose || undefined, neededBy: neededBy || undefined })
+      await api.createToolRequest({
+        items,
+        typeOrBrand: typeOrBrand || undefined,
+        purpose: purpose || undefined,
+        neededBy: neededBy || undefined,
+      })
       toast.success(t.toolRequests.submitted)
       setShowForm(false)
       load()
@@ -267,6 +274,11 @@ function ToolRequestsPage() {
                     {canManage && <td className="px-3 py-3 text-ink-100">{fullName(r.employee)}</td>}
                     <td className="max-w-sm px-3 py-3">
                       <div className="whitespace-pre-line text-ink-100">{r.items}</div>
+                      {r.typeOrBrand && (
+                        <div className="mt-1 text-xs text-ink-300">
+                          <span className="font-semibold">{t.toolRequests.typeOrBrandShort}</span> {r.typeOrBrand}
+                        </div>
+                      )}
                       {r.purpose && <div className="mt-1 text-xs text-ink-400">{r.purpose}</div>}
                       {r.checkouts.length > 0 && (
                         <div className="mt-2 flex flex-wrap gap-1.5">
@@ -354,6 +366,15 @@ function ToolRequestsPage() {
               />
             </div>
             <div>
+              <label className={labelClass}>{t.toolRequests.typeOrBrandLabel}</label>
+              <input
+                value={typeOrBrand}
+                onChange={(e) => setTypeOrBrand(e.target.value)}
+                placeholder={t.toolRequests.typeOrBrandPlaceholder}
+                className={`mt-2 ${inputClass}`}
+              />
+            </div>
+            <div>
               <label className={labelClass}>{t.toolRequests.purposeLabel}</label>
               <input
                 value={purpose}
@@ -382,6 +403,11 @@ function ToolRequestsPage() {
             <div className="rounded-md border border-ink-800 bg-ink-950 p-3 text-sm">
               <div className="text-xs text-ink-400">{t.toolRequests.requestedByLine(fullName(issuing.employee))}</div>
               <div className="mt-1 whitespace-pre-line text-ink-100">{issuing.items}</div>
+              {issuing.typeOrBrand && (
+                <div className="mt-1 text-xs text-ink-300">
+                  <span className="font-semibold">{t.toolRequests.typeOrBrandShort}</span> {issuing.typeOrBrand}
+                </div>
+              )}
             </div>
 
             <div>
