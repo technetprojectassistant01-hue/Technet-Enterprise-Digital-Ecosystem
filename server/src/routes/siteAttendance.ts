@@ -7,6 +7,7 @@ import { notifyEmployee, notifyRoles } from "../lib/notifications";
 import { parseClockTime } from "../lib/clockTime";
 import { checkLocationAgainstGps } from "../lib/locationMatch";
 import { claimRequest, releaseRequest } from "../lib/idempotency";
+import { notifyHrOfOvertime } from "../lib/overtimeQueue";
 
 const router = Router();
 
@@ -236,6 +237,7 @@ router.post("/:id/close", requireRole(...OPS_MANAGE_ROLES), async (req, res) => 
     },
     include: { employee: { select: EMPLOYEE_SELECT }, workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE },
   });
+  await notifyHrOfOvertime(siteAttendance.employeeId, siteAttendance.checkInAt);
   res.json({ siteAttendance });
 });
 
@@ -467,6 +469,7 @@ router.post("/check-out", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => 
       },
       include: { workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE },
     });
+    await notifyHrOfOvertime(siteAttendance.employeeId, siteAttendance.checkInAt);
     res.json({ siteAttendance });
   } catch (err) {
     await releaseRequest(clientRequestId);
