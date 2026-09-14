@@ -334,7 +334,7 @@ function EmployeeDetailPage() {
                       <span className="text-ink-300">
                         {r.leaveType.name} · {formatDate(r.startDate)}
                         {r.startDate !== r.endDate ? ` → ${formatDate(r.endDate)}` : ''}
-                        <span className="text-ink-500"> · {r.days}d</span>
+                        <span className="text-ink-400"> · {r.days}d</span>
                       </span>
                       <Badge tone={leaveRequestStatusTone[r.status]}>{r.status}</Badge>
                     </li>
