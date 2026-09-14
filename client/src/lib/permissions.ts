@@ -13,7 +13,7 @@ export const MARKETING_ROLES: readonly Role[] = ['ADMIN', 'SALES_OFFICER']
 /** Read-only visibility into the Quote Request queue for Operations Managers, alongside Sales' full edit rights. */
 export const QUOTE_REQUEST_VIEW_ROLES: readonly Role[] = ['ADMIN', 'SALES_OFFICER', 'OPERATIONS_MANAGER']
 export const PROCUREMENT_ROLES: readonly Role[] = ['ADMIN', 'STOREKEEPER']
-/** Technet Maintenance tools & equipment: register tools, issue them against requests, record returns. */
+/** Technet Store tools & equipment: register tools, issue them against requests, record returns. */
 export const TOOL_MANAGE_ROLES: readonly Role[] = ['ADMIN', 'STOREKEEPER']
 export const HR_ROLES: readonly Role[] = ['ADMIN', 'HR_OFFICER']
 /** Read-only "who's around today" visibility for Operations Managers, alongside HR's full edit rights. */
@@ -28,7 +28,7 @@ export const DOCUMENT_ROLES: readonly Role[] = [
   'OPERATIONS_MANAGER',
 ]
 
-/** Field technicians and generic employees only work within Operations and Maintenance. */
+/** Field technicians and generic employees only work within Operations and the Store. */
 export const FIELD_ONLY_ROLES: readonly Role[] = ['FIELD_TECHNICIAN', 'EMPLOYEE']
 
 /** Everyone except ADMIN - used to hide admin-only nav items (e.g. Technet Insight). */
