@@ -28,7 +28,7 @@ export function LegalContent({ doc }: { doc: LegalDoc }) {
   return (
     <article className="mx-auto max-w-3xl">
       <h1 className="text-2xl font-bold text-ink-100">{page.title}</h1>
-      <p className="mt-1 text-xs text-ink-500">{t.legal.lastUpdated}</p>
+      <p className="mt-1 text-xs text-ink-400">{t.legal.lastUpdated}</p>
       <p className="mt-4 text-sm leading-relaxed text-ink-300">{page.intro}</p>
 
       <div className="mt-6 space-y-4">
