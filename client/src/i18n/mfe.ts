@@ -202,8 +202,8 @@ export const mfe: Dict = {
   },
 
   overview: {
-    eyebrow: 'VI ZENERAL',
-    title: 'Ekosistem Technet',
+    eyebrow: 'EKOSISTEM TECHNET',
+    title: 'Prezans',
     companyProfile: 'PROFIL KONPANI',
     companyBlurb:
       'Enn konpani lenzenyri multi-servis ki baze Moris, avek plis ki 10 an lexperians pou fourni solision teknik ek biznes partou dan rezion la.',
@@ -1263,7 +1263,7 @@ export const mfe: Dict = {
           {
             q: 'Kouma pou pointe mo lariver ek mo depar?',
             a: [
-              'Servi kart "Mo Prezans" lor paz Vi zeneral. Verifie ler lariver (li deza ranpli pou ou), ekrir kot ou ete, rant ou fre transpor (met 0 si pena), apre tap "Pointe lariver".',
+              'Servi kart "Mo Prezans" lor paz Prezans. Verifie ler lariver (li deza ranpli pou ou), ekrir kot ou ete, rant ou fre transpor (met 0 si pena), apre tap "Pointe lariver".',
               'Kan ou pe ale, fer parey avek "Pointe depar". Ou kapav pointe plizier fwa dan enn zour si ou al lor plis ki enn sit.',
             ],
           },
