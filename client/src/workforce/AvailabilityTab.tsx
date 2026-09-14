@@ -31,7 +31,7 @@ function EmployeeList({ rows, empty, detail }: { rows: AttendanceRosterRow[]; em
         <li key={row.employee.id} className="flex items-center justify-between gap-3 text-sm">
           <span className="text-ink-100">
             {row.employee.firstName} {row.employee.lastName}
-            {row.employee.department && <span className="text-ink-500"> · {row.employee.department}</span>}
+            {row.employee.department && <span className="text-ink-400"> · {row.employee.department}</span>}
           </span>
           {detail?.(row) && <span className="text-xs text-ink-400">{detail(row)}</span>}
         </li>
@@ -136,7 +136,7 @@ function AvailabilityTab() {
       )}
 
       {!loading && restOrHoliday.length > 0 && (
-        <p className="text-xs text-ink-500">{t.workforce.availability.restOrHoliday(restOrHoliday.length)}</p>
+        <p className="text-xs text-ink-400">{t.workforce.availability.restOrHoliday(restOrHoliday.length)}</p>
       )}
     </div>
   )
