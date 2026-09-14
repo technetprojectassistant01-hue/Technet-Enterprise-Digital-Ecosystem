@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { Navigate } from 'react-router-dom'
 import { Plus, Ban, CalendarHeart, Lock, Pencil } from 'lucide-react'
 import * as api from './lib/api'
 import type { LeaveType, LeaveBalance, LeaveRequest, MyLeaveRequestInput } from './lib/api'
@@ -154,6 +155,11 @@ function MyLeavePage() {
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t.myLeave.withdrawFailed)
     }
+  }
+
+  // Admins use Leave Approvals instead (an old bookmark or link still lands somewhere useful).
+  if (user?.role === 'ADMIN') {
+    return <Navigate to="/dashboard/leave-approvals" replace />
   }
 
   if (!user?.employeeId) {
