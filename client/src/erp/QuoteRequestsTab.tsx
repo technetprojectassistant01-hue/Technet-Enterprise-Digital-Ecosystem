@@ -381,7 +381,7 @@ function QuoteRequestsTab() {
                       <div className="text-sm font-medium text-ink-100">{requesterName(r)}</div>
                       <p className="mt-1 text-sm text-ink-300">{r.description}</p>
                       {r.remarks && <p className="mt-1 text-xs text-ink-400">{r.remarks}</p>}
-                      <p className="mt-1 text-xs text-ink-500">
+                      <p className="mt-1 text-xs text-ink-400">
                         {new Date(r.createdAt).toLocaleString()} · {timeAgo(r.createdAt)}
                         {r.source !== 'PORTAL' && ` · via ${r.source === 'PHONE_CALL' ? 'phone call' : r.source.toLowerCase()}`}
                         {r.requestFor && ` · ${REQUEST_CATEGORY_OPTIONS.find((o) => o.value === r.requestFor)?.label || r.requestForOther}`}
