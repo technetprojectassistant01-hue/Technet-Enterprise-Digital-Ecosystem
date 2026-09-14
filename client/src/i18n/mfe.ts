@@ -36,6 +36,7 @@ export const mfe: Dict = {
   nav: {
     Overview: 'Vi zeneral',
     'My Leave': 'Mo Konze',
+    'My Documents': 'Mo dokiman',
     'Leave Approvals': 'Aprouv konze',
     'Technet ERP': 'Technet ERP',
     Inventory: 'Inventer',
@@ -288,6 +289,47 @@ export const mfe: Dict = {
     leftFrom: (place: string) => `Sorti depi ${place}`,
   },
 
+  myDocuments: {
+    title: 'Mo dokiman',
+    subtitle: 'Gard enn kopi ou permi kondir, kart idantite, paspor ek sertifika isi.',
+    upload: 'Azout enn dokiman',
+    uploading: 'Pe avoye…',
+    uploaded: 'Dokiman azoute',
+    uploadFailed: 'Pa finn kapav azout dokiman la',
+    loadFailed: 'Pa finn kapav sarz ou dokiman',
+    downloadFailed: 'Pa finn kapav telesarz dokiman la',
+    deleteTitle: 'Efas dokiman',
+    deleteMessage: (name: string) => `Efas "${name}"? Pa pou kapav defer sa.`,
+    deleted: 'Dokiman efase',
+    deleteFailed: 'Pa finn kapav efas dokiman la',
+    notLinked: 'Pena dosie anplwaye lie ar ou kont, alor ou pa kapav gard dokiman isi. Kontakte RH.',
+    empty: 'Ou pa ankor azout okenn dokiman.',
+    download: 'Telesarze',
+    addedOn: (date: string) => `Azoute ${date}`,
+    titleLabel: 'NOM',
+    titlePlaceholder: 'egz. Permi kondir',
+    nameRequired: 'Donn dokiman la enn nom',
+    typeLabel: 'KALITE',
+    chooseType: 'Swazir enn kalite',
+    fileLabel: 'FICHIE',
+    pickFile: 'Tap pou swazir enn foto ouswa PDF',
+    fileHint: 'Enn foto ouswa skan (JPG, PNG, PDF), ziska 10MB.',
+    chooseFile: 'Swazir enn fichie',
+    photoOrPdf: 'Azout enn foto ouswa enn PDF',
+    tooLarge: 'Fichie la bizin 10MB ouswa mwins',
+    privacyNote: 'Prive: zis ou ek RH kapav trouv sa bann dokiman la.',
+    hrPanelTitle: 'Dokiman personel',
+    hrEmpty: 'Sa anplwaye la pa ankor azout okenn dokiman.',
+    types: {
+      DRIVING_LICENCE: 'Permi kondir',
+      NATIONAL_ID: 'Kart idantite',
+      PASSPORT: 'Paspor',
+      CERTIFICATE: 'Sertifika',
+      MEDICAL: 'Sertifika medikal',
+      OTHER: 'Lot',
+    },
+  },
+
   myLeave: {
     title: 'Mo Konze',
     subtitle: 'Demann konze e swiv ou balans ek ou listwar konze.',
@@ -515,7 +557,6 @@ export const mfe: Dict = {
   },
 
   ops: {
-    subtitle: 'Servis teren',
     searchPlaceholder: 'Rod bon travay...',
     wo: {
       title: 'Rezis bon travay',

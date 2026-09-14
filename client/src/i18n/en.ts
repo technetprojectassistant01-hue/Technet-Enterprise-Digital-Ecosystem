@@ -36,6 +36,7 @@ export const en = {
   nav: {
     Overview: 'Overview',
     'My Leave': 'My Leave',
+    'My Documents': 'My Documents',
     'Leave Approvals': 'Leave Approvals',
     'Technet ERP': 'Technet ERP',
     Inventory: 'Inventory',
@@ -287,6 +288,47 @@ export const en = {
     leftFrom: (place: string) => `Left from ${place}`,
   },
 
+  myDocuments: {
+    title: 'My Documents',
+    subtitle: 'Keep copies of your driving licence, ID card, passport and certificates here.',
+    upload: 'Upload Document',
+    uploading: 'Uploading…',
+    uploaded: 'Document uploaded',
+    uploadFailed: 'Failed to upload the document',
+    loadFailed: 'Failed to load your documents',
+    downloadFailed: 'Failed to download the document',
+    deleteTitle: 'Delete document',
+    deleteMessage: (name: string) => `Delete "${name}"? This cannot be undone.`,
+    deleted: 'Document deleted',
+    deleteFailed: 'Failed to delete the document',
+    notLinked: 'No employee record is linked to your account, so you cannot keep documents here. Contact HR.',
+    empty: "You haven't uploaded any documents yet.",
+    download: 'Download',
+    addedOn: (date: string) => `Added ${date}`,
+    titleLabel: 'NAME',
+    titlePlaceholder: 'e.g. Driving licence',
+    nameRequired: 'Give the document a name',
+    typeLabel: 'TYPE',
+    chooseType: 'Choose a type',
+    fileLabel: 'UPLOAD MEDIA',
+    pickFile: 'Tap to choose a photo or PDF',
+    fileHint: 'A photo or scan (JPG, PNG, PDF), up to 10MB.',
+    chooseFile: 'Choose a file to upload',
+    photoOrPdf: 'Upload a photo or a PDF',
+    tooLarge: 'File must be 10MB or smaller',
+    privacyNote: 'Private: only you and HR can see these documents.',
+    hrPanelTitle: 'Personal Documents',
+    hrEmpty: 'No documents uploaded by this employee.',
+    types: {
+      DRIVING_LICENCE: 'Driving licence',
+      NATIONAL_ID: 'ID card',
+      PASSPORT: 'Passport',
+      CERTIFICATE: 'Certificate',
+      MEDICAL: 'Medical certificate',
+      OTHER: 'Other',
+    },
+  },
+
   myLeave: {
     title: 'My Leave',
     subtitle: 'Request time off and track your own leave balance and history.',
@@ -519,7 +561,6 @@ export const en = {
   },
 
   ops: {
-    subtitle: 'Field Service',
     searchPlaceholder: 'Search work orders...',
     wo: {
       title: 'Work Order Registry',

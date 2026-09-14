@@ -8,6 +8,7 @@ import Dashboard from './Dashboard'
 import DashboardHome from './DashboardHome'
 import MyLeavePage from './MyLeavePage'
 import LeaveApprovalsPage from './LeaveApprovalsPage'
+import MyDocumentsPage from './MyDocumentsPage'
 import ErpLayout from './erp/ErpLayout'
 import TechnetErpPage from './TechnetErpPage'
 import InventoryPage from './erp/InventoryPage'
@@ -89,6 +90,7 @@ function App() {
         <Route path="/dashboard" element={<Dashboard />}>
           <Route index element={<DashboardHome />} />
           <Route path="my-leave" element={<MyLeavePage />} />
+          <Route path="my-documents" element={<MyDocumentsPage />} />
           <Route path="help" element={<HelpCenterContent />} />
           <Route path="privacy" element={<LegalContent doc="privacy" />} />
           <Route path="terms" element={<LegalContent doc="terms" />} />

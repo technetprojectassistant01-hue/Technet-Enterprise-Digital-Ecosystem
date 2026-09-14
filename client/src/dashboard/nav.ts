@@ -26,6 +26,7 @@ import {
   ClipboardCheck,
   CalendarDays,
   CalendarCheck,
+  IdCard,
   Clock,
   BadgeCheck,
   Hammer,
@@ -35,7 +36,7 @@ import {
   UserCheck,
   type LucideIcon,
 } from 'lucide-react'
-import { FIELD_ONLY_ROLES, NON_ADMIN_ROLES } from '../lib/permissions'
+import { FIELD_ONLY_ROLES, NON_ADMIN_ROLES, NON_OPS_MANAGE_ROLES } from '../lib/permissions'
 import type { Role } from '../lib/api'
 
 export interface NavItem {
@@ -54,6 +55,7 @@ export const MAIN_NAV: NavItem[] = [
   // Admin approves leave rather than requesting it here, so they get Leave Approvals instead.
   { label: 'My Leave', to: '/dashboard/my-leave', icon: CalendarDays, hiddenFrom: ['ADMIN'] },
   { label: 'Leave Approvals', to: '/dashboard/leave-approvals', icon: CalendarCheck, hiddenFrom: NON_ADMIN_ROLES },
+  { label: 'My Documents', to: '/dashboard/my-documents', icon: IdCard },
   {
     label: 'Technet ERP',
     to: '/dashboard/erp',
@@ -119,8 +121,9 @@ export const MAIN_NAV: NavItem[] = [
       { label: 'Work Orders', to: '/dashboard/operations/work-orders', icon: CalendarClock },
       { label: 'Daily Reports', to: '/dashboard/operations/daily-reports', icon: ClipboardList },
       { label: 'Intervention Reports', to: '/dashboard/operations/intervention-reports', icon: ClipboardCheck },
-      { label: 'Team Attendance', to: '/dashboard/operations/team-attendance', icon: MapPinned },
-      { label: 'Field Operations', to: '/dashboard/operations/field-tracking', icon: Radar },
+      // Manager-only screens: technicians and office roles don't see them in the menu.
+      { label: 'Team Attendance', to: '/dashboard/operations/team-attendance', icon: MapPinned, hiddenFrom: NON_OPS_MANAGE_ROLES },
+      { label: 'Field Operations', to: '/dashboard/operations/field-tracking', icon: Radar, hiddenFrom: NON_OPS_MANAGE_ROLES },
     ],
   },
   {
@@ -138,6 +141,13 @@ export const MAIN_NAV: NavItem[] = [
   { label: 'Technet Digital Marketing', to: '/dashboard/marketing', icon: Megaphone, hiddenFrom: FIELD_ONLY_ROLES },
   { label: 'Technet Insight', to: '/dashboard/insight', icon: LineChart, hiddenFrom: NON_ADMIN_ROLES },
 ]
+
+/** The menu as a given role sees it: drops items (at any depth) that are hidden from that role. */
+export function visibleNav(items: NavItem[], role: Role | undefined): NavItem[] {
+  return items
+    .filter((item) => !role || !item.hiddenFrom?.includes(role))
+    .map((item) => (item.children ? { ...item, children: visibleNav(item.children, role) } : item))
+}
 
 export const SYSTEM_NAV: NavItem[] = [
   { label: 'Settings', to: '/dashboard/settings', icon: Settings },

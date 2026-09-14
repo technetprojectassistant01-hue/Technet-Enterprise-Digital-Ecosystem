@@ -31,6 +31,7 @@ export const fr: Dict = {
   nav: {
     Overview: "Vue d'ensemble",
     'My Leave': 'Mes congés',
+    'My Documents': 'Mes documents',
     'Leave Approvals': 'Validation des congés',
     'Technet ERP': 'Technet ERP',
     Inventory: 'Inventaire',
@@ -285,6 +286,47 @@ export const fr: Dict = {
     leftFrom: (place: string) => `Parti de ${place}`,
   },
 
+  myDocuments: {
+    title: 'Mes documents',
+    subtitle: "Gardez ici une copie de votre permis de conduire, carte d'identité, passeport et certificats.",
+    upload: 'Ajouter un document',
+    uploading: 'Envoi…',
+    uploaded: 'Document ajouté',
+    uploadFailed: "Impossible d'ajouter le document",
+    loadFailed: 'Impossible de charger vos documents',
+    downloadFailed: 'Impossible de télécharger le document',
+    deleteTitle: 'Supprimer le document',
+    deleteMessage: (name: string) => `Supprimer « ${name} » ? Cette action est irréversible.`,
+    deleted: 'Document supprimé',
+    deleteFailed: 'Impossible de supprimer le document',
+    notLinked: "Aucun dossier employé n'est lié à votre compte, vous ne pouvez donc pas garder de documents ici. Contactez les RH.",
+    empty: "Vous n'avez encore ajouté aucun document.",
+    download: 'Télécharger',
+    addedOn: (date: string) => `Ajouté le ${date}`,
+    titleLabel: 'NOM',
+    titlePlaceholder: 'ex. Permis de conduire',
+    nameRequired: 'Donnez un nom au document',
+    typeLabel: 'TYPE',
+    chooseType: 'Choisissez un type',
+    fileLabel: 'FICHIER',
+    pickFile: 'Touchez pour choisir une photo ou un PDF',
+    fileHint: "Une photo ou un scan (JPG, PNG, PDF), jusqu'à 10 Mo.",
+    chooseFile: 'Choisissez un fichier',
+    photoOrPdf: 'Ajoutez une photo ou un PDF',
+    tooLarge: 'Le fichier doit faire 10 Mo maximum',
+    privacyNote: 'Privé : seuls vous et les RH pouvez voir ces documents.',
+    hrPanelTitle: 'Documents personnels',
+    hrEmpty: "Aucun document ajouté par cet employé.",
+    types: {
+      DRIVING_LICENCE: 'Permis de conduire',
+      NATIONAL_ID: "Carte d'identité",
+      PASSPORT: 'Passeport',
+      CERTIFICATE: 'Certificat',
+      MEDICAL: 'Certificat médical',
+      OTHER: 'Autre',
+    },
+  },
+
   myLeave: {
     title: 'Mes congés',
     subtitle: 'Demandez un congé et suivez votre solde et votre historique.',
@@ -513,7 +555,6 @@ export const fr: Dict = {
   },
 
   ops: {
-    subtitle: 'Service terrain',
     searchPlaceholder: 'Rechercher des ordres de travail...',
     wo: {
       title: 'Registre des ordres de travail',
