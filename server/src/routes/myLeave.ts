@@ -11,6 +11,7 @@ import {
   LeaveClashError,
   createLeaveRequestRecord,
   cancelLeaveRequestRecord,
+  updateLeaveRequestRecord,
   syncEmploymentStatuses,
 } from "../lib/leaveRequests";
 import { workingDaysBetween } from "../lib/workingDays";
@@ -97,6 +98,42 @@ router.post("/requests", async (req, res) => {
       { link: "/dashboard/erp/hr/leave" },
     );
     res.status(201).json({ request });
+  } catch (err) {
+    if (err instanceof LeaveValidationError) return res.status(err.status).json({ error: err.message });
+    if (err instanceof LeaveClashError) return res.status(409).json({ error: err.message });
+    throw err;
+  }
+});
+
+router.put("/requests/:id", async (req, res) => {
+  const employee = await requireLinkedEmployee(req, res);
+  if (!employee) return;
+
+  const { leaveTypeId, reason, halfDay, startDate, endDate, days } = req.body ?? {};
+
+  try {
+    const result = await updateLeaveRequestRecord(req.params.id as string, {
+      employeeId: employee.id,
+      leaveTypeId,
+      startDateRaw: startDate,
+      endDateRaw: endDate,
+      halfDayRaw: halfDay,
+      reasonRaw: reason,
+      daysRaw: days,
+    });
+    if (result.error === "not_found") return res.status(404).json({ error: "Leave request not found" });
+    if (result.error === "not_pending") {
+      return res
+        .status(409)
+        .json({ error: `Request is already ${result.status.toLowerCase()} and can no longer be edited` });
+    }
+    await notifyRoles(
+      HR_ROLES,
+      "LEAVE_REQUEST_SUBMITTED",
+      `${employee.firstName} ${employee.lastName} updated their ${result.request.leaveType.name} request`,
+      { link: "/dashboard/erp/hr/leave" },
+    );
+    res.json({ request: result.request });
   } catch (err) {
     if (err instanceof LeaveValidationError) return res.status(err.status).json({ error: err.message });
     if (err instanceof LeaveClashError) return res.status(409).json({ error: err.message });
