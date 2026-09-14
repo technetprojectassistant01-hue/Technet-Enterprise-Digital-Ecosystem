@@ -194,7 +194,7 @@ function Login() {
           </button>
           <Link
             to="/forgot-password"
-            className="mt-4 block text-center text-xs text-ink-500 hover:text-cyan-accent"
+            className="mt-4 block text-center text-xs text-ink-400 hover:text-cyan-accent"
           >
             {t.auth.adminResetLink}
           </Link>
