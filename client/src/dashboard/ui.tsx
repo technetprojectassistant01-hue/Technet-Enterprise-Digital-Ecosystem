@@ -26,12 +26,16 @@ export function Panel({
 }) {
   return (
     <div
-      className={`animate-fade-in-up rounded-xl border border-ink-800 bg-ink-900 p-5 shadow-sm shadow-black/20 sm:p-6 ${className}`}
+      className={`animate-fade-in-up rounded-2xl border border-ink-800 bg-ink-900 p-5 shadow-lg shadow-black/20 sm:p-6 ${className}`}
     >
       {title && (
         <div className="mb-4 flex items-center justify-between gap-3">
-          <h2 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-ink-100">
-            {Icon && <Icon className="h-4 w-4 shrink-0 text-ink-300" />}
+          <h2 className="flex min-w-0 items-center gap-2.5 text-[15px] font-semibold text-ink-100">
+            {Icon && (
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-cyan-accent/10 text-cyan-accent">
+                <Icon className="h-4 w-4" />
+              </span>
+            )}
             <span className="truncate">{title}</span>
             {badge}
           </h2>
@@ -62,17 +66,18 @@ export function StatCard({
   progress?: number
 }) {
   return (
-    <div className="animate-fade-in-up rounded-xl border border-ink-800 bg-ink-900 p-5 shadow-sm shadow-black/20 transition duration-150 hover:-translate-y-0.5 hover:border-ink-700 hover:shadow-md hover:shadow-black/30">
+    <div className="animate-fade-in-up relative overflow-hidden rounded-2xl border border-ink-800 bg-gradient-to-br from-ink-900 to-ink-950 p-5 shadow-lg shadow-black/20 transition duration-150 hover:-translate-y-0.5 hover:border-ink-700 hover:shadow-xl hover:shadow-black/30">
+      <span aria-hidden className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-accent/40 to-transparent" />
       <div className="flex items-start justify-between">
         <span className="text-xs font-semibold tracking-widest text-ink-400">{label}</span>
         {Icon && (
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-cyan-accent/10 text-cyan-accent">
-            <Icon className="h-3.5 w-3.5" />
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-cyan-accent/10 text-cyan-accent ring-1 ring-inset ring-cyan-accent/15">
+            <Icon className="h-4 w-4" />
           </span>
         )}
       </div>
-      <div className="mt-2 flex items-baseline justify-between gap-2">
-        <span className="font-mono text-2xl font-semibold text-ink-100">{value}</span>
+      <div className="mt-3 flex items-baseline justify-between gap-2">
+        <span className="text-3xl font-bold tracking-tight text-ink-100">{value}</span>
         {delta && (
           <span
             className={`shrink-0 text-xs font-medium ${
@@ -195,8 +200,9 @@ const badgeToneClasses: Record<BadgeTone, string> = {
 export function Badge({ tone = 'neutral', children }: { tone?: BadgeTone; children: ReactNode }) {
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ring-white/5 ${badgeToneClasses[tone]}`}
+      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ring-white/5 ${badgeToneClasses[tone]}`}
     >
+      <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-current opacity-80" />
       {children}
     </span>
   )
