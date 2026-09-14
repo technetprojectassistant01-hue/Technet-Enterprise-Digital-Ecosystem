@@ -64,7 +64,7 @@ const DEFAULT_LEAVE_TYPES = [
   { code: "SICK", name: "Sick Leave", daysPerYear: 15, paid: true, requiresDocs: true },
   { code: "MATERNITY", name: "Maternity Leave", daysPerYear: 98, paid: true, requiresDocs: true },
   { code: "PATERNITY", name: "Paternity Leave", daysPerYear: 5, paid: true, requiresDocs: true },
-  { code: "UNPAID", name: "Unpaid Leave", daysPerYear: 0, paid: false, requiresDocs: false },
+  { code: "LOCAL", name: "Local Leave", daysPerYear: 0, paid: false, requiresDocs: false },
 ];
 
 router.post("/types/seed-defaults", async (_req, res) => {
