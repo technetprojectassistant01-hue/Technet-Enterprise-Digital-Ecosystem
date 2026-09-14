@@ -26,7 +26,7 @@ export const MARKETING_ROLES = ["ADMIN", "SALES_OFFICER"] as const;
 export const QUOTE_REQUEST_VIEW_ROLES = ["ADMIN", "SALES_OFFICER", "OPERATIONS_MANAGER"] as const;
 export const PROCUREMENT_ROLES = ["ADMIN", "STOREKEEPER"] as const;
 
-/** Technet Maintenance tools & equipment: register tools, issue them against requests, record returns. */
+/** Technet Store tools & equipment: register tools, issue them against requests, record returns. */
 export const TOOL_MANAGE_ROLES = ["ADMIN", "STOREKEEPER"] as const;
 export const HR_ROLES = ["ADMIN", "HR_OFFICER"] as const;
 
@@ -47,7 +47,7 @@ export const DOCUMENT_ROLES = [
   "OPERATIONS_MANAGER",
 ] as const;
 
-/** Field technicians and generic employees only work within Operations and Maintenance. */
+/** Field technicians and generic employees only work within Operations and the Store. */
 export const NON_FIELD_ROLES = [
   "ADMIN",
   "SALES_OFFICER",
