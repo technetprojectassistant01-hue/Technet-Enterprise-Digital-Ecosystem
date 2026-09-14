@@ -222,8 +222,6 @@ export const fr: Dict = {
     timeOut: 'HEURE DE DÉPART',
     transport: 'TRANSPORT (MUR)',
     transportPlaceholder: '0 si aucun',
-    leavingFrom: 'LIEU DE DÉPART (FACULTATIF)',
-    leavingFromPlaceholder: "D'où partez-vous",
     location: 'LIEU',
     wherePlaceholder: 'Bureau, site client…',
     checkIn: "Pointer l'arrivée",
