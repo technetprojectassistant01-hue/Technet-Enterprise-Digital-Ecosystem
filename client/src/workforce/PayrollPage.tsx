@@ -213,7 +213,7 @@ function PayrollPage() {
                 />
               </div>
             </div>
-            <p className="text-xs text-ink-500">{t.workforce.payroll.processNote}</p>
+            <p className="text-xs text-ink-400">{t.workforce.payroll.processNote}</p>
 
             {formError && <p className="text-sm text-red-400">{formError}</p>}
 
