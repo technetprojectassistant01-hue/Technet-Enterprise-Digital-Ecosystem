@@ -130,15 +130,15 @@ function ForgotPassword() {
       <footer className="flex flex-col gap-3 border-t border-ink-800 px-8 py-5 text-xs text-ink-400 sm:flex-row sm:items-center sm:justify-between">
         <span>{t.auth.copyright}</span>
         <div className="flex flex-wrap gap-5">
-          <a href="#" className="hover:text-ink-200">
+          <Link to="/privacy" className="hover:text-ink-200">
             {t.auth.privacyPolicy}
-          </a>
-          <a href="#" className="hover:text-ink-200">
+          </Link>
+          <Link to="/terms" className="hover:text-ink-200">
             {t.auth.termsOfService}
-          </a>
-          <a href="#" className="hover:text-ink-200">
+          </Link>
+          <Link to="/security" className="hover:text-ink-200">
             {t.auth.securityAudit}
-          </a>
+          </Link>
           <Link to="/help#contact" className="hover:text-ink-200">
             {t.auth.contactSupport}
           </Link>
