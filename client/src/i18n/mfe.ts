@@ -1353,4 +1353,174 @@ export const mfe: Dict = {
       },
     ],
   },
+
+  legal: {
+    lastUpdated: 'Dernie mizazour: 14 septam 2026',
+    questionsBefore: 'Ena kestion lor sa paz la? Apel ',
+    questionsAfter: ' ouswa ekrir Technet Engineering, Avenue St Vincent de Paul, Les Pailles 11221, Moris.',
+    privacy: {
+      title: 'Polisi konfidansialite',
+      intro:
+        'Sa polisi la explike ki linformasion Technet Digital ramase, kifer, kisannla kapav trouv li ek konbien letan li gard li. Li kouver kont personel ek kont Portay Klian. Technet Engineering (Avenue St Vincent de Paul, Les Pailles 11221, Moris) responsab sa bann linformasion la dapre Data Protection Act 2017.',
+      sections: [
+        {
+          title: 'Linformasion ki nou ramase',
+          paragraphs: [
+            'Kont: ou nom, ou ladres imel, ou rol, ou lang ek enn version melanze (hash) ou mo de pas. Nou pa zame gard ou mo de pas limem.',
+            'Dosie anplwaye, ki RH ranpli: detay kontak, pos, departman, nimero kart idantite, dat nesans, ladres, kontak ki pou apele an ka irzans, kontra, lapey ek detay labank pou lapey, konze, sertifika ek formasion.',
+            'Prezans: sak fwa ou pointe lariver ouswa depar, ler ki ou rantre, ler ki server la resevwar li, landrwa ki ou ekrir, ou fre transpor, travay ki ou swazir si ena, ek landrwa (GPS) ou aparey sa moman la.',
+            'Travay: bon travay, rapor zournalie, rapor mintenans ek rapor intervansion, avek foto, materyel servi ek sinyatir klian.',
+            'Portay Klian: detay ou konpani, imel koneksion ki finn kre pou ou, ou bann devi, fakir, eta travay ek bann demann devi ki ou avoye.',
+            'Rezis sekirite: koneksion (reisi ek rate), reinisializasion mo de pas ek sanzman lor kont itilizater, avek ler la ek kont ki konsernen.',
+            'Notifikasion ek rapel: mesaz ki aplikasion la avoy ou ek, si ou aktiv rapel pointaz, abonnman push ou aparey.',
+          ],
+        },
+        {
+          title: 'Landrwa',
+          paragraphs: [
+            'Landrwa anrezistre zis kan ou pointe lariver ouswa depar — aplikasion la pa swiv ou ant de, e li pa swiv ou kan li ferme.',
+            'Ou navigater ouswa ou telefonn demann ou permision avan partaz landrwa. Pointaz pa kapav marse san sa.',
+            'Administrater ek Manazer Operasion kapav trouv landrwa ki anrezistre, bann ler, ek si landrwa ki ou finn ekrir pre ar ou pozision GPS. Sa servi pou konfirm vizit lor sit, pa pou ziz kot ou ete rest lazourne.',
+          ],
+        },
+        {
+          title: 'Kifer nou servi li',
+          paragraphs: [
+            'Pou fer travay Technet marse: plan ek anrezistre travay, prezans ek fre transpor, konze, lapey, devi ek fakirasion, ek servis klian.',
+            'Pou protez bann kont ek rod lakoz bann problem.',
+            'Nou pa vann ou linformasion, nou pa servi li pou piblisite, e nou pa servi okenn zouti analiz ouswa swivi.',
+          ],
+        },
+        {
+          title: 'Kisannla kapav trouv li',
+          paragraphs: [
+            'Dan Technet, seki sakenn trouv depann lor so rol. Par egzanp, teknisien trouv zot prop travay ek pointaz; RH trouv dosie anplwaye ek lapey; manazer trouv prezans lekip. Klian trouv zis dokiman ek travay zot prop konpani, zame landrwa personel ni nom teknisien.',
+            'Bann prestater ki fer aplikasion la marse: Cloudflare (livre aplikasion la), Render (fer server la marse), Neon (gard baz done), OpenStreetMap Nominatim (rod bann landrwa ki ou ekrir pou konpar zot ar ou pozision GPS), servis push ou navigater kouma Google ouswa Apple (avoy rapel), ek Resend (avoy imel reinisializasion bann administrater). Serten ladan kapav trete done andeor Moris.',
+            'Nou partaz linformasion ar lotorite zis kan lalwa oblize.',
+          ],
+        },
+        {
+          title: 'Lor ou aparey',
+          paragraphs: [
+            'Enn cookie koneksion gard ou konekte pandan 30 zour, ki rekomanse sak fwa ou servi aplikasion la. Li tire kan ou dekonekte.',
+            'Ou swa lang ek si ou finn ferm fenet instalasion la anrezistre dan navigater la.',
+            'Ou travay ek rapor anrezistre lor aparey la pou ou trouv zot san rezo; zot efase kan ou dekonekte. Tou seki ou finn avoy san rezo res lor aparey la ziska li monte, mem si ou dekonekte.',
+          ],
+        },
+        {
+          title: 'Konbien letan nou gard li',
+          paragraphs: [
+            'Bann dosie res garde otan ki Technet bizin zot pou so travay, lanplwa ek so obligasion legal. Pena okenn efasman otomatik pou lemoman — bann dosie res ziska enn administrater tir zot.',
+          ],
+        },
+        {
+          title: 'Ou bann drwa',
+          paragraphs: [
+            'Dapre Data Protection Act 2017 ou kapav demann trouv linformasion ki nou ena lor ou, fer koriz li, ouswa demann efas li kan Technet pa oblize gard li. Kontakte ou administrater ouswa RH, ouswa apel sipor.',
+            'Si ou pa satisfe, ou kapav fer enn plint kot Data Protection Office Moris.',
+          ],
+        },
+        {
+          title: 'Sanzman',
+          paragraphs: ['Si sa polisi la sanze, dat anler sa paz la pou sanze osi.'],
+        },
+      ],
+    },
+    terms: {
+      title: 'Kondision itilizasion',
+      intro:
+        'Technet Digital se platform intern ek Portay Klian Technet Engineering. Kan ou konekte, ou aksepte sa bann kondision la.',
+      sections: [
+        {
+          title: 'Kisannla kapav servi li',
+          paragraphs: [
+            'Enn administrater Technet kre kont personel zis pou anplwaye ek dimoun otorize. Personel Technet kre kont Portay Klian pou klian. Pena linskripsion piblik.',
+            'Ou akse depann lor ou rol e enn administrater kapav sanz li ouswa tir li nenport ki ler, par egzanp kan ou kit lanplwa.',
+          ],
+        },
+        {
+          title: 'Ou kont',
+          paragraphs: [
+            'Gard ou mo de pas pou ou tousel e pa les personn konekte dan ou plas. Tou seki fer avek ou kont anrezistre kouma ou ki finn fer li.',
+            'Se enn administrater ki met ek reinisializ bann mo de pas. Si ou panse enn lot dimoun kone ou mo de pas, dir ou administrater toutswit.',
+            'Dekonekte kan ou servi enn aparey partaze ouswa piblik.',
+          ],
+        },
+        {
+          title: 'Servi li kouma bizin',
+          paragraphs: [
+            'Rant linformasion ki vre ek egzak — sirtou ler pointaz, landrwa, fre transpor ek rapor, parski Technet depann lor zot pou lapey, fakirasion ek klian.',
+            'Servi aplikasion la zis pou travay Technet. Pa eseye gagn akse ar linformasion ki ou rol pa donn ou, pa partaz linformasion konpani ouswa klian andeor Technet, e pa deranz fonksionman aplikasion la.',
+            'Move itilizasion, avek fos pointaz, kapav fer ou perdi ou akse ek amenn sanksion dapre ou kontra travay.',
+          ],
+        },
+        {
+          title: 'Portay Klian',
+          paragraphs: [
+            'Devi, fakir ek eta travay dan portay la la pou ou fasilite. Se devi sinye ouswa fakir emi ki konte; si enn kiksoz paret pa bon, kontakte Technet.',
+            'Enn demann devi par portay la pa fer enn kontra ziska Technet avoy ou enn devi e ou aksepte li.',
+          ],
+        },
+        {
+          title: 'Disponibilite',
+          paragraphs: [
+            'Nou fer lefor pou aplikasion la marse, me parfwa li kapav lent ouswa pa disponib — par egzanp premie fwa ou ouver li apre enn peryod kalm, ouswa pandan enn mizazour.',
+            'Seki ou avoy san rezo anrezistre lor ou aparey e monte kan ou rekonekte. Tan ki li pa finn monte, Technet pa ankor resevwar li.',
+          ],
+        },
+        {
+          title: 'Propriete',
+          paragraphs: [
+            'Aplikasion la ek linformasion biznes ladan pou Technet Engineering. Ou linformasion personel trete kouma Polisi konfidansialite explike.',
+          ],
+        },
+        {
+          title: 'Sanzman ek lalwa aplikab',
+          paragraphs: [
+            'Technet kapav met sa bann kondision la azour; dat anler sa paz la montre dernie version. Sa bann kondision la swiv lalwa Moris.',
+          ],
+        },
+      ],
+    },
+    security: {
+      title: 'Sekirite',
+      intro: 'Kouma Technet Digital protez bann kont ek linformasion.',
+      sections: [
+        {
+          title: 'Kont ek mo de pas',
+          paragraphs: [
+            'Zis administrater kre kont personel; personn pa kapav inskrir limem. Personel Technet kre kont Portay Klian.',
+            'Mo de pas garde zis dan enn form melanze (hash) avek bcrypt, alor personn dan Technet pa kapav lir zot — enn administrater kapav met enn nouvo, me zame trouv ansien la.',
+            'Imel reinisializasion avoye zis pou kont administrater, e bann demann repete limite.',
+          ],
+        },
+        {
+          title: 'Akse dapre rol',
+          paragraphs: [
+            'Sak demann verifie lor server la dapre rol itilizater la, pa zis kasiet dan meni la. Par egzanp, enn teknisien pa kapav gagn done finans, RH ouswa lapey, mem si li tap enn ladres direk.',
+            'Kont Portay Klian konpletman separe ar kont personel e zot gagn akse zis ar dokiman ek travay zot prop konpani.',
+          ],
+        },
+        {
+          title: 'Koneksion ek sesion',
+          paragraphs: [
+            'Tou trafik ankripte par HTTPS. Ou res konekte avek enn cookie sekirize ki bann script paz la pa kapav lir e ki lezot sit pa kapav servi. Dekonekte tir li.',
+          ],
+        },
+        {
+          title: 'Rezis odit sekirite',
+          paragraphs: [
+            'Koneksion (avek bann tantativ rate), reinisializasion mo de pas ek sanzman lor kont itilizater — kreasion, sanzman rol ouswa imel, ek sipresion — anrezistre avek ler la ek kont ki konsernen.',
+            'Sak itilizater konekte kapav get so prop koneksion resan dan Sekirite → "My Account". Administrater kapav get rezis konple dan Sekirite → "Audit Log".',
+          ],
+        },
+        {
+          title: 'Sinial enn problem',
+          paragraphs: [
+            'Si ou remark enn koneksion ki ou pa rekonet, ou panse enn dimoun kone ou mo de pas, ouswa ou trouv enn problem sekirite dan aplikasion la, dir ou administrater ouswa apel sipor toutswit.',
+          ],
+        },
+      ],
+    },
+  },
 }
