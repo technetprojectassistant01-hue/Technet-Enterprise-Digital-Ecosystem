@@ -26,7 +26,7 @@ function InsightDashboardPage() {
       <div>
         <h1 className="text-2xl font-bold text-ink-100">Technet Insight</h1>
         <p className="mt-1 text-sm text-ink-300">
-          Cross-module executive summary, drawn from Finance, Projects, Operations, Maintenance, and
+          Cross-module executive summary, drawn from Finance, Projects, Operations, Tools & Equipment, and
           Inventory. Read-only - it reflects a snapshot on load, not a live feed.
         </p>
       </div>
@@ -65,8 +65,8 @@ function InsightDashboardPage() {
               sub={formatMoney(summary.overdueInvoices.total)}
             />
             <StatCard
-              label="Open Maintenance Requests"
-              value={summary.openMaintenanceRequests}
+              label="Pending Tool Requests"
+              value={summary.pendingToolRequests}
               icon={Wrench}
             />
             <StatCard
