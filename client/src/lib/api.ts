@@ -2349,389 +2349,149 @@ export function documentDownloadUrl(id: string) {
   return `${API_URL}/api/documents/${id}/download`
 }
 
-// ---------- Maintenance ----------
+// ---------- Tools & equipment (Technet Maintenance) ----------
 
-export type AssetStatus = 'ACTIVE' | 'DECOMMISSIONED'
-export type MaintenanceFrequency = 'MONTHLY' | 'QUARTERLY' | 'SEMI_ANNUAL' | 'ANNUAL'
-export type MaintenanceContractStatus = 'ACTIVE' | 'EXPIRED' | 'CANCELLED'
-export type MaintenanceRequestPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
-export type MaintenanceRequestStatus = 'SUBMITTED' | 'SCHEDULED' | 'COMPLETED' | 'CANCELLED'
-export type MaintenanceScheduleStatus = 'SCHEDULED' | 'COMPLETED' | 'CANCELLED'
+export type ToolStatus = 'AVAILABLE' | 'CHECKED_OUT' | 'UNDER_REPAIR' | 'RETIRED'
+export type ToolCondition = 'GOOD' | 'FAIR' | 'DAMAGED'
+export type ToolRequestStatus = 'PENDING' | 'ISSUED' | 'REJECTED' | 'CANCELLED'
 
-export interface AssetCustomer extends CustomerSummary {
-  address: string | null
+export interface ToolEmployeeRef {
+  id: string
+  firstName: string
+  lastName: string
+  employeeCode: string
 }
 
-export interface Asset {
+export interface ToolCheckoutBase {
+  id: string
+  toolId: string
+  employeeId: string
+  requestId: string | null
+  issuedById: string
+  issuedAt: string
+  expectedReturnAt: string | null
+  returnedAt: string | null
+  returnedById: string | null
+  returnCondition: ToolCondition | null
+  returnNote: string | null
+}
+
+export interface Tool {
   id: string
   sequenceNumber: number
-  assetNumber: string
+  toolNumber: string
   name: string
   category: string | null
   serialNumber: string | null
+  status: ToolStatus
+  condition: ToolCondition
   location: string | null
-  customerId: string
-  customer: AssetCustomer
-  status: AssetStatus
   notes: string | null
   createdAt: string
   updatedAt: string
+  /** Who holds it right now, or null when it's not checked out. */
+  currentCheckout: (ToolCheckoutBase & { employee: ToolEmployeeRef }) | null
 }
 
-export interface AssetInput {
+export type ToolSummary = Omit<Tool, 'currentCheckout'>
+
+export interface ToolInput {
   name: string
-  category?: string
-  serialNumber?: string
-  location?: string
-  customerId: string
-  notes?: string
-}
-
-export interface AssetUpdateInput {
-  name?: string
   category?: string | null
   serialNumber?: string | null
+  condition?: ToolCondition
   location?: string | null
-  status?: AssetStatus
   notes?: string | null
+  /** Edit only - AVAILABLE, UNDER_REPAIR or RETIRED. */
+  status?: ToolStatus
 }
 
-/** The trimmed asset reference embedded in a standalone contract/request/schedule. */
-export interface MaintenanceAssetRef {
-  id: string
-  sequenceNumber: number
-  assetNumber: string
-  name: string
-  customer: CustomerSummary
+export interface MyToolCheckout extends ToolCheckoutBase {
+  tool: ToolSummary
 }
 
-/** A contract row as it appears nested under Asset.contracts (no asset back-reference). */
-export interface AssetHistoryContract {
-  id: string
-  sequenceNumber: number
-  contractNumber: string
-  assetId: string
-  frequency: MaintenanceFrequency
-  startDate: string
-  expiryDate: string
-  status: MaintenanceContractStatus
-  notes: string | null
-  createdById: string
-  createdAt: string
-  updatedAt: string
+export interface ToolHistoryEntry extends ToolCheckoutBase {
+  employee: ToolEmployeeRef
+  issuedBy: { id: string; name: string | null; email: string }
+  returnedBy: { id: string; name: string | null; email: string } | null
+  request: { id: string; sequenceNumber: number; requestNumber: string } | null
 }
 
-/** A request row as it appears nested under Asset.requests (no asset back-reference). */
-export interface AssetHistoryRequest {
+export interface ToolRequest {
   id: string
   sequenceNumber: number
   requestNumber: string
-  assetId: string
-  contractId: string | null
-  description: string
-  priority: MaintenanceRequestPriority
-  status: MaintenanceRequestStatus
-  requestedById: string
-  createdAt: string
-}
-
-export interface MaintenanceContract extends AssetHistoryContract {
-  asset: MaintenanceAssetRef
-}
-
-export interface MaintenanceContractInput {
-  assetId: string
-  frequency: MaintenanceFrequency
-  startDate: string
-  expiryDate: string
-  notes?: string
-}
-
-export interface MaintenanceContractUpdateInput {
-  frequency?: MaintenanceFrequency
-  startDate?: string
-  expiryDate?: string
-  status?: MaintenanceContractStatus
-  notes?: string | null
-}
-
-export interface MaintenanceContractDetail extends MaintenanceContract {
-  schedules: MaintenanceSchedule[]
-}
-
-export interface MaintenanceRequest extends AssetHistoryRequest {
-  asset: MaintenanceAssetRef
-  requestedBy: { id: string; name: string | null; email: string }
-}
-
-export interface MaintenanceRequestDetail extends MaintenanceRequest {
-  schedule: MaintenanceSchedule | null
-}
-
-export interface MaintenanceRequestInput {
-  assetId: string
-  contractId?: string
-  description: string
-  priority?: MaintenanceRequestPriority
-}
-
-/** Bare report fields, without the reviewer/submitter expansion — used inside Asset history. */
-export interface AssetHistoryReport {
-  id: string
-  scheduleId: string
-  remarks: string
-  workCompleted: boolean
-  recommendations: string | null
-  status: ReportStatus
-  submittedById: string
-  reviewedById: string | null
+  employeeId: string
+  employee: ToolEmployeeRef
+  items: string
+  purpose: string | null
+  neededBy: string | null
+  status: ToolRequestStatus
+  reviewedBy: { id: string; name: string | null; email: string } | null
   reviewedAt: string | null
   reviewNote: string | null
   createdAt: string
+  checkouts: (ToolCheckoutBase & { tool: ToolSummary })[]
 }
 
-export interface MaintenanceReport extends AssetHistoryReport {
-  submittedBy: { id: string; name: string | null; email: string }
-  reviewedBy: { id: string; name: string | null; email: string } | null
-}
-
-export interface MaintenanceReportInput {
-  remarks: string
-  workCompleted: boolean
-  recommendations?: string
-}
-
-export interface MaintenanceSchedule {
-  id: string
-  contractId: string | null
-  contract: { id: string; sequenceNumber: number; contractNumber: string; asset: MaintenanceAssetRef } | null
-  requestId: string | null
-  request:
-    | { id: string; sequenceNumber: number; requestNumber: string; description: string; priority: MaintenanceRequestPriority; asset: MaintenanceAssetRef }
-    | null
-  scheduledDate: string
-  status: MaintenanceScheduleStatus
-  createdById: string
-  createdAt: string
-  updatedAt: string
-  technicians: { id: string; employee: EmployeeSummary }[]
-  report: MaintenanceReport | null
-}
-
-export interface MaintenanceScheduleInput {
-  contractId: string
-  scheduledDate: string
-  technicianIds: string[]
-}
-
-export interface MaintenanceScheduleUpdateInput {
-  scheduledDate?: string
-  technicianIds?: string[]
-}
-
-/** A schedule row as it appears nested under Asset.schedules — trimmed contract/request refs, bare report. */
-export interface AssetHistorySchedule {
-  id: string
-  contractId: string | null
-  contract: { id: string; sequenceNumber: number; contractNumber: string } | null
-  requestId: string | null
-  request: { id: string; sequenceNumber: number; requestNumber: string } | null
-  scheduledDate: string
-  status: MaintenanceScheduleStatus
-  createdById: string
-  createdAt: string
-  updatedAt: string
-  technicians: { id: string; employee: EmployeeSummary }[]
-  report: AssetHistoryReport | null
-}
-
-export interface AssetDetail extends Asset {
-  contracts: AssetHistoryContract[]
-  requests: AssetHistoryRequest[]
-  schedules: AssetHistorySchedule[]
-}
-
-export function listAssets(
-  params: { search?: string; customerId?: string; status?: AssetStatus; category?: string } = {},
-) {
+export function listTools(params: { search?: string; status?: ToolStatus; category?: string } = {}) {
   const query = new URLSearchParams()
   if (params.search) query.set('search', params.search)
-  if (params.customerId) query.set('customerId', params.customerId)
   if (params.status) query.set('status', params.status)
   if (params.category) query.set('category', params.category)
   const qs = query.toString()
-  return request<{ assets: Asset[] }>(`/api/maintenance-assets${qs ? `?${qs}` : ''}`)
+  return request<{ tools: Tool[] }>(`/api/tools${qs ? `?${qs}` : ''}`)
 }
 
-export function getAsset(id: string) {
-  return request<{ asset: AssetDetail }>(`/api/maintenance-assets/${id}`)
+export function listMyTools() {
+  return request<{ checkouts: MyToolCheckout[] }>('/api/tools/mine')
 }
 
-export function createAsset(input: AssetInput) {
-  return request<{ asset: Asset }>('/api/maintenance-assets', {
+export function getToolHistory(id: string) {
+  return request<{ checkouts: ToolHistoryEntry[] }>(`/api/tools/${id}/history`)
+}
+
+export function createTool(input: ToolInput) {
+  return request<{ tool: Tool }>('/api/tools', { method: 'POST', body: JSON.stringify(input) })
+}
+
+export function updateTool(id: string, input: Partial<ToolInput>) {
+  return request<{ tool: Tool }>(`/api/tools/${id}`, { method: 'PATCH', body: JSON.stringify(input) })
+}
+
+export function deleteTool(id: string) {
+  return request<void>(`/api/tools/${id}`, { method: 'DELETE' })
+}
+
+export function returnToolCheckout(checkoutId: string, input: { condition: ToolCondition; note?: string }) {
+  return request<{ tool: Tool }>(`/api/tools/checkouts/${checkoutId}/return`, {
     method: 'POST',
     body: JSON.stringify(input),
   })
 }
 
-export function updateAsset(id: string, input: AssetUpdateInput) {
-  return request<{ asset: Asset }>(`/api/maintenance-assets/${id}`, {
-    method: 'PATCH',
-    body: JSON.stringify(input),
-  })
+export function listToolRequests(params: { status?: ToolRequestStatus } = {}) {
+  const qs = params.status ? `?status=${params.status}` : ''
+  return request<{ requests: ToolRequest[] }>(`/api/tool-requests${qs}`)
 }
 
-export function deleteAsset(id: string) {
-  return request<null>(`/api/maintenance-assets/${id}`, { method: 'DELETE' })
+export function createToolRequest(input: { items: string; purpose?: string; neededBy?: string }) {
+  return request<{ request: ToolRequest }>('/api/tool-requests', { method: 'POST', body: JSON.stringify(input) })
 }
 
-export function listMaintenanceContracts(
-  params: {
-    assetId?: string
-    status?: MaintenanceContractStatus
-    expiringSoon?: boolean
-    customerId?: string
-    frequency?: MaintenanceFrequency
-  } = {},
-) {
-  const query = new URLSearchParams()
-  if (params.assetId) query.set('assetId', params.assetId)
-  if (params.status) query.set('status', params.status)
-  if (params.expiringSoon) query.set('expiringSoon', 'true')
-  if (params.customerId) query.set('customerId', params.customerId)
-  if (params.frequency) query.set('frequency', params.frequency)
-  const qs = query.toString()
-  return request<{ contracts: MaintenanceContract[] }>(`/api/maintenance-contracts${qs ? `?${qs}` : ''}`)
+export function cancelToolRequest(id: string) {
+  return request<{ request: ToolRequest }>(`/api/tool-requests/${id}/cancel`, { method: 'POST' })
 }
 
-export function getMaintenanceContract(id: string) {
-  return request<{ contract: MaintenanceContractDetail }>(`/api/maintenance-contracts/${id}`)
-}
-
-export function createMaintenanceContract(input: MaintenanceContractInput) {
-  return request<{ contract: MaintenanceContract }>('/api/maintenance-contracts', {
+export function issueToolRequest(id: string, input: { toolIds: string[]; expectedReturnAt?: string; note?: string }) {
+  return request<{ request: ToolRequest }>(`/api/tool-requests/${id}/issue`, {
     method: 'POST',
     body: JSON.stringify(input),
   })
 }
 
-export function updateMaintenanceContract(id: string, input: MaintenanceContractUpdateInput) {
-  return request<{ contract: MaintenanceContract }>(`/api/maintenance-contracts/${id}`, {
-    method: 'PATCH',
-    body: JSON.stringify(input),
-  })
-}
-
-export function deleteMaintenanceContract(id: string) {
-  return request<null>(`/api/maintenance-contracts/${id}`, { method: 'DELETE' })
-}
-
-export function listMaintenanceRequests(
-  params: {
-    status?: MaintenanceRequestStatus
-    assetId?: string
-    customerId?: string
-    priority?: MaintenanceRequestPriority
-    from?: string
-    to?: string
-  } = {},
-) {
-  const query = new URLSearchParams()
-  if (params.status) query.set('status', params.status)
-  if (params.assetId) query.set('assetId', params.assetId)
-  if (params.customerId) query.set('customerId', params.customerId)
-  if (params.priority) query.set('priority', params.priority)
-  if (params.from) query.set('from', params.from)
-  if (params.to) query.set('to', params.to)
-  const qs = query.toString()
-  return request<{ requests: MaintenanceRequest[] }>(`/api/maintenance-requests${qs ? `?${qs}` : ''}`)
-}
-
-export function getMaintenanceRequest(id: string) {
-  return request<{ request: MaintenanceRequestDetail }>(`/api/maintenance-requests/${id}`)
-}
-
-export function createMaintenanceRequest(input: MaintenanceRequestInput) {
-  return request<{ request: MaintenanceRequest }>('/api/maintenance-requests', {
-    method: 'POST',
-    body: JSON.stringify(input),
-  })
-}
-
-export function scheduleMaintenanceRequest(id: string, input: { scheduledDate: string; technicianIds: string[] }) {
-  return request<{ request: MaintenanceRequestDetail }>(`/api/maintenance-requests/${id}/schedule`, {
-    method: 'POST',
-    body: JSON.stringify(input),
-  })
-}
-
-export function cancelMaintenanceRequest(id: string) {
-  return request<{ request: MaintenanceRequest }>(`/api/maintenance-requests/${id}/cancel`, { method: 'POST' })
-}
-
-export function deleteMaintenanceRequest(id: string) {
-  return request<null>(`/api/maintenance-requests/${id}`, { method: 'DELETE' })
-}
-
-export function listMaintenanceSchedules(
-  params: {
-    status?: MaintenanceScheduleStatus
-    technicianId?: string
-    contractId?: string
-    customerId?: string
-    from?: string
-    to?: string
-  } = {},
-) {
-  const query = new URLSearchParams()
-  if (params.status) query.set('status', params.status)
-  if (params.technicianId) query.set('technicianId', params.technicianId)
-  if (params.contractId) query.set('contractId', params.contractId)
-  if (params.customerId) query.set('customerId', params.customerId)
-  if (params.from) query.set('from', params.from)
-  if (params.to) query.set('to', params.to)
-  const qs = query.toString()
-  return request<{ schedules: MaintenanceSchedule[] }>(`/api/maintenance-schedules${qs ? `?${qs}` : ''}`)
-}
-
-export function getMaintenanceSchedule(id: string) {
-  return request<{ schedule: MaintenanceSchedule }>(`/api/maintenance-schedules/${id}`)
-}
-
-export function createMaintenanceSchedule(input: MaintenanceScheduleInput) {
-  return request<{ schedule: MaintenanceSchedule }>('/api/maintenance-schedules', {
-    method: 'POST',
-    body: JSON.stringify(input),
-  })
-}
-
-export function updateMaintenanceSchedule(id: string, input: MaintenanceScheduleUpdateInput) {
-  return request<{ schedule: MaintenanceSchedule }>(`/api/maintenance-schedules/${id}`, {
-    method: 'PATCH',
-    body: JSON.stringify(input),
-  })
-}
-
-export function deleteMaintenanceSchedule(id: string) {
-  return request<null>(`/api/maintenance-schedules/${id}`, { method: 'DELETE' })
-}
-
-export function submitMaintenanceReport(scheduleId: string, input: MaintenanceReportInput) {
-  return request<{ schedule: MaintenanceSchedule }>(`/api/maintenance-schedules/${scheduleId}/report`, {
-    method: 'POST',
-    body: JSON.stringify(input),
-  })
-}
-
-export function approveMaintenanceReport(scheduleId: string, note?: string) {
-  return request<{ schedule: MaintenanceSchedule }>(`/api/maintenance-schedules/${scheduleId}/report/approve`, {
-    method: 'POST',
-    body: JSON.stringify({ note }),
-  })
-}
-
-export function rejectMaintenanceReport(scheduleId: string, note?: string) {
-  return request<{ schedule: MaintenanceSchedule }>(`/api/maintenance-schedules/${scheduleId}/report/reject`, {
+export function rejectToolRequest(id: string, note?: string) {
+  return request<{ request: ToolRequest }>(`/api/tool-requests/${id}/reject`, {
     method: 'POST',
     body: JSON.stringify({ note }),
   })
@@ -2799,7 +2559,7 @@ export interface InsightSummary {
   activeProjects: number
   activeWorkOrders: number
   overdueInvoices: { count: number; total: number }
-  openMaintenanceRequests: number
+  pendingToolRequests: number
   lowStockItems: number
   techniciansOnSite: number
   generatedAt: string
@@ -2833,6 +2593,9 @@ export type NotificationType =
   | 'DAILY_REPORT_REJECTED'
   | 'WORK_ORDER_STATUS_CHANGED'
   | 'SITE_CHECKIN_RECORDED'
+  | 'TOOL_REQUEST_SUBMITTED'
+  | 'TOOL_REQUEST_ISSUED'
+  | 'TOOL_REQUEST_REJECTED'
 
 export interface Notification {
   id: string
