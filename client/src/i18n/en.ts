@@ -202,8 +202,6 @@ export const en = {
   overview: {
     welcome: 'Welcome back',
     welcomeBack: (name: string) => `Welcome back, ${name}`,
-    activeWorkOrders: 'Active Work Orders',
-    pendingToolRequests: 'Pending Tool Requests',
     activeProjects: 'Active Projects',
     pendingRequisitions: 'Pending Requisitions',
   },
