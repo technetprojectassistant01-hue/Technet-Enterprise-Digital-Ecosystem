@@ -36,6 +36,7 @@ export const mfe: Dict = {
   nav: {
     Overview: 'Vi zeneral',
     'My Leave': 'Mo Konze',
+    'Leave Approvals': 'Aprouv konze',
     'Technet ERP': 'Technet ERP',
     Inventory: 'Inventer',
     Finance: 'Finans',
@@ -269,6 +270,13 @@ export const mfe: Dict = {
     unsupported: 'Sa navigater la pa kapav trouv landrwa',
     denied: 'Akse landrwa blok. Permet landrwa pou sa sit la dan paramet ou telefonn ouswa navigater, apre reseye.',
     unavailable: 'Pa kapav trouv kot ou ete. Al deor ouswa pre enn lafnet, apre reseye.',
+  },
+
+  leaveApprovals: {
+    title: 'Aprouv konze',
+    subtitle: 'Aksepte ouswa refiz demann konze, ek get tou demann konze dan konpani la.',
+    pending: 'Pe atann aprobasion',
+    all: 'Tou konze',
   },
 
   myLeave: {
