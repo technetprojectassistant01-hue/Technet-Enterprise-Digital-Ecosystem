@@ -12,9 +12,8 @@ function OperationsLayout() {
   const t = useT()
   return (
     <div className="flex flex-col gap-6">
+      {/* Just the tabs — no "Technet Operations / Field Service" title (user request). */}
       <ModuleHeader
-        title="Technet Operations"
-        subtitle={t.ops.subtitle}
         tabs={TABS.map((tab) => ({ ...tab, label: navLabel(t, tab.label) }))}
         searchPlaceholder={t.ops.searchPlaceholder}
       />

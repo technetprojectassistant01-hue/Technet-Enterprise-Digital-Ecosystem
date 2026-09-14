@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 import { HelpCircle } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import Logo from '../components/Logo'
-import { MAIN_NAV, SYSTEM_NAV, ADMIN_NAV } from './nav'
+import { MAIN_NAV, SYSTEM_NAV, ADMIN_NAV, visibleNav } from './nav'
 import { Avatar } from './ui'
 import NavTree from './NavTree'
 import { navLabel, useT } from '../i18n'
@@ -16,7 +16,7 @@ function SidebarContent() {
   const t = useT()
   const displayName = user?.name || user?.email || ''
   const systemNav = user?.role === 'ADMIN' ? [...SYSTEM_NAV, ADMIN_NAV] : SYSTEM_NAV
-  const mainNav = MAIN_NAV.filter((item) => !user?.role || !item.hiddenFrom?.includes(user.role))
+  const mainNav = visibleNav(MAIN_NAV, user?.role)
 
   return (
     <div className="flex w-full flex-col px-4 py-6">
