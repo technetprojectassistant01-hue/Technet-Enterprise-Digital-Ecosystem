@@ -250,7 +250,7 @@ function WorkOrderDetailPage() {
             {workOrder.technicians.map((x) => (
               <span key={x.id} className="rounded-full bg-ink-800 px-3 py-1.5 text-xs text-ink-200">
                 {x.employee.firstName} {x.employee.lastName}
-                {x.employee.position && <span className="text-ink-500"> · {x.employee.position}</span>}
+                {x.employee.position && <span className="text-ink-400"> · {x.employee.position}</span>}
               </span>
             ))}
           </div>
@@ -304,14 +304,14 @@ function WorkOrderDetailPage() {
                             {v.checkOutNote && <span> · {v.checkOutNote}</span>}
                           </a>
                         ) : (
-                          <span className="text-ink-500">{t.ops.woDetail.stillOnSite}</span>
+                          <span className="text-ink-400">{t.ops.woDetail.stillOnSite}</span>
                         )}
                       </td>
                       <td className="px-3 py-3">
                         {latest ? (
                           <Badge tone={siteStatusTone(latest.status)}>{enumLabel(t.labels.siteStatus, latest.status)}</Badge>
                         ) : (
-                          <span className="text-ink-500">—</span>
+                          <span className="text-ink-400">—</span>
                         )}
                       </td>
                     </tr>
