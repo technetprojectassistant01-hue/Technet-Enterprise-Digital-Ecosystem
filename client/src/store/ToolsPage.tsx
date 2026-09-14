@@ -429,7 +429,7 @@ function ToolsPage() {
                             </div>
                           </div>
                         ) : (
-                          <span className="text-ink-500">—</span>
+                          <span className="text-ink-400">—</span>
                         )}
                       </td>
                       <td className="px-3 py-3">
