@@ -41,8 +41,8 @@ const CACHEABLE_API = [
   /^\/api\/work-orders(\/[^/]+)?$/,
   /^\/api\/daily-reports$/,
   /^\/api\/intervention-reports(\/[^/]+)?$/,
-  /^\/api\/maintenance-schedules(\/[^/]+)?$/,
-  /^\/api\/maintenance-assets\/[^/]+$/,
+  /^\/api\/tools\/mine$/,
+  /^\/api\/tool-requests$/,
   /^\/api\/customers$/,
   /^\/api\/employees$/,
 ]
