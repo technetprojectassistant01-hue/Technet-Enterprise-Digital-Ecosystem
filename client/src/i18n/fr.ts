@@ -1364,4 +1364,174 @@ export const fr: Dict = {
       },
     ],
   },
+
+  legal: {
+    lastUpdated: 'Dernière mise à jour : 14 septembre 2026',
+    questionsBefore: 'Des questions sur cette page ? Appelez le ',
+    questionsAfter: ' ou écrivez à Technet Engineering, Avenue St Vincent de Paul, Les Pailles 11221, Maurice.',
+    privacy: {
+      title: 'Politique de confidentialité',
+      intro:
+        "Cette politique explique quelles informations Technet Digital recueille, pourquoi, qui peut les voir et combien de temps elles sont conservées. Elle couvre les comptes du personnel et les comptes du Portail Client. Technet Engineering (Avenue St Vincent de Paul, Les Pailles 11221, Maurice) est responsable de ces informations au sens du Data Protection Act 2017.",
+      sections: [
+        {
+          title: 'Informations recueillies',
+          paragraphs: [
+            "Compte : votre nom, votre adresse e-mail, votre rôle, votre langue et une version brouillée (hachée) de votre mot de passe. Votre mot de passe lui-même n'est jamais conservé.",
+            "Dossier employé, saisi par les RH : coordonnées, poste, département, numéro d'identité nationale, date de naissance, adresse, contact d'urgence, contrat, salaire et coordonnées bancaires pour la paie, congés, certifications et formations.",
+            "Présence : à chaque pointage d'arrivée ou de départ, l'heure que vous saisissez, l'heure de réception par le serveur, le lieu que vous tapez, vos frais de transport, le travail choisi le cas échéant, et la position (GPS) de votre appareil à ce moment-là.",
+            "Travaux : bons de travail, rapports journaliers, rapports de maintenance et d'intervention, y compris photos, matériel utilisé et signatures des clients.",
+            'Portail Client : les informations de votre société, l\'e-mail de connexion créé pour vous, vos devis, factures, l\'état des travaux et vos demandes de devis.',
+            'Journal de sécurité : connexions (réussies et échouées), réinitialisations de mot de passe et modifications des comptes, avec l\'heure et le compte concerné.',
+            "Notifications et rappels : les messages que l'application vous envoie et, si vous activez les rappels de pointage, l'abonnement push de votre appareil.",
+          ],
+        },
+        {
+          title: 'Localisation',
+          paragraphs: [
+            "La position n'est enregistrée qu'au moment où vous pointez votre arrivée ou votre départ — l'application ne vous suit pas entre les deux, ni lorsqu'elle est fermée.",
+            'Votre navigateur ou téléphone vous demande l\'autorisation avant de partager la position. Le pointage ne peut pas fonctionner sans elle.',
+            "Les administrateurs et les responsables des opérations voient la position enregistrée, les heures, et si le lieu saisi est proche de votre position GPS. Cela sert à confirmer les visites sur site, pas à juger où vous êtes le reste de la journée.",
+          ],
+        },
+        {
+          title: 'Pourquoi nous les utilisons',
+          paragraphs: [
+            "Pour faire fonctionner les activités de Technet : planifier et enregistrer les travaux, la présence et les frais de transport, les congés, la paie, les devis et la facturation, et le service client.",
+            'Pour protéger les comptes et analyser les problèmes.',
+            "Nous ne vendons pas vos informations, ne les utilisons pas pour de la publicité et n'utilisons aucun outil d'analyse ou de pistage.",
+          ],
+        },
+        {
+          title: 'Qui peut les voir',
+          paragraphs: [
+            "Chez Technet, ce que chacun voit dépend de son rôle. Par exemple, les techniciens voient leurs propres travaux et pointages ; les RH voient les dossiers employés et la paie ; les responsables voient la présence de l'équipe. Les clients ne voient que les documents et travaux de leur société, jamais la position du personnel ni le nom des techniciens.",
+            "Les prestataires qui font fonctionner l'application : Cloudflare (diffuse l'application), Render (fait tourner le serveur), Neon (héberge la base de données), OpenStreetMap Nominatim (recherche les lieux que vous saisissez pour les comparer à votre position GPS), le service push de votre navigateur comme Google ou Apple (envoie les rappels) et Resend (envoie les e-mails de réinitialisation aux administrateurs). Certains peuvent traiter des données hors de Maurice.",
+            'Nous ne communiquons des informations aux autorités que lorsque la loi l\'exige.',
+          ],
+        },
+        {
+          title: 'Sur votre appareil',
+          paragraphs: [
+            "Un cookie de connexion vous garde connecté 30 jours, renouvelés à chaque utilisation. Il est supprimé à la déconnexion.",
+            "Votre choix de langue et le fait d'avoir fermé la fenêtre d'installation sont enregistrés dans le navigateur.",
+            "Vos travaux et rapports sont enregistrés sur l'appareil pour être consultés sans réseau ; ils sont effacés à la déconnexion. Tout ce que vous avez envoyé sans réseau reste sur l'appareil jusqu'à son envoi, même après déconnexion.",
+          ],
+        },
+        {
+          title: 'Durée de conservation',
+          paragraphs: [
+            "Les données sont conservées aussi longtemps que Technet en a besoin pour son activité, l'emploi et ses obligations légales. Il n'existe actuellement aucune suppression automatique — les données restent jusqu'à ce qu'un administrateur les supprime.",
+          ],
+        },
+        {
+          title: 'Vos droits',
+          paragraphs: [
+            "Selon le Data Protection Act 2017, vous pouvez demander à consulter les informations vous concernant, à les faire corriger, ou à les faire supprimer lorsque Technet n'est pas tenu de les conserver. Contactez votre administrateur ou les RH, ou appelez le support.",
+            "Si vous n'êtes pas satisfait, vous pouvez porter plainte auprès du Data Protection Office de Maurice.",
+          ],
+        },
+        {
+          title: 'Modifications',
+          paragraphs: ['Si cette politique change, la date en haut de cette page changera aussi.'],
+        },
+      ],
+    },
+    terms: {
+      title: "Conditions d'utilisation",
+      intro:
+        "Technet Digital est la plateforme interne et le Portail Client de Technet Engineering. En vous connectant, vous acceptez ces conditions.",
+      sections: [
+        {
+          title: 'Qui peut l\'utiliser',
+          paragraphs: [
+            "Les comptes du personnel sont créés par un administrateur Technet, uniquement pour les employés et personnes autorisées. Les comptes du Portail Client sont créés par le personnel Technet pour les clients. Il n'y a pas d'inscription publique.",
+            "Votre accès dépend de votre rôle et peut être modifié ou retiré à tout moment par un administrateur, par exemple lorsque vous quittez l'entreprise.",
+          ],
+        },
+        {
+          title: 'Votre compte',
+          paragraphs: [
+            "Gardez votre mot de passe pour vous et ne laissez personne se connecter à votre place. Tout ce qui est fait avec votre compte est enregistré comme fait par vous.",
+            "Les mots de passe sont définis et réinitialisés par un administrateur. Si vous pensez que quelqu'un connaît votre mot de passe, prévenez immédiatement votre administrateur.",
+            'Déconnectez-vous sur un appareil partagé ou public.',
+          ],
+        },
+        {
+          title: 'Bonne utilisation',
+          paragraphs: [
+            "Saisissez des informations vraies et exactes — en particulier les heures de pointage, lieux, frais de transport et rapports, sur lesquels Technet s'appuie pour la paie, la facturation et les clients.",
+            "Utilisez l'application uniquement pour le travail Technet. N'essayez pas d'accéder à des informations que votre rôle ne vous donne pas, ne partagez pas d'informations de l'entreprise ou des clients hors de Technet, et ne perturbez pas le fonctionnement de l'application.",
+            "Un usage abusif, y compris de faux pointages, peut entraîner le retrait de votre accès et des mesures disciplinaires selon votre contrat de travail.",
+          ],
+        },
+        {
+          title: 'Portail Client',
+          paragraphs: [
+            "Les devis, factures et états des travaux du portail sont fournis pour votre commodité. Le devis signé ou la facture émise fait foi ; si quelque chose vous semble incorrect, contactez Technet.",
+            "Une demande de devis envoyée par le portail ne crée pas de contrat tant que Technet ne vous a pas envoyé un devis et que vous ne l'avez pas accepté.",
+          ],
+        },
+        {
+          title: 'Disponibilité',
+          paragraphs: [
+            "Nous faisons en sorte que l'application fonctionne, mais elle peut parfois être lente ou indisponible — par exemple à la première ouverture après une période calme, ou pendant une mise à jour.",
+            "Ce que vous envoyez sans réseau est enregistré sur votre appareil et envoyé à la reconnexion. Tant que ce n'est pas envoyé, Technet ne l'a pas reçu.",
+          ],
+        },
+        {
+          title: 'Propriété',
+          paragraphs: [
+            "L'application et les informations professionnelles qu'elle contient appartiennent à Technet Engineering. Vos informations personnelles sont traitées comme décrit dans la Politique de confidentialité.",
+          ],
+        },
+        {
+          title: 'Modifications et droit applicable',
+          paragraphs: [
+            "Technet peut mettre à jour ces conditions ; la date en haut de cette page indique la dernière version. Ces conditions sont régies par le droit mauricien.",
+          ],
+        },
+      ],
+    },
+    security: {
+      title: 'Sécurité',
+      intro: 'Comment Technet Digital protège les comptes et les informations.',
+      sections: [
+        {
+          title: 'Comptes et mots de passe',
+          paragraphs: [
+            "Les comptes du personnel ne sont créés que par des administrateurs ; personne ne peut s'inscrire seul. Les comptes du Portail Client sont créés par le personnel Technet.",
+            "Les mots de passe ne sont conservés que sous forme brouillée (hachée) avec bcrypt : personne chez Technet ne peut les lire — un administrateur peut en définir un nouveau, mais jamais voir l'ancien.",
+            "Les e-mails de réinitialisation ne sont envoyés qu'aux comptes administrateurs, et les demandes répétées sont limitées.",
+          ],
+        },
+        {
+          title: 'Accès selon le rôle',
+          paragraphs: [
+            "Chaque requête est vérifiée sur le serveur selon le rôle de l'utilisateur, pas seulement masquée dans le menu. Par exemple, un technicien ne peut pas atteindre les données de finance, RH ou paie, même en tapant une adresse directement.",
+            "Les comptes du Portail Client sont entièrement séparés des comptes du personnel et n'accèdent qu'aux documents et travaux de leur propre société.",
+          ],
+        },
+        {
+          title: 'Connexions et sessions',
+          paragraphs: [
+            "Tout le trafic est chiffré en HTTPS. Vous restez connecté grâce à un cookie sécurisé que les scripts de la page ne peuvent pas lire et que les autres sites ne peuvent pas utiliser. La déconnexion le supprime.",
+          ],
+        },
+        {
+          title: "Journal d'audit de sécurité",
+          paragraphs: [
+            "Les connexions (y compris les tentatives échouées), les réinitialisations de mot de passe et les modifications des comptes — création, changement de rôle ou d'e-mail, suppression — sont enregistrées avec l'heure et le compte concerné.",
+            "Chaque utilisateur connecté peut consulter ses propres connexions récentes dans Sécurité → « My Account ». Les administrateurs consultent le journal complet dans Sécurité → « Audit Log ».",
+          ],
+        },
+        {
+          title: 'Signaler un problème',
+          paragraphs: [
+            "Si vous remarquez une connexion que vous ne reconnaissez pas, pensez que quelqu'un connaît votre mot de passe, ou trouvez un problème de sécurité dans l'application, prévenez immédiatement votre administrateur ou appelez le support.",
+          ],
+        },
+      ],
+    },
+  },
 }
