@@ -112,3 +112,26 @@ input[type='date'],
 input[type='datetime-local'] {
   color-scheme: dark;
 }
+
+/* Data tables across the app: framed in a rounded border, a tinted header row, and a soft row
+   highlight on hover. Applied here once rather than on every page's <table>. In the components
+   layer so a row's own utility classes (e.g. a flagged row's tint) still win. */
+@layer components {
+  main .overflow-x-auto:has(> table) {
+    border: 1px solid var(--color-ink-800);
+    border-radius: 0.75rem;
+    background: color-mix(in srgb, var(--color-ink-950) 55%, transparent);
+  }
+  main .overflow-x-auto > table > thead > tr {
+    background: var(--color-ink-800);
+  }
+  main .overflow-x-auto > table > thead th {
+    white-space: nowrap;
+  }
+  main .overflow-x-auto > table > tbody > tr {
+    transition: background-color 120ms ease;
+  }
+  main .overflow-x-auto > table > tbody > tr:hover {
+    background-color: rgb(255 255 255 / 0.03);
+  }
+}
