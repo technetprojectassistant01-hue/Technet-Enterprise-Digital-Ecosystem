@@ -72,7 +72,7 @@ function QuotationFollowUpPage() {
                 <div className="mt-0.5 text-ink-300">
                   {q.title} · {q.customer.company || q.customer.name}
                 </div>
-                <div className="mt-0.5 text-xs text-ink-500">{q.issuedAt.slice(0, 10)}</div>
+                <div className="mt-0.5 text-xs text-ink-400">{q.issuedAt.slice(0, 10)}</div>
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-ink-100">{formatMoney(q.total)}</span>
@@ -131,7 +131,7 @@ function QuotationFollowUpPage() {
           {customerId ? (
             renderList(customerQuotations, customerLoading, 'No sent quotations for this customer yet.')
           ) : (
-            <p className="text-sm text-ink-500">Select a customer to see their quotations.</p>
+            <p className="text-sm text-ink-400">Select a customer to see their quotations.</p>
           )}
         </Panel>
       ) : (
