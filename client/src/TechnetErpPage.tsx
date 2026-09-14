@@ -371,7 +371,7 @@ function TechnetErpPage() {
                   <div className="flex flex-col items-center gap-2">
                     <div
                       className={`flex h-10 w-10 items-center justify-center rounded-lg border ${
-                        active ? 'border-cyan-accent text-cyan-accent' : 'border-ink-600 text-ink-500'
+                        active ? 'border-cyan-accent text-cyan-accent' : 'border-ink-600 text-ink-400'
                       }`}
                     >
                       <step.icon className="h-4 w-4" />
