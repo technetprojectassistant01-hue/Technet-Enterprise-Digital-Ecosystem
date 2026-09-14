@@ -2424,6 +2424,7 @@ export interface ToolRequest {
   employeeId: string
   employee: ToolEmployeeRef
   items: string
+  typeOrBrand: string | null
   purpose: string | null
   neededBy: string | null
   status: ToolRequestStatus
@@ -2475,7 +2476,7 @@ export function listToolRequests(params: { status?: ToolRequestStatus } = {}) {
   return request<{ requests: ToolRequest[] }>(`/api/tool-requests${qs}`)
 }
 
-export function createToolRequest(input: { items: string; purpose?: string; neededBy?: string }) {
+export function createToolRequest(input: { items: string; typeOrBrand?: string; purpose?: string; neededBy?: string }) {
   return request<{ request: ToolRequest }>('/api/tool-requests', { method: 'POST', body: JSON.stringify(input) })
 }
 
