@@ -164,18 +164,19 @@ function Dashboard() {
         <footer className="flex flex-col gap-3 border-t border-ink-800 px-4 py-4 text-xs text-ink-400 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
           <span>{t.shell.copyright}</span>
           <div className="flex flex-wrap gap-5">
-            <a href="#" className="hover:text-ink-200">
+            <NavLink to="/dashboard/privacy" className="hover:text-ink-200">
               {t.auth.privacyPolicy}
-            </a>
-            <a href="#" className="hover:text-ink-200">
+            </NavLink>
+            <NavLink to="/dashboard/terms" className="hover:text-ink-200">
               {t.auth.termsOfService}
-            </a>
+            </NavLink>
             <NavLink to="/dashboard/help#contact" className="hover:text-ink-200">
               {t.auth.contactSupport}
             </NavLink>
-            <a href="#" className="hover:text-ink-200">
+            {/* Signed in, this goes to the real audit log (every user sees their own sign-ins). */}
+            <NavLink to="/dashboard/security" className="hover:text-ink-200">
               {t.auth.securityAudit}
-            </a>
+            </NavLink>
           </div>
           <span className="flex items-center gap-2 text-ink-300">
             {t.shell.systemStable}
