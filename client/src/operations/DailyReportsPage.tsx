@@ -346,7 +346,7 @@ function DailyReportsPage() {
               <label className={labelClass}>{t.ops.daily.techniciansOptional}</label>
               <div className="mt-2 flex max-h-32 flex-col gap-1.5 overflow-y-auto rounded-md border border-ink-700 bg-ink-950 p-3">
                 {employees.length === 0 ? (
-                  <p className="text-xs text-ink-500">{t.shared.noEmployees}</p>
+                  <p className="text-xs text-ink-400">{t.shared.noEmployees}</p>
                 ) : (
                   employees.map((emp) => (
                     <label key={emp.id} className="flex items-center gap-2 text-sm text-ink-200">
@@ -367,7 +367,7 @@ function DailyReportsPage() {
               <label className={labelClass}>{t.ops.daily.workOrdersTouched}</label>
               <div className="mt-2 flex max-h-32 flex-col gap-1.5 overflow-y-auto rounded-md border border-ink-700 bg-ink-950 p-3">
                 {workOrders.length === 0 ? (
-                  <p className="text-xs text-ink-500">{t.ops.daily.noWorkOrders}</p>
+                  <p className="text-xs text-ink-400">{t.ops.daily.noWorkOrders}</p>
                 ) : (
                   workOrders.map((wo) => (
                     <label key={wo.id} className="flex items-center gap-2 text-sm text-ink-200">
@@ -388,9 +388,9 @@ function DailyReportsPage() {
               <div>
                 <label className={labelClass}>{t.ops.daily.related}</label>
                 {loadingRelated ? (
-                  <p className="mt-2 text-xs text-ink-500">{t.ops.daily.checkingRelated}</p>
+                  <p className="mt-2 text-xs text-ink-400">{t.ops.daily.checkingRelated}</p>
                 ) : relatedReports.length === 0 ? (
-                  <p className="mt-2 text-xs text-ink-500">{t.ops.daily.noRelated}</p>
+                  <p className="mt-2 text-xs text-ink-400">{t.ops.daily.noRelated}</p>
                 ) : (
                   <div className="mt-2 flex flex-col gap-2">
                     {relatedReports.map((report) => (
@@ -400,7 +400,7 @@ function DailyReportsPage() {
                             <div className="text-xs font-semibold text-ink-200">
                               {report.interventionNumber}
                               {report.workOrder && (
-                                <span className="text-ink-500"> · {report.workOrder.workOrderNumber}</span>
+                                <span className="text-ink-400"> · {report.workOrder.workOrderNumber}</span>
                               )}
                             </div>
                             <p className="mt-1 line-clamp-2 text-xs text-ink-400">
