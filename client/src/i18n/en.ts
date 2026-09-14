@@ -1352,6 +1352,181 @@ export const en = {
       },
     ],
   },
+
+  /**
+   * Privacy Policy, Terms of Service and Security pages. Like the Help Center, every statement
+   * here must describe what the app really does — when data collection, storage or a provider
+   * changes, update all three languages.
+   */
+  legal: {
+    lastUpdated: 'Last updated: 14 September 2026',
+    questionsBefore: 'Questions about this page? Call ',
+    questionsAfter: ' or write to Technet Engineering, Avenue St Vincent de Paul, Les Pailles 11221, Mauritius.',
+    privacy: {
+      title: 'Privacy Policy',
+      intro:
+        'This policy explains what information Technet Digital collects, why, who can see it and how long it is kept. It covers staff accounts and Client Portal accounts. Technet Engineering (Avenue St Vincent de Paul, Les Pailles 11221, Mauritius) is responsible for this information under the Data Protection Act 2017.',
+      sections: [
+        {
+          title: 'Information we collect',
+          paragraphs: [
+            'Account details: your name, email address, role, language choice and a scrambled (hashed) version of your password. We never store your password itself.',
+            'Employee records, entered by HR: contact details, position, department, national ID, date of birth, address, emergency contact, contract details, salary and bank details for payroll, leave, certifications and training.',
+            'Attendance: each time you check in or check out, the time you enter, the time the server received it, the place you type, your transport cost, any job you pick, and your device\'s location (GPS) at that moment.',
+            'Work records: work orders, daily reports, maintenance and intervention reports, including photos, materials used and customer signatures.',
+            'Client Portal: your company\'s details, the login email set up for you, your quotations, invoices, job status and any quote requests you send.',
+            'Security log: sign-ins (successful and failed), password resets and changes to user accounts, with the time and the account involved.',
+            'Notifications and reminders: messages the app sends you and, if you turn on check-in reminders, your device\'s push subscription.',
+          ],
+        },
+        {
+          title: 'Location',
+          paragraphs: [
+            'Location is recorded only at the moment you check in or check out — the app does not follow you in between, and does not track you when it is closed.',
+            'Your browser or phone asks your permission before sharing location. Check-in cannot work without it.',
+            'Administrators and Operations Managers can see the recorded location, the times and whether the place you typed is near your GPS position. This is used to confirm site visits, not to judge where you are the rest of the day.',
+          ],
+        },
+        {
+          title: 'Why we use it',
+          paragraphs: [
+            'To run Technet\'s operations: planning and recording jobs, attendance and transport costs, leave, payroll, quotations and invoicing, and customer service.',
+            'To keep accounts secure and investigate problems.',
+            'We do not sell your information, use it for advertising, or use analytics or tracking tools.',
+          ],
+        },
+        {
+          title: 'Who can see it',
+          paragraphs: [
+            'Inside Technet, what each person sees depends on their role. For example, technicians see their own jobs and attendance; HR sees employee records and payroll; managers see team attendance. Clients only see their own company\'s documents and jobs, never staff locations or technician names.',
+            'Service providers that run the app for us: Cloudflare (delivers the app), Render (runs the server), Neon (stores the database), OpenStreetMap Nominatim (looks up the place names you type to compare them with your GPS position), your browser\'s push service such as Google or Apple (delivers reminders), and Resend (sends password-reset emails to administrators). Some of these providers may process data outside Mauritius.',
+            'We share information with authorities only where the law requires it.',
+          ],
+        },
+        {
+          title: 'On your device',
+          paragraphs: [
+            'A sign-in cookie keeps you signed in for 30 days, renewed each time you use the app. It is removed when you log out.',
+            'Your language choice and whether you dismissed the install pop-up are saved in the browser.',
+            'Your jobs and reports are saved on the device so you can see them without signal; they are cleared when you log out. Anything you submitted without signal stays on the device until it has uploaded, even if you log out.',
+          ],
+        },
+        {
+          title: 'How long we keep it',
+          paragraphs: [
+            'Records are kept for as long as Technet needs them for its work, employment and legal obligations. There is currently no automatic deletion — records stay until an administrator removes them.',
+          ],
+        },
+        {
+          title: 'Your rights',
+          paragraphs: [
+            'Under the Data Protection Act 2017 you can ask to see the information held about you, have it corrected, or ask for it to be deleted where Technet is not required to keep it. Contact your administrator or HR, or call support.',
+            'If you are not satisfied, you can complain to the Data Protection Office of Mauritius.',
+          ],
+        },
+        {
+          title: 'Changes',
+          paragraphs: ['If this policy changes, the date at the top of this page will change too.'],
+        },
+      ],
+    },
+    terms: {
+      title: 'Terms of Service',
+      intro:
+        'Technet Digital is Technet Engineering\'s internal business platform and Client Portal. By signing in you agree to these terms.',
+      sections: [
+        {
+          title: 'Who can use it',
+          paragraphs: [
+            'Staff accounts are created by a Technet administrator for employees and authorised people only. Client Portal accounts are created by Technet staff for customers. There is no public sign-up.',
+            'Your access depends on your role and can be changed or removed by an administrator at any time, for example when you leave the company.',
+          ],
+        },
+        {
+          title: 'Your account',
+          paragraphs: [
+            'Keep your password to yourself and do not let anyone else sign in as you. Everything done with your account is recorded as done by you.',
+            'Passwords are set and reset by an administrator. If you think someone else knows your password, tell your administrator straight away.',
+            'Log out when you use a shared or public device.',
+          ],
+        },
+        {
+          title: 'Using it properly',
+          paragraphs: [
+            'Enter information that is true and accurate — especially check-in times, locations, transport costs and reports, which Technet relies on for payroll, billing and customers.',
+            'Use the app only for Technet work. Do not try to reach information your role does not give you, share company or customer information outside Technet, or interfere with how the app works.',
+            'Misuse, including false attendance records, may lead to your access being removed and to disciplinary action under your employment terms.',
+          ],
+        },
+        {
+          title: 'Client Portal',
+          paragraphs: [
+            'Quotations, invoices and job statuses in the portal are provided for your convenience. The signed quotation or issued invoice is the document that counts; if something in the portal looks wrong, contact Technet.',
+            'Sending a quote request through the portal does not create a contract until Technet sends you a quotation and you accept it.',
+          ],
+        },
+        {
+          title: 'Availability',
+          paragraphs: [
+            'We work to keep the app running, but it may sometimes be slow or unavailable — for example the first time it is opened after a quiet period, or during updates.',
+            'Work you submit without signal is saved on your device and uploads when you reconnect. Until it has uploaded, it has not reached Technet.',
+          ],
+        },
+        {
+          title: 'Ownership',
+          paragraphs: [
+            'The app and the business information in it belong to Technet Engineering. Your personal information is handled as described in the Privacy Policy.',
+          ],
+        },
+        {
+          title: 'Changes and governing law',
+          paragraphs: [
+            'Technet may update these terms; the date at the top of this page shows the latest version. These terms are governed by the laws of Mauritius.',
+          ],
+        },
+      ],
+    },
+    security: {
+      title: 'Security',
+      intro: 'How Technet Digital protects accounts and information.',
+      sections: [
+        {
+          title: 'Accounts and passwords',
+          paragraphs: [
+            'Staff logins are created only by administrators; nobody can sign themselves up. Client Portal logins are created by Technet staff.',
+            'Passwords are stored only in scrambled (hashed) form using bcrypt, so nobody at Technet can read them — an administrator can set a new one, but never see the old one.',
+            'Password-reset emails are only sent to administrator accounts, and repeated reset requests are limited.',
+          ],
+        },
+        {
+          title: 'Access by role',
+          paragraphs: [
+            'Every request is checked on the server against the user\'s role, not just hidden in the menu. For example, technicians cannot reach finance, HR or payroll data even by typing an address directly.',
+            'Client Portal accounts are completely separate from staff accounts and can only reach their own company\'s documents and jobs.',
+          ],
+        },
+        {
+          title: 'Connections and sessions',
+          paragraphs: [
+            'All traffic is encrypted over HTTPS. You stay signed in with a secure cookie that page scripts cannot read and other websites cannot use. Logging out removes it.',
+          ],
+        },
+        {
+          title: 'Security audit log',
+          paragraphs: [
+            'Sign-ins (including failed attempts), password resets and changes to user accounts — creation, role or email changes and deletion — are recorded with the time and the account involved.',
+            'Every signed-in user can review their own recent sign-in activity under Security → My Account. Administrators can review the full log under Security → Audit Log.',
+          ],
+        },
+        {
+          title: 'Reporting a problem',
+          paragraphs: [
+            'If you notice a sign-in you don\'t recognise, think someone knows your password, or find a security problem in the app, tell your administrator or call support straight away.',
+          ],
+        },
+      ],
+    },
+  },
 }
 
 export type Dict = typeof en
