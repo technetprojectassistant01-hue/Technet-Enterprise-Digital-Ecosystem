@@ -1568,6 +1568,8 @@ model ToolRequest {
   employee       Employee          @relation(fields: [employeeId], references: [id])
   /// What they need, in their own words - the storekeeper picks the actual units when issuing.
   items          String
+  /// Optional preferred type or brand, e.g. "Makita 18V" - a preference, not a hard requirement.
+  typeOrBrand    String?
   purpose        String?
   neededBy       DateTime?
   status         ToolRequestStatus @default(PENDING)
