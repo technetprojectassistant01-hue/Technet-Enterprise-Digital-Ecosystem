@@ -25,6 +25,7 @@ import {
   CalendarClock,
   ClipboardCheck,
   CalendarDays,
+  CalendarCheck,
   BadgeCheck,
   Hammer,
   Banknote,
@@ -48,7 +49,9 @@ export interface NavItem {
 
 export const MAIN_NAV: NavItem[] = [
   { label: 'Overview', to: '/dashboard', icon: LayoutGrid, end: true },
-  { label: 'My Leave', to: '/dashboard/my-leave', icon: CalendarDays },
+  // Admin approves leave rather than requesting it here, so they get Leave Approvals instead.
+  { label: 'My Leave', to: '/dashboard/my-leave', icon: CalendarDays, hiddenFrom: ['ADMIN'] },
+  { label: 'Leave Approvals', to: '/dashboard/leave-approvals', icon: CalendarCheck, hiddenFrom: NON_ADMIN_ROLES },
   {
     label: 'Technet ERP',
     to: '/dashboard/erp',
