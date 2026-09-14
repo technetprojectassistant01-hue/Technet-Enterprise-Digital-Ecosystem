@@ -33,7 +33,7 @@ function siteStatusTone(status: 'ON_SITE' | 'OUTSIDE_SITE' | 'UNVERIFIED') {
 }
 
 function WorkOrderLink({ v }: { v: SiteAttendanceWithEmployee }) {
-  if (!v.workOrder) return <span className="text-ink-500">—</span>
+  if (!v.workOrder) return <span className="text-ink-400">—</span>
   return (
     <Link to={`/dashboard/operations/work-orders/${v.workOrder.id}`} className="text-cyan-accent hover:underline">
       {v.workOrder.workOrderNumber}
@@ -305,7 +305,7 @@ function TeamAttendancePage() {
                   <div>
                     <div className="flex items-center gap-2 text-sm font-medium text-ink-100">
                       {v.employee?.firstName} {v.employee?.lastName}
-                      {v.employee?.position && <span className="text-ink-500"> · {v.employee.position}</span>}
+                      {v.employee?.position && <span className="text-ink-400"> · {v.employee.position}</span>}
                       {v.workOrder && (
                         <>
                           <span className="text-ink-600">·</span>
@@ -380,26 +380,26 @@ function TeamAttendancePage() {
                   <tr key={s.employee.id} className="border-b border-ink-800 last:border-0">
                     <td className="px-3 py-2 text-ink-100">
                       {s.employee.firstName} {s.employee.lastName}
-                      {s.employee.position && <span className="text-ink-500"> · {s.employee.position}</span>}
+                      {s.employee.position && <span className="text-ink-400"> · {s.employee.position}</span>}
                     </td>
                     <td className="px-3 py-2 text-ink-300">{s.daysPresent}</td>
                     <td className="px-3 py-2 text-ink-300">{s.totalCheckIns}</td>
                     <td className="px-3 py-2 text-ink-300">{s.totalHoursOnSite}</td>
                     <td className="px-3 py-2 text-ink-300">
-                      {s.totalTransportCost > 0 ? formatMoney(s.totalTransportCost) : <span className="text-ink-500">—</span>}
+                      {s.totalTransportCost > 0 ? formatMoney(s.totalTransportCost) : <span className="text-ink-400">—</span>}
                     </td>
                     <td className="px-3 py-2">
                       {s.locationMismatchCount > 0 ? (
                         <span className="font-medium text-amber-400">{s.locationMismatchCount}</span>
                       ) : (
-                        <span className="text-ink-500">0</span>
+                        <span className="text-ink-400">0</span>
                       )}
                     </td>
                     <td className="px-3 py-2">
                       {(timeGapCountByEmployee.get(s.employee.id) ?? 0) > 0 ? (
                         <span className="font-medium text-amber-400">{timeGapCountByEmployee.get(s.employee.id)}</span>
                       ) : (
-                        <span className="text-ink-500">0</span>
+                        <span className="text-ink-400">0</span>
                       )}
                     </td>
                   </tr>
@@ -572,10 +572,10 @@ function TeamAttendancePage() {
                                 {v.checkOutNote && <span> · {v.checkOutNote}</span>}
                               </a>
                             ) : (
-                              <span className="text-ink-500">{t.ops.team.stillCheckedIn}</span>
+                              <span className="text-ink-400">{t.ops.team.stillCheckedIn}</span>
                             )}
                             {v.checkOutByManager && (
-                              <span className="mt-0.5 block text-[11px] text-ink-500">{t.ops.team.closedByManagement}</span>
+                              <span className="mt-0.5 block text-[11px] text-ink-400">{t.ops.team.closedByManagement}</span>
                             )}
                             {locationMismatchLabel(v.checkOutLocationMatch, v.checkOutLocationDistanceMeters) && (
                               <span className="mt-0.5 block text-[11px] font-medium text-amber-400">
@@ -589,7 +589,7 @@ function TeamAttendancePage() {
                             )}
                           </td>
                           <td className="px-3 py-2 text-ink-300">
-                            {totalTransportCost(v) > 0 ? formatMoney(totalTransportCost(v)) : <span className="text-ink-500">—</span>}
+                            {totalTransportCost(v) > 0 ? formatMoney(totalTransportCost(v)) : <span className="text-ink-400">—</span>}
                           </td>
                         </tr>
                       ))}
@@ -639,7 +639,7 @@ function TeamAttendancePage() {
               />
             </div>
 
-            <p className="text-xs text-ink-500">{t.ops.team.closeDisclaimer}</p>
+            <p className="text-xs text-ink-400">{t.ops.team.closeDisclaimer}</p>
 
             {closeError && <p className="text-sm text-red-400">{closeError}</p>}
 
