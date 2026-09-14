@@ -131,6 +131,7 @@ export const MAIN_NAV: NavItem[] = [
     children: [
       { label: 'Availability', to: '/dashboard/workforce/availability', icon: UserCheck },
       { label: 'Attendance', to: '/dashboard/workforce/attendance', icon: ClipboardCheck },
+      { label: 'Overtime', to: '/dashboard/workforce/overtime', icon: Clock },
       { label: 'Payroll', to: '/dashboard/workforce/payroll', icon: Banknote },
     ],
   },
