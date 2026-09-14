@@ -210,7 +210,7 @@ export const en = {
 
   attendance: {
     locationAskTitle: 'Allow location?',
-    locationAskBody: 'Technet Digital records your location when you check in and check out, so your manager can confirm site visits. You need to allow it to check in.',
+    locationAskBody: 'Your location is saved with each check-in and check-out, as part of your attendance record. Allow location to check in.',
     locationNeededTitle: 'Allow location to check in',
     locationNeededBody: "You chose not to share your location, so you can't check in or out yet. Allow location to continue.",
     locationBlockedTitle: 'Location is blocked',
