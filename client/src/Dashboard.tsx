@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { Menu, Search, Settings, X } from 'lucide-react'
-import { useAuth } from './context/AuthContext'
 import Logo from './components/Logo'
-import { Avatar } from './dashboard/ui'
+import UserMenu from './dashboard/UserMenu'
 import SidebarContent from './dashboard/SidebarContent'
 import MobileNav from './dashboard/MobileNav'
 import NotificationBell from './dashboard/NotificationBell'
@@ -16,7 +15,6 @@ import { watchForAppUpdate } from './lib/appUpdate'
 import { useT } from './i18n'
 
 function Dashboard() {
-  const { user } = useAuth()
   const t = useT()
   const toast = useToast()
   const toastRef = useRef(toast)
@@ -56,8 +54,6 @@ function Dashboard() {
       document.body.style.overflow = previous
     }
   }, [navOpen])
-
-  const displayName = user?.name || user?.email || ''
 
   return (
     <div className="flex min-h-screen bg-ink-950 text-ink-100">
@@ -122,13 +118,7 @@ function Dashboard() {
             <NavLink to="/dashboard/settings" className="text-ink-300 hover:text-ink-100" aria-label={t.shell.settings}>
               <Settings className="h-5 w-5" />
             </NavLink>
-            <div className="flex items-center gap-3">
-              <div className="hidden text-right leading-tight sm:block">
-                <div className="text-sm font-medium text-ink-100">{displayName}</div>
-                <div className="text-xs text-ink-400">{user ? t.roles[user.role] : ''}</div>
-              </div>
-              <Avatar name={displayName} />
-            </div>
+            <UserMenu />
           </div>
         </header>
 
