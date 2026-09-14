@@ -272,6 +272,8 @@ export const en = {
 
   myAttendance: {
     title: 'My Attendance',
+    todayTitle: 'Today',
+    todayEmpty: "You haven't checked in today.",
     empty: 'No check-ins recorded this month.',
     loadFailed: 'Failed to load your attendance',
     previousMonth: 'Previous month',
