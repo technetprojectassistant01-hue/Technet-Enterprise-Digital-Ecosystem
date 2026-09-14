@@ -16,7 +16,7 @@ import {
 } from "../lib/tools";
 
 /**
- * Technet Maintenance - the tools & equipment register. Every signed-in user can see the register
+ * Technet Store - the tools & equipment register. Every signed-in user can see the register
  * (a technician checks what exists and what they hold); only TOOL_MANAGE_ROLES add, edit, delete
  * and record returns. Tools are handed out through tool requests (toolRequests.ts), never here.
  */
