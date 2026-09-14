@@ -3,16 +3,16 @@ import ModuleHeader from '../dashboard/ModuleHeader'
 import { navLabel, useT } from '../i18n'
 
 const TABS = [
-  { label: 'Tools & Equipment', to: '/dashboard/maintenance/tools' },
-  { label: 'Tool Requests', to: '/dashboard/maintenance/requests' },
+  { label: 'Tools & Equipment', to: '/dashboard/store/tools' },
+  { label: 'Tool Requests', to: '/dashboard/store/requests' },
 ]
 
-function MaintenanceLayout() {
+function StoreLayout() {
   const t = useT()
   return (
     <div className="flex flex-col gap-6">
       <ModuleHeader
-        title="Technet Maintenance"
+        title="Technet Store"
         subtitle={t.tools.moduleSubtitle}
         tabs={TABS.map((tab) => ({ ...tab, label: navLabel(t, tab.label) }))}
         searchPlaceholder={t.tools.moduleSearchPlaceholder}
@@ -22,4 +22,4 @@ function MaintenanceLayout() {
   )
 }
 
-export default MaintenanceLayout
+export default StoreLayout
