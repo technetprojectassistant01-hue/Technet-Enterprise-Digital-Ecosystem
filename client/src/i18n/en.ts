@@ -200,8 +200,8 @@ export const en = {
   },
 
   overview: {
-    eyebrow: 'OVERVIEW',
-    title: 'Technet Ecosystem',
+    eyebrow: 'TECHNET ECOSYSTEM',
+    title: 'Attendance',
     companyProfile: 'COMPANY PROFILE',
     companyBlurb:
       'A Mauritius-based multi-service engineering firm with over 10 years of history in delivering digital kineticism and enterprise solutions across the region.',
@@ -1262,7 +1262,7 @@ export const en = {
           {
             q: 'How do I check in and check out?',
             a: [
-              'Use the "My Attendance" card on the Overview page. Check the arrival time (it\'s filled in for you), type where you are, enter your transport cost (enter 0 if you had none), then tap "Check In".',
+              'Use the "My Attendance" card on the Attendance page. Check the arrival time (it\'s filled in for you), type where you are, enter your transport cost (enter 0 if you had none), then tap "Check In".',
               'When you leave, do the same with "Check Out". You can check in and out several times a day if you visit more than one site.',
             ],
           },
