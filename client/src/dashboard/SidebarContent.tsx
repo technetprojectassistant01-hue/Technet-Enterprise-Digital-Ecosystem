@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { HelpCircle, Plus } from 'lucide-react'
+import { HelpCircle } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import Logo from '../components/Logo'
 import { MAIN_NAV, SYSTEM_NAV, ADMIN_NAV } from './nav'
@@ -56,13 +56,6 @@ function SidebarContent() {
       </nav>
 
       <div className="mt-6 flex flex-col gap-3">
-        <NavLink
-          to="/dashboard/erp/projects"
-          className="flex items-center justify-center gap-2 rounded-md bg-cyan-accent px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-ink-950 transition hover:bg-cyan-accent-dark"
-        >
-          <Plus className="h-4 w-4" />
-          {t.shell.newProject}
-        </NavLink>
         <NavLink
           to="/dashboard/help"
           className={({ isActive }: { isActive: boolean }) =>
