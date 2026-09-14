@@ -55,7 +55,7 @@ export const mfe: Dict = {
     Certifications: 'Sertifikasion',
     Projects: 'Proze',
     Documents: 'Dokiman',
-    'Technet Maintenance': 'Technet Maintenance',
+    'Technet Store': 'Technet Store',
     'Tools & Equipment': 'Zouti ek lekipman',
     'Tool Requests': 'Demann zouti',
     'Technet Connect': 'Technet Connect',
@@ -1305,14 +1305,14 @@ export const mfe: Dict = {
           {
             q: 'Kouma pou gagn zouti ki mo bizin?',
             a: [
-              'Ouver Technet Maintenance → "Demann zouti" e tap "Demann zouti". Ekrir seki ou bizin ek pou kan. Magazin gagn enn notifikasion, e ou gagn enn notifikasion kan ou zouti pare pou pran.',
-              'Tan ki enn demann pe atann, ou kapav retir li depi mem paz la.',
+              'Ouver Technet Store → "Demann zouti" e tap "Demann zouti". Ekrir seki ou bizin ek pou kan. Magazin gagn enn notifikasion, e ou gagn enn notifikasion kan ou zouti pare pou pran.',
+              'Tan ki enn demann pe atann, ou kapav sanz li avek "Modifye". Ou kapav "Efase" enn demann tan ki okenn zouti pa finn donn pou li.',
             ],
           },
           {
             q: 'Kouma pou trouv ki zouti mo ena?',
             a: [
-              'Ouver Technet Maintenance → "Zouti ek lekipman". Lalis "Zouti ki mo ena" anler montre sak zouti ki finn donn ou ek kan li pou retourne. Remet zouti la kot magazin — se zot ki anrezistre retour la.',
+              'Ouver Technet Store → "Zouti ek lekipman". Lalis "Zouti ki mo ena" anler montre sak zouti ki finn donn ou ek kan li pou retourne. Remet zouti la kot magazin — se zot ki anrezistre retour la.',
             ],
           },
         ],
