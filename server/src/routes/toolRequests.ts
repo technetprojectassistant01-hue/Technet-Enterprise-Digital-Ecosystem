@@ -84,7 +84,7 @@ router.post("/", async (req, res) => {
   const employee = await linkedEmployee(req, res);
   if (!employee) return;
 
-  const { items, purpose, neededBy } = req.body ?? {};
+  const { items, typeOrBrand, purpose, neededBy } = req.body ?? {};
   if (typeof items !== "string" || !items.trim()) {
     return res.status(400).json({ error: "Say which tools or equipment you need" });
   }
@@ -98,6 +98,7 @@ router.post("/", async (req, res) => {
     data: {
       employeeId: employee.id,
       items: items.trim(),
+      typeOrBrand: typeof typeOrBrand === "string" && typeOrBrand.trim() ? typeOrBrand.trim() : null,
       purpose: typeof purpose === "string" && purpose.trim() ? purpose.trim() : null,
       neededBy: neededByDate,
     },
