@@ -267,7 +267,7 @@ function PurchaseOrderDetailPage() {
                 return (
                   <div key={item.id} className="flex items-center gap-3 rounded-md border border-ink-700 bg-ink-950 p-3">
                     <span className="flex-1 text-sm text-ink-200">
-                      {item.description} <span className="text-ink-500">(remaining {remaining})</span>
+                      {item.description} <span className="text-ink-400">(remaining {remaining})</span>
                     </span>
                     <input
                       type="number"
