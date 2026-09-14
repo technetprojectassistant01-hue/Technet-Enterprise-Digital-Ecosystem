@@ -288,7 +288,14 @@ router.get("/me/history", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => 
     orderBy: { checkInAt: "desc" },
   });
 
-  res.json({ visits });
+  // Overtime only shows once HR has approved it (routes/overtime.ts).
+  const approved = await prisma.overtimeDecision.findMany({
+    where: { employeeId: employee.id, status: "APPROVED", date: { gte: start, lt: end } },
+    select: { date: true, minutes: true },
+  });
+  const approvedOvertime = approved.map((d) => ({ date: d.date.toISOString().slice(0, 10), minutes: d.minutes }));
+
+  res.json({ visits, approvedOvertime });
 });
 
 /** The caller's own assigned, still-open work orders — for the "which job?" picker on check-in. */
