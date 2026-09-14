@@ -208,7 +208,7 @@ export const fr: Dict = {
 
   attendance: {
     locationAskTitle: 'Autoriser la localisation ?',
-    locationAskBody: "Technet Digital enregistre votre position quand vous pointez votre arrivée et votre départ, pour que votre responsable puisse confirmer les visites sur site. Vous devez l'autoriser pour pointer.",
+    locationAskBody: 'Votre position est enregistrée avec chaque pointage d’arrivée et de départ, dans votre registre de présence. Autorisez la localisation pour pointer.',
     locationNeededTitle: 'Autorisez la localisation pour pointer',
     locationNeededBody: "Vous avez choisi de ne pas partager votre position, vous ne pouvez donc pas encore pointer. Autorisez la localisation pour continuer.",
     locationBlockedTitle: 'La localisation est bloquée',

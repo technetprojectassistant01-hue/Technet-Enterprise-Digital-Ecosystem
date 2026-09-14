@@ -212,7 +212,7 @@ export const mfe: Dict = {
 
   attendance: {
     locationAskTitle: 'Permet landrwa?',
-    locationAskBody: 'Technet Digital anrezistre kot ou ete kan ou pointe lariver ek depar, pou ou manazer kapav konfirm vizit lor sit. Ou bizin permet li pou pointe.',
+    locationAskBody: 'Ou landrwa anrezistre avek sak pointaz lariver ek depar, dan ou rezis prezans. Permet landrwa pou pointe.',
     locationNeededTitle: 'Permet landrwa pou pointe',
     locationNeededBody: 'Ou finn swazir pa partaz ou landrwa, alor ou pa kapav pointe ankor. Permet landrwa pou kontinie.',
     locationBlockedTitle: 'Landrwa blouke',
