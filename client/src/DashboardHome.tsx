@@ -125,7 +125,7 @@ function DashboardHome() {
                     <span className={`text-sm ${isUnread ? 'font-semibold text-ink-100' : 'text-ink-300'}`}>
                       {n.title}
                     </span>
-                    <span className="shrink-0 text-[11px] text-ink-500">
+                    <span className="shrink-0 text-[11px] text-ink-400">
                       {new Date(n.createdAt).toLocaleString()}
                     </span>
                   </div>
