@@ -8,6 +8,12 @@ import { computeDayFlags } from '../lib/workSchedule'
 import { downloadCsv } from '../lib/csv'
 import { useT } from '../i18n'
 
+/** Local calendar day of a timestamp, "YYYY-MM-DD" — matches the server's Mauritius day. */
+function dayKey(iso: string): string {
+  const d = new Date(iso)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 function monthKey(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
 }
@@ -20,8 +26,8 @@ function shownTime(declared: string | null, recordedIso: string | null): string 
 
 /**
  * "My Attendance" at the bottom of the landing page: every check-in/check-out the signed-in user
- * made, a month at a time, with a small summary, Late / Overtime badges against the standard work
- * hours (lib/workSchedule.ts) and a CSV export. Shows what they entered and how long they were in —
+ * made, a month at a time, with a small summary, a Late badge against the standard work hours
+ * (lib/workSchedule.ts), an Overtime badge only once HR has approved it, and a CSV export. Shows what they entered and how long they were in —
  * never coordinates or location flags (CLAUDE.md §7a).
  */
 function MyAttendanceHistory() {
@@ -31,6 +37,8 @@ function MyAttendanceHistory() {
     return new Date(now.getFullYear(), now.getMonth(), 1)
   })
   const [visits, setVisits] = useState<MyAttendanceVisit[]>([])
+  /** Overtime HR has approved, by day ("YYYY-MM-DD" → minutes). Nothing else is shown as overtime. */
+  const [approvedOvertime, setApprovedOvertime] = useState<Map<string, number>>(new Map())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   /** Bumped when the check-in card checks in or out, to reload the month on screen. */
@@ -50,8 +58,10 @@ function MyAttendanceHistory() {
     setError(null)
     api
       .getMyAttendanceHistory(monthKey(cursor))
-      .then(({ visits }) => {
-        if (!cancelled) setVisits(visits)
+      .then(({ visits, approvedOvertime }) => {
+        if (cancelled) return
+        setVisits(visits)
+        setApprovedOvertime(new Map(approvedOvertime.map((o) => [o.date, o.minutes])))
       })
       .catch((err) => {
         if (!cancelled) setError(err instanceof Error ? err.message : t.myAttendance.loadFailed)
@@ -75,7 +85,21 @@ function MyAttendanceHistory() {
     return h > 0 ? t.shared.hoursMinutes(h, rounded % 60) : t.shared.minutesOnly(rounded)
   }
 
-  const { late, overtime } = computeDayFlags(visits)
+  const { late } = computeDayFlags(visits)
+  // Approved overtime sits on the day's last visit — the one with the latest check-in.
+  const overtime = new Map<string, number>()
+  {
+    const lastByDay = new Map<string, MyAttendanceVisit>()
+    for (const v of visits) {
+      const key = dayKey(v.checkInAt)
+      const current = lastByDay.get(key)
+      if (!current || new Date(v.checkInAt) > new Date(current.checkInAt)) lastByDay.set(key, v)
+    }
+    for (const [key, v] of lastByDay) {
+      const minutes = approvedOvertime.get(key)
+      if (minutes) overtime.set(v.id, minutes)
+    }
+  }
   const lateDays = late.size
   const overtimeMinutes = [...overtime.values()].reduce((a, b) => a + b, 0)
 
