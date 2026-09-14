@@ -5,16 +5,15 @@ import { useAuth } from './context/AuthContext'
 import * as api from './lib/api'
 import type { Notification } from './lib/api'
 import { Panel, StatCard, EmptyState, TableSkeleton } from './dashboard/ui'
-import { hasRole, FIELD_ONLY_ROLES, OPS_SUBMIT_ROLES } from './lib/permissions'
+import { hasRole, FIELD_ONLY_ROLES, TOOL_MANAGE_ROLES } from './lib/permissions'
 import AttendanceWidget from './dashboard/AttendanceWidget'
 import { useT } from './i18n'
 
 const ACTIVE_WORK_ORDER_STATUSES = new Set(['SCHEDULED', 'IN_PROGRESS', 'WAITING_FOR_PARTS', 'REOPENED'])
-const OPEN_MAINTENANCE_REQUEST_STATUSES = new Set(['SUBMITTED', 'SCHEDULED'])
 
 interface QuickStats {
   activeWorkOrders: number
-  openMaintenanceRequests: number | null
+  pendingToolRequests: number | null
   activeProjects: number | null
   pendingRequisitions: number | null
 }
@@ -22,7 +21,8 @@ interface QuickStats {
 function DashboardHome() {
   const { user } = useAuth()
   const t = useT()
-  const canOps = hasRole(user?.role, OPS_SUBMIT_ROLES)
+  // Store staff see every pending request; anyone else with an employee record sees their own.
+  const canSeeToolRequests = !!user?.employeeId || hasRole(user?.role, TOOL_MANAGE_ROLES)
   const canNonField = !hasRole(user?.role, FIELD_ONLY_ROLES)
 
   const [notifications, setNotifications] = useState<Notification[]>([])
@@ -30,7 +30,7 @@ function DashboardHome() {
 
   const [stats, setStats] = useState<QuickStats>({
     activeWorkOrders: 0,
-    openMaintenanceRequests: null,
+    pendingToolRequests: null,
     activeProjects: null,
     pendingRequisitions: null,
   })
@@ -47,16 +47,14 @@ function DashboardHome() {
   useEffect(() => {
     Promise.all([
       api.listWorkOrders(),
-      canOps ? api.listMaintenanceRequests() : Promise.resolve(null),
+      canSeeToolRequests ? api.listToolRequests({ status: 'PENDING' }) : Promise.resolve(null),
       canNonField ? api.listProjects({ status: 'IN_PROGRESS' }) : Promise.resolve(null),
       canNonField ? api.listRequisitions({ status: 'SUBMITTED' }) : Promise.resolve(null),
     ])
-      .then(([woRes, mrRes, projRes, reqRes]) => {
+      .then(([woRes, toolRes, projRes, reqRes]) => {
         setStats({
           activeWorkOrders: woRes.workOrders.filter((w) => ACTIVE_WORK_ORDER_STATUSES.has(w.status)).length,
-          openMaintenanceRequests: mrRes
-            ? mrRes.requests.filter((r) => OPEN_MAINTENANCE_REQUEST_STATUSES.has(r.status)).length
-            : null,
+          pendingToolRequests: toolRes ? toolRes.requests.length : null,
           activeProjects: projRes ? projRes.projects.length : null,
           pendingRequisitions: reqRes ? reqRes.requisitions.length : null,
         })
@@ -64,7 +62,7 @@ function DashboardHome() {
       .catch(() => {})
       .finally(() => setStatsLoading(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canOps, canNonField])
+  }, [canSeeToolRequests, canNonField])
 
   function handleNotificationClick(notification: Notification) {
     if (notification.readAt) return
@@ -159,10 +157,10 @@ function DashboardHome() {
           value={statsLoading ? '—' : stats.activeWorkOrders}
           icon={CalendarClock}
         />
-        {canOps && (
+        {canSeeToolRequests && (
           <StatCard
-            label={t.overview.openMaintenanceRequests}
-            value={statsLoading ? '—' : (stats.openMaintenanceRequests ?? 0)}
+            label={t.overview.pendingToolRequests}
+            value={statsLoading ? '—' : (stats.pendingToolRequests ?? 0)}
             icon={Wrench}
           />
         )}
