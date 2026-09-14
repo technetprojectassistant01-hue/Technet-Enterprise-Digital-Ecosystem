@@ -31,6 +31,7 @@ export const fr: Dict = {
   nav: {
     Overview: "Vue d'ensemble",
     'My Leave': 'Mes congés',
+    'Leave Approvals': 'Validation des congés',
     'Technet ERP': 'Technet ERP',
     Inventory: 'Inventaire',
     Finance: 'Finance',
@@ -266,6 +267,13 @@ export const fr: Dict = {
     denied:
       "L'accès à la localisation est bloqué. Autorisez la localisation pour ce site dans les réglages de votre téléphone ou navigateur, puis réessayez.",
     unavailable: "Impossible de déterminer votre position. Sortez ou approchez-vous d'une fenêtre, puis réessayez.",
+  },
+
+  leaveApprovals: {
+    title: 'Validation des congés',
+    subtitle: "Approuvez ou refusez les demandes de congé, et consultez toutes les demandes de l'entreprise.",
+    pending: 'En attente de validation',
+    all: 'Tous les congés',
   },
 
   myLeave: {
