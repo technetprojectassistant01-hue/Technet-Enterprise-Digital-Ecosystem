@@ -9,8 +9,9 @@ import { formatToolNumber, formatToolRequestNumber, parseToolIds } from "../lib/
 
 /**
  * Tool requests: a technician asks for tools in their own words, an Admin/Storekeeper issues
- * specific registered tools against it (or rejects it), and the requester can withdraw it while
- * it's still pending. Anyone with a linked employee record can request - not tied to a role.
+ * specific registered tools against it (or rejects it). The requester can edit their request while
+ * it's pending and delete it as long as no tools were issued against it. Anyone with a linked
+ * employee record can request - not tied to a role.
  */
 const router = Router();
 
@@ -80,28 +81,32 @@ router.get("/", async (req, res) => {
   res.json({ requests: requests.map(serializeRequest) });
 });
 
-router.post("/", async (req, res) => {
-  const employee = await linkedEmployee(req, res);
-  if (!employee) return;
-
-  const { items, typeOrBrand, purpose, neededBy } = req.body ?? {};
+/** Validates the fields a requester fills in. Returns the data to save, or an error message. */
+function parseRequestFields(body: Record<string, unknown>) {
+  const { items, typeOrBrand, purpose, neededBy } = body;
   if (typeof items !== "string" || !items.trim()) {
-    return res.status(400).json({ error: "Say which tools or equipment you need" });
+    return { error: "Say which tools or equipment you need" } as const;
   }
   let neededByDate: Date | null = null;
   if (neededBy !== undefined && neededBy !== null && neededBy !== "") {
     neededByDate = parseDateOnly(neededBy);
-    if (!neededByDate) return res.status(400).json({ error: "Invalid needed-by date" });
+    if (!neededByDate) return { error: "Invalid needed-by date" } as const;
   }
+  const text = (value: unknown) => (typeof value === "string" && value.trim() ? value.trim() : null);
+  return {
+    data: { items: items.trim(), typeOrBrand: text(typeOrBrand), purpose: text(purpose), neededBy: neededByDate },
+  } as const;
+}
+
+router.post("/", async (req, res) => {
+  const employee = await linkedEmployee(req, res);
+  if (!employee) return;
+
+  const parsed = parseRequestFields(req.body ?? {});
+  if ("error" in parsed) return res.status(400).json({ error: parsed.error });
 
   const request = await prisma.toolRequest.create({
-    data: {
-      employeeId: employee.id,
-      items: items.trim(),
-      typeOrBrand: typeof typeOrBrand === "string" && typeOrBrand.trim() ? typeOrBrand.trim() : null,
-      purpose: typeof purpose === "string" && purpose.trim() ? purpose.trim() : null,
-      neededBy: neededByDate,
-    },
+    data: { ...parsed.data, employeeId: employee.id },
     include: requestInclude,
   });
 
@@ -114,7 +119,8 @@ router.post("/", async (req, res) => {
   res.status(201).json({ request: serializeRequest(request) });
 });
 
-router.post("/:id/cancel", async (req, res) => {
+/** The requester edits their own request - only while it's still pending, before the store acts on it. */
+router.put("/:id", async (req, res) => {
   const employee = await linkedEmployee(req, res);
   if (!employee) return;
 
@@ -123,16 +129,56 @@ router.post("/:id/cancel", async (req, res) => {
   if (!existing || existing.employeeId !== employee.id) {
     return res.status(404).json({ error: "Tool request not found" });
   }
-  if (existing.status !== "PENDING") {
-    return res.status(409).json({ error: `Request is already ${existing.status.toLowerCase()}` });
+
+  const parsed = parseRequestFields(req.body ?? {});
+  if ("error" in parsed) return res.status(400).json({ error: parsed.error });
+
+  // Conditional, so an edit can't slip in after the store has just issued or rejected it.
+  const updated = await prisma.toolRequest.updateMany({
+    where: { id, employeeId: employee.id, status: "PENDING" },
+    data: parsed.data,
+  });
+  if (updated.count === 0) {
+    const current = await prisma.toolRequest.findUnique({ where: { id }, select: { status: true } });
+    return res
+      .status(409)
+      .json({ error: `Request is already ${(current?.status ?? existing.status).toLowerCase()} and can no longer be edited` });
   }
 
-  const request = await prisma.toolRequest.update({
-    where: { id },
-    data: { status: "CANCELLED" },
-    include: requestInclude,
-  });
+  const request = await prisma.toolRequest.findUniqueOrThrow({ where: { id }, include: requestInclude });
+  await notifyRoles(
+    TOOL_MANAGE_ROLES,
+    "TOOL_REQUEST_SUBMITTED",
+    `${employee.firstName} ${employee.lastName} updated their tool request ${formatToolRequestNumber(request.sequenceNumber)}`,
+    { message: request.items, link: "/dashboard/maintenance/requests" },
+  );
   res.json({ request: serializeRequest(request) });
+});
+
+/**
+ * The requester deletes their own request. Allowed whenever no tools were issued against it
+ * (pending, rejected or withdrawn); an issued request is the record of who took which tools, so it
+ * stays.
+ */
+router.delete("/:id", async (req, res) => {
+  const employee = await linkedEmployee(req, res);
+  if (!employee) return;
+
+  const id = req.params.id as string;
+  const existing = await prisma.toolRequest.findUnique({ where: { id } });
+  if (!existing || existing.employeeId !== employee.id) {
+    return res.status(404).json({ error: "Tool request not found" });
+  }
+
+  const deleted = await prisma.toolRequest.deleteMany({
+    where: { id, employeeId: employee.id, status: { not: "ISSUED" }, checkouts: { none: {} } },
+  });
+  if (deleted.count === 0) {
+    return res
+      .status(409)
+      .json({ error: "Tools have been issued against this request, so it is kept as a record and can't be deleted" });
+  }
+  res.status(204).end();
 });
 
 /** Hands out the chosen tools: one checkout per tool, each tool marked checked out, request marked issued. */
