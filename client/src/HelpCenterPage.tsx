@@ -106,7 +106,7 @@ export function HelpCenterContent() {
       <div className="mt-6 space-y-6">
         {sections.map((section) => (
           <section key={section.title}>
-            <h2 className="mb-1 text-[11px] font-semibold tracking-widest text-ink-500">
+            <h2 className="mb-1 text-[11px] font-semibold tracking-widest text-ink-400">
               {section.title.toUpperCase()}
             </h2>
             <div className="rounded-xl border border-ink-800 bg-ink-900 px-4 shadow-sm shadow-black/20 sm:px-5">
