@@ -209,6 +209,22 @@ export const en = {
   },
 
   attendance: {
+    locationAskTitle: 'Allow location?',
+    locationAskBody: 'Technet Digital records your location when you check in and check out, so your manager can confirm site visits. You need to allow it to check in.',
+    locationNeededTitle: 'Allow location to check in',
+    locationNeededBody: "You chose not to share your location, so you can't check in or out yet. Allow location to continue.",
+    locationBlockedTitle: 'Location is blocked',
+    locationBlockedBody: 'Your phone or browser is blocking location for Technet Digital. To check in, turn it back on:',
+    locationBlockedSteps: [
+      'Open your phone Settings (or the browser site settings).',
+      'Find Location for this app or website and choose Allow.',
+      'Come back here and tap Try again.',
+    ],
+    allow: 'Allow',
+    dontAllow: "Don't allow",
+    allowLocation: 'Allow location',
+    notNow: 'Not now',
+    tryAgain: 'Try again',
     title: 'My Attendance',
     currentStatus: 'CURRENT STATUS',
     checkedIn: 'CHECKED IN',
@@ -330,6 +346,9 @@ export const en = {
   },
 
   myLeave: {
+    remarks: 'REMARKS',
+    remarksPlaceholder: 'e.g. Medical certificate obtained',
+    remarksLine: (text: string) => `Remarks: ${text}`,
     title: 'My Leave',
     subtitle: 'Request time off and track your own leave balance and history.',
     requestLeave: 'Request Leave',

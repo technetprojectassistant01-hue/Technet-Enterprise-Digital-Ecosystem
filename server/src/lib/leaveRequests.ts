@@ -55,6 +55,7 @@ export interface CreateLeaveRequestParams {
   endDateRaw: unknown;
   halfDayRaw: unknown;
   reasonRaw: unknown;
+  remarksRaw?: unknown;
   daysRaw: unknown;
   createdById: string | null;
 }
@@ -68,7 +69,7 @@ async function validateLeaveRequestInput(
   params: Omit<CreateLeaveRequestParams, "createdById">,
   excludeRequestId?: string,
 ) {
-  const { employeeId, leaveTypeId, startDateRaw, endDateRaw, halfDayRaw, reasonRaw, daysRaw } = params;
+  const { employeeId, leaveTypeId, startDateRaw, endDateRaw, halfDayRaw, reasonRaw, remarksRaw, daysRaw } = params;
 
   if (typeof leaveTypeId !== "string" || !leaveTypeId) {
     throw new LeaveValidationError("Leave type is required");
@@ -118,8 +119,9 @@ async function validateLeaveRequestInput(
   }
 
   const reason = typeof reasonRaw === "string" && reasonRaw.trim() ? reasonRaw.trim() : null;
+  const remarks = typeof remarksRaw === "string" && remarksRaw.trim() ? remarksRaw.trim() : null;
 
-  return { leaveTypeId, startDate, endDate, days: decimal(days), halfDay: isHalfDay, reason };
+  return { leaveTypeId, startDate, endDate, days: decimal(days), halfDay: isHalfDay, reason, remarks };
 }
 
 /**

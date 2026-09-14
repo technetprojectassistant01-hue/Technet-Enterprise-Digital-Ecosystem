@@ -565,6 +565,8 @@ model LeaveRequest {
   days        Decimal            @db.Decimal(5, 2)
   halfDay     Boolean            @default(false)
   reason      String?
+  /// Extra notes from the employee, e.g. "Medical certificate obtained".
+  remarks     String?
   status      LeaveRequestStatus @default(PENDING)
 
   reviewedById String?

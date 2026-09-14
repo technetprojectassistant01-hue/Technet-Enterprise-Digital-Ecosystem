@@ -207,6 +207,22 @@ export const fr: Dict = {
   },
 
   attendance: {
+    locationAskTitle: 'Autoriser la localisation ?',
+    locationAskBody: "Technet Digital enregistre votre position quand vous pointez votre arrivée et votre départ, pour que votre responsable puisse confirmer les visites sur site. Vous devez l'autoriser pour pointer.",
+    locationNeededTitle: 'Autorisez la localisation pour pointer',
+    locationNeededBody: "Vous avez choisi de ne pas partager votre position, vous ne pouvez donc pas encore pointer. Autorisez la localisation pour continuer.",
+    locationBlockedTitle: 'La localisation est bloquée',
+    locationBlockedBody: 'Votre téléphone ou navigateur bloque la localisation pour Technet Digital. Pour pointer, réactivez-la :',
+    locationBlockedSteps: [
+      'Ouvrez les Réglages du téléphone (ou les paramètres du site dans le navigateur).',
+      "Trouvez Localisation pour cette application ou ce site et choisissez Autoriser.",
+      'Revenez ici et touchez Réessayer.',
+    ],
+    allow: 'Autoriser',
+    dontAllow: 'Ne pas autoriser',
+    allowLocation: 'Autoriser la localisation',
+    notNow: 'Plus tard',
+    tryAgain: 'Réessayer',
     title: 'Ma présence',
     currentStatus: 'STATUT ACTUEL',
     checkedIn: 'PRÉSENT',
@@ -328,6 +344,9 @@ export const fr: Dict = {
   },
 
   myLeave: {
+    remarks: 'REMARQUES',
+    remarksPlaceholder: 'ex. Certificat médical obtenu',
+    remarksLine: (text: string) => `Remarques : ${text}`,
     title: 'Mes congés',
     subtitle: 'Demandez un congé et suivez votre solde et votre historique.',
     requestLeave: 'Demander un congé',

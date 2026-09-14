@@ -78,7 +78,7 @@ router.post("/requests", async (req, res) => {
   const employee = await requireLinkedEmployee(req, res);
   if (!employee) return;
 
-  const { leaveTypeId, reason, halfDay, startDate, endDate, days } = req.body ?? {};
+  const { leaveTypeId, reason, remarks, halfDay, startDate, endDate, days } = req.body ?? {};
 
   try {
     const request = await createLeaveRequestRecord({
@@ -88,6 +88,7 @@ router.post("/requests", async (req, res) => {
       endDateRaw: endDate,
       halfDayRaw: halfDay,
       reasonRaw: reason,
+      remarksRaw: remarks,
       daysRaw: days,
       createdById: req.user!.sub,
     });
@@ -109,7 +110,7 @@ router.put("/requests/:id", async (req, res) => {
   const employee = await requireLinkedEmployee(req, res);
   if (!employee) return;
 
-  const { leaveTypeId, reason, halfDay, startDate, endDate, days } = req.body ?? {};
+  const { leaveTypeId, reason, remarks, halfDay, startDate, endDate, days } = req.body ?? {};
 
   try {
     const result = await updateLeaveRequestRecord(req.params.id as string, {
@@ -119,6 +120,7 @@ router.put("/requests/:id", async (req, res) => {
       endDateRaw: endDate,
       halfDayRaw: halfDay,
       reasonRaw: reason,
+      remarksRaw: remarks,
       daysRaw: days,
     });
     if (result.error === "not_found") return res.status(404).json({ error: "Leave request not found" });

@@ -32,6 +32,7 @@ interface FormState {
   days: string
   halfDay: boolean
   reason: string
+  remarks: string
 }
 
 const EMPTY_FORM: FormState = {
@@ -42,6 +43,7 @@ const EMPTY_FORM: FormState = {
   days: '',
   halfDay: false,
   reason: '',
+  remarks: '',
 }
 
 interface LeaveRequestsTabProps {
@@ -126,6 +128,7 @@ function LeaveRequestsTab({ leaveTypes, initialStatus = '', lockStatus = false }
       days: request.days,
       halfDay: request.halfDay,
       reason: request.reason || '',
+      remarks: request.remarks || '',
     })
     setFormError(null)
     setEditing(request)
@@ -156,6 +159,7 @@ function LeaveRequestsTab({ leaveTypes, initialStatus = '', lockStatus = false }
         days: form.days || undefined,
         halfDay: form.halfDay,
         reason: form.reason || undefined,
+        remarks: form.remarks || undefined,
       }
       if (editing) {
         await api.updateLeaveRequest(editing.id, input)
@@ -350,6 +354,12 @@ function LeaveRequestsTab({ leaveTypes, initialStatus = '', lockStatus = false }
                       {!r.leaveType.paid && (
                         <span className="ml-1 text-xs text-ink-400">{t.hr.requests.unpaid}</span>
                       )}
+                      {r.reason && <div className="mt-0.5 max-w-xs truncate text-xs text-ink-400" title={r.reason}>{r.reason}</div>}
+                      {r.remarks && (
+                        <div className="mt-0.5 max-w-xs truncate text-xs text-ink-300" title={r.remarks}>
+                          {t.myLeave.remarksLine(r.remarks)}
+                        </div>
+                      )}
                     </td>
                     <td className="px-3 py-3 text-ink-300">
                       {formatRange(r, locale)}
@@ -525,6 +535,17 @@ function LeaveRequestsTab({ leaveTypes, initialStatus = '', lockStatus = false }
                 value={form.reason}
                 onChange={(e) => setForm({ ...form, reason: e.target.value })}
                 rows={2}
+                className={`mt-2 ${inputClass}`}
+              />
+            </div>
+
+            <div>
+              <label className={labelClass}>{t.myLeave.remarks}</label>
+              <textarea
+                value={form.remarks}
+                onChange={(e) => setForm({ ...form, remarks: e.target.value })}
+                rows={2}
+                placeholder={t.myLeave.remarksPlaceholder}
                 className={`mt-2 ${inputClass}`}
               />
             </div>

@@ -24,9 +24,10 @@ interface FormState {
   halfDay: boolean
   days: string
   reason: string
+  remarks: string
 }
 
-const EMPTY_FORM: FormState = { leaveTypeId: '', startDate: '', endDate: '', halfDay: false, days: '', reason: '' }
+const EMPTY_FORM: FormState = { leaveTypeId: '', startDate: '', endDate: '', halfDay: false, days: '', reason: '', remarks: '' }
 
 function MyLeavePage() {
   const toast = useToast()
@@ -96,6 +97,7 @@ function MyLeavePage() {
       halfDay: r.halfDay,
       days: String(r.days),
       reason: r.reason ?? '',
+      remarks: r.remarks ?? '',
     })
     setFormError(null)
     setShowForm(true)
@@ -121,6 +123,7 @@ function MyLeavePage() {
       halfDay: form.halfDay,
       days: form.days || undefined,
       reason: form.reason || undefined,
+      remarks: form.remarks || undefined,
     }
 
     setSubmitting(true)
@@ -252,8 +255,15 @@ function MyLeavePage() {
                     </td>
                     <td className="px-3 py-3 text-ink-300">{r.leaveType.name}</td>
                     <td className="px-3 py-3 text-ink-300">{r.days}</td>
-                    <td className="px-3 py-3 max-w-xs truncate text-ink-300" title={r.reason || undefined}>
-                      {r.reason || '—'}
+                    <td className="px-3 py-3 max-w-xs text-ink-300">
+                      <div className="truncate" title={r.reason || undefined}>
+                        {r.reason || '—'}
+                      </div>
+                      {r.remarks && (
+                        <div className="mt-0.5 truncate text-xs text-ink-400" title={r.remarks}>
+                          {t.myLeave.remarksLine(r.remarks)}
+                        </div>
+                      )}
                     </td>
                     <td className="px-3 py-3">
                       <Badge tone={leaveRequestStatusTone[r.status]}>{t.myLeave.status[r.status]}</Badge>
@@ -376,6 +386,17 @@ function MyLeavePage() {
                 value={form.reason}
                 onChange={(e) => setForm({ ...form, reason: e.target.value })}
                 rows={2}
+                className={`mt-2 ${inputClass}`}
+              />
+            </div>
+
+            <div>
+              <label className={labelClass}>{t.myLeave.remarks}</label>
+              <textarea
+                value={form.remarks}
+                onChange={(e) => setForm({ ...form, remarks: e.target.value })}
+                rows={2}
+                placeholder={t.myLeave.remarksPlaceholder}
                 className={`mt-2 ${inputClass}`}
               />
             </div>
