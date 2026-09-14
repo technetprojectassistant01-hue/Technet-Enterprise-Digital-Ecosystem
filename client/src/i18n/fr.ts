@@ -50,7 +50,7 @@ export const fr: Dict = {
     Certifications: 'Certifications',
     Projects: 'Projets',
     Documents: 'Documents',
-    'Technet Maintenance': 'Technet Maintenance',
+    'Technet Store': 'Technet Store',
     'Tools & Equipment': 'Outils & équipements',
     'Tool Requests': "Demandes d'outils",
     'Technet Connect': 'Technet Connect',
@@ -1316,14 +1316,14 @@ export const fr: Dict = {
           {
             q: "Comment obtenir les outils dont j'ai besoin ?",
             a: [
-              "Ouvrez Technet Maintenance → « Demandes d'outils » et appuyez sur « Demander des outils ». Indiquez ce qu'il vous faut et pour quand. Le magasin est prévenu, et vous recevez une notification quand vos outils sont prêts.",
-              "Tant qu'une demande est en attente, vous pouvez la retirer depuis la même page.",
+              "Ouvrez Technet Store → « Demandes d'outils » et appuyez sur « Demander des outils ». Indiquez ce qu'il vous faut et pour quand. Le magasin est prévenu, et vous recevez une notification quand vos outils sont prêts.",
+              "Tant qu'une demande est en attente, vous pouvez la changer avec « Modifier ». Vous pouvez « Supprimer » une demande tant qu'aucun outil n'a été remis pour elle.",
             ],
           },
           {
             q: 'Comment voir les outils que j’ai ?',
             a: [
-              "Ouvrez Technet Maintenance → « Outils & équipements ». La liste « Mes outils » en haut montre chaque outil qui vous a été remis et sa date de retour prévue. Rendez les outils au magasin — c'est lui qui enregistre le retour.",
+              "Ouvrez Technet Store → « Outils & équipements ». La liste « Mes outils » en haut montre chaque outil qui vous a été remis et sa date de retour prévue. Rendez les outils au magasin — c'est lui qui enregistre le retour.",
             ],
           },
         ],
