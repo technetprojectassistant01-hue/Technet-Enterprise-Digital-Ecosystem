@@ -9,9 +9,9 @@ import {
 } from "./assets/fonts";
 
 const LOGO_BUFFER = Buffer.from(LOGO_LOCKUP_BASE64, "base64");
-/** Real aspect ratio of the cropped lockup PNG (720x406) - height = width * this. */
-const LOGO_ASPECT = 406 / 720;
-const LOGO_WIDTH = 170;
+/** Real aspect ratio of the logo PNG (645x645) - height = width * this. */
+const LOGO_ASPECT = 645 / 645;
+const LOGO_WIDTH = 100;
 const LOGO_HEIGHT = LOGO_WIDTH * LOGO_ASPECT;
 
 // Decoded once at module load, same as LOGO_BUFFER above - registerBrandFonts() used to re-decode
@@ -47,10 +47,7 @@ export function drawLetterhead(doc: PDFKit.PDFDocument, _title?: string) {
   const right = doc.page.width - doc.page.margins.right;
   const top = doc.y;
 
-  // Single combined image (icon + "TECHNET ENGINEERING" wordmark + tagline), cropped from the
-  // company's real issued-quotation letterhead rather than redrawn as separate text - the icon
-  // and "T" of the wordmark are one integrated device in the real logo, not reproducible with
-  // PDFKit's built-in fonts alone.
+  // The current logo from the company website, as one image (mark + wordmark) - see assets/logo.ts.
   doc.image(LOGO_BUFFER, left, top, { width: LOGO_WIDTH });
 
   const addrX = left + LOGO_WIDTH + 20;
