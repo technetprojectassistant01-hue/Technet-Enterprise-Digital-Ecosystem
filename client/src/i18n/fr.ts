@@ -139,7 +139,6 @@ export const fr: Dict = {
     systemStable: 'SYSTÈME STABLE :',
     mainMenu: 'MENU PRINCIPAL',
     system: 'SYSTÈME',
-    newProject: 'Nouveau projet',
     helpCenter: "Centre d'aide",
     logOut: 'Se déconnecter',
     all: 'Tout',
