@@ -823,6 +823,7 @@ export interface LeaveRequest {
   days: string
   halfDay: boolean
   reason: string | null
+  remarks: string | null
   status: LeaveRequestStatus
   reviewedAt: string | null
   reviewNote: string | null
@@ -855,6 +856,7 @@ export interface LeaveRequestInput {
   days?: string
   halfDay?: boolean
   reason?: string
+  remarks?: string
 }
 
 export function listLeaveTypes(includeInactive = false) {
@@ -1023,6 +1025,7 @@ export interface MyLeaveRequestInput {
   days?: string
   halfDay?: boolean
   reason?: string
+  remarks?: string
 }
 
 export function getMyLeaveTypes() {

@@ -211,6 +211,22 @@ export const mfe: Dict = {
   },
 
   attendance: {
+    locationAskTitle: 'Permet landrwa?',
+    locationAskBody: 'Technet Digital anrezistre kot ou ete kan ou pointe lariver ek depar, pou ou manazer kapav konfirm vizit lor sit. Ou bizin permet li pou pointe.',
+    locationNeededTitle: 'Permet landrwa pou pointe',
+    locationNeededBody: 'Ou finn swazir pa partaz ou landrwa, alor ou pa kapav pointe ankor. Permet landrwa pou kontinie.',
+    locationBlockedTitle: 'Landrwa blouke',
+    locationBlockedBody: 'Ou telefonn ouswa ou navigater pe blok landrwa pou Technet Digital. Pou pointe, reaktiv li:',
+    locationBlockedSteps: [
+      'Ouver Paramet ou telefonn (ouswa paramet sit la dan navigater).',
+      'Rod Landrwa pou sa aplikasion ouswa sit la e swazir Permet.',
+      'Retourn isi e tap Reseye.',
+    ],
+    allow: 'Permet',
+    dontAllow: 'Pa permet',
+    allowLocation: 'Permet landrwa',
+    notNow: 'Pa aster',
+    tryAgain: 'Reseye',
     title: 'Mo Prezans',
     currentStatus: 'STATI AKTIEL',
     checkedIn: 'PREZAN',
@@ -331,6 +347,9 @@ export const mfe: Dict = {
   },
 
   myLeave: {
+    remarks: 'REMARK',
+    remarksPlaceholder: 'egz. Sertifika medikal finn gagne',
+    remarksLine: (text: string) => `Remark: ${text}`,
     title: 'Mo Konze',
     subtitle: 'Demann konze e swiv ou balans ek ou listwar konze.',
     requestLeave: 'Demann konze',

@@ -297,7 +297,7 @@ router.get("/requests/:id", async (req, res) => {
 });
 
 router.post("/requests", async (req, res) => {
-  const { employeeId, leaveTypeId, reason, halfDay, startDate, endDate, days } = req.body ?? {};
+  const { employeeId, leaveTypeId, reason, remarks, halfDay, startDate, endDate, days } = req.body ?? {};
 
   if (typeof employeeId !== "string" || !employeeId) {
     return res.status(400).json({ error: "Employee is required" });
@@ -311,6 +311,7 @@ router.post("/requests", async (req, res) => {
       endDateRaw: endDate,
       halfDayRaw: halfDay,
       reasonRaw: reason,
+      remarksRaw: remarks,
       daysRaw: days,
       createdById: req.user?.sub ?? null,
     });
@@ -347,6 +348,7 @@ router.patch("/requests/:id", async (req, res) => {
 
   if (req.body?.halfDay !== undefined) data.halfDay = req.body.halfDay === true;
   if (req.body?.reason !== undefined) data.reason = optionalString(req.body.reason);
+  if (req.body?.remarks !== undefined) data.remarks = optionalString(req.body.remarks);
   if (typeof req.body?.leaveTypeId === "string" && req.body.leaveTypeId) {
     data.leaveType = { connect: { id: req.body.leaveTypeId } };
   }
