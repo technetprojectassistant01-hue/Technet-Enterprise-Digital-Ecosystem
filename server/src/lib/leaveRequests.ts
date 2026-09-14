@@ -60,13 +60,15 @@ export interface CreateLeaveRequestParams {
 }
 
 /**
- * Validates + creates a LeaveRequest, shared between the HR-entry route (leave.ts) and the
- * self-service route (myLeave.ts). Throws LeaveValidationError for bad input and LeaveClashError
- * when the range overlaps an existing PENDING/APPROVED request for the same employee - callers
- * map these to their own response shape.
+ * Validates leave request input and checks it doesn't overlap another PENDING/APPROVED request
+ * for the same employee (ignoring `excludeRequestId`, so an edit doesn't clash with itself).
+ * Throws LeaveValidationError / LeaveClashError.
  */
-export async function createLeaveRequestRecord(params: CreateLeaveRequestParams) {
-  const { employeeId, leaveTypeId, startDateRaw, endDateRaw, halfDayRaw, reasonRaw, daysRaw, createdById } = params;
+async function validateLeaveRequestInput(
+  params: Omit<CreateLeaveRequestParams, "createdById">,
+  excludeRequestId?: string,
+) {
+  const { employeeId, leaveTypeId, startDateRaw, endDateRaw, halfDayRaw, reasonRaw, daysRaw } = params;
 
   if (typeof leaveTypeId !== "string" || !leaveTypeId) {
     throw new LeaveValidationError("Leave type is required");
@@ -107,6 +109,7 @@ export async function createLeaveRequestRecord(params: CreateLeaveRequestParams)
       status: { in: ["PENDING", "APPROVED"] },
       startDate: { lte: endDate },
       endDate: { gte: startDate },
+      ...(excludeRequestId ? { id: { not: excludeRequestId } } : {}),
     },
     include: { leaveType: { select: { name: true } } },
   });
@@ -116,19 +119,39 @@ export async function createLeaveRequestRecord(params: CreateLeaveRequestParams)
 
   const reason = typeof reasonRaw === "string" && reasonRaw.trim() ? reasonRaw.trim() : null;
 
+  return { leaveTypeId, startDate, endDate, days: decimal(days), halfDay: isHalfDay, reason };
+}
+
+/**
+ * Validates + creates a LeaveRequest, shared between the HR-entry route (leave.ts) and the
+ * self-service route (myLeave.ts). Throws LeaveValidationError for bad input and LeaveClashError
+ * when the range overlaps an existing PENDING/APPROVED request for the same employee - callers
+ * map these to their own response shape.
+ */
+export async function createLeaveRequestRecord(params: CreateLeaveRequestParams) {
+  const data = await validateLeaveRequestInput(params);
   return prisma.leaveRequest.create({
-    data: {
-      employeeId,
-      leaveTypeId,
-      startDate,
-      endDate,
-      days: decimal(days),
-      halfDay: isHalfDay,
-      reason,
-      createdById,
-    },
+    data: { ...data, employeeId: params.employeeId, createdById: params.createdById },
     include: leaveRequestInclude,
   });
+}
+
+/**
+ * Edits a request that's still PENDING - once HR has decided, it can only be withdrawn. Same
+ * validation as creating one. Returns not_found if the request isn't this employee's.
+ */
+export async function updateLeaveRequestRecord(id: string, params: Omit<CreateLeaveRequestParams, "createdById">) {
+  const existing = await prisma.leaveRequest.findUnique({ where: { id } });
+  if (!existing || existing.employeeId !== params.employeeId) {
+    return { error: "not_found" as const };
+  }
+  if (existing.status !== "PENDING") {
+    return { error: "not_pending" as const, status: existing.status };
+  }
+
+  const data = await validateLeaveRequestInput(params, id);
+  const request = await prisma.leaveRequest.update({ where: { id }, data, include: leaveRequestInclude });
+  return { request };
 }
 
 export interface CancelLeaveRequestOptions {
