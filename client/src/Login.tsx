@@ -1,12 +1,16 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff, Lock, Mail } from 'lucide-react'
 import { useAuth } from './context/AuthContext'
 import Logo from './components/Logo'
 import { InstallAppPrompt } from './dashboard/InstallAppDialog'
 import { Modal } from './dashboard/ui'
 import LanguageSwitcher from './dashboard/LanguageSwitcher'
 import { useT } from './i18n'
+
+/** Boxed field with room for the leading icon; the right padding is set per field. */
+const inputBoxClass =
+  'h-12 w-full rounded-lg border border-ink-600 bg-ink-950/70 pl-11 text-sm text-ink-100 placeholder-ink-500 shadow-inner shadow-black/20 outline-none transition hover:border-ink-500 focus:border-cyan-accent focus:bg-ink-950 focus:ring-4 focus:ring-cyan-accent/15'
 
 function Login() {
   const { login } = useAuth()
@@ -63,7 +67,6 @@ function Login() {
           <Logo size="lg" stacked className="mb-6" />
 
           <h1 className="text-center text-2xl font-semibold text-ink-100">{t.auth.welcomeBack}</h1>
-          <p className="mt-1 text-center text-sm text-ink-300">{t.auth.loginSubtitle}</p>
 
           <div className="mt-8">
             <label
@@ -72,15 +75,22 @@ function Login() {
             >
               {t.auth.userIdentifier}
             </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder={t.auth.emailPlaceholder}
-              required
-              className="mt-2 w-full border-b border-ink-600 bg-transparent pb-2 text-ink-100 placeholder-ink-500 outline-none focus:border-cyan-accent"
-            />
+            <div className="group relative mt-2">
+              <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400 transition group-focus-within:text-cyan-accent" />
+              <input
+                id="email"
+                type="email"
+                inputMode="email"
+                autoComplete="username"
+                autoCapitalize="none"
+                spellCheck={false}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder={t.auth.emailPlaceholder}
+                required
+                className={`${inputBoxClass} pr-3.5`}
+              />
+            </div>
           </div>
 
           <div className="mt-6">
@@ -90,20 +100,22 @@ function Login() {
             >
               {t.auth.accessToken}
             </label>
-            <div className="mt-2 flex items-center border-b border-ink-600 focus-within:border-cyan-accent">
+            <div className="group relative mt-2">
+              <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400 transition group-focus-within:text-cyan-accent" />
               <input
                 id="password"
                 type={showPassword ? 'text' : 'password'}
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 required
-                className="w-full bg-transparent pb-2 text-ink-100 placeholder-ink-500 outline-none"
+                className={`${inputBoxClass} pr-12`}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
-                className="pb-2 text-ink-400 hover:text-ink-100"
+                className="absolute right-1.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-md text-ink-400 transition hover:bg-ink-800 hover:text-ink-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-accent"
                 aria-label={showPassword ? t.auth.hidePassword : t.auth.showPassword}
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
