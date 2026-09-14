@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
-import { ChevronLeft, ChevronRight, History } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Download, History } from 'lucide-react'
 import * as api from '../lib/api'
 import type { MyAttendanceVisit } from '../lib/api'
-import { Panel, EmptyState, TableSkeleton } from './ui'
+import { Panel, Badge, EmptyState, TableSkeleton } from './ui'
 import { ATTENDANCE_CHANGED_EVENT, clockOf, totalTransportCost } from '../lib/siteAttendance'
+import { computeDayFlags } from '../lib/workSchedule'
+import { downloadCsv } from '../lib/csv'
 import { useT } from '../i18n'
 
 function monthKey(date: Date): string {
@@ -18,8 +20,9 @@ function shownTime(declared: string | null, recordedIso: string | null): string 
 
 /**
  * "My Attendance" at the bottom of the landing page: every check-in/check-out the signed-in user
- * made, a month at a time, with a small summary. Shows what they entered and how long they were
- * in — never coordinates or location flags (CLAUDE.md §7a).
+ * made, a month at a time, with a small summary, Late / Overtime badges against the standard work
+ * hours (lib/workSchedule.ts) and a CSV export. Shows what they entered and how long they were in —
+ * never coordinates or location flags (CLAUDE.md §7a).
  */
 function MyAttendanceHistory() {
   const t = useT()
@@ -65,13 +68,16 @@ function MyAttendanceHistory() {
     setCursor((c) => new Date(c.getFullYear(), c.getMonth() + delta, 1))
   }
 
-  function duration(visit: MyAttendanceVisit): string {
-    if (!visit.checkOutAt) return '—'
-    const minutes = Math.max(0, Math.round((new Date(visit.checkOutAt).getTime() - new Date(visit.checkInAt).getTime()) / 60000))
-    const h = Math.floor(minutes / 60)
-    const m = minutes % 60
-    return h > 0 ? t.shared.hoursMinutes(h, m) : t.shared.minutesOnly(m)
+  /** "1h 20m" / "45m" */
+  function span(minutes: number): string {
+    const rounded = Math.max(0, Math.round(minutes))
+    const h = Math.floor(rounded / 60)
+    return h > 0 ? t.shared.hoursMinutes(h, rounded % 60) : t.shared.minutesOnly(rounded)
   }
+
+  const { late, overtime } = computeDayFlags(visits)
+  const lateDays = late.size
+  const overtimeMinutes = [...overtime.values()].reduce((a, b) => a + b, 0)
 
   const days = new Set(visits.map((v) => new Date(v.checkInAt).toDateString())).size
   const totalMinutes = visits.reduce(
@@ -84,8 +90,40 @@ function MyAttendanceHistory() {
   const monthLabel = `${t.shared.months[cursor.getMonth()]} ${cursor.getFullYear()}`
   const dateFormat = new Intl.DateTimeFormat(t.shared.dateLocale, { weekday: 'short', day: 'numeric', month: 'short' })
 
+  // CSV (opens in Excel). Kept in English like the app's other exports — it's a data file.
+  function exportCsv() {
+    const csvDate = (iso: string) => {
+      const d = new Date(iso)
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    }
+    downloadCsv(
+      `my-attendance-${monthKey(cursor)}`,
+      [
+        { header: 'Date', accessor: (v: MyAttendanceVisit) => csvDate(v.checkInAt) },
+        { header: 'Time In', accessor: (v: MyAttendanceVisit) => shownTime(v.checkInDeclaredTime, v.checkInAt) },
+        { header: 'Time Out', accessor: (v: MyAttendanceVisit) => (v.checkOutAt ? shownTime(v.checkOutDeclaredTime, v.checkOutAt) : '') },
+        { header: 'Location', accessor: (v: MyAttendanceVisit) => v.checkInNote ?? '' },
+        { header: 'Check-out Location', accessor: (v: MyAttendanceVisit) => v.checkOutNote ?? '' },
+        { header: 'Transport (MUR)', accessor: (v: MyAttendanceVisit) => totalTransportCost(v).toFixed(2) },
+        { header: 'Late (minutes)', accessor: (v: MyAttendanceVisit) => late.get(v.id) ?? '' },
+        { header: 'Overtime (minutes)', accessor: (v: MyAttendanceVisit) => overtime.get(v.id) ?? '' },
+      ],
+      // Oldest first reads naturally in a spreadsheet.
+      [...visits].reverse(),
+    )
+  }
+
   const monthPicker = (
     <div className="flex items-center gap-1">
+      <button
+        type="button"
+        onClick={exportCsv}
+        disabled={loading || visits.length === 0}
+        className="mr-2 inline-flex items-center gap-1.5 rounded-md border border-ink-600 px-2.5 py-1.5 text-xs font-semibold text-ink-200 transition hover:border-cyan-accent hover:text-cyan-accent disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        <Download className="h-3.5 w-3.5" />
+        <span className="hidden sm:inline">{t.shared.exportCsv}</span>
+      </button>
       <button
         type="button"
         onClick={() => shiftMonth(-1)}
@@ -110,11 +148,12 @@ function MyAttendanceHistory() {
   return (
     <Panel title={t.myAttendance.title} icon={History} action={monthPicker}>
       {!loading && !error && visits.length > 0 && (
-        <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {[
             { label: t.myAttendance.statDays, value: String(days) },
-            { label: t.myAttendance.statCheckIns, value: String(visits.length) },
             { label: t.myAttendance.statHours, value: hoursTotal },
+            { label: t.myAttendance.statLate, value: String(lateDays) },
+            { label: t.myAttendance.statOvertime, value: span(overtimeMinutes) },
             { label: t.myAttendance.statTransport, value: totalTransport.toFixed(2) },
           ].map((s) => (
             <div key={s.label} className="rounded-lg border border-ink-800 bg-ink-950 px-3 py-2.5">
@@ -140,7 +179,6 @@ function MyAttendanceHistory() {
                 <th className="px-3 py-3 font-semibold">{t.myAttendance.colIn}</th>
                 <th className="px-3 py-3 font-semibold">{t.myAttendance.colOut}</th>
                 <th className="px-3 py-3 font-semibold">{t.myAttendance.colWhere}</th>
-                <th className="px-3 py-3 font-semibold">{t.myAttendance.colHours}</th>
                 <th className="px-3 py-3 font-semibold">{t.myAttendance.colTransport}</th>
               </tr>
             </thead>
@@ -148,13 +186,23 @@ function MyAttendanceHistory() {
               {visits.map((v) => (
                 <tr key={v.id} className="border-b border-ink-800 align-top last:border-0">
                   <td className="whitespace-nowrap px-3 py-3 text-ink-100">{dateFormat.format(new Date(v.checkInAt))}</td>
-                  <td className="whitespace-nowrap px-3 py-3 font-mono text-ink-100">
-                    {shownTime(v.checkInDeclaredTime, v.checkInAt)}
+                  <td className="whitespace-nowrap px-3 py-3">
+                    <span className="font-mono text-ink-100">{shownTime(v.checkInDeclaredTime, v.checkInAt)}</span>
+                    {late.has(v.id) && (
+                      <div className="mt-1">
+                        <Badge tone="warning">{t.myAttendance.lateBy(span(late.get(v.id)!))}</Badge>
+                      </div>
+                    )}
                   </td>
                   <td className="whitespace-nowrap px-3 py-3">
                     {v.checkOutAt ? (
                       <>
                         <span className="font-mono text-ink-100">{shownTime(v.checkOutDeclaredTime, v.checkOutAt)}</span>
+                        {overtime.has(v.id) && (
+                          <div className="mt-1">
+                            <Badge tone="accent">{t.myAttendance.overtimeBy(span(overtime.get(v.id)!))}</Badge>
+                          </div>
+                        )}
                         {v.checkOutByManager && (
                           <div className="text-xs text-ink-400">{t.myAttendance.closedByManager}</div>
                         )}
@@ -174,7 +222,6 @@ function MyAttendanceHistory() {
                       </div>
                     )}
                   </td>
-                  <td className="whitespace-nowrap px-3 py-3 text-ink-100">{duration(v)}</td>
                   <td className="whitespace-nowrap px-3 py-3 text-ink-100">{totalTransportCost(v).toFixed(2)}</td>
                 </tr>
               ))}
@@ -182,6 +229,8 @@ function MyAttendanceHistory() {
           </table>
         </div>
       )}
+
+      <p className="mt-3 text-xs text-ink-400">{t.myAttendance.scheduleNote}</p>
     </Panel>
   )
 }
