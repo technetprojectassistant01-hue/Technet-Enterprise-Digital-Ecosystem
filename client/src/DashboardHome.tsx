@@ -8,6 +8,7 @@ import { Panel, StatCard, EmptyState, TableSkeleton } from './dashboard/ui'
 import { hasRole, FIELD_ONLY_ROLES, OPS_SUBMIT_ROLES, TOOL_MANAGE_ROLES } from './lib/permissions'
 import AttendanceWidget from './dashboard/AttendanceWidget'
 import MyAttendanceHistory from './dashboard/MyAttendanceHistory'
+import TodayAttendance from './dashboard/TodayAttendance'
 import { useT } from './i18n'
 
 const ACTIVE_WORK_ORDER_STATUSES = new Set(['SCHEDULED', 'IN_PROGRESS', 'WAITING_FOR_PARTS', 'REOPENED'])
@@ -25,6 +26,8 @@ function DashboardHome() {
   // Store staff see every pending request; anyone else with an employee record sees their own.
   const canSeeToolRequests = !!user?.employeeId || hasRole(user?.role, TOOL_MANAGE_ROLES)
   const canNonField = !hasRole(user?.role, FIELD_ONLY_ROLES)
+  // Same audience as the check-in card: staff with an employee record who can check in.
+  const canSeeMyAttendance = !!user?.employeeId && hasRole(user?.role, OPS_SUBMIT_ROLES)
 
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [notificationsLoading, setNotificationsLoading] = useState(true)
@@ -81,6 +84,40 @@ function DashboardHome() {
 
       {user?.employeeId && <AttendanceWidget />}
 
+      {canSeeMyAttendance && <TodayAttendance />}
+
+
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          label={t.overview.activeWorkOrders}
+          value={statsLoading ? '—' : stats.activeWorkOrders}
+          icon={CalendarClock}
+        />
+        {canSeeToolRequests && (
+          <StatCard
+            label={t.overview.pendingToolRequests}
+            value={statsLoading ? '—' : (stats.pendingToolRequests ?? 0)}
+            icon={Wrench}
+          />
+        )}
+        {canNonField && (
+          <>
+            <StatCard
+              label={t.overview.activeProjects}
+              value={statsLoading ? '—' : (stats.activeProjects ?? 0)}
+              icon={FolderKanban}
+            />
+            <StatCard
+              label={t.overview.pendingRequisitions}
+              value={statsLoading ? '—' : (stats.pendingRequisitions ?? 0)}
+              icon={ShoppingCart}
+            />
+          </>
+        )}
+      </div>
+
+      {canSeeMyAttendance && <MyAttendanceHistory />}
+
       <Panel title={t.overview.recentActivity} icon={Bell}>
         {notificationsLoading ? (
           <TableSkeleton rows={3} cols={1} />
@@ -125,38 +162,6 @@ function DashboardHome() {
           </div>
         )}
       </Panel>
-
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          label={t.overview.activeWorkOrders}
-          value={statsLoading ? '—' : stats.activeWorkOrders}
-          icon={CalendarClock}
-        />
-        {canSeeToolRequests && (
-          <StatCard
-            label={t.overview.pendingToolRequests}
-            value={statsLoading ? '—' : (stats.pendingToolRequests ?? 0)}
-            icon={Wrench}
-          />
-        )}
-        {canNonField && (
-          <>
-            <StatCard
-              label={t.overview.activeProjects}
-              value={statsLoading ? '—' : (stats.activeProjects ?? 0)}
-              icon={FolderKanban}
-            />
-            <StatCard
-              label={t.overview.pendingRequisitions}
-              value={statsLoading ? '—' : (stats.pendingRequisitions ?? 0)}
-              icon={ShoppingCart}
-            />
-          </>
-        )}
-      </div>
-
-      {/* Same audience as the check-in card: staff with an employee record who can check in. */}
-      {user?.employeeId && hasRole(user.role, OPS_SUBMIT_ROLES) && <MyAttendanceHistory />}
     </div>
   )
 }
