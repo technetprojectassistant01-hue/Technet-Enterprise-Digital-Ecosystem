@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
-import { BellOff, BellRing, Briefcase, LogIn, LogOut } from 'lucide-react'
+import { BellOff, BellRing, Briefcase, LogIn, LogOut, MapPin, MapPinOff } from 'lucide-react'
 import * as api from '../lib/api'
 import type { SiteAttendance } from '../lib/api'
-import { getPosition } from '../lib/geolocation'
+import { getPosition, locationPermission, LocationDeniedError } from '../lib/geolocation'
 import { clockOf, currentClockTime, statedTimeSuffix, ATTENDANCE_CHANGED_EVENT } from '../lib/siteAttendance'
-import { Panel } from './ui'
+import { Panel, Modal } from './ui'
 import { useToast } from './ToastContext'
 import { disablePushReminders, enablePushReminders, pushSupport } from '../lib/pushNotifications'
 import { listOutbox, submitOrQueue, subscribeOutbox } from '../lib/outbox'
@@ -13,6 +13,36 @@ import { useT } from '../i18n'
 const inputClass =
   'w-full rounded-lg border border-ink-600 bg-ink-950 px-3 py-2.5 text-sm text-ink-100 outline-none focus:border-cyan-accent'
 const fieldLabelClass = 'text-xs font-semibold tracking-widest text-ink-400'
+
+/** Remembered on the device: the person tapped "Don't allow" on our location dialog. */
+const LOCATION_DECLINED_KEY = 'technet-location-declined'
+/** Remembered on the device: our first "Allow location?" dialog has been shown. */
+const LOCATION_ASKED_KEY = 'technet-location-asked'
+
+function readFlag(key: string): boolean {
+  try {
+    return localStorage.getItem(key) === '1'
+  } catch {
+    return false
+  }
+}
+function writeFlag(key: string, on: boolean) {
+  try {
+    if (on) localStorage.setItem(key, '1')
+    else localStorage.removeItem(key)
+  } catch {
+    // Storage blocked: the dialog just shows again next time.
+  }
+}
+
+/**
+ * Our own location dialogs, shown before and after the phone's permission prompt (whose wording
+ * and buttons we can't change):
+ * - ask: first time — Allow / Don't allow. Allow triggers the phone's prompt.
+ * - needed: they declined before and tried to check in — Allow location / Not now.
+ * - blocked: the phone/browser has location blocked — how to turn it back on, and Try again.
+ */
+type LocationDialogMode = 'ask' | 'needed' | 'blocked'
 
 /** "2h 14m" since an ISO timestamp, or `justNow` under a minute. */
 function durationSince(iso: string, now: number, justNow: string): string {
@@ -115,6 +145,10 @@ function AttendanceWidget() {
   const [declaredTimeEdited, setDeclaredTimeEdited] = useState(false)
   const [transportCost, setTransportCost] = useState('')
 
+  const [locationDialog, setLocationDialog] = useState<LocationDialogMode | null>(null)
+  /** What to do once location is available: submit the check-in/out, or nothing (asked on page load). */
+  const [pendingAction, setPendingAction] = useState<((pos: GeolocationPosition) => Promise<void>) | null>(null)
+
   function load() {
     setLoading(true)
     api
@@ -125,6 +159,15 @@ function AttendanceWidget() {
   }
 
   useEffect(load, [])
+  useEffect(() => {
+    if (readFlag(LOCATION_ASKED_KEY) || readFlag(LOCATION_DECLINED_KEY)) return
+    locationPermission().then((state) => {
+      if (state === 'prompt' || state === 'unknown') {
+        setPendingAction(null)
+        setLocationDialog('ask')
+      }
+    })
+  }, [])
 
   // Tick the on-site duration once a minute while checked in.
   useEffect(() => {
@@ -163,6 +206,51 @@ function AttendanceWidget() {
     return { value: amount }
   }
 
+  /** Gets a GPS fix and runs the action with it; a refusal opens the "blocked" dialog. */
+  async function runWithLocation(action: ((pos: GeolocationPosition) => Promise<void>) | null) {
+    setActioning(true)
+    try {
+      const pos = await getPosition()
+      writeFlag(LOCATION_DECLINED_KEY, false)
+      writeFlag(LOCATION_ASKED_KEY, true)
+      if (action) await action(pos)
+    } catch (err) {
+      if (err instanceof LocationDeniedError) {
+        setPendingAction(() => action)
+        setLocationDialog('blocked')
+      } else {
+        toast.error(err instanceof Error ? err.message : t.attendance.checkInFailed)
+      }
+    } finally {
+      setActioning(false)
+    }
+  }
+
+  /** Check-in and check-out both need location: go straight ahead if allowed, otherwise ask first. */
+  async function withLocation(action: (pos: GeolocationPosition) => Promise<void>) {
+    const state = await locationPermission()
+    if (state === 'granted' || (state === 'unknown' && readFlag(LOCATION_ASKED_KEY) && !readFlag(LOCATION_DECLINED_KEY))) {
+      return runWithLocation(action)
+    }
+    setPendingAction(() => action)
+    setLocationDialog(state === 'denied' ? 'blocked' : readFlag(LOCATION_DECLINED_KEY) ? 'needed' : 'ask')
+  }
+
+  function allowLocation() {
+    const action = pendingAction
+    setLocationDialog(null)
+    setPendingAction(null)
+    writeFlag(LOCATION_ASKED_KEY, true)
+    runWithLocation(action)
+  }
+
+  function declineLocation() {
+    setLocationDialog(null)
+    setPendingAction(null)
+    writeFlag(LOCATION_ASKED_KEY, true)
+    writeFlag(LOCATION_DECLINED_KEY, true)
+  }
+
   async function handleCheckIn() {
     if (!note.trim()) {
       toast.error(t.attendance.enterLocation)
@@ -177,9 +265,7 @@ function AttendanceWidget() {
       toast.error(transport.error)
       return
     }
-    setActioning(true)
-    try {
-      const pos = await getPosition()
+    await withLocation(async (pos) => {
       const { queued } = await submitOrQueue({
         kind: 'check-in',
         label: t.attendance.outboxCheckIn(note.trim()),
@@ -196,11 +282,7 @@ function AttendanceWidget() {
       window.dispatchEvent(new Event(ATTENDANCE_CHANGED_EVENT))
       resetForm()
       load()
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : t.attendance.checkInFailed)
-    } finally {
-      setActioning(false)
-    }
+    })
   }
 
   async function handleCheckOut() {
@@ -213,9 +295,7 @@ function AttendanceWidget() {
       toast.error(transport.error)
       return
     }
-    setActioning(true)
-    try {
-      const pos = await getPosition()
+    await withLocation(async (pos) => {
       const { queued } = await submitOrQueue({
         kind: 'check-out',
         label: t.attendance.outboxCheckOut,
@@ -232,11 +312,7 @@ function AttendanceWidget() {
       window.dispatchEvent(new Event(ATTENDANCE_CHANGED_EVENT))
       resetForm()
       load()
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : t.attendance.checkOutFailed)
-    } finally {
-      setActioning(false)
-    }
+    })
   }
 
   if (loading) return null
@@ -247,6 +323,7 @@ function AttendanceWidget() {
   return (
     // max-w-md + mx-auto: a compact, phone-shaped card centred on a wide screen — this is a focused
     // single-task view, not a full-width dashboard panel.
+    <>
     <Panel title={t.attendance.title} action={<ReminderToggle />} className="mx-auto w-full max-w-md">
       <div className="flex w-full flex-col gap-4">
         {/* Status card */}
@@ -378,6 +455,64 @@ function AttendanceWidget() {
 
       </div>
     </Panel>
+
+    {locationDialog && (
+      <Modal
+        title={
+          locationDialog === 'ask'
+            ? t.attendance.locationAskTitle
+            : locationDialog === 'needed'
+              ? t.attendance.locationNeededTitle
+              : t.attendance.locationBlockedTitle
+        }
+        onClose={() => (locationDialog === 'ask' ? declineLocation() : setLocationDialog(null))}
+      >
+        <div className="flex flex-col gap-5">
+          <div className="flex items-start gap-3">
+            <span
+              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
+                locationDialog === 'blocked' ? 'bg-amber-400/10 text-amber-400' : 'bg-cyan-accent/10 text-cyan-accent'
+              }`}
+            >
+              {locationDialog === 'blocked' ? <MapPinOff className="h-5 w-5" /> : <MapPin className="h-5 w-5" />}
+            </span>
+            <div className="flex flex-col gap-2 text-sm text-ink-200">
+              <p>
+                {locationDialog === 'ask'
+                  ? t.attendance.locationAskBody
+                  : locationDialog === 'needed'
+                    ? t.attendance.locationNeededBody
+                    : t.attendance.locationBlockedBody}
+              </p>
+              {locationDialog === 'blocked' && (
+                <ol className="list-decimal space-y-1 pl-5 text-ink-300">
+                  {t.attendance.locationBlockedSteps.map((step) => (
+                    <li key={step}>{step}</li>
+                  ))}
+                </ol>
+              )}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={locationDialog === 'ask' ? declineLocation : () => setLocationDialog(null)}
+              className="rounded-lg border border-ink-600 px-4 py-3 text-sm font-semibold text-ink-200 transition hover:bg-ink-800"
+            >
+              {locationDialog === 'ask' ? t.attendance.dontAllow : t.attendance.notNow}
+            </button>
+            <button
+              type="button"
+              onClick={allowLocation}
+              className="rounded-lg bg-cyan-accent px-4 py-3 text-sm font-semibold text-ink-950 transition hover:bg-cyan-accent-dark"
+            >
+              {locationDialog === 'blocked' ? t.attendance.tryAgain : locationDialog === 'ask' ? t.attendance.allow : t.attendance.allowLocation}
+            </button>
+          </div>
+        </div>
+      </Modal>
+    )}
+    </>
   )
 }
 
