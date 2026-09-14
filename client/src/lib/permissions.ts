@@ -13,6 +13,8 @@ export const MARKETING_ROLES: readonly Role[] = ['ADMIN', 'SALES_OFFICER']
 /** Read-only visibility into the Quote Request queue for Operations Managers, alongside Sales' full edit rights. */
 export const QUOTE_REQUEST_VIEW_ROLES: readonly Role[] = ['ADMIN', 'SALES_OFFICER', 'OPERATIONS_MANAGER']
 export const PROCUREMENT_ROLES: readonly Role[] = ['ADMIN', 'STOREKEEPER']
+/** Technet Maintenance tools & equipment: register tools, issue them against requests, record returns. */
+export const TOOL_MANAGE_ROLES: readonly Role[] = ['ADMIN', 'STOREKEEPER']
 export const HR_ROLES: readonly Role[] = ['ADMIN', 'HR_OFFICER']
 /** Read-only "who's around today" visibility for Operations Managers, alongside HR's full edit rights. */
 export const WORKFORCE_VIEW_ROLES: readonly Role[] = ['ADMIN', 'HR_OFFICER', 'OPERATIONS_MANAGER']
