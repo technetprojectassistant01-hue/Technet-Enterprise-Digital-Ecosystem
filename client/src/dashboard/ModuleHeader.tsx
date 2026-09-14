@@ -26,8 +26,9 @@ function ModuleHeader({
   tabs,
   searchPlaceholder,
 }: {
-  title: string
-  subtitle: string
+  /** Optional: a module can show just its tabs (Technet Store does). */
+  title?: string
+  subtitle?: string
   tabs: ModuleTab[]
   searchPlaceholder?: string
 }) {
@@ -39,10 +40,12 @@ function ModuleHeader({
     <div className="-mx-4 -mt-4 mb-6 border-b border-ink-800 bg-ink-900 px-4 py-4 sm:-mx-6 sm:px-6 sm:-mt-6 lg:-mx-8 lg:px-8">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-6 gap-y-1">
-          <div>
-            <div className="text-sm text-ink-300">{title}</div>
-            <div className="text-sm font-bold uppercase tracking-wide text-ink-100">{subtitle}</div>
-          </div>
+          {(title || subtitle) && (
+            <div>
+              {title && <div className="text-sm text-ink-300">{title}</div>}
+              {subtitle && <div className="text-sm font-bold uppercase tracking-wide text-ink-100">{subtitle}</div>}
+            </div>
+          )}
           <nav className="-mx-1 flex gap-1 overflow-x-auto px-1 [scrollbar-width:none] sm:flex-wrap sm:overflow-visible [&::-webkit-scrollbar]:hidden">
             {tabs.map((tab) => (
               <NavLink
