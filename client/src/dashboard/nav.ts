@@ -97,12 +97,12 @@ export const MAIN_NAV: NavItem[] = [
     ],
   },
   {
-    label: 'Technet Maintenance',
-    to: '/dashboard/maintenance',
+    label: 'Technet Store',
+    to: '/dashboard/store',
     icon: Wrench,
     children: [
-      { label: 'Tools & Equipment', to: '/dashboard/maintenance/tools', icon: Hammer },
-      { label: 'Tool Requests', to: '/dashboard/maintenance/requests', icon: ClipboardList },
+      { label: 'Tools & Equipment', to: '/dashboard/store/tools', icon: Hammer },
+      { label: 'Tool Requests', to: '/dashboard/store/requests', icon: ClipboardList },
     ],
   },
   { label: 'Technet Connect', to: '/dashboard/connect', icon: Share2, hiddenFrom: FIELD_ONLY_ROLES },
