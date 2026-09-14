@@ -1,5 +1,6 @@
 import {
   LayoutGrid,
+  FileCheck2,
   SlidersHorizontal,
   Wrench,
   Share2,
@@ -135,6 +136,7 @@ export const MAIN_NAV: NavItem[] = [
       { label: 'Availability', to: '/dashboard/workforce/availability', icon: UserCheck },
       { label: 'Attendance', to: '/dashboard/workforce/attendance', icon: ClipboardCheck },
       { label: 'Overtime', to: '/dashboard/workforce/overtime', icon: Clock },
+      { label: 'Validations', to: '/dashboard/workforce/validations', icon: FileCheck2 },
       { label: 'Payroll', to: '/dashboard/workforce/payroll', icon: Banknote },
     ],
   },

@@ -79,7 +79,7 @@ function TodayAttendance() {
                   )}
                 </div>
                 <div className="mt-0.5 truncate text-xs text-ink-300">
-                  {v.checkInNote || '—'}
+                  {[v.checkInSite, v.checkInNote].filter(Boolean).join(' — ') || '—'}
                   {v.workOrder && <span className="font-mono"> · {v.workOrder.workOrderNumber}</span>}
                 </div>
               </div>

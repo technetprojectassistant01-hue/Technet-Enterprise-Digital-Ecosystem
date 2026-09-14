@@ -212,12 +212,14 @@ function TeamAttendancePage() {
         { header: 'Work Order', accessor: (v: SiteAttendanceWithEmployee) => v.workOrder?.workOrderNumber ?? '' },
         { header: 'Time In (stated)', accessor: (v: SiteAttendanceWithEmployee) => v.checkInDeclaredTime ?? '' },
         { header: 'Check-In Recorded', accessor: (v: SiteAttendanceWithEmployee) => formatTime(v.checkInAt) },
+        { header: 'Check-In Site', accessor: (v: SiteAttendanceWithEmployee) => v.checkInSite ?? '' },
         { header: 'Check-In Location', accessor: (v: SiteAttendanceWithEmployee) => v.checkInNote ?? '' },
         { header: 'Time Out (stated)', accessor: (v: SiteAttendanceWithEmployee) => v.checkOutDeclaredTime ?? '' },
         {
           header: 'Check-Out Recorded',
           accessor: (v: SiteAttendanceWithEmployee) => (v.checkOutAt ? formatTime(v.checkOutAt) : ''),
         },
+        { header: 'Check-Out Site', accessor: (v: SiteAttendanceWithEmployee) => v.checkOutSite ?? '' },
         { header: 'Check-Out Location', accessor: (v: SiteAttendanceWithEmployee) => v.checkOutNote ?? '' },
         { header: 'Hours On Site', accessor: (v: SiteAttendanceWithEmployee) => hoursOnSite(v) },
         {
@@ -320,6 +322,7 @@ function TeamAttendancePage() {
                     </div>
                     <div className="text-xs text-ink-400">
                       {t.ops.team.since(new Date(v.checkInAt).toLocaleString())}
+                      {v.checkInSite && <span> · {v.checkInSite}</span>}
                       {v.checkInNote && <span> · {v.checkInNote}</span>}
                       {openForHours(v) >= STALE_SESSION_HOURS && (
                         <span className="ml-2 font-medium text-amber-400">
@@ -545,7 +548,8 @@ function TeamAttendancePage() {
                               <MapPin className="h-3.5 w-3.5" />
                               {formatTime(v.checkInAt)}
                               {statedTimeSuffix(v.checkInDeclaredTime, v.checkInAt)}
-                              {v.checkInNote && <span> · {v.checkInNote}</span>}
+                              {v.checkInSite && <span> · {v.checkInSite}</span>}
+                      {v.checkInNote && <span> · {v.checkInNote}</span>}
                             </a>
                             {locationMismatchLabel(v.checkInLocationMatch, v.checkInLocationDistanceMeters) && (
                               <span className="mt-0.5 block text-[11px] font-medium text-amber-400">
@@ -569,6 +573,7 @@ function TeamAttendancePage() {
                                 <MapPin className="h-3.5 w-3.5" />
                                 {formatTime(v.checkOutAt)}
                                 {statedTimeSuffix(v.checkOutDeclaredTime, v.checkOutAt)}
+                                {v.checkOutSite && <span> · {v.checkOutSite}</span>}
                                 {v.checkOutNote && <span> · {v.checkOutNote}</span>}
                               </a>
                             ) : (

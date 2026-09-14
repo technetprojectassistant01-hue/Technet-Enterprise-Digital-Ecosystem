@@ -8,6 +8,7 @@ import { parseClockTime } from "../lib/clockTime";
 import { checkLocationAgainstGps } from "../lib/locationMatch";
 import { claimRequest, releaseRequest } from "../lib/idempotency";
 import { notifyHrOfOvertime } from "../lib/overtimeQueue";
+import { buildAttendanceReport, parseRange } from "../lib/attendanceReport";
 
 const router = Router();
 
@@ -32,6 +33,12 @@ function parseCoords(body: unknown): { lat: number; lng: number } | null {
 function parseNote(body: unknown): string | null {
   const note = (body as { note?: unknown } | null)?.note;
   return typeof note === "string" && note.trim() ? note.trim().slice(0, 200) : null;
+}
+
+/** The site name the technician typed. Optional, display only - never geocoded. */
+function parseSite(body: unknown): string | null {
+  const site = (body as { site?: unknown } | null)?.site;
+  return typeof site === "string" && site.trim() ? site.trim().slice(0, 200) : null;
 }
 
 /** Upper bound on a single leg's travel cost - a sanity guard against a fat-fingered entry, not a policy. */
@@ -279,10 +286,12 @@ router.get("/me/history", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => 
       checkInAt: true,
       checkInDeclaredTime: true,
       checkInNote: true,
+      checkInSite: true,
       checkInTransportCost: true,
       checkOutAt: true,
       checkOutDeclaredTime: true,
       checkOutNote: true,
+      checkOutSite: true,
       checkOutTransportCost: true,
       checkOutByManager: true,
       workOrder: { select: { id: true, workOrderNumber: true, title: true } },
@@ -298,6 +307,25 @@ router.get("/me/history", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => 
   const approvedOvertime = approved.map((d) => ({ date: d.date.toISOString().slice(0, 10), minutes: d.minutes }));
 
   res.json({ visits, approvedOvertime });
+});
+
+/**
+ * The caller's own attendance as a printable PDF for a date range (?from=YYYY-MM-DD&to=YYYY-MM-DD).
+ * DRAFT-watermarked unless Admin/HR has validated a range covering it and nothing has changed since
+ * (lib/attendanceReport.ts). No coordinates or location flags.
+ */
+router.get("/me/report/pdf", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
+  const employee = await prisma.employee.findUnique({ where: { userId: req.user!.sub }, select: { id: true } });
+  if (!employee) return res.status(403).json({ error: "No employee record is linked to your account" });
+
+  const range = parseRange(req.query.from, req.query.to);
+  if ("error" in range) return res.status(400).json({ error: range.error });
+
+  const report = await buildAttendanceReport(employee.id, range.from, range.to);
+  if (!report) return res.status(404).json({ error: "Employee not found" });
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename="${report.filename}"`);
+  report.doc.pipe(res);
 });
 
 /** The caller's own assigned, still-open work orders — for the "which job?" picker on check-in. */
@@ -390,6 +418,7 @@ router.post("/check-in", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
         checkInLat: coords.lat,
         checkInLng: coords.lng,
         checkInNote: note,
+        checkInSite: parseSite(req.body),
         checkInDeclaredTime: declaredTime.value,
         checkInTransportCost: transportCost.value,
         checkInLocationMatch: locationCheck.match,
@@ -462,6 +491,7 @@ router.post("/check-out", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => 
         checkOutLat: coords.lat,
         checkOutLng: coords.lng,
         checkOutNote,
+        checkOutSite: parseSite(req.body),
         checkOutDeclaredTime: declaredTime.value,
         checkOutTransportCost: transportCost.value,
         checkOutLocationMatch: locationCheck.match,

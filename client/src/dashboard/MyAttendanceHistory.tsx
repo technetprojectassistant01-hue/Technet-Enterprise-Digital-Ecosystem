@@ -5,7 +5,7 @@ import type { MyAttendanceVisit } from '../lib/api'
 import { Panel, Badge, EmptyState, TableSkeleton } from './ui'
 import { ATTENDANCE_CHANGED_EVENT, clockOf, totalTransportCost } from '../lib/siteAttendance'
 import { computeDayFlags } from '../lib/workSchedule'
-import { downloadCsv } from '../lib/csv'
+import AttendanceExportDialog from './AttendanceExportDialog'
 import { useT } from '../i18n'
 
 /** Local calendar day of a timestamp, "YYYY-MM-DD" — matches the server's Mauritius day. */
@@ -27,7 +27,7 @@ function shownTime(declared: string | null, recordedIso: string | null): string 
 /**
  * "My Attendance" at the bottom of the landing page: every check-in/check-out the signed-in user
  * made, a month at a time, with a small summary, a Late badge against the standard work hours
- * (lib/workSchedule.ts), an Overtime badge only once HR has approved it, and a CSV export. Shows what they entered and how long they were in —
+ * (lib/workSchedule.ts), an Overtime badge only once HR has approved it, and a PDF export (AttendanceExportDialog). Shows what they entered and how long they were in —
  * never coordinates or location flags (CLAUDE.md §7a).
  */
 function MyAttendanceHistory() {
@@ -43,6 +43,7 @@ function MyAttendanceHistory() {
   const [error, setError] = useState<string | null>(null)
   /** Bumped when the check-in card checks in or out, to reload the month on screen. */
   const [reloadKey, setReloadKey] = useState(0)
+  const [exporting, setExporting] = useState(false)
 
   useEffect(() => {
     const bump = () => setReloadKey((k) => k + 1)
@@ -114,39 +115,15 @@ function MyAttendanceHistory() {
   const monthLabel = `${t.shared.months[cursor.getMonth()]} ${cursor.getFullYear()}`
   const dateFormat = new Intl.DateTimeFormat(t.shared.dateLocale, { weekday: 'short', day: 'numeric', month: 'short' })
 
-  // CSV (opens in Excel). Kept in English like the app's other exports — it's a data file.
-  function exportCsv() {
-    const csvDate = (iso: string) => {
-      const d = new Date(iso)
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-    }
-    downloadCsv(
-      `my-attendance-${monthKey(cursor)}`,
-      [
-        { header: 'Date', accessor: (v: MyAttendanceVisit) => csvDate(v.checkInAt) },
-        { header: 'Time In', accessor: (v: MyAttendanceVisit) => shownTime(v.checkInDeclaredTime, v.checkInAt) },
-        { header: 'Time Out', accessor: (v: MyAttendanceVisit) => (v.checkOutAt ? shownTime(v.checkOutDeclaredTime, v.checkOutAt) : '') },
-        { header: 'Location', accessor: (v: MyAttendanceVisit) => v.checkInNote ?? '' },
-        { header: 'Check-out Location', accessor: (v: MyAttendanceVisit) => v.checkOutNote ?? '' },
-        { header: 'Transport (MUR)', accessor: (v: MyAttendanceVisit) => totalTransportCost(v).toFixed(2) },
-        { header: 'Late (minutes)', accessor: (v: MyAttendanceVisit) => late.get(v.id) ?? '' },
-        { header: 'Overtime (minutes)', accessor: (v: MyAttendanceVisit) => overtime.get(v.id) ?? '' },
-      ],
-      // Oldest first reads naturally in a spreadsheet.
-      [...visits].reverse(),
-    )
-  }
-
   const monthPicker = (
     <div className="flex items-center gap-1">
       <button
         type="button"
-        onClick={exportCsv}
-        disabled={loading || visits.length === 0}
+        onClick={() => setExporting(true)}
         className="mr-2 inline-flex items-center gap-1.5 rounded-md border border-ink-600 px-2.5 py-1.5 text-xs font-semibold text-ink-200 transition hover:border-cyan-accent hover:text-cyan-accent disabled:cursor-not-allowed disabled:opacity-40"
       >
         <Download className="h-3.5 w-3.5" />
-        <span className="hidden sm:inline">{t.shared.exportCsv}</span>
+        <span className="hidden sm:inline">{t.myAttendance.exportPdf}</span>
       </button>
       <button
         type="button"
@@ -236,10 +213,14 @@ function MyAttendanceHistory() {
                     )}
                   </td>
                   <td className="px-3 py-3 text-ink-300">
-                    <div className="text-ink-100">{v.checkInNote || '—'}</div>
-                    {v.checkOutNote && v.checkOutNote !== v.checkInNote && (
-                      <div className="text-xs text-ink-400">{t.myAttendance.leftFrom(v.checkOutNote)}</div>
-                    )}
+                    {v.checkInSite && <div className="font-medium text-ink-100">{v.checkInSite}</div>}
+                    <div className={v.checkInSite ? 'text-xs text-ink-300' : 'text-ink-100'}>{v.checkInNote || '—'}</div>
+                    {(v.checkOutSite || v.checkOutNote) &&
+                      [v.checkOutSite, v.checkOutNote].join('|') !== [v.checkInSite, v.checkInNote].join('|') && (
+                        <div className="text-xs text-ink-400">
+                          {t.myAttendance.leftFrom([v.checkOutSite, v.checkOutNote].filter(Boolean).join(' — '))}
+                        </div>
+                      )}
                     {v.workOrder && (
                       <div className="mt-0.5 text-xs text-ink-400">
                         <span className="font-mono">{v.workOrder.workOrderNumber}</span> · {v.workOrder.title}
@@ -255,6 +236,7 @@ function MyAttendanceHistory() {
       )}
 
       <p className="mt-3 text-xs text-ink-400">{t.myAttendance.scheduleNote}</p>
+      {exporting && <AttendanceExportDialog month={cursor} onClose={() => setExporting(false)} />}
     </Panel>
   )
 }

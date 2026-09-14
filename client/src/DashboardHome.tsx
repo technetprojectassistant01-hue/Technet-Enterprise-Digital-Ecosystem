@@ -47,7 +47,7 @@ function DashboardHome() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-bold text-ink-100 sm:text-3xl">
+      <h1 className="text-center text-2xl font-bold text-ink-100 sm:text-3xl">
         {user?.name ? t.overview.welcomeBack(user.name) : t.overview.welcome}
       </h1>
 

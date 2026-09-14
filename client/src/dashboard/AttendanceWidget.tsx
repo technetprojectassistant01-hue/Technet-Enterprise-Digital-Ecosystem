@@ -138,6 +138,8 @@ function AttendanceWidget() {
   const [pendingKinds, setPendingKinds] = useState<string[]>([])
 
   const [note, setNote] = useState('')
+  // The site name, kept apart from the location because only the location is checked against GPS.
+  const [site, setSite] = useState('')
   const [declaredTime, setDeclaredTime] = useState(currentClockTime)
   // The box is prefilled with the clock, so a technician who just opens the app and taps through
   // gets the right time with no typing. If they never touched it, we re-read the clock at submit
@@ -193,6 +195,7 @@ function AttendanceWidget() {
 
   function resetForm() {
     setNote('')
+    setSite('')
     setTransportCost('')
     setDeclaredTime(currentClockTime())
     setDeclaredTimeEdited(false)
@@ -274,6 +277,7 @@ function AttendanceWidget() {
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
           note,
+          site: site.trim() || undefined,
           timeIn: declaredTimeEdited ? declaredTime : currentClockTime(),
           transportCost: transport.value,
         },
@@ -304,6 +308,7 @@ function AttendanceWidget() {
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
           note: note || undefined,
+          site: site.trim() || undefined,
           timeOut: declaredTimeEdited ? declaredTime : currentClockTime(),
           transportCost: transport.value,
         },
@@ -399,6 +404,21 @@ function AttendanceWidget() {
               />
             </div>
           )
+          const siteField = (
+            <div className="flex flex-col gap-1">
+              <label htmlFor="att-site" className={fieldLabelClass}>
+                {t.attendance.site}
+              </label>
+              <input
+                id="att-site"
+                value={site}
+                onChange={(e) => setSite(e.target.value)}
+                placeholder={t.attendance.sitePlaceholder}
+                maxLength={200}
+                className={inputClass}
+              />
+            </div>
+          )
 
           return checkedIn ? (
             <div className="flex flex-col gap-3">
@@ -406,6 +426,7 @@ function AttendanceWidget() {
                 {time}
                 {transport}
               </div>
+              {siteField}
               <div className="flex flex-col gap-1">
                 <label htmlFor="att-out-note" className={fieldLabelClass}>
                   {t.attendance.location}
@@ -430,6 +451,8 @@ function AttendanceWidget() {
                 {time}
                 {transport}
               </div>
+
+              {siteField}
 
               <div className="flex flex-col gap-1">
                 <label htmlFor="att-location" className={fieldLabelClass}>

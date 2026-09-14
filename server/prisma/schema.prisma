@@ -285,6 +285,7 @@ model User {
   toolCheckoutsReturned ToolCheckout[] @relation("ToolCheckoutReceiver")
 
   overtimeDecisionsMade     OvertimeDecision[] @relation("OvertimeDecider")
+  attendanceValidationsDecided AttendanceValidation[] @relation("AttendanceValidationDecider")
   employeeDocumentsUploaded EmployeeDocument[] @relation("EmployeeDocumentUploader")
 
   quotationsCreated Quotation[] @relation("QuotationCreator")
@@ -435,6 +436,7 @@ model Employee {
   toolCheckouts ToolCheckout[]
 
   overtimeDecisions OvertimeDecision[]
+  attendanceValidations AttendanceValidation[]
   personalDocuments EmployeeDocument[]
 }
 
@@ -1083,6 +1085,12 @@ model SiteAttendance {
    */
   checkInNote                   String?
   /**
+   * The site the technician is at, as they name it - "Celero, Level 5", "Bagatelle Mall". Kept
+   * apart from checkInNote because that one is geocoded against the GPS fix, and a business or
+   * site name never resolves (CLAUDE.md §7b). Optional, never checked, display only.
+   */
+  checkInSite                   String?
+  /**
    * The arrival time the technician types, as an "HH:MM" local wall-clock string (same single
    * timezone convention as AttendanceRecord.clockIn). Deliberately distinct from checkInAt:
    * somebody who arrives at 08:00 and opens the app at 08:20 should have both on record, and a
@@ -1113,6 +1121,10 @@ model SiteAttendance {
    * somebody is checking out the site is usually already established by the check-in.
    */
   checkOutNote                   String?
+  /**
+   * The site they are leaving, mirroring checkInSite.
+   */
+  checkOutSite                   String?
   /**
    * Departure time as typed, mirroring checkInDeclaredTime.
    */
@@ -1466,6 +1478,9 @@ enum NotificationType {
   OVERTIME_APPROVED
   OVERTIME_REJECTED
   OVERTIME_PENDING
+  ATTENDANCE_VALIDATION_REQUESTED
+  ATTENDANCE_VALIDATED
+  ATTENDANCE_VALIDATION_REJECTED
 }
 
 model Notification {
@@ -1672,4 +1687,38 @@ model EmployeeDocument {
   createdAt    DateTime  @default(now())
 
   @@index([employeeId])
+}
+
+// ---------------------------------------------------------------------------------------------
+// Attendance validation (2026-09-14): an employee asks Admin/HR to validate their attendance for
+// a date range. Until a validation covers the range - and the attendance hasn't changed since -
+// the printable attendance PDF carries a DRAFT watermark.
+// ---------------------------------------------------------------------------------------------
+
+enum AttendanceValidationStatus {
+  PENDING
+  VALIDATED
+  REJECTED
+}
+
+model AttendanceValidation {
+  id          String                     @id @default(uuid())
+  employeeId  String
+  employee    Employee                   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  /// First and last Mauritius calendar day of the range, each stored as UTC midnight of that date.
+  fromDate    DateTime
+  toDate      DateTime
+  status      AttendanceValidationStatus @default(PENDING)
+  /// Hash of the attendance (and approved overtime) in the range at the moment it was validated.
+  /// If the data changes afterwards the hash no longer matches and the PDF goes back to DRAFT.
+  fingerprint String?
+  /// Why it was rejected.
+  note        String?
+  requestedAt DateTime                   @default(now())
+  decidedById String?
+  decidedBy   User?                      @relation("AttendanceValidationDecider", fields: [decidedById], references: [id], onDelete: SetNull)
+  decidedAt   DateTime?
+
+  @@index([employeeId])
+  @@index([status])
 }

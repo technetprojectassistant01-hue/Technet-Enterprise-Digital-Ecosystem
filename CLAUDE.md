@@ -179,7 +179,7 @@ Grouped by domain (not exhaustive on fields — read the schema for that):
 - **Operations**: `WorkOrder` (+ `siteLat`/`siteLng`/`siteAddress`), `WorkOrderTechnician`, `SiteAttendance` (declared times, transport cost, location-match result, `checkOutByManager`; `workOrderId` is set only when the technician picks a job at check-in — never auto-detected, see §7a), `SiteVerification` (**inert since 2026-09-03, no new rows are written**), `DailyWorkReport`/`DailyWorkReportTechnician`/`DailyWorkReportWorkOrder`, `InterventionReport`/`InterventionReportTechnician`/`InterventionReportPhoto`.
 - **Maintenance (tools)**: `Tool`, `ToolRequest`, `ToolCheckout` — §21.
 - **Legacy customer maintenance (no UI since 2026-09-14)**: `Asset`, `MaintenanceContract`, `MaintenanceRequest`, `MaintenanceSchedule`/`MaintenanceScheduleTechnician`, `MaintenanceReport`.
-- **Workforce**: `PayrollRun`, `PayrollLine`.
+- **Workforce**: `PayrollRun`, `PayrollLine`, `OvertimeDecision`, `AttendanceValidation` (§22).
 - **Marketing**: `MarketingCampaign`, `MarketingPost` — Phase 1 only, see §10a.
 
 ## 9. Working conventions (important — established through explicit user correction)
@@ -981,8 +981,8 @@ managed by **Admin + Storekeeper**; every tool tracked **individually** (not by 
 ## 22. The landing page is Attendance (2026-09-14)
 
 Renamed from Overview at the user's request, because for technicians it is really the check-in page.
-Top to bottom: `Welcome back, {name}`; the centred check-in card (form order: time + transport, then
-**Location**; no job picker); **Today** (`dashboard/TodayAttendance.tsx`); two stat cards for office roles
+Top to bottom: `Welcome back, {name}` (centred); the centred check-in card (form order: time + transport, then
+**Site** (optional), then **Location**; no job picker — the same Site field is on check-out); **Today** (`dashboard/TodayAttendance.tsx`); two stat cards for office roles
 only (Active Projects, Pending Requisitions); **My Attendance** (`dashboard/MyAttendanceHistory.tsx`). The
 company profile, Recent Activity, Active Work Orders and Pending Tool Requests were removed on request.
 Today and My Attendance read `GET /api/site-attendance/me/history?month=YYYY-MM`, which returns only what
@@ -994,8 +994,8 @@ Sat 08:00–13:00, Sunday not a working day. My Attendance shows a **Late** badg
 check-in is after the start, and **Overtime** for the day's last check-out past closing (all of a Sunday
 counts; a day with an open session gets none yet). Calculated from the times as shown in the table (the
 typed time if any, else the recorded one) so a badge always matches its row — so a technician's typed time
-decides it, not the GPS timestamp. Public holidays are not treated specially yet. Month export is CSV
-(opens in Excel); `client/src/lib/csv.ts` now writes a UTF-8 BOM so Excel keeps accented text.
+decides it, not the GPS timestamp. Public holidays are not treated specially yet. The export is a PDF,
+not CSV (user request) — see "Attendance PDF + validation" below.
 
 **Overtime needs HR approval** (added the same day, user request). Overtime is calculated on the
 server in `server/src/lib/overtime.ts` (mirrors `client/src/lib/workSchedule.ts` — keep both in step;
@@ -1004,8 +1004,33 @@ Mauritius is treated as a fixed UTC+4) and listed for HR/Admin on **Technet Work
 approves or rejects it (`POST /api/overtime/decide` recalculates the minutes server-side and stores them on
 an `OvertimeDecision`, one per employee per day; `DELETE /api/overtime/:employeeId/:date` undoes it) and
 the technician is notified (`OVERTIME_APPROVED`/`OVERTIME_REJECTED`). My Attendance shows an Overtime badge,
-total and CSV value **only for approved days** (`approvedOvertime` on `/me/history`); Late is still
-calculated client-side with no approval step. Overtime isn't fed into Payroll yet.
+total and PDF value **only for approved days** (`approvedOvertime` on `/me/history`); Late is still
+calculated client-side with no approval step (the PDF recomputes it server-side with `computeLateByVisit`). Overtime isn't fed into Payroll yet.
+
+**Site field** (added the same day, user request): `SiteAttendance.checkInSite`/`checkOutSite` (migration
+`20260914220000_site_attendance_site`), optional, sent as `site` on check-in/out. It is the client or site name
+("Celero Level 5") and is **kept apart from the Location** (`checkInNote`) on purpose: only the location is
+geocoded against GPS (§7a), and a business/site name never resolves (§7b) — merging them would turn every
+check-in UNCHECKABLE. Display only; shown on Today, My Attendance, the PDF, Team Attendance (+ CSV) and
+Field Operations.
+
+**Attendance PDF + validation** (added the same day, user request — replaces My Attendance's CSV export for
+the technician). My Attendance → **Export PDF** opens `dashboard/AttendanceExportDialog.tsx`: pick a from/to
+range (not after today), **Download PDF** (`GET /api/site-attendance/me/report/pdf?from=&to=`) and **Request
+validation**. The PDF (`server/src/lib/pdf/attendancePdf.ts`, built by `lib/attendanceReport.ts`) uses the
+quotation letterhead/table style: employee details, summary, a day-by-day register with Late/Overtime/
+Not-checked-out remarks, and signature lines. It carries a diagonal **DRAFT** watermark and a red DRAFT line
+until Admin/HR validates the range; once validated it prints "VALIDATED by X on date" instead. Workflow
+(user's choice of three offered): the employee requests a range (`AttendanceValidation`, migration
+`20260914230000_attendance_validation`, `/api/attendance-validations/mine`, notifies `HR_ROLES`); Admin/HR
+review it on **Technet Workforce → Validations** (`workforce/AttendanceValidationPage.tsx`, `HR_ROLES`: view
+PDF, Validate, Reject with reason, Undo) and the employee is notified. **A range is final only if a VALIDATED
+request covers it and its data is unchanged**: validating stores a SHA-256 `fingerprint` of the range's visits
+(times, typed values, transport, site/location, manager close) plus approved overtime; if any of that changes
+later the validation shows as "changed since" (`stale`), the PDF is DRAFT again, and HR can "Validate again".
+A sub-range of a validated range is final; a wider one is not. PDF text is English like every other PDF.
+Verified with a disposable scratch script (29/29) against the real DB plus rendered PDFs; the dialog and
+Workforce tab were not clicked through in a browser (no browser automation here).
 
 ## 23. Technician-side tidy-up and My Documents (2026-09-14)
 
