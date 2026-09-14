@@ -44,12 +44,8 @@ import InterventionReportDetailPage from './operations/InterventionReportDetailP
 import TeamAttendancePage from './operations/TeamAttendancePage'
 import FieldOperationsPage from './operations/FieldOperationsPage'
 import MaintenanceLayout from './maintenance/MaintenanceLayout'
-import AssetsPage from './maintenance/AssetsPage'
-import AssetDetailPage from './maintenance/AssetDetailPage'
-import MaintenanceContractsPage from './maintenance/ContractsPage'
-import RequestsPage from './maintenance/RequestsPage'
-import SchedulePage from './maintenance/SchedulePage'
-import ScheduleDetailPage from './maintenance/ScheduleDetailPage'
+import ToolsPage from './maintenance/ToolsPage'
+import ToolRequestsPage from './maintenance/ToolRequestsPage'
 import WorkforceLayout from './workforce/WorkforceLayout'
 import AvailabilityTab from './workforce/AvailabilityTab'
 import AttendancePage from './workforce/AttendancePage'
@@ -130,13 +126,12 @@ function App() {
             </Route>
           </Route>
           <Route path="maintenance" element={<MaintenanceLayout />}>
-            <Route index element={<Navigate to="assets" replace />} />
-            <Route path="assets" element={<AssetsPage />} />
-            <Route path="assets/:id" element={<AssetDetailPage />} />
-            <Route path="contracts" element={<MaintenanceContractsPage />} />
-            <Route path="requests" element={<RequestsPage />} />
-            <Route path="schedule" element={<SchedulePage />} />
-            <Route path="schedule/:id" element={<ScheduleDetailPage />} />
+            <Route index element={<Navigate to="tools" replace />} />
+            <Route path="tools" element={<ToolsPage />} />
+            <Route path="requests" element={<ToolRequestsPage />} />
+            {/* The old customer-maintenance screens (assets, contracts, schedule) were replaced by
+                tools & equipment; links to them in older notifications land here instead. */}
+            <Route path="*" element={<Navigate to="tools" replace />} />
           </Route>
           <Route element={<RoleRoute blockedRoles={FIELD_ONLY_ROLES} />}>
             <Route path="connect" element={<ConnectInfoPage />} />
