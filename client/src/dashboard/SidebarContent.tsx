@@ -26,14 +26,14 @@ function SidebarContent() {
 
       <nav className="mt-8 flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto">
         <div>
-          <span className="px-2 text-[11px] font-semibold tracking-widest text-ink-500">{t.shell.mainMenu}</span>
+          <span className="px-2 text-[11px] font-semibold tracking-widest text-ink-400">{t.shell.mainMenu}</span>
           <div className="mt-2">
             <NavTree items={mainNav} />
           </div>
         </div>
 
         <div>
-          <span className="px-2 text-[11px] font-semibold tracking-widest text-ink-500">{t.shell.system}</span>
+          <span className="px-2 text-[11px] font-semibold tracking-widest text-ink-400">{t.shell.system}</span>
           <div className="mt-2 flex flex-col gap-1">
             {systemNav.map((item) => (
               <NavLink
