@@ -12,6 +12,8 @@ import { hasRole, OPS_SUBMIT_ROLES } from '../lib/permissions'
 import { reportStatusTone } from '../erp/statusTones'
 import { useCustomers } from '../erp/useCustomers'
 import { enumLabel, navLabel, useT } from '../i18n'
+import { ClipboardCheck as ClipboardCheckIcon } from 'lucide-react'
+import PageTitle from '../dashboard/PageTitle'
 
 const STATUS_FILTERS: ReportStatus[] = ['SUBMITTED', 'APPROVED', 'REJECTED']
 const JOB_CATEGORIES = Object.keys(JOB_CATEGORY_LABELS) as JobCategory[]
@@ -157,10 +159,7 @@ function InterventionReportsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-ink-100">{navLabel(t, 'Intervention Reports')}</h1>
-          <p className="mt-1 text-sm text-ink-300">{t.ops.ir.subtitle}</p>
-        </div>
+        <PageTitle icon={ClipboardCheckIcon} title={navLabel(t, 'Intervention Reports')} subtitle={t.ops.ir.subtitle} />
         <div className="flex items-center gap-3">
           <button type="button" onClick={exportCsv} className={secondaryButtonClass}>
             <Download className="h-4 w-4" />
