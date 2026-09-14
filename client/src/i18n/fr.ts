@@ -200,8 +200,6 @@ export const fr: Dict = {
   overview: {
     welcome: 'Bon retour',
     welcomeBack: (name: string) => `Bon retour, ${name}`,
-    recentActivity: 'Activité récente',
-    noRecentActivity: 'Aucune activité récente.',
     activeWorkOrders: 'Ordres de travail actifs',
     pendingToolRequests: "Demandes d'outils en attente",
     activeProjects: 'Projets actifs',
