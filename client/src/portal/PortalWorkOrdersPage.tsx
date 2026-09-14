@@ -38,7 +38,7 @@ function PortalWorkOrdersPage() {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs text-ink-500">{wo.workOrderNumber}</span>
+                    <span className="font-mono text-xs text-ink-400">{wo.workOrderNumber}</span>
                     <Badge tone={workOrderStatusTone[wo.status]}>{wo.status.replace('_', ' ')}</Badge>
                   </div>
                   <h2 className="mt-1 text-lg font-semibold text-ink-100">{wo.title}</h2>
