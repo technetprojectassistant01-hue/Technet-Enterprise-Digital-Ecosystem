@@ -1926,7 +1926,44 @@ export interface MyAttendanceVisit {
 /** `month` is "YYYY-MM"; omit for the current month. */
 export function getMyAttendanceHistory(month?: string) {
   const qs = month ? `?month=${month}` : ''
-  return request<{ visits: MyAttendanceVisit[] }>(`/api/site-attendance/me/history${qs}`)
+  return request<{ visits: MyAttendanceVisit[]; approvedOvertime: { date: string; minutes: number }[] }>(
+    `/api/site-attendance/me/history${qs}`,
+  )
+}
+
+// ---------- Overtime approval (HR) ----------
+
+export type OvertimeItemStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
+
+export interface OvertimeItem {
+  employeeId: string
+  employee: { id: string; firstName: string; lastName: string; employeeCode: string } | null
+  /** Mauritius calendar day, "YYYY-MM-DD". */
+  date: string
+  /** Overtime as calculated now from attendance (0 if it no longer calculates). */
+  minutes: number
+  firstIn: string
+  lastOut: string
+  status: OvertimeItemStatus
+  decision: {
+    minutes: number
+    status: 'APPROVED' | 'REJECTED'
+    note: string | null
+    decidedAt: string
+    decidedBy: { id: string; name: string | null; email: string } | null
+  } | null
+}
+
+export function listOvertime(month: string) {
+  return request<{ month: string; items: OvertimeItem[] }>(`/api/overtime?month=${month}`)
+}
+
+export function decideOvertime(input: { employeeId: string; date: string; approve: boolean; note?: string }) {
+  return request<{ decision: unknown }>('/api/overtime/decide', { method: 'POST', body: JSON.stringify(input) })
+}
+
+export function undoOvertimeDecision(employeeId: string, date: string) {
+  return request<void>(`/api/overtime/${employeeId}/${date}`, { method: 'DELETE' })
 }
 
 /**
@@ -2631,6 +2668,8 @@ export type NotificationType =
   | 'TOOL_REQUEST_SUBMITTED'
   | 'TOOL_REQUEST_ISSUED'
   | 'TOOL_REQUEST_REJECTED'
+  | 'OVERTIME_APPROVED'
+  | 'OVERTIME_REJECTED'
 
 export interface Notification {
   id: string
