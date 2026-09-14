@@ -273,6 +273,8 @@ export const mfe: Dict = {
 
   myAttendance: {
     title: 'Mo prezans',
+    todayTitle: 'Zordi',
+    todayEmpty: 'Ou pa ankor pointe zordi.',
     empty: 'Pena okenn pointaz anrezistre sa mwa la.',
     loadFailed: 'Pa finn kapav sarz ou prezans',
     previousMonth: 'Mwa avan',
