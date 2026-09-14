@@ -5,8 +5,9 @@ import { useAuth } from './context/AuthContext'
 import * as api from './lib/api'
 import type { Notification } from './lib/api'
 import { Panel, StatCard, EmptyState, TableSkeleton } from './dashboard/ui'
-import { hasRole, FIELD_ONLY_ROLES, TOOL_MANAGE_ROLES } from './lib/permissions'
+import { hasRole, FIELD_ONLY_ROLES, OPS_SUBMIT_ROLES, TOOL_MANAGE_ROLES } from './lib/permissions'
 import AttendanceWidget from './dashboard/AttendanceWidget'
+import MyAttendanceHistory from './dashboard/MyAttendanceHistory'
 import { useT } from './i18n'
 
 const ACTIVE_WORK_ORDER_STATUSES = new Set(['SCHEDULED', 'IN_PROGRESS', 'WAITING_FOR_PARTS', 'REOPENED'])
@@ -74,35 +75,9 @@ function DashboardHome() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <span className="text-xs font-semibold tracking-widest text-cyan-accent">{t.overview.eyebrow}</span>
-        <h1 className="mt-1 text-3xl font-bold text-ink-100">{t.overview.title}</h1>
-      </div>
-
-      <Panel>
-        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-          <div>
-            <span className="text-xs font-semibold tracking-widest text-cyan-accent">
-              {t.overview.companyProfile}
-            </span>
-            <h2 className="mt-1 text-xl font-semibold text-ink-100">Technet Engineering</h2>
-            <p className="mt-2 max-w-2xl text-sm text-ink-300">
-              {t.overview.companyBlurb}
-              {user?.name ? t.overview.welcomeBack(user.name) : ''}
-            </p>
-          </div>
-          <div className="flex gap-8 sm:text-right">
-            <div>
-              <div className="text-xs font-semibold tracking-widest text-ink-400">{t.overview.established}</div>
-              <div className="mt-1 text-lg font-semibold text-cyan-accent">2014</div>
-            </div>
-            <div>
-              <div className="text-xs font-semibold tracking-widest text-ink-400">{t.overview.hq}</div>
-              <div className="mt-1 text-lg font-semibold text-cyan-accent">{t.overview.hqValue}</div>
-            </div>
-          </div>
-        </div>
-      </Panel>
+      <h1 className="text-2xl font-bold text-ink-100 sm:text-3xl">
+        {user?.name ? t.overview.welcomeBack(user.name) : t.overview.welcome}
+      </h1>
 
       {user?.employeeId && <AttendanceWidget />}
 
@@ -179,6 +154,9 @@ function DashboardHome() {
           </>
         )}
       </div>
+
+      {/* Same audience as the check-in card: staff with an employee record who can check in. */}
+      {user?.employeeId && hasRole(user.role, OPS_SUBMIT_ROLES) && <MyAttendanceHistory />}
     </div>
   )
 }
