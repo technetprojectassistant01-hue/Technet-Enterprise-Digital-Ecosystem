@@ -55,7 +55,7 @@ export const en = {
     Certifications: 'Certifications',
     Projects: 'Projects',
     Documents: 'Documents',
-    'Technet Maintenance': 'Technet Maintenance',
+    'Technet Store': 'Technet Store',
     'Tools & Equipment': 'Tools & Equipment',
     'Tool Requests': 'Tool Requests',
     'Technet Connect': 'Technet Connect',
@@ -1304,14 +1304,14 @@ export const en = {
           {
             q: 'How do I get the tools I need?',
             a: [
-              'Open Technet Maintenance → "Tool Requests" and tap "Request Tools". Write what you need, and when. The store is notified, and you get a notification when your tools are ready to collect.',
-              'While a request is still pending you can withdraw it from the same page.',
+              'Open Technet Store → "Tool Requests" and tap "Request Tools". Write what you need, and when. The store is notified, and you get a notification when your tools are ready to collect.',
+              'While a request is still pending you can change it with "Edit". You can "Delete" a request as long as no tools have been issued for it.',
             ],
           },
           {
             q: 'How do I see which tools I have?',
             a: [
-              'Open Technet Maintenance → "Tools & Equipment". The "Tools I Have" list at the top shows every tool issued to you and when it is due back. Hand tools back to the store — they record the return.',
+              'Open Technet Store → "Tools & Equipment". The "Tools I Have" list at the top shows every tool issued to you and when it is due back. Hand tools back to the store — they record the return.',
             ],
           },
         ],
