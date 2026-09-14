@@ -15,7 +15,8 @@ export function downloadCsv<T>(filename: string, columns: { header: string; acce
     columns.map((c) => toCsvCell(c.header)).join(','),
     ...rows.map((row) => columns.map((c) => toCsvCell(c.accessor(row))).join(',')),
   ]
-  const blob = new Blob([lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' })
+  // The BOM makes Excel read the file as UTF-8, so accented text isn't garbled.
+  const blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
