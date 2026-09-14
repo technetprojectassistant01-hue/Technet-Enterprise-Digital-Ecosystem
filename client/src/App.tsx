@@ -7,6 +7,7 @@ import LegalPage, { LegalContent } from './LegalPage'
 import Dashboard from './Dashboard'
 import DashboardHome from './DashboardHome'
 import MyLeavePage from './MyLeavePage'
+import LeaveApprovalsPage from './LeaveApprovalsPage'
 import ErpLayout from './erp/ErpLayout'
 import TechnetErpPage from './TechnetErpPage'
 import InventoryPage from './erp/InventoryPage'
@@ -169,6 +170,7 @@ function App() {
           <Route path="settings" element={<SettingsPage />} />
           <Route element={<AdminRoute />}>
             <Route path="users" element={<UsersPage />} />
+            <Route path="leave-approvals" element={<LeaveApprovalsPage />} />
             <Route path="insight" element={<InsightDashboardPage />} />
           </Route>
         </Route>
