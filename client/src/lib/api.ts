@@ -2349,7 +2349,7 @@ export function documentDownloadUrl(id: string) {
   return `${API_URL}/api/documents/${id}/download`
 }
 
-// ---------- Tools & equipment (Technet Maintenance) ----------
+// ---------- Tools & equipment (Technet Store) ----------
 
 export type ToolStatus = 'AVAILABLE' | 'CHECKED_OUT' | 'UNDER_REPAIR' | 'RETIRED'
 export type ToolCondition = 'GOOD' | 'FAIR' | 'DAMAGED'
