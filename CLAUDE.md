@@ -434,7 +434,7 @@ before, unchanged.
   caller's own `Employee` via `prisma.employee.findUnique({ where: { userId: req.user!.sub } })`,
   403 "No employee record is linked to your account" if unlinked — same helper pattern and message
   already established in `siteAttendance.ts`, reused verbatim for consistency.
-- **Admins don't get My Leave** (2026-09-14, user request): the ADMIN menu shows **Leave Approvals** (`/dashboard/leave-approvals`, `LeaveApprovalsPage.tsx`, AdminRoute-guarded) instead, with tabs **Awaiting Approval** (PENDING only) and **All Leave**. Both reuse HR's `LeaveRequestsTab` (new `initialStatus`/`lockStatus` props), so approve/reject/edit/cancel behave exactly as on ERP → HR → Leave. `/dashboard/my-leave` redirects an admin there. HR Officers are unchanged.
+- **Admins don't get My Leave** (2026-09-14, user request): the ADMIN menu shows **Leave Approvals** (`/dashboard/leave-approvals`, `LeaveApprovalsPage.tsx`, AdminRoute-guarded) instead, with tabs **Awaiting Approval** (PENDING only) and **Approved** (APPROVED only). Cancelled and rejected requests are deliberately not shown there — the user said seeing technicians' cancelled leave felt personal. (ERP → HR → Leave still lists every status for HR.) Both reuse HR's `LeaveRequestsTab` (new `initialStatus`/`lockStatus` props), so approve/reject/edit/cancel behave exactly as on ERP → HR → Leave. `/dashboard/my-leave` redirects an admin there. HR Officers are unchanged.
 - **Edit added 2026-09-14 at the user's request** (originally create + withdraw only): each PENDING
   row on My Leave now has **Edit** and **Withdraw** buttons. `PUT /api/my-leave/requests/:id` →
   `updateLeaveRequestRecord`, which shares `validateLeaveRequestInput` with create (the clash check
