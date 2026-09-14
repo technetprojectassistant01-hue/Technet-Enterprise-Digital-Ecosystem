@@ -387,6 +387,14 @@ requirement without either party noticing.
   touching layout code a second time; a visual screenshot comparison alone under-detects size and
   alignment drift that's obvious once you have the actual numbers.
 
+- **Logo switched to the website's current logo** (2026-09-14, user request): every PDF letterhead (quotation,
+  invoice, attendance — all share `drawLetterhead`) now uses the "T" mark over TECHNET / ENGINEERING from
+  technetengineering.com, replacing the older lockup cropped from an issued quotation. The website only has
+  low-resolution JPEGs; `images/footer-logo.jpg` (larger than `images/logo.jpg`) was cropped above its tagline,
+  its #e8e8e8 background lifted to white with a light-tones-only curve (a plain levels change leaves a visible
+  grey box around the mark in print), and upscaled 3x to a 645x645 PNG in `assets/logo.ts`; drawn 100pt wide.
+  It is slightly soft in print — **replace it with the original artwork if the company supplies it.**
+
 ## 10a. Technet Digital Marketing — Phase 1 (2026-08-26)
 
 Went from stub to built. Unlike every other module, no real manager conversation has happened for
