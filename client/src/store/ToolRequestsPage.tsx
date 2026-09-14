@@ -10,6 +10,8 @@ import { useAuth } from '../context/AuthContext'
 import { hasRole, TOOL_MANAGE_ROLES } from '../lib/permissions'
 import { useT } from '../i18n'
 import { dayOf, toolRequestStatusTone } from './toolTones'
+import { ClipboardList as ClipboardListIcon } from 'lucide-react'
+import PageTitle from '../dashboard/PageTitle'
 
 const STATUSES: ToolRequestStatus[] = ['PENDING', 'ISSUED', 'REJECTED', 'CANCELLED']
 
@@ -219,12 +221,7 @@ function ToolRequestsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-ink-100">{t.toolRequests.title}</h1>
-          <p className="mt-1 text-sm text-ink-300">
-            {canManage ? t.toolRequests.subtitleManager : t.toolRequests.subtitle}
-          </p>
-        </div>
+        <PageTitle icon={ClipboardListIcon} title={t.toolRequests.title} subtitle={canManage ? t.toolRequests.subtitleManager : t.toolRequests.subtitle} />
         {canRequest && (
           <button type="button" onClick={openForm} className={primaryButtonClass}>
             <Plus className="h-4 w-4" />
