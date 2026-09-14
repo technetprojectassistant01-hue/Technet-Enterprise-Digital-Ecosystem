@@ -23,7 +23,7 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
       <div className={fieldLabelClass}>{label}</div>
-      <div className="mt-1 text-sm text-ink-100">{value || <span className="text-ink-500">—</span>}</div>
+      <div className="mt-1 text-sm text-ink-100">{value || <span className="text-ink-400">—</span>}</div>
     </div>
   )
 }
@@ -60,7 +60,7 @@ function PhotoGrid({
     <div>
       <div className={fieldLabelClass}>{label}</div>
       {filtered.length === 0 ? (
-        <p className="mt-1 text-sm text-ink-500">{t.ops.irDetail.noneUploaded}</p>
+        <p className="mt-1 text-sm text-ink-400">{t.ops.irDetail.noneUploaded}</p>
       ) : (
         <div className="mt-2 flex flex-wrap gap-3">
           {filtered.map((p) => (
@@ -323,7 +323,7 @@ function InterventionReportDetailPage() {
                   <div key={unit.id} className="rounded-md border border-ink-700 bg-ink-950 px-3 py-2.5">
                     <div className="text-xs font-semibold text-ink-200">{unit.label}</div>
                     <div className="mt-1 text-xs text-ink-300">{unit.problem}</div>
-                    <div className="mt-1 text-xs text-ink-500">{unit.action ? unit.action : t.ops.irDetail.notActioned}</div>
+                    <div className="mt-1 text-xs text-ink-400">{unit.action ? unit.action : t.ops.irDetail.notActioned}</div>
                   </div>
                 ))}
               </div>
@@ -399,7 +399,7 @@ function InterventionReportDetailPage() {
               <span className="pb-2.5 text-xs text-ink-400">{t.ops.irDetail.next(report.nextReminderAt.slice(0, 10))}</span>
             )}
           </div>
-          <p className="mt-2 text-xs text-ink-500">{t.ops.irDetail.reminderHint}</p>
+          <p className="mt-2 text-xs text-ink-400">{t.ops.irDetail.reminderHint}</p>
         </Panel>
       )}
 
