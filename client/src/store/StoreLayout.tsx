@@ -11,9 +11,8 @@ function StoreLayout() {
   const t = useT()
   return (
     <div className="flex flex-col gap-6">
+      {/* Just the two tabs — no "Technet Store / Tools & Equipment" title (user request). */}
       <ModuleHeader
-        title="Technet Store"
-        subtitle={t.tools.moduleSubtitle}
         tabs={TABS.map((tab) => ({ ...tab, label: navLabel(t, tab.label) }))}
         searchPlaceholder={t.tools.moduleSearchPlaceholder}
       />
