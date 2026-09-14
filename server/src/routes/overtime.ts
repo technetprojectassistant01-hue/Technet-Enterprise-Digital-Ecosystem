@@ -9,6 +9,7 @@ import {
   dayToDate,
   mauritiusMonthRange,
 } from "../lib/overtime";
+import { overtimeForDay } from "../lib/overtimeQueue";
 
 /**
  * Overtime approval for HR (and Admin). Overtime is calculated from site attendance against the
@@ -34,17 +35,6 @@ function currentMauritiusMonth(): string {
 
 function isDay(value: unknown): value is string {
   return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(dayToDate(value).getTime());
-}
-
-/** Recomputes one employee's overtime for one Mauritius day from their attendance. */
-async function overtimeFor(employeeId: string, day: string) {
-  const start = new Date(dayToDate(day).getTime() - MAURITIUS_OFFSET_MINUTES * 60_000);
-  const end = new Date(start.getTime() + 86_400_000);
-  const visits = await prisma.siteAttendance.findMany({
-    where: { employeeId, checkInAt: { gte: start, lt: end } },
-    select: VISIT_SELECT,
-  });
-  return computeOvertimeDays(visits).find((d) => d.date === day) ?? null;
 }
 
 /** Every overtime day in a month (?month=YYYY-MM), with HR's decision if there is one. */
@@ -99,7 +89,7 @@ router.post("/decide", async (req, res) => {
     return res.status(400).json({ error: "employeeId, date (YYYY-MM-DD) and approve are required" });
   }
 
-  const day = await overtimeFor(employeeId, date);
+  const day = await overtimeForDay(employeeId, date);
   if (!day) return res.status(409).json({ error: "There is no overtime to decide for that day" });
 
   const status = approve ? "APPROVED" : "REJECTED";
