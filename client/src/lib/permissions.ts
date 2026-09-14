@@ -19,6 +19,15 @@ export const HR_ROLES: readonly Role[] = ['ADMIN', 'HR_OFFICER']
 /** Read-only "who's around today" visibility for Operations Managers, alongside HR's full edit rights. */
 export const WORKFORCE_VIEW_ROLES: readonly Role[] = ['ADMIN', 'HR_OFFICER', 'OPERATIONS_MANAGER']
 export const OPS_MANAGE_ROLES: readonly Role[] = ['ADMIN', 'OPERATIONS_MANAGER']
+/** Everyone who isn't in OPS_MANAGE_ROLES — hides manager-only Operations menu items (Team Attendance, Field Operations). */
+export const NON_OPS_MANAGE_ROLES: readonly Role[] = [
+  'SALES_OFFICER',
+  'FINANCE_OFFICER',
+  'STOREKEEPER',
+  'HR_OFFICER',
+  'FIELD_TECHNICIAN',
+  'EMPLOYEE',
+]
 export const OPS_SUBMIT_ROLES: readonly Role[] = ['ADMIN', 'OPERATIONS_MANAGER', 'FIELD_TECHNICIAN', 'EMPLOYEE']
 export const DOCUMENT_ROLES: readonly Role[] = [
   'ADMIN',

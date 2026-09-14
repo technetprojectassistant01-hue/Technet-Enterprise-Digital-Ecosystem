@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { LayoutList } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { MAIN_NAV } from './nav'
+import { MAIN_NAV, visibleNav } from './nav'
 import { navLabel, useT } from '../i18n'
 
 /**
@@ -12,7 +12,7 @@ import { navLabel, useT } from '../i18n'
 function MobileNav({ onOpenAll }: { onOpenAll: () => void }) {
   const { user } = useAuth()
   const t = useT()
-  const items = MAIN_NAV.filter((item) => !user?.role || !item.hiddenFrom?.includes(user.role))
+  const items = visibleNav(MAIN_NAV, user?.role)
 
   return (
     <div className="flex items-stretch gap-1 border-b border-ink-800 bg-ink-900 px-2 py-1.5 lg:hidden">
