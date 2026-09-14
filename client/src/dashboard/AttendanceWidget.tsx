@@ -50,7 +50,7 @@ function ReminderToggle() {
 
   if (!available || devices === null || support === 'unsupported') return null
   if (support === 'needs-home-screen') {
-    return <span className="text-xs text-ink-500">{t.attendance.remindersNeedHomeScreen}</span>
+    return <span className="text-xs text-ink-400">{t.attendance.remindersNeedHomeScreen}</span>
   }
 
   async function toggle() {
@@ -265,7 +265,7 @@ function AttendanceWidget() {
         {/* Status card */}
         {checkedIn && current ? (
           <div className="rounded-xl border border-ink-700 bg-ink-950/60 px-4 py-5 text-center">
-            <div className="text-[11px] font-semibold tracking-widest text-ink-500">{t.attendance.currentStatus}</div>
+            <div className="text-[11px] font-semibold tracking-widest text-ink-400">{t.attendance.currentStatus}</div>
             <div className="mt-1 flex items-center justify-center gap-2 text-base font-bold text-ink-100">
               <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
               {t.attendance.checkedIn}
@@ -413,7 +413,7 @@ function AttendanceWidget() {
         {/* Today */}
         {history.length > 0 && (
           <div className="border-t border-ink-800 pt-3">
-            <div className="mb-2 text-[11px] font-semibold tracking-widest text-ink-500">{t.attendance.recent}</div>
+            <div className="mb-2 text-[11px] font-semibold tracking-widest text-ink-400">{t.attendance.recent}</div>
             <div className="flex flex-col gap-2.5">
               {history.slice(0, 5).map((v) => (
                 <div key={v.id} className="flex items-start gap-2.5 text-xs">
@@ -427,7 +427,7 @@ function AttendanceWidget() {
                     {totalTransportCost(v) > 0 && (
                       <span className="text-ink-300"> · {formatMoney(totalTransportCost(v))}</span>
                     )}
-                    <span className="block text-ink-500">{new Date(v.checkInAt).toLocaleDateString()}</span>
+                    <span className="block text-ink-400">{new Date(v.checkInAt).toLocaleDateString()}</span>
                   </div>
                 </div>
               ))}
