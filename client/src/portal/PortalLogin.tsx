@@ -100,7 +100,7 @@ function PortalLogin() {
 
           {error && <p className="mt-4 text-center text-sm text-red-400">{error}</p>}
 
-          <p className="mt-6 text-center text-xs text-ink-500">
+          <p className="mt-6 text-center text-xs text-ink-400">
             Don't have portal access yet? Contact your Technet Engineering representative.
           </p>
         </form>
