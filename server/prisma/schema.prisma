@@ -284,6 +284,8 @@ model User {
   toolCheckoutsIssued   ToolCheckout[] @relation("ToolCheckoutIssuer")
   toolCheckoutsReturned ToolCheckout[] @relation("ToolCheckoutReceiver")
 
+  overtimeDecisionsMade OvertimeDecision[] @relation("OvertimeDecider")
+
   quotationsCreated Quotation[] @relation("QuotationCreator")
 
   marketingCampaignsCreated MarketingCampaign[] @relation("MarketingCampaignCreator")
@@ -430,6 +432,8 @@ model Employee {
 
   toolRequests  ToolRequest[]
   toolCheckouts ToolCheckout[]
+
+  overtimeDecisions OvertimeDecision[]
 }
 
 model Certification {
@@ -1455,6 +1459,8 @@ enum NotificationType {
   TOOL_REQUEST_SUBMITTED
   TOOL_REQUEST_ISSUED
   TOOL_REQUEST_REJECTED
+  OVERTIME_APPROVED
+  OVERTIME_REJECTED
 }
 
 model Notification {
@@ -1606,4 +1612,33 @@ model ToolCheckout {
 
   @@index([toolId, returnedAt])
   @@index([employeeId, returnedAt])
+}
+
+// ---------------------------------------------------------------------------------------------
+// Overtime approval (2026-09-14). Overtime is worked out from site attendance against the
+// standard hours (server/src/lib/overtime.ts); a day with overtime is "pending" until HR records
+// a decision here. The technician only sees overtime HR has approved. One decision per employee
+// per Mauritius calendar day; `minutes` is the overtime as calculated when HR decided.
+// ---------------------------------------------------------------------------------------------
+
+enum OvertimeStatus {
+  APPROVED
+  REJECTED
+}
+
+model OvertimeDecision {
+  id          String         @id @default(uuid())
+  employeeId  String
+  employee    Employee       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  /// The Mauritius calendar day, stored as UTC midnight of that date.
+  date        DateTime
+  minutes     Int
+  status      OvertimeStatus
+  note        String?
+  decidedById String?
+  decidedBy   User?          @relation("OvertimeDecider", fields: [decidedById], references: [id], onDelete: SetNull)
+  decidedAt   DateTime       @default(now())
+
+  @@unique([employeeId, date])
+  @@index([date])
 }
