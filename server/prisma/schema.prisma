@@ -1197,6 +1197,21 @@ model DailyWorkReport {
 
   technicians DailyWorkReportTechnician[]
   workOrders  DailyWorkReportWorkOrder[]
+  photos      DailyWorkReportPhoto[]
+}
+
+/// Up to 3 photos attached when the report is filed (2026-09-14). Bytes are only served by the
+/// dedicated photo endpoint, never in list/detail JSON.
+model DailyWorkReportPhoto {
+  id                String          @id @default(uuid())
+  dailyWorkReportId String
+  dailyWorkReport   DailyWorkReport @relation(fields: [dailyWorkReportId], references: [id], onDelete: Cascade)
+  data              Bytes
+  fileName          String
+  mimeType          String
+  createdAt         DateTime        @default(now())
+
+  @@index([dailyWorkReportId])
 }
 
 model DailyWorkReportTechnician {
