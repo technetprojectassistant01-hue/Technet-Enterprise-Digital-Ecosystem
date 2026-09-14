@@ -3,7 +3,7 @@ import { BellOff, BellRing, Briefcase, LogIn, LogOut } from 'lucide-react'
 import * as api from '../lib/api'
 import type { MyWorkOrderOption, SiteAttendance } from '../lib/api'
 import { getPosition } from '../lib/geolocation'
-import { clockOf, currentClockTime, statedTimeSuffix, totalTransportCost } from '../lib/siteAttendance'
+import { clockOf, currentClockTime, statedTimeSuffix, totalTransportCost, ATTENDANCE_CHANGED_EVENT } from '../lib/siteAttendance'
 import { formatMoney } from '../lib/format'
 import { Panel } from './ui'
 import { useToast } from './ToastContext'
@@ -208,6 +208,7 @@ function AttendanceWidget() {
         },
       })
       toast.success(queued ? t.attendance.queued : t.attendance.checkedInToast)
+      window.dispatchEvent(new Event(ATTENDANCE_CHANGED_EVENT))
       resetForm()
       load()
     } catch (err) {
@@ -243,6 +244,7 @@ function AttendanceWidget() {
         },
       })
       toast.success(queued ? t.attendance.queued : t.attendance.checkedOutToast)
+      window.dispatchEvent(new Event(ATTENDANCE_CHANGED_EVENT))
       resetForm()
       load()
     } catch (err) {
@@ -258,9 +260,9 @@ function AttendanceWidget() {
     'flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-accent px-4 py-3.5 text-base font-semibold text-ink-950 transition hover:bg-cyan-accent-dark disabled:opacity-60'
 
   return (
-    // max-w-md: a compact, phone-shaped card even on a wide screen — this is a focused
+    // max-w-md + mx-auto: a compact, phone-shaped card centred on a wide screen — this is a focused
     // single-task view, not a full-width dashboard panel.
-    <Panel title={t.attendance.title} action={<ReminderToggle />} className="max-w-md">
+    <Panel title={t.attendance.title} action={<ReminderToggle />} className="mx-auto w-full max-w-md">
       <div className="flex w-full flex-col gap-4">
         {/* Status card */}
         {checkedIn && current ? (
