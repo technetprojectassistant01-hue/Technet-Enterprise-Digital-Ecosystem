@@ -26,7 +26,7 @@ router.get("/summary", async (_req, res) => {
     activeWorkOrders,
     overdueInvoiceCount,
     overdueInvoiceSum,
-    openMaintenanceRequests,
+    pendingToolRequests,
     techniciansOnSite,
     inventoryItems,
   ] = await Promise.all([
@@ -38,7 +38,7 @@ router.get("/summary", async (_req, res) => {
     prisma.workOrder.count({ where: { status: { in: ["SCHEDULED", "IN_PROGRESS", "WAITING_FOR_PARTS", "REOPENED"] } } }),
     prisma.invoice.count({ where: overdueWhere }),
     prisma.invoice.aggregate({ _sum: { total: true }, where: overdueWhere }),
-    prisma.maintenanceRequest.count({ where: { status: { in: ["SUBMITTED", "SCHEDULED"] } } }),
+    prisma.toolRequest.count({ where: { status: "PENDING" } }),
     // Office check-ins (no linked work order) shouldn't count as "on site" here.
     prisma.siteAttendance.count({ where: { checkOutAt: null } }),
     prisma.inventoryItem.findMany({ select: { quantity: true, minStockLevel: true } }),
@@ -55,7 +55,7 @@ router.get("/summary", async (_req, res) => {
         count: overdueInvoiceCount,
         total: Number(overdueInvoiceSum._sum.total ?? 0),
       },
-      openMaintenanceRequests,
+      pendingToolRequests,
       lowStockItems,
       techniciansOnSite,
       generatedAt: now.toISOString(),
