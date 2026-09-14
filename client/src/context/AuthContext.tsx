@@ -15,6 +15,26 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
+/** Set when someone picks a language while signed out; kept in storage so a reload before signing in still counts. */
+const PICKED_KEY = 'technet-language-picked'
+
+function readPickedWhileSignedOut(): boolean {
+  try {
+    return localStorage.getItem(PICKED_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+function setPickedWhileSignedOut(picked: boolean) {
+  try {
+    if (picked) localStorage.setItem(PICKED_KEY, '1')
+    else localStorage.removeItem(PICKED_KEY)
+  } catch {
+    // Blocked storage: the account's language will apply on sign-in, as before.
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<CurrentUser | null>(null)
   const [loading, setLoading] = useState(true)
@@ -23,11 +43,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   languageRef.current = language
 
   /**
-   * On sign-in: the account's saved language wins. If the account has never had one, the
-   * choice already made on this device (e.g. on the sign-in page) is saved to it instead.
+   * On sign-in: a language picked on this device while signed out (e.g. on the sign-in page) is
+   * the person's latest choice, so it wins and is saved to the account. Otherwise the account's
+   * saved language is applied — that's what makes the choice follow them to a new device. If the
+   * account has never had one, this device's language is saved to it.
    */
   function adoptLanguage(signedIn: CurrentUser) {
-    if (isLanguage(signedIn.language)) {
+    if (readPickedWhileSignedOut()) {
+      setPickedWhileSignedOut(false)
+      if (signedIn.language !== languageRef.current) {
+        api.updateMyLanguage(languageRef.current).catch(() => {})
+      }
+    } else if (isLanguage(signedIn.language)) {
       setLanguage(signedIn.language)
     } else if (languageRef.current !== 'en') {
       api.updateMyLanguage(languageRef.current).catch(() => {})
@@ -66,6 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   function changeLanguage(next: Language) {
     setLanguage(next)
+    setPickedWhileSignedOut(!user)
     if (user) {
       setUser({ ...user, language: next })
       // Best effort: offline, the change still applies on this device.
