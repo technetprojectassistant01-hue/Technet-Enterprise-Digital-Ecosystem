@@ -3,6 +3,7 @@ import Login from './Login'
 import ForgotPassword from './ForgotPassword'
 import ResetPassword from './ResetPassword'
 import HelpCenterPage, { HelpCenterContent } from './HelpCenterPage'
+import LegalPage, { LegalContent } from './LegalPage'
 import Dashboard from './Dashboard'
 import DashboardHome from './DashboardHome'
 import MyLeavePage from './MyLeavePage'
@@ -83,11 +84,16 @@ function App() {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/help" element={<HelpCenterPage />} />
+      <Route path="/privacy" element={<LegalPage doc="privacy" />} />
+      <Route path="/terms" element={<LegalPage doc="terms" />} />
+      <Route path="/security" element={<LegalPage doc="security" />} />
       <Route element={<ProtectedRoute />}>
         <Route path="/dashboard" element={<Dashboard />}>
           <Route index element={<DashboardHome />} />
           <Route path="my-leave" element={<MyLeavePage />} />
           <Route path="help" element={<HelpCenterContent />} />
+          <Route path="privacy" element={<LegalContent doc="privacy" />} />
+          <Route path="terms" element={<LegalContent doc="terms" />} />
           <Route element={<RoleRoute blockedRoles={FIELD_ONLY_ROLES} />}>
             <Route path="erp" element={<ErpLayout />}>
               <Route index element={<TechnetErpPage />} />
