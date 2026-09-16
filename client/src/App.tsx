@@ -22,7 +22,6 @@ import QuotationDetailPage from './erp/QuotationDetailPage'
 import QuotationFollowUpPage from './erp/QuotationFollowUpPage'
 import ContractsPage from './erp/ContractsPage'
 import HrModuleLayout from './hr/HrModuleLayout'
-import StaffAttendancePanel from './dashboard/StaffAttendancePanel'
 import HrOverviewPage from './hr/HrOverviewPage'
 import EmployeesPage from './hr/EmployeesPage'
 import EmployeeDetailPage from './hr/EmployeeDetailPage'
@@ -50,7 +49,6 @@ import StoreLayout from './store/StoreLayout'
 import ToolsPage from './store/ToolsPage'
 import ToolRequestsPage from './store/ToolRequestsPage'
 import AvailabilityTab from './hr/AvailabilityTab'
-import AttendancePage from './hr/AttendancePage'
 import OvertimePage from './hr/OvertimePage'
 import AttendanceValidationPage from './hr/AttendanceValidationPage'
 import PayrollPage from './hr/PayrollPage'
@@ -176,19 +174,17 @@ function App() {
             <Route path="employees" element={<EmployeesPage />} />
             <Route path="employees/:id" element={<EmployeeDetailPage />} />
             <Route path="leave" element={<LeavePage />} />
-            <Route path="attendance" element={<AttendancePage />} />
             <Route path="overtime" element={<OvertimePage />} />
             <Route path="validations" element={<AttendanceValidationPage />} />
             <Route path="payroll" element={<PayrollPage />} />
             <Route path="payroll/:id" element={<PayrollDetailPage />} />
             <Route path="certifications" element={<CertificationsPage />} />
             <Route path="availability" element={<AvailabilityTab />} />
-            <Route path="site-attendance" element={<StaffAttendancePanel />} />
           </Route>
           {/* Technet Workforce was folded into Technet HR (2026-09-16). */}
           <Route path="workforce/payroll/:id" element={<RedirectPayroll />} />
           <Route path="workforce/availability" element={<Navigate to="/dashboard/hr/availability" replace />} />
-          <Route path="workforce/attendance" element={<Navigate to="/dashboard/hr/attendance" replace />} />
+          <Route path="workforce/attendance" element={<Navigate to="/dashboard/hr" replace />} />
           <Route path="workforce/overtime" element={<Navigate to="/dashboard/hr/overtime" replace />} />
           <Route path="workforce/validations" element={<Navigate to="/dashboard/hr/validations" replace />} />
           <Route path="workforce/payroll" element={<Navigate to="/dashboard/hr/payroll" replace />} />
