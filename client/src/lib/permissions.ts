@@ -48,6 +48,15 @@ export const DOCUMENT_ROLES: readonly Role[] = [
 /** Field technicians and generic employees only work within Operations and the Store. */
 export const FIELD_ONLY_ROLES: readonly Role[] = ['FIELD_TECHNICIAN', 'EMPLOYEE']
 
+/**
+ * Sales/finance/marketing modules, hidden from field staff and from HR (user request
+ * 2026-09-16: HR works in Technet HR, not in ERP, Connect or Marketing).
+ */
+export const NON_COMMERCIAL_ROLES: readonly Role[] = ['FIELD_TECHNICIAN', 'EMPLOYEE', 'HR_OFFICER']
+
+/** Reading the whole team's site attendance: Operations supervises it, HR validates and pays on it. */
+export const ATTENDANCE_VIEW_ROLES: readonly Role[] = ['ADMIN', 'OPERATIONS_MANAGER', 'HR_OFFICER']
+
 /** Everyone except ADMIN - used to hide admin-only nav items (e.g. Technet Insight). */
 export const NON_ADMIN_ROLES: readonly Role[] = [
   'SALES_OFFICER',

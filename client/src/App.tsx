@@ -22,6 +22,7 @@ import QuotationDetailPage from './erp/QuotationDetailPage'
 import QuotationFollowUpPage from './erp/QuotationFollowUpPage'
 import ContractsPage from './erp/ContractsPage'
 import HrModuleLayout from './hr/HrModuleLayout'
+import StaffAttendancePanel from './dashboard/StaffAttendancePanel'
 import HrOverviewPage from './hr/HrOverviewPage'
 import EmployeesPage from './hr/EmployeesPage'
 import EmployeeDetailPage from './hr/EmployeeDetailPage'
@@ -74,7 +75,7 @@ import SettingsPage from './SettingsPage'
 import ProtectedRoute from './ProtectedRoute'
 import AdminRoute from './AdminRoute'
 import RoleRoute from './RoleRoute'
-import { FIELD_ONLY_ROLES } from './lib/permissions'
+import { NON_COMMERCIAL_ROLES } from './lib/permissions'
 
 /**
  * A moved detail page keeps its id: /dashboard/erp/hr/employees/abc becomes
@@ -108,7 +109,7 @@ function App() {
           <Route path="help" element={<HelpCenterContent />} />
           <Route path="privacy" element={<LegalContent doc="privacy" />} />
           <Route path="terms" element={<LegalContent doc="terms" />} />
-          <Route element={<RoleRoute blockedRoles={FIELD_ONLY_ROLES} />}>
+          <Route element={<RoleRoute blockedRoles={NON_COMMERCIAL_ROLES} />}>
             <Route path="erp" element={<ErpLayout />}>
               <Route index element={<TechnetErpPage />} />
               <Route path="inventory" element={<InventoryPage />} />
@@ -154,7 +155,7 @@ function App() {
               (the removed assets/contracts/schedule screens) lands on the tool register. */}
           <Route path="maintenance/requests" element={<Navigate to="/dashboard/store/requests" replace />} />
           <Route path="maintenance/*" element={<Navigate to="/dashboard/store/tools" replace />} />
-          <Route element={<RoleRoute blockedRoles={FIELD_ONLY_ROLES} />}>
+          <Route element={<RoleRoute blockedRoles={NON_COMMERCIAL_ROLES} />}>
             <Route path="connect" element={<ConnectInfoPage />} />
           </Route>
           <Route path="operations" element={<OperationsLayout />}>
@@ -182,6 +183,7 @@ function App() {
             <Route path="payroll/:id" element={<PayrollDetailPage />} />
             <Route path="certifications" element={<CertificationsPage />} />
             <Route path="availability" element={<AvailabilityTab />} />
+            <Route path="site-attendance" element={<StaffAttendancePanel />} />
           </Route>
           {/* Technet Workforce was folded into Technet HR (2026-09-16). */}
           <Route path="workforce/payroll/:id" element={<RedirectPayroll />} />
@@ -191,7 +193,7 @@ function App() {
           <Route path="workforce/validations" element={<Navigate to="/dashboard/hr/validations" replace />} />
           <Route path="workforce/payroll" element={<Navigate to="/dashboard/hr/payroll" replace />} />
           <Route path="workforce/*" element={<Navigate to="/dashboard/hr" replace />} />
-          <Route element={<RoleRoute blockedRoles={FIELD_ONLY_ROLES} />}>
+          <Route element={<RoleRoute blockedRoles={NON_COMMERCIAL_ROLES} />}>
             <Route path="marketing" element={<MarketingLayout />}>
               <Route index element={<Navigate to="campaigns" replace />} />
               <Route path="campaigns" element={<CampaignsPage />} />

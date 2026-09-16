@@ -1173,3 +1173,27 @@ that are not theirs. The user asked to merge them; offered three shapes, they pi
   `myLeave.ts` and `overtimeQueue.ts` were repointed too.
 - ERP lost its HR tab in `ErpLayout.tsx` and its HR branch in `nav.ts`; the nav dictionary key
   `'Technet Workforce'` became `'Technet HR'` in all three languages.
+
+### 24a. What an HR Officer sees (2026-09-16)
+
+Asked for the same day the module was merged: HR gets all staff attendance and all staff documents, and
+loses ERP, Connect and Marketing.
+
+- **Site Attendance is a tenth tab** in Technet HR (`/dashboard/hr/site-attendance`), rendering the same
+  `dashboard/StaffAttendancePanel.tsx` the admin landing page uses — the month register of GPS check-ins
+  with entered-vs-recorded times, the export, and inline overtime approval. It sits beside the existing
+  **Attendance** tab, which is the *manual office register* (`AttendanceRecord`); these are two different
+  systems with similar names (§11), which is why the labels differ.
+- **`ATTENDANCE_VIEW_ROLES`** (ADMIN, OPERATIONS_MANAGER, HR_OFFICER) now gates `GET /api/site-attendance`
+  and `GET /api/site-attendance/report/pdf`, where it used to be `OPS_MANAGE_ROLES`. HR validates the month
+  and runs payroll off these same visits, so reading them is their job. **Writing stays Operations-only** —
+  closing a forgotten session and requesting a location check are still `OPS_MANAGE_ROLES`.
+- **Staff documents needed no change**: `PERSONAL_DOCUMENT_ROLES` already held HR_OFFICER, reached from the
+  employee profile.
+- **`NON_COMMERCIAL_ROLES`** (FIELD_TECHNICIAN, EMPLOYEE, HR_OFFICER) replaces `FIELD_ONLY_ROLES` on Technet
+  ERP, Technet Connect and Technet Digital Marketing, in `nav.ts` and on their `RoleRoute` wrappers in
+  `App.tsx` — hidden *and* blocked, not just hidden. The server side of ERP is unchanged: those routes still
+  read at `NON_FIELD_ROLES`, so this is a client-side scoping decision, not a security boundary.
+- Verified with a disposable script against a running server: HR gets 200 on the register and the PDF and on
+  staff documents, Operations 200 on the register but 403 on documents, a technician 403 on the register, and
+  HR 403 on closing a session.

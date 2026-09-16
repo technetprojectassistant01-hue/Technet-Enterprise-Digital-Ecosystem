@@ -44,6 +44,14 @@ export const WORKFORCE_VIEW_ROLES = ["ADMIN", "HR_OFFICER", "OPERATIONS_MANAGER"
 /** Create/edit/delete and approve/reject operations-side records. */
 export const OPS_MANAGE_ROLES = ["ADMIN", "OPERATIONS_MANAGER"] as const;
 
+/**
+ * Reading the whole team's site attendance register. Wider than OPS_MANAGE_ROLES because HR
+ * validates the month and runs payroll off these same visits, so they need to see them
+ * (user request 2026-09-16). Writing - closing a forgotten session, asking for a location
+ * check - stays with Operations.
+ */
+export const ATTENDANCE_VIEW_ROLES = ["ADMIN", "OPERATIONS_MANAGER", "HR_OFFICER"] as const;
+
 /** Submitting field-generated records: technicians, generic employees, plus anyone who can manage them. */
 export const OPS_SUBMIT_ROLES = ["ADMIN", "OPERATIONS_MANAGER", "FIELD_TECHNICIAN", "EMPLOYEE"] as const;
 

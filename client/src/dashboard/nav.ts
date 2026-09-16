@@ -37,7 +37,7 @@ import {
   UserCheck,
   type LucideIcon,
 } from 'lucide-react'
-import { FIELD_ONLY_ROLES, NON_ADMIN_ROLES, NON_OPS_MANAGE_ROLES } from '../lib/permissions'
+import { FIELD_ONLY_ROLES, NON_ADMIN_ROLES, NON_COMMERCIAL_ROLES, NON_OPS_MANAGE_ROLES } from '../lib/permissions'
 import type { Role } from '../lib/api'
 
 export interface NavItem {
@@ -63,7 +63,7 @@ export const MAIN_NAV: NavItem[] = [
     to: '/dashboard/erp',
     icon: SlidersHorizontal,
     end: true,
-    hiddenFrom: FIELD_ONLY_ROLES,
+    hiddenFrom: NON_COMMERCIAL_ROLES,
     children: [
       { label: 'Overview', to: '/dashboard/erp', icon: LayoutGrid, end: true },
       { label: 'Inventory', to: '/dashboard/erp/inventory', icon: SlidersHorizontal },
@@ -103,7 +103,7 @@ export const MAIN_NAV: NavItem[] = [
       { label: 'Tool Requests', to: '/dashboard/store/requests', icon: ClipboardList },
     ],
   },
-  { label: 'Technet Connect', to: '/dashboard/connect', icon: Share2, hiddenFrom: FIELD_ONLY_ROLES },
+  { label: 'Technet Connect', to: '/dashboard/connect', icon: Share2, hiddenFrom: NON_COMMERCIAL_ROLES },
   {
     label: 'Technet Operations',
     to: '/dashboard/operations',
@@ -129,6 +129,7 @@ export const MAIN_NAV: NavItem[] = [
       { label: 'Employees', to: '/dashboard/hr/employees', icon: UserCog },
       { label: 'Leave', to: '/dashboard/hr/leave', icon: CalendarDays },
       { label: 'Attendance', to: '/dashboard/hr/attendance', icon: ClipboardCheck },
+      { label: 'Site Attendance', to: '/dashboard/hr/site-attendance', icon: MapPinned },
       { label: 'Overtime', to: '/dashboard/hr/overtime', icon: Clock },
       { label: 'Validations', to: '/dashboard/hr/validations', icon: FileCheck2 },
       { label: 'Payroll', to: '/dashboard/hr/payroll', icon: Banknote },
@@ -136,7 +137,7 @@ export const MAIN_NAV: NavItem[] = [
       { label: 'Availability', to: '/dashboard/hr/availability', icon: UserCheck },
     ],
   },
-  { label: 'Technet Digital Marketing', to: '/dashboard/marketing', icon: Megaphone, hiddenFrom: FIELD_ONLY_ROLES },
+  { label: 'Technet Digital Marketing', to: '/dashboard/marketing', icon: Megaphone, hiddenFrom: NON_COMMERCIAL_ROLES },
   { label: 'Technet Insight', to: '/dashboard/insight', icon: LineChart, hiddenFrom: NON_ADMIN_ROLES },
 ]
 
