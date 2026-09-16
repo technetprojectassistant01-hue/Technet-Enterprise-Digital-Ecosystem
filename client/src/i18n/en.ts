@@ -208,7 +208,7 @@ export const en = {
     activeProjects: 'Active Projects',
     pendingRequisitions: 'Pending Requisitions',
     notLinked:
-      'Your account is not linked to an employee record yet, so check in and check out are not available. Ask an administrator to link it under ERP → HR → Employees.',
+      'Your account is not linked to an employee record yet, so check in and check out are not available. Ask an administrator to link it under Technet HR → Employees.',
   },
 
   attendance: {

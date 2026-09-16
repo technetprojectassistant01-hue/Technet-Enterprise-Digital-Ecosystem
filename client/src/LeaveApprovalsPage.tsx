@@ -11,7 +11,7 @@ type View = 'pending' | 'approved'
  * Admin's leave screen, in place of My Leave in the admin menu: requests awaiting approval, and
  * approved leave. Deliberately nothing else — the admin asked not to see technicians' cancelled
  * (or rejected) requests here, as that felt personal. Both tabs reuse the HR requests table locked
- * to one status, so approve/reject/cancel follow the same rules as Technet ERP → HR → Leave.
+ * to one status, so approve/reject/cancel follow the same rules as Technet HR → Leave.
  * Guarded by AdminRoute in App.tsx.
  */
 function LeaveApprovalsPage() {
