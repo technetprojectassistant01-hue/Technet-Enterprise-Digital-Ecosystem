@@ -333,18 +333,17 @@ function WorkOrdersPage() {
       {showCreate && (
         <Modal title={t.ops.wo.newTitle} onClose={() => setShowCreate(false)}>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <label className={labelClass}>{t.shared.customer}</label>
-                <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className={`mt-2 ${inputClass}`}>
-                  <option value="">{t.shared.selectCustomer}</option>
-                  {customers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.company || c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            {/* Full width: Project used to sit beside it, and a lone half-width select left a gap. */}
+            <div>
+              <label className={labelClass}>{t.shared.customer}</label>
+              <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className={`mt-2 ${inputClass}`}>
+                <option value="">{t.shared.selectCustomer}</option>
+                {customers.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.company || c.name}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
