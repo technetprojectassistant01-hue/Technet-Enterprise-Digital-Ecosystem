@@ -315,6 +315,12 @@ export const mfe: Dict = {
     statDays: 'ZOUR',
     statLate: 'ZOUR AN RETAR',
     statOvertimePending: 'ER SIPLEMANTER POU APROUVE',
+    export: 'Exporte',
+    exportTitle: 'Exporte prezans personel',
+    exportIntro: 'Swazir bann dat, apre telsarz rezis pou tou personel.',
+    downloadPdf: 'Telsarz PDF',
+    downloadExcel: 'Telsarz Excel',
+    excelNote: 'Fisie Excel la enn CSV — Excel ek Google Sheets ouver li direk.',
   },
 
   myAttendance: {

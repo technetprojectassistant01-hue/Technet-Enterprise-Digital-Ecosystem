@@ -1944,6 +1944,11 @@ export function myAttendanceReportPdfUrl(from: string, to: string) {
   return `${API_URL}/api/site-attendance/me/report/pdf?from=${from}&to=${to}`
 }
 
+/** The whole team's attendance register for a range, as a PDF — the admin's Staff Attendance export. */
+export function staffAttendanceReportPdfUrl(from: string, to: string) {
+  return `${API_URL}/api/site-attendance/report/pdf?from=${from}&to=${to}`
+}
+
 /** A period of the signed-in user's attendance that HR has validated. */
 export interface MyAttendanceValidation {
   id: string

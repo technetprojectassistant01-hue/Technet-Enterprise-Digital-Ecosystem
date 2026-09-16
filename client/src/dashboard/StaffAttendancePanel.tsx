@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, Users } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Download, Users } from 'lucide-react'
 import * as api from '../lib/api'
 import type { OvertimeItem, SiteAttendanceWithEmployee } from '../lib/api'
 import { Panel, Badge, EmptyState, TableSkeleton } from './ui'
 import { clockOf, locationMismatchLabel } from '../lib/siteAttendance'
 import { computeDayFlags } from '../lib/workSchedule'
 import { mapLink } from '../lib/geolocation'
+import StaffAttendanceExportDialog from './StaffAttendanceExportDialog'
 import { useT } from '../i18n'
 
 /** Local calendar day of a timestamp, "YYYY-MM-DD" — matches the server's Mauritius day. */
@@ -45,6 +46,7 @@ function StaffAttendancePanel() {
   const [error, setError] = useState<string | null>(null)
   const [deciding, setDeciding] = useState<string | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
+  const [exporting, setExporting] = useState(false)
 
   const month = monthKey(cursor)
   const isCurrentMonth = month === monthKey(new Date())
@@ -166,6 +168,14 @@ function StaffAttendancePanel() {
       </Link>
       <button
         type="button"
+        onClick={() => setExporting(true)}
+        className="mr-2 inline-flex items-center gap-1.5 rounded-md border border-ink-600 px-2.5 py-1.5 text-xs font-semibold text-ink-200 transition hover:border-cyan-accent hover:text-cyan-accent"
+      >
+        <Download className="h-3.5 w-3.5" />
+        <span className="hidden sm:inline">{t.staffAttendance.export}</span>
+      </button>
+      <button
+        type="button"
         onClick={() => setCursor((c) => new Date(c.getFullYear(), c.getMonth() - 1, 1))}
         aria-label={t.myAttendance.previousMonth}
         className="rounded-md p-1.5 text-ink-300 hover:bg-ink-800 hover:text-ink-100"
@@ -204,7 +214,9 @@ function StaffAttendancePanel() {
   }
 
   return (
-    <Panel title={t.staffAttendance.title} icon={Users} action={monthPicker}>
+    <>
+      {exporting && <StaffAttendanceExportDialog month={cursor} onClose={() => setExporting(false)} />}
+      <Panel title={t.staffAttendance.title} icon={Users} action={monthPicker}>
       {!loading && !error && visits.length > 0 && (
         <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[
@@ -237,15 +249,17 @@ function StaffAttendancePanel() {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[68rem] text-left text-sm">
             <thead>
-              <tr className="text-[10px] tracking-widest text-ink-500">
-                <th className="px-3 pb-1" colSpan={2} />
-                <th className="border-l border-ink-800 px-3 pb-1 font-semibold" colSpan={4}>
+              {/* The two group labels are orange so the entered/recorded split is obvious at a
+                  glance — it is the comparison the whole table exists for. */}
+              <tr className="text-[11px] tracking-widest text-ink-500">
+                <th className="px-3 pb-1.5" colSpan={2} />
+                <th className="border-l border-ink-800 px-3 pb-1.5 font-bold text-orange-400" colSpan={4}>
                   {t.staffAttendance.groupEntered}
                 </th>
-                <th className="border-l border-ink-800 px-3 pb-1 font-semibold" colSpan={4}>
+                <th className="border-l border-ink-800 px-3 pb-1.5 font-bold text-orange-400" colSpan={4}>
                   {t.staffAttendance.groupSystem}
                 </th>
-                <th className="border-l border-ink-800 px-3 pb-1" colSpan={2} />
+                <th className="border-l border-ink-800 px-3 pb-1.5" colSpan={2} />
               </tr>
               <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
                 <th className="px-3 py-2 font-semibold">{t.staffAttendance.colStaff}</th>
@@ -379,7 +393,8 @@ function StaffAttendancePanel() {
           </table>
         </div>
       )}
-    </Panel>
+      </Panel>
+    </>
   )
 }
 

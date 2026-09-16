@@ -1,54 +1,20 @@
-import { useEffect, useState } from 'react'
-import { FolderKanban, ShoppingCart } from 'lucide-react'
 import { useAuth } from './context/AuthContext'
-import * as api from './lib/api'
-import { StatCard } from './dashboard/ui'
-import { hasRole, FIELD_ONLY_ROLES, OPS_SUBMIT_ROLES } from './lib/permissions'
+import { hasRole, OPS_SUBMIT_ROLES } from './lib/permissions'
 import AttendanceWidget from './dashboard/AttendanceWidget'
 import MyAttendanceHistory from './dashboard/MyAttendanceHistory'
 import TodayAttendance from './dashboard/TodayAttendance'
 import StaffAttendancePanel from './dashboard/StaffAttendancePanel'
 import { useT } from './i18n'
 
-interface QuickStats {
-  activeProjects: number | null
-  pendingRequisitions: number | null
-}
-
 function DashboardHome() {
   const { user } = useAuth()
   const t = useT()
-  const canNonField = !hasRole(user?.role, FIELD_ONLY_ROLES)
   // An admin administers the website rather than visiting sites, so they don't check in and get
   // no attendance of their own here — they see everybody else's instead (user request 2026-09-16).
   const isAdmin = user?.role === 'ADMIN'
   const canCheckIn = !!user?.employeeId && !isAdmin
   // Same audience as the check-in card: staff with an employee record who can check in.
   const canSeeMyAttendance = canCheckIn && hasRole(user?.role, OPS_SUBMIT_ROLES)
-
-  const [stats, setStats] = useState<QuickStats>({
-    activeProjects: null,
-    pendingRequisitions: null,
-  })
-  const [statsLoading, setStatsLoading] = useState(true)
-
-  useEffect(() => {
-    // Field staff see no stat cards, so they don't fetch anything here.
-    if (!canNonField) {
-      setStatsLoading(false)
-      return
-    }
-    Promise.all([api.listProjects({ status: 'IN_PROGRESS' }), api.listRequisitions({ status: 'SUBMITTED' })])
-      .then(([projRes, reqRes]) => {
-        setStats({
-          activeProjects: projRes.projects.length,
-          pendingRequisitions: reqRes.requisitions.length,
-        })
-      })
-      .catch(() => {})
-      .finally(() => setStatsLoading(false))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canNonField])
 
   return (
     <div className="flex flex-col gap-6">
@@ -61,21 +27,6 @@ function DashboardHome() {
       {isAdmin && <StaffAttendancePanel />}
 
       {canSeeMyAttendance && <TodayAttendance />}
-
-      {canNonField && (
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-          <StatCard
-            label={t.overview.activeProjects}
-            value={statsLoading ? '—' : (stats.activeProjects ?? 0)}
-            icon={FolderKanban}
-          />
-          <StatCard
-            label={t.overview.pendingRequisitions}
-            value={statsLoading ? '—' : (stats.pendingRequisitions ?? 0)}
-            icon={ShoppingCart}
-          />
-        </div>
-      )}
 
       {canSeeMyAttendance && <MyAttendanceHistory />}
     </div>

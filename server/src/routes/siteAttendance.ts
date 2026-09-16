@@ -9,6 +9,8 @@ import { checkLocationAgainstGps } from "../lib/locationMatch";
 import { claimRequest, releaseRequest } from "../lib/idempotency";
 import { notifyHrOfOvertime } from "../lib/overtimeQueue";
 import { buildAttendanceReport, parseRange } from "../lib/attendanceReport";
+import { computeLateByVisit, computeOvertimeDays, dayToDate, mauritiusDay, MAURITIUS_OFFSET_MINUTES } from "../lib/overtime";
+import { generateStaffAttendancePdf } from "../lib/pdf/staffAttendancePdf";
 
 const router = Router();
 
@@ -177,6 +179,68 @@ router.get("/", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
     .sort((a, b) => b.daysPresent - a.daysPresent);
 
   res.json({ current, history, summary });
+});
+
+/**
+ * The whole team's register over a date range, as a printable PDF — the admin's export of the
+ * Staff Attendance table. Unlike the employee's own report (`/me/report/pdf`) this one prints the
+ * GPS and the app's own timestamps alongside what was typed, and has no validation/DRAFT concept:
+ * it is an internal management listing, not an official per-employee sheet.
+ */
+router.get("/report/pdf", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
+  const range = parseRange(req.query.from, req.query.to);
+  if ("error" in range) return res.status(400).json({ error: range.error });
+
+  const offset = MAURITIUS_OFFSET_MINUTES * 60_000;
+  const start = new Date(dayToDate(range.from).getTime() - offset);
+  const end = new Date(dayToDate(range.to).getTime() + 86_400_000 - offset);
+
+  const [rows, decisions] = await Promise.all([
+    prisma.siteAttendance.findMany({
+      where: { checkInAt: { gte: start, lt: end } },
+      include: { employee: { select: { firstName: true, lastName: true } } },
+      orderBy: { checkInAt: "asc" },
+    }),
+    prisma.overtimeDecision.findMany({
+      where: { status: "APPROVED", date: { gte: dayToDate(range.from), lte: dayToDate(range.to) } },
+      select: { employeeId: true, date: true, minutes: true },
+    }),
+  ]);
+
+  const visits = rows.map((v) => ({
+    ...v,
+    employeeName: v.employee ? `${v.employee.firstName} ${v.employee.lastName}` : "—",
+  }));
+
+  // Overtime hangs off each employee-day's last check-in, exactly as it does on screen.
+  const lastOfDay = new Map<string, (typeof visits)[number]>();
+  for (const v of visits) {
+    const key = `${v.employeeId}|${mauritiusDay(v.checkInAt)}`;
+    const current = lastOfDay.get(key);
+    if (!current || v.checkInAt > current.checkInAt) lastOfDay.set(key, v);
+  }
+  const approvedOvertime = new Map<string, number>();
+  for (const d of decisions) {
+    const v = lastOfDay.get(`${d.employeeId}|${d.date.toISOString().slice(0, 10)}`);
+    if (v && d.minutes > 0) approvedOvertime.set(v.id, d.minutes);
+  }
+  const pendingOvertime = new Map<string, number>();
+  for (const day of computeOvertimeDays(visits)) {
+    const v = lastOfDay.get(`${day.employeeId}|${day.date}`);
+    if (v && day.minutes > 0 && !approvedOvertime.has(v.id)) pendingOvertime.set(v.id, day.minutes);
+  }
+
+  const doc = generateStaffAttendancePdf({
+    from: range.from,
+    to: range.to,
+    visits,
+    late: computeLateByVisit(visits),
+    approvedOvertime,
+    pendingOvertime,
+  });
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename="staff-attendance-${range.from}-to-${range.to}.pdf"`);
+  doc.pipe(res);
 });
 
 // A supervisor-triggered nudge, not a live remote GPS ping: it asks the technician to open the
