@@ -1338,3 +1338,15 @@ route wraps the insert in the same five-attempt retry the other generators use: 
 managers saved together, so it takes the next number instead of failing. The field and its validation are
 gone from the form and from `WorkOrderInput`. Verified against the real data: with 100 and 101 on file,
 two consecutive creates came back 102 and 103.
+
+**The work-order site lookup was never confined to Mauritius** (fixed 2026-09-16). `resolveSiteLocation`
+in `workOrders.ts` called `geocodeAddress` with no options, so it ignored the `countrycodes=mu` rule §7b
+says anything comparing typed text to a place must set. Measured against the real API: **"Rose Hill"
+resolved to Iowa** and "Celero Level 5" to Victoria, Australia — a confident pin on the wrong continent,
+saved silently. It now passes `countryCode: "mu"` and an 8s timeout, and catches network errors so a
+third-party outage reads as a failed lookup rather than a 500.
+
+Expect *more* honest failures than before: a query that only matched somewhere abroad now returns nothing
+instead of wrong coordinates. The 400 message says so, and points out the field can be left blank. Real
+behaviour, measured: "Rose Hill", "Ebene" and "Wellkin, Moka" resolve; "Celero Ltd, Level 5" does not —
+a floor or unit never geocodes, which is the limitation §7b already records, not a regression.

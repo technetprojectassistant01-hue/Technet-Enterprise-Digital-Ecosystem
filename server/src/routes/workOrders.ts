@@ -42,12 +42,24 @@ const EMPLOYEE_SELECT = { id: true, firstName: true, lastName: true, position: t
 
 type SiteLocation = { lat: number; lng: number; address: string };
 
-/** Resolves a typed address/place name to a location via free geocoding. Empty/missing clears the site. */
+/**
+ * Resolves a typed address/place name to a location via free geocoding. Empty/missing clears the site.
+ *
+ * Confined to Mauritius. Without that, measured against the real API, "Rose Hill" resolves to Iowa
+ * and "Celero Level 5" to Victoria, Australia — a plausible-looking pin on the wrong continent,
+ * which is worse than an honest failure. The same constraint is why locationMatch.ts sets it
+ * (CLAUDE.md §7b). A timeout keeps a slow third-party lookup from holding the save open, and a
+ * network error is reported as a failed lookup rather than a 500.
+ */
 async function resolveSiteLocation(raw: unknown): Promise<{ ok: true; value: SiteLocation | null } | { ok: false }> {
   if (typeof raw !== "string" || !raw.trim()) return { ok: true, value: null };
-  const result = await geocodeAddress(raw.trim());
-  if (!result) return { ok: false };
-  return { ok: true, value: { lat: result.lat, lng: result.lng, address: result.displayName } };
+  try {
+    const result = await geocodeAddress(raw.trim(), { countryCode: "mu", timeoutMs: 8000 });
+    if (!result) return { ok: false };
+    return { ok: true, value: { lat: result.lat, lng: result.lng, address: result.displayName } };
+  } catch {
+    return { ok: false };
+  }
 }
 
 router.use(requireAuth);
@@ -230,7 +242,7 @@ router.post("/", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
   const resolvedSite = await resolveSiteLocation(siteQuery);
   if (!resolvedSite.ok) {
     return res.status(400).json({
-      error: "Couldn't find that location. Use an area, street, or town name, not a company name (e.g. \"Ebene, Mauritius\", not \"Celero Ltd\").",
+      error: "Couldn't find that place in Mauritius. Use an area, street or town — leave off a floor, unit or company name (e.g. \"Ebene\" or \"Pailles\", not \"Celero Ltd, Level 5\"). You can also leave the site blank and add it later.",
     });
   }
   const techIds = Array.isArray(technicianIds) ? (technicianIds as string[]).filter((v) => typeof v === "string") : [];
@@ -304,7 +316,7 @@ router.patch("/:id", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
     const resolvedSite = await resolveSiteLocation(siteQuery);
     if (!resolvedSite.ok) {
       return res.status(400).json({
-      error: "Couldn't find that location. Use an area, street, or town name, not a company name (e.g. \"Ebene, Mauritius\", not \"Celero Ltd\").",
+      error: "Couldn't find that place in Mauritius. Use an area, street or town — leave off a floor, unit or company name (e.g. \"Ebene\" or \"Pailles\", not \"Celero Ltd, Level 5\"). You can also leave the site blank and add it later.",
     });
     }
     data.siteLat = resolvedSite.value?.lat ?? null;
