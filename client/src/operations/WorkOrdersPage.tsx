@@ -51,7 +51,6 @@ function WorkOrdersPage() {
   const [jobCategory, setJobCategory] = useState<JobCategory>('SERVICING')
   const [description, setDescription] = useState('')
   const [scheduledDate, setScheduledDate] = useState('')
-  const [siteQuery, setSiteQuery] = useState('')
   const [technicianIds, setTechnicianIds] = useState<string[]>([])
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -97,7 +96,6 @@ function WorkOrdersPage() {
     setJobCategory('SERVICING')
     setDescription('')
     setScheduledDate('')
-    setSiteQuery('')
     setTechnicianIds([])
     setFormError(null)
     setShowCreate(true)
@@ -133,7 +131,6 @@ function WorkOrdersPage() {
         description: description || undefined,
         scheduledDate,
         technicianIds,
-        siteQuery: siteQuery || undefined,
       })
       toast.success(t.ops.wo.created)
       setShowCreate(false)
@@ -377,17 +374,6 @@ function WorkOrdersPage() {
                 required
                 className={`mt-2 ${inputClass}`}
               />
-            </div>
-
-            <div>
-              <label className={labelClass}>{t.ops.wo.siteAddress}</label>
-              <input
-                value={siteQuery}
-                onChange={(e) => setSiteQuery(e.target.value)}
-                placeholder={t.ops.wo.sitePlaceholder}
-                className={`mt-2 ${inputClass}`}
-              />
-              <p className="mt-1 text-xs text-ink-400">{t.ops.wo.siteHint}</p>
             </div>
 
             <div>
