@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { UserCog, KeyRound, Copy, AtSign } from 'lucide-react'
+import { UserCog, KeyRound, AtSign } from 'lucide-react'
 import * as api from './lib/api'
 import type { ManagedUser, Role } from './lib/api'
 import { useAuth } from './context/AuthContext'
@@ -45,8 +45,14 @@ function UsersPage() {
   const [role, setRole] = useState<Role>('EMPLOYEE')
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
-  const [resetResult, setResetResult] = useState<{ email: string; password: string } | null>(null)
-  const [copied, setCopied] = useState(false)
+  // The admin types the new password themselves (a generated one is only ever a suggestion), so
+  // this is a form, not a confirm-and-reveal — same deliberate dialog shape as the email change.
+  const [resettingUser, setResettingUser] = useState<ManagedUser | null>(null)
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [resetError, setResetError] = useState<string | null>(null)
+  const [savingPassword, setSavingPassword] = useState(false)
 
   // Changing an email changes how that person signs in, so it gets its own deliberate dialog
   // rather than an inline edit — including when an admin is changing their own.
@@ -124,20 +130,35 @@ function UsersPage() {
     }
   }
 
-  async function handleResetPassword(id: string, email: string) {
-    const ok = await confirm({
-      title: 'Reset password',
-      message: `Set a new temporary password for ${email}? Their current password stops working immediately, but if they already have an active session in their browser, it stays valid for up to 8 hours - this doesn't force an instant logout.`,
-      confirmLabel: 'Reset password',
-    })
-    if (!ok) return
-    const newPassword = generateTempPassword()
+  function openPasswordReset(u: ManagedUser) {
+    setResettingUser(u)
+    setNewPassword('')
+    setConfirmPassword('')
+    setShowPassword(false)
+    setResetError(null)
+  }
+
+  async function handleResetPassword(e: FormEvent) {
+    e.preventDefault()
+    if (!resettingUser) return
+    if (newPassword.length < 8) {
+      setResetError('Password must be at least 8 characters')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setResetError('The two passwords do not match')
+      return
+    }
+    setSavingPassword(true)
+    setResetError(null)
     try {
-      await api.updateUser(id, { password: newPassword })
-      setResetResult({ email, password: newPassword })
-      setCopied(false)
+      await api.updateUser(resettingUser.id, { password: newPassword })
+      toast.success(`Password updated for ${resettingUser.email}`)
+      setResettingUser(null)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to reset password')
+      setResetError(err instanceof Error ? err.message : 'Failed to reset password')
+    } finally {
+      setSavingPassword(false)
     }
   }
 
@@ -272,8 +293,8 @@ function UsersPage() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleResetPassword(u.id, u.email)}
-                        title="Reset password"
+                        onClick={() => openPasswordReset(u)}
+                        title="Set a new password"
                         className="flex items-center gap-1 rounded-md border border-ink-600 px-3 py-1 text-xs text-ink-300 hover:bg-ink-800 hover:text-ink-100"
                       >
                         <KeyRound className="h-3.5 w-3.5" />
@@ -331,28 +352,81 @@ function UsersPage() {
         </Modal>
       )}
 
-      {resetResult && (
-        <Modal title="Password Reset" onClose={() => setResetResult(null)}>
-          <p className="text-sm text-ink-300">
-            New temporary password for <span className="text-ink-100">{resetResult.email}</span>. Copy it and share
-            it with them directly — it won't be shown again, and no email was sent.
-          </p>
-          <div className="mt-4 flex items-center gap-2">
-            <code className="flex-1 rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-cyan-accent">
-              {resetResult.password}
-            </code>
+      {resettingUser && (
+        <Modal title="Set New Password" onClose={() => setResettingUser(null)}>
+          <form onSubmit={handleResetPassword} className="flex flex-col gap-4">
+            <p className="text-sm text-ink-300">
+              Choose the password {resettingUser.name || resettingUser.email} will sign in with, then tell them
+              what it is — no email is sent. Their old password stops working straight away.
+            </p>
+
+            <div>
+              <label htmlFor="new-password" className="text-xs font-semibold tracking-widest text-ink-400">
+                NEW PASSWORD
+              </label>
+              <input
+                id="new-password"
+                type={showPassword ? 'text' : 'password'}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                autoComplete="new-password"
+                minLength={8}
+                required
+                className={`mt-2 w-full ${inputClass}`}
+              />
+              <p className="mt-1.5 text-xs text-ink-400">At least 8 characters.</p>
+            </div>
+
+            <div>
+              <label htmlFor="confirm-password" className="text-xs font-semibold tracking-widest text-ink-400">
+                CONFIRM PASSWORD
+              </label>
+              <input
+                id="confirm-password"
+                type={showPassword ? 'text' : 'password'}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                autoComplete="new-password"
+                required
+                className={`mt-2 w-full ${inputClass}`}
+              />
+            </div>
+
+            <div className="flex flex-wrap items-center gap-4">
+              <label className="flex items-center gap-2 text-xs text-ink-300">
+                <input
+                  type="checkbox"
+                  checked={showPassword}
+                  onChange={(e) => setShowPassword(e.target.checked)}
+                  className="h-3.5 w-3.5 accent-cyan-accent"
+                />
+                Show password
+              </label>
+              {/* A suggestion the admin can still edit or replace — never the only option. */}
+              <button
+                type="button"
+                onClick={() => {
+                  const suggested = generateTempPassword()
+                  setNewPassword(suggested)
+                  setConfirmPassword(suggested)
+                  setShowPassword(true)
+                }}
+                className="text-xs text-cyan-accent hover:underline"
+              >
+                Suggest one for me
+              </button>
+            </div>
+
+            {resetError && <p className="text-sm text-red-400">{resetError}</p>}
+
             <button
-              type="button"
-              onClick={() => {
-                navigator.clipboard.writeText(resetResult.password)
-                setCopied(true)
-              }}
-              className="flex items-center gap-1.5 rounded-md bg-cyan-accent px-3 py-2 text-xs font-semibold text-ink-950 hover:bg-cyan-accent-dark"
+              type="submit"
+              disabled={savingPassword}
+              className="rounded-md bg-cyan-accent py-2.5 text-sm font-semibold text-ink-950 transition hover:bg-cyan-accent-dark disabled:cursor-not-allowed disabled:opacity-60"
             >
-              <Copy className="h-3.5 w-3.5" />
-              {copied ? 'Copied' : 'Copy'}
+              {savingPassword ? 'Saving…' : 'Save Password'}
             </button>
-          </div>
+          </form>
         </Modal>
       )}
     </div>
