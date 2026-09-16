@@ -1230,3 +1230,17 @@ full register, where HR actually works); My Documents sends both to Technet HR �
 **So neither account needs an Employee record.** Everything they read — the attendance register, staff
 documents, leave, overtime, validations — is gated on their role, not on a linked employee. Link one only
 if that person genuinely works as staff too and should appear in payroll.
+
+### 24d. Both attendance tabs removed from Technet HR (2026-09-16)
+
+Same day as they were added. **Site Attendance** was redundant: HR's landing page already *is* the staff
+attendance register (§24c), so the tab showed the identical panel one click deeper. **Attendance** — the
+manual `AttendanceRecord` office register — went with it at the user's request; `AttendancePage.tsx`,
+`DailyRegisterTab.tsx` and `TimesheetTab.tsx` were deleted since nothing else imported them.
+
+Technet HR is now eight tabs: Overview, Employees, Leave, Overtime, Validations, Payroll, Certifications,
+Availability. `/dashboard/workforce/attendance` redirects to `/dashboard/hr` rather than a dead path.
+
+**Kept on purpose**: the `/api/attendance` router and the `AttendanceRecord` table. HR Overview still calls
+`getAttendanceSummary(today())` for its "attendance today" panel, and the data is not worth discarding.
+Restoring the office register is a matter of putting the three deleted components back from git history.

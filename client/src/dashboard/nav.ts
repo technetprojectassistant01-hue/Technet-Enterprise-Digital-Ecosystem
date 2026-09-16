@@ -134,8 +134,6 @@ export const MAIN_NAV: NavItem[] = [
       { label: 'Overview', to: '/dashboard/hr', icon: LayoutGrid, end: true },
       { label: 'Employees', to: '/dashboard/hr/employees', icon: UserCog },
       { label: 'Leave', to: '/dashboard/hr/leave', icon: CalendarDays },
-      { label: 'Attendance', to: '/dashboard/hr/attendance', icon: ClipboardCheck },
-      { label: 'Site Attendance', to: '/dashboard/hr/site-attendance', icon: MapPinned },
       { label: 'Overtime', to: '/dashboard/hr/overtime', icon: Clock },
       { label: 'Validations', to: '/dashboard/hr/validations', icon: FileCheck2 },
       { label: 'Payroll', to: '/dashboard/hr/payroll', icon: Banknote },
