@@ -807,7 +807,14 @@ install pop-up.
   Mac Safari and Firefox Android no site can trigger an install, so it shows the steps instead
   (Share → Add to Home Screen, etc.). Desktop Firefox can't install at all — nothing offered.
   `beforeinstallprompt` is captured in `initInstallSupport()` before React renders, since it's
-  never re-sent. Settings has an "Install app" panel for after a Not now. The pop-up also shows on
+  never re-sent. Settings has an "Install app" panel for after a Not now. **"Not now" is remembered per signed-in
+  person, not per device** (fixed 2026-09-16): the key is `technet-install-not-now:<userId>` (`device` on
+  the sign-in pages), and the once-per-visit flag resets when the scope changes. A single shared key meant
+  one person dismissing the pop-up silenced it for the next person to sign in on that phone, for a week.
+  That was found while investigating "the new users did not get a prompt"; it was never confirmed as the
+  cause of that report, and the manifest, icons, service worker and deployed bundle all checked out live.
+  Settings → Install app
+  ignores the snooze entirely and is the reliable route. The pop-up also shows on
   both login pages (staff + portal), at most once per page load across all of them.
 - **iPhone/iPad can never be one-tap** — Apple lets no website trigger an install; Share → Add to
   Home Screen is the only route (a true one-tap needs an App Store app — $99/yr + review; the user

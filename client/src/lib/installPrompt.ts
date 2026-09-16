@@ -93,21 +93,29 @@ export async function promptInstall(): Promise<boolean> {
   return outcome === 'accepted'
 }
 
-const NOT_NOW_KEY = 'technet-install-not-now'
 const NOT_NOW_DAYS = 7
 
-/** "Not now" keeps the pop-up away for a week on this device (Settings still offers it). */
-export function snoozeInstallPrompt(): void {
+/**
+ * "Not now" is remembered per signed-in person, not per device. localStorage belongs to the
+ * browser, so a single key meant one technician dismissing the pop-up silenced it for the next
+ * person to sign in on that phone — and for a week. `scope` is the user id once signed in, and
+ * "device" on the sign-in pages where nobody is.
+ */
+function notNowKey(scope: string): string {
+  return `technet-install-not-now:${scope}`
+}
+
+export function snoozeInstallPrompt(scope = 'device'): void {
   try {
-    localStorage.setItem(NOT_NOW_KEY, String(Date.now()))
+    localStorage.setItem(notNowKey(scope), String(Date.now()))
   } catch {
     // Private browsing / blocked storage: the pop-up just comes back next time.
   }
 }
 
-export function isInstallPromptSnoozed(): boolean {
+export function isInstallPromptSnoozed(scope = 'device'): boolean {
   try {
-    const at = Number(localStorage.getItem(NOT_NOW_KEY))
+    const at = Number(localStorage.getItem(notNowKey(scope)))
     return Boolean(at) && Date.now() - at < NOT_NOW_DAYS * 24 * 60 * 60 * 1000
   } catch {
     return false
