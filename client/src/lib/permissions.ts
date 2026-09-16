@@ -48,11 +48,18 @@ export const DOCUMENT_ROLES: readonly Role[] = [
 /** Field technicians and generic employees only work within Operations and the Store. */
 export const FIELD_ONLY_ROLES: readonly Role[] = ['FIELD_TECHNICIAN', 'EMPLOYEE']
 
+/** Cannot open Technet ERP at all. A storekeeper can: Inventory and Procurement are their job. */
+export const ERP_HIDDEN_ROLES: readonly Role[] = ['FIELD_TECHNICIAN', 'EMPLOYEE', 'HR_OFFICER']
+
 /**
- * Sales/finance/marketing modules, hidden from field staff and from HR (user request
- * 2026-09-16: HR works in Technet HR, not in ERP, Connect or Marketing).
+ * The commercial side — Technet Connect, Technet Digital Marketing, and ERP's Overview, Finance,
+ * Projects and Documents. Hidden from field staff, from HR (who work in Technet HR) and from the
+ * storekeeper, who keeps Inventory and Procurement but has no business in the selling half.
  */
-export const NON_COMMERCIAL_ROLES: readonly Role[] = ['FIELD_TECHNICIAN', 'EMPLOYEE', 'HR_OFFICER']
+export const NON_COMMERCIAL_ROLES: readonly Role[] = ['FIELD_TECHNICIAN', 'EMPLOYEE', 'STOREKEEPER', 'HR_OFFICER']
+
+/** Technet HR is for HR and admin, plus Operations for Availability alone. */
+export const NON_HR_ROLES: readonly Role[] = ['FIELD_TECHNICIAN', 'EMPLOYEE', 'STOREKEEPER']
 
 /** Reading the whole team's site attendance: Operations supervises it, HR validates and pays on it. */
 export const ATTENDANCE_VIEW_ROLES: readonly Role[] = ['ADMIN', 'OPERATIONS_MANAGER', 'HR_OFFICER']

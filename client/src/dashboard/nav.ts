@@ -39,9 +39,10 @@ import {
 } from 'lucide-react'
 import {
   ADMINISTRATIVE_ROLES,
-  FIELD_ONLY_ROLES,
+  ERP_HIDDEN_ROLES,
   NON_ADMIN_ROLES,
   NON_COMMERCIAL_ROLES,
+  NON_HR_ROLES,
   NON_OPS_MANAGE_ROLES,
 } from '../lib/permissions'
 import type { Role } from '../lib/api'
@@ -69,14 +70,15 @@ export const MAIN_NAV: NavItem[] = [
     to: '/dashboard/erp',
     icon: SlidersHorizontal,
     end: true,
-    hiddenFrom: NON_COMMERCIAL_ROLES,
+    hiddenFrom: ERP_HIDDEN_ROLES,
     children: [
-      { label: 'Overview', to: '/dashboard/erp', icon: LayoutGrid, end: true },
+      { label: 'Overview', to: '/dashboard/erp', icon: LayoutGrid, end: true, hiddenFrom: NON_COMMERCIAL_ROLES },
       { label: 'Inventory', to: '/dashboard/erp/inventory', icon: SlidersHorizontal },
       {
         label: 'Finance',
         to: '/dashboard/erp/finance',
         icon: Landmark,
+        hiddenFrom: NON_COMMERCIAL_ROLES,
         children: [
           { label: 'Customers', to: '/dashboard/erp/finance/customers', icon: Contact },
           { label: 'Invoices', to: '/dashboard/erp/finance/invoices', icon: Receipt },
@@ -96,8 +98,8 @@ export const MAIN_NAV: NavItem[] = [
           { label: 'Purchase Orders', to: '/dashboard/erp/procurement/purchase-orders', icon: ShoppingCart },
         ],
       },
-      { label: 'Projects', to: '/dashboard/erp/projects', icon: FolderKanban },
-      { label: 'Documents', to: '/dashboard/erp/documents', icon: FileText },
+      { label: 'Projects', to: '/dashboard/erp/projects', icon: FolderKanban, hiddenFrom: NON_COMMERCIAL_ROLES },
+      { label: 'Documents', to: '/dashboard/erp/documents', icon: FileText, hiddenFrom: NON_COMMERCIAL_ROLES },
     ],
   },
   {
@@ -129,7 +131,7 @@ export const MAIN_NAV: NavItem[] = [
     label: 'Technet HR',
     to: '/dashboard/hr',
     icon: Users,
-    hiddenFrom: FIELD_ONLY_ROLES,
+    hiddenFrom: NON_HR_ROLES,
     children: [
       { label: 'Overview', to: '/dashboard/hr', icon: LayoutGrid, end: true },
       { label: 'Employees', to: '/dashboard/hr/employees', icon: UserCog },
