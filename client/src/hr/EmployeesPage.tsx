@@ -96,7 +96,9 @@ function EmployeesPage() {
     e.preventDefault()
     setFormError(null)
 
-    if (!form.employeeCode.trim()) {
+    // Only when editing: the server assigns the code on create, and the form deliberately shows
+    // no field for it there — requiring it made Add Employee impossible to submit at all.
+    if (editing && !form.employeeCode.trim()) {
       setFormError('Employee code is required')
       return
     }
