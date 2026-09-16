@@ -1122,13 +1122,14 @@ disposable scratch scripts against the real DB plus rendered PDFs; the dialog an
   record): upload a photo or PDF (≤10MB) with **Name, Type, Upload media** — the three fields the user
   asked for — then download or delete it. Stored in its own `EmployeeDocument` table, **not** the business
   `Document` table, because that one is listed and downloadable by every office role and these are
-  personal data. `/api/my-documents` only ever touches the caller's own rows. **HR_OFFICER only, not
-  ADMIN**, gets the read-only "Personal Documents" panel on the HR employee profile via
-  `/api/employee-documents` (`PERSONAL_DOCUMENT_ROLES`, narrowed 2026-09-16 at the user's request):
-  these are ID cards, passports and medical notes, and an admin runs the platform without needing them.
-  Enforced server-side, not just by hiding the panel — verified with a disposable script that ADMIN gets
-  403 on list and download while HR_OFFICER gets 200. Admins keep every other part of the HR profile;
-  re-widening is a one-line change to that group in both `roles.ts` and `permissions.ts`. The table has an
+  personal data. `/api/my-documents` only ever touches the caller's own rows. **ADMIN and HR_OFFICER**
+  (`PERSONAL_DOCUMENT_ROLES`) get the read-only "Personal Documents" panel on the HR employee profile
+  via `/api/employee-documents`. It was narrowed to HR alone on 2026-09-16 and widened back the same
+  day: the user decided an admin should see everything. In exchange **an admin has no My Documents page
+  of their own** — it is `hiddenFrom: ['ADMIN']` in nav.ts and the route redirects to the HR employee list,
+  the same shape as My Leave → Leave Approvals. Verified with a disposable script against a running
+  server: ADMIN and HR_OFFICER get 200 on list and download, a technician and a storekeeper 403.
+  **There is still no audit trail on who opened whose document.** The table has an
   `expiryDate` column that is currently unused (the form dropped it at the user's request).
 - **Location dialogs on the check-in card** (`AttendanceWidget.tsx`, `lib/geolocation.ts`): the phone's own
   permission prompt can't be restyled, so our dialogs wrap it — "Allow location?" (Allow / Don't allow) before

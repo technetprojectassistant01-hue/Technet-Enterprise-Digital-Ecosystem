@@ -56,7 +56,8 @@ export const MAIN_NAV: NavItem[] = [
   // Admin approves leave rather than requesting it here, so they get Leave Approvals instead.
   { label: 'My Leave', to: '/dashboard/my-leave', icon: CalendarDays, hiddenFrom: ['ADMIN'] },
   { label: 'Leave Approvals', to: '/dashboard/leave-approvals', icon: CalendarCheck, hiddenFrom: NON_ADMIN_ROLES },
-  { label: 'My Documents', to: '/dashboard/my-documents', icon: IdCard },
+  // Admin reads everyone's documents on the HR employee profile instead of keeping their own.
+  { label: 'My Documents', to: '/dashboard/my-documents', icon: IdCard, hiddenFrom: ['ADMIN'] },
   {
     label: 'Technet ERP',
     to: '/dashboard/erp',
