@@ -1022,7 +1022,13 @@ My Attendance for `role === 'ADMIN'` and shows **Staff Attendance** instead
 (`dashboard/StaffAttendancePanel.tsx`) — a month-at-a-time register, one row per visit, with a link to
 Team Attendance. Each row puts what the person typed (time and location, both legs) next to what the app
 recorded (server timestamp and GPS fix with its map link and mismatch label), plus Late and Overtime
-markers and an inline Approve/Reject for the overtime. It reuses `GET /api/site-attendance` (the
+markers and an inline Approve/Reject for the overtime. The two group labels are orange on purpose —
+the entered-vs-recorded split is the comparison the table exists for. **Export** opens a from/to dialog
+offering a PDF (`GET /api/site-attendance/report/pdf`, `lib/pdf/staffAttendancePdf.ts` — landscape, both
+halves side by side including GPS, no DRAFT/validation concept, unlike the per-employee sheet) or a
+spreadsheet (CSV built client-side from `listTeamAttendance`, since Excel opens CSV and this repo has no
+xlsx dependency). The Active Projects and Pending Requisitions cards were removed from this page on
+request the same day. It reuses `GET /api/site-attendance` (the
 `OPS_MANAGE_ROLES` team endpoint) and `GET /api/overtime` + `POST /api/overtime/decide` (`HR_ROLES`,
 which includes ADMIN), so there is no new API and an approval here writes the same `OvertimeDecision`
 as Workforce → Overtime. Late is computed client-side per employee via `computeDayFlags` — feed it one

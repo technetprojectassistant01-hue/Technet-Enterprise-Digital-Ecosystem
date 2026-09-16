@@ -315,6 +315,12 @@ export const en = {
     statDays: 'DAYS',
     statLate: 'LATE DAYS',
     statOvertimePending: 'OVERTIME TO APPROVE',
+    export: 'Export',
+    exportTitle: 'Export staff attendance',
+    exportIntro: 'Choose the dates, then download the register for every member of staff.',
+    downloadPdf: 'Download PDF',
+    downloadExcel: 'Download Excel',
+    excelNote: 'The Excel file is a CSV — Excel and Google Sheets open it directly.',
   },
 
   myAttendance: {

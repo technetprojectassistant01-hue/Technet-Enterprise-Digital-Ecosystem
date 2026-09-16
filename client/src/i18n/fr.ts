@@ -312,6 +312,12 @@ export const fr: Dict = {
     statDays: 'JOURS',
     statLate: 'JOURS EN RETARD',
     statOvertimePending: 'HEURES SUPP. À APPROUVER',
+    export: 'Exporter',
+    exportTitle: 'Exporter les présences du personnel',
+    exportIntro: 'Choisissez les dates, puis téléchargez le registre de tout le personnel.',
+    downloadPdf: 'Télécharger le PDF',
+    downloadExcel: 'Télécharger Excel',
+    excelNote: "Le fichier Excel est un CSV — Excel et Google Sheets l'ouvrent directement.",
   },
 
   myAttendance: {
