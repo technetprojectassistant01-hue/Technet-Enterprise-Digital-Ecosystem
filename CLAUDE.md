@@ -1316,3 +1316,10 @@ the site attendance register.
 landing page empty — so `DashboardHome` redirects them to Technet Store, and the Attendance menu item is
 hidden from them. The `readsRegister` flag is `administers && ATTENDANCE_VIEW_ROLES`, keeping the two ideas
 separate: who has no self-service, and who reads everyone else’s attendance.
+
+**Add Employee was impossible to submit** (fixed 2026-09-16). `EmployeesPage.handleSubmit` required
+`form.employeeCode`, but the code is server-assigned on create and `EmployeeForm` deliberately renders
+"Assigned automatically on save" instead of an input there — so the field was always empty and every
+create stopped at "Employee code is required" without reaching the API. The check now applies only when
+`editing`. The server was never at fault: posting with no code returns 201 and assigns the next number.
+`EmployeeDetailPage` keeps its own identical check, which is correct because that page only ever edits.
