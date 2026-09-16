@@ -1037,6 +1037,24 @@ still in `OPS_SUBMIT_ROLES` — the check-in *API* is unchanged, only the surfac
 group also gates submitting daily and intervention reports. An admin with a session left open from
 before this change can only be closed from Team Attendance's Close action (§7a).
 
+
+**The technician's day arrives with their check-in** (2026-09-16, user request: "when staff checks in they
+can receive the work order for the day, so the admin puts in the work orders"). **My Jobs Today**
+(`dashboard/MyJobsToday.tsx`) sits directly under the check-in card and lists the work orders an admin
+assigned to that technician: number, status, title, customer, description, site address with a Maps link,
+a tap-to-call customer phone, and who else is on the job. It reloads on `ATTENDANCE_CHANGED_EVENT`, so
+checking in pulls the day's work in with it.
+
+`GET /api/work-orders/my-day?date=` (`OPS_SUBMIT_ROLES`, resolves the caller's own `Employee`) returns
+`today` plus **`carriedOver`** — jobs still open from an earlier day. That second list is not optional
+padding: work orders are not reliably moved through their lifecycle here (§7a), so a job that slips its
+scheduled date would otherwise disappear from the technician's view while still being open. On the real
+data the only assigned work order was scheduled 14 August and still SCHEDULED, so `today` was empty and
+`carriedOver` carried it. Nothing new was needed for offline: `sw.js`'s existing
+`/^\/api\/work-orders(\/[^/]+)?$/` already caches it. Assignment already notifies the technician
+(`WORK_ORDER_ASSIGNED`). The panel is **read-only** — letting a technician move a job's status from here
+was considered and left out as a separate decision.
+
 **Work hours** live in `client/src/lib/workSchedule.ts` (given by management): Mon–Fri 08:00–17:00,
 Sat 08:00–13:00, Sunday not a working day. My Attendance shows a **Late** badge when the day's first
 check-in is after the start, and **Overtime** for the day's last check-out past closing (all of a Sunday

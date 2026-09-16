@@ -1853,6 +1853,32 @@ export function listWorkOrders(
   return request<{ workOrders: WorkOrder[] }>(`/api/work-orders${qs ? `?${qs}` : ''}`)
 }
 
+/** One of the signed-in technician's own jobs, with the customer contact they may need on site. */
+export interface MyDayWorkOrder {
+  id: string
+  workOrderNumber: string
+  title: string
+  description: string | null
+  jobCategory: JobCategory
+  status: WorkOrderStatus
+  scheduledDate: string
+  siteAddress: string | null
+  siteLat: string | null
+  siteLng: string | null
+  customer: { id: string; name: string; company: string | null; phone: string | null; address: string | null }
+  technicians: { id: string; employee: EmployeeSummary }[]
+}
+
+/**
+ * The signed-in technician's jobs for a day (defaults to today), plus anything still open from an
+ * earlier day — so a job that slipped its date doesn't quietly disappear from their view.
+ */
+export function getMyDayWorkOrders(date?: string) {
+  return request<{ date: string; today: MyDayWorkOrder[]; carriedOver: MyDayWorkOrder[] }>(
+    `/api/work-orders/my-day${date ? `?date=${date}` : ''}`,
+  )
+}
+
 export function getWorkOrder(id: string) {
   return request<{ workOrder: WorkOrderDetail }>(`/api/work-orders/${id}`)
 }

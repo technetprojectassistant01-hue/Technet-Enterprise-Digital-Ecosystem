@@ -322,6 +322,22 @@ export const fr: Dict = {
     excelNote: "Le fichier Excel est un CSV — Excel et Google Sheets l'ouvrent directement.",
   },
 
+  myJobs: {
+    title: "Mes interventions d'aujourd'hui",
+    empty: "Aucune intervention n'est prévue pour vous aujourd'hui.",
+    emptyHint: "Si on vous a demandé de vous déplacer, contactez votre responsable.",
+    loadFailed: 'Échec du chargement de vos interventions',
+    carriedOver: 'Toujours ouvert depuis un jour précédent',
+    count: (n) => (n === 1 ? '1 intervention' : `${n} interventions`),
+    site: 'Site',
+    noSite: 'Aucune adresse de site indiquée',
+    openMap: 'Ouvrir dans Maps',
+    customerPhone: 'Appeler le client',
+    withYou: 'Avec vous',
+    viewJob: "Ouvrir l'intervention",
+    scheduledFor: (date) => `Prévu le ${date}`,
+  },
+
   myAttendance: {
     title: 'Ma présence',
     todayTitle: "Aujourd'hui",

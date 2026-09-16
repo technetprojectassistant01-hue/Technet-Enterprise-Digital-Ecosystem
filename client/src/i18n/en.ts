@@ -325,6 +325,23 @@ export const en = {
     excelNote: 'The Excel file is a CSV — Excel and Google Sheets open it directly.',
   },
 
+  /** "My Jobs Today" under the check-in card: what the admin scheduled for this technician. */
+  myJobs: {
+    title: 'My Jobs Today',
+    empty: 'No job has been scheduled for you today.',
+    emptyHint: 'If you were told to go somewhere, contact your supervisor.',
+    loadFailed: 'Failed to load your jobs',
+    carriedOver: 'Still open from earlier',
+    count: (n: number) => (n === 1 ? '1 job' : `${n} jobs`),
+    site: 'Site',
+    noSite: 'No site address given',
+    openMap: 'Open in Maps',
+    customerPhone: 'Call customer',
+    withYou: 'With you',
+    viewJob: 'Open job',
+    scheduledFor: (date: string) => `Scheduled ${date}`,
+  },
+
   myAttendance: {
     title: 'My Attendance',
     todayTitle: 'Today',

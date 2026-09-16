@@ -6,6 +6,7 @@ import AttendanceWidget from './dashboard/AttendanceWidget'
 import MyAttendanceHistory from './dashboard/MyAttendanceHistory'
 import TodayAttendance from './dashboard/TodayAttendance'
 import StaffAttendancePanel from './dashboard/StaffAttendancePanel'
+import MyJobsToday from './dashboard/MyJobsToday'
 import { useT } from './i18n'
 
 function DashboardHome() {
@@ -25,6 +26,8 @@ function DashboardHome() {
       </h1>
 
       {canCheckIn && <AttendanceWidget />}
+
+      {canCheckIn && <MyJobsToday />}
 
       {/* A brand-new login has no Employee record until HR links one, and without that link there
           is no check-in card, no Today and no My Attendance — which read as a broken page rather
