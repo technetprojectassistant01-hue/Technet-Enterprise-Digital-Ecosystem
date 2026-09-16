@@ -28,6 +28,9 @@ export interface CurrentUser {
 
 export interface ManagedUser extends CurrentUser {
   createdAt: string
+  /** The employee record this login is attached to, if any. Without one the person cannot check
+   * in, request leave or be paid — so User Management shows it rather than leaving it a mystery. */
+  employee: { id: string; employeeCode: string; firstName: string; lastName: string } | null
 }
 
 /** Carries the response body so callers can branch on a server error code. */
