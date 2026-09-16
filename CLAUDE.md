@@ -1323,3 +1323,9 @@ separate: who has no self-service, and who reads everyone else’s attendance.
 create stopped at "Employee code is required" without reaching the API. The check now applies only when
 `editing`. The server was never at fault: posting with no code returns 201 and assigns the next number.
 `EmployeeDetailPage` keeps its own identical check, which is correct because that page only ever edits.
+
+**Work orders no longer ask for a Project** (2026-09-16, user request). The optional Project dropdown is
+gone from the create form in `WorkOrdersPage.tsx`; no work order had ever used it (0 of 2 at the time).
+`WorkOrder.projectId` and its relation are **kept** — dropping a nullable column nothing reads is a
+migration for no gain, and `POST /api/work-orders` still accepts `projectId` if anything ever sends it.
+The unused `t.ops.wo.project` label stays in the three dictionaries for the same reason.

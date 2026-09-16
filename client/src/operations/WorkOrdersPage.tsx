@@ -9,7 +9,6 @@ import { primaryButtonClass, secondaryButtonClass } from '../dashboard/buttonSty
 import { downloadCsv } from '../lib/csv'
 import { useReloadOnReconnect } from '../lib/useOnline'
 import { useCustomers } from '../erp/useCustomers'
-import { useProjects } from '../erp/useProjects'
 import { useAssignableEmployees, useEmployees } from '../erp/useEmployees'
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
@@ -33,7 +32,6 @@ function WorkOrdersPage() {
   const { user } = useAuth()
   const canWrite = hasRole(user?.role, OPS_MANAGE_ROLES)
   const customers = useCustomers()
-  const projects = useProjects()
   // Two different lists on purpose: the filter above the table has to offer technicians who have
   // since left, or their past work orders become unsearchable, while the assignment checkboxes
   // below must not - you can't send somebody who no longer works here to next week's job.
@@ -49,7 +47,6 @@ function WorkOrdersPage() {
 
   const [showCreate, setShowCreate] = useState(false)
   const [customerId, setCustomerId] = useState('')
-  const [projectId, setProjectId] = useState('')
   const [workOrderNumber, setWorkOrderNumber] = useState('')
   const [title, setTitle] = useState('')
   const [jobCategory, setJobCategory] = useState<JobCategory>('SERVICING')
@@ -97,7 +94,6 @@ function WorkOrdersPage() {
 
   function openCreate() {
     setCustomerId(customers[0]?.id || '')
-    setProjectId('')
     setWorkOrderNumber('')
     setTitle('')
     setJobCategory('SERVICING')
@@ -138,7 +134,6 @@ function WorkOrdersPage() {
     try {
       await api.createWorkOrder({
         customerId,
-        projectId: projectId || undefined,
         workOrderNumber,
         title,
         jobCategory,
@@ -346,17 +341,6 @@ function WorkOrdersPage() {
                   {customers.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.company || c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className={labelClass}>{t.ops.wo.project}</label>
-                <select value={projectId} onChange={(e) => setProjectId(e.target.value)} className={`mt-2 ${inputClass}`}>
-                  <option value="">—</option>
-                  {projects.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
                     </option>
                   ))}
                 </select>
