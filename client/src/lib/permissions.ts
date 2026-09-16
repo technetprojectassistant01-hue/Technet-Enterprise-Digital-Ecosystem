@@ -65,11 +65,11 @@ export const NON_HR_ROLES: readonly Role[] = ['FIELD_TECHNICIAN', 'EMPLOYEE', 'S
 export const ATTENDANCE_VIEW_ROLES: readonly Role[] = ['ADMIN', 'OPERATIONS_MANAGER', 'HR_OFFICER']
 
 /**
- * Roles that run the system rather than being tracked by it: no check-in card, no My Leave and no
- * My Documents. They read everyone else's instead, from Technet HR (user request 2026-09-16 —
- * "hr is not supposed to check in and check out, it should have the same like admin").
+ * Roles with no personal self-service: no check-in card, no My Leave, no My Documents. Admin and HR
+ * run the system rather than appearing in it; the storekeeper was added on the same request and
+ * works entirely in the store. What replaces the landing page differs — see DashboardHome.
  */
-export const ADMINISTRATIVE_ROLES: readonly Role[] = ['ADMIN', 'HR_OFFICER']
+export const ADMINISTRATIVE_ROLES: readonly Role[] = ['ADMIN', 'HR_OFFICER', 'STOREKEEPER']
 
 /** Everyone except ADMIN - used to hide admin-only nav items (e.g. Technet Insight). */
 export const NON_ADMIN_ROLES: readonly Role[] = [

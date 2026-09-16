@@ -1309,3 +1309,10 @@ A storekeeper's menu: Attendance, My Leave, My Documents, **Technet ERP** (Inven
 Verified with a disposable STOREKEEPER account against a running server: 200 on tools, tool requests,
 inventory, suppliers, requisitions, purchase orders and work orders; 403 on leave, payroll, overtime and
 the site attendance register.
+
+**The storekeeper has no personal pages either** (2026-09-16, same request): STOREKEEPER joined
+`ADMINISTRATIVE_ROLES`, so no check-in card, no My Leave and no My Documents. Unlike admin and HR they do
+**not** read the staff attendance register (they are not in `ATTENDANCE_VIEW_ROLES`), which would leave the
+landing page empty — so `DashboardHome` redirects them to Technet Store, and the Attendance menu item is
+hidden from them. The `readsRegister` flag is `administers && ATTENDANCE_VIEW_ROLES`, keeping the two ideas
+separate: who has no self-service, and who reads everyone else’s attendance.
