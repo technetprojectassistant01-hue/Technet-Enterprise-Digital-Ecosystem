@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Users, CalendarDays, BadgeCheck, ClipboardCheck, ArrowRight, Lock } from 'lucide-react'
+import { Users, CalendarDays, BadgeCheck, ClipboardCheck, Clock, FileCheck2, ArrowRight, Lock } from 'lucide-react'
 import * as api from '../lib/api'
 import type { Certification, Employee, LeaveRequest } from '../lib/api'
 import { Panel, StatCard, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
@@ -19,6 +19,18 @@ function today(): string {
   return new Date().toISOString().slice(0, 10)
 }
 
+function thisMonth(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
+function lastMonth(): string {
+  const d = new Date()
+  d.setDate(1)
+  d.setMonth(d.getMonth() - 1)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
 function HrOverviewPage() {
   const t = useT()
   const { user } = useAuth()
@@ -30,6 +42,10 @@ function HrOverviewPage() {
   const [expiring, setExpiring] = useState<Certification[]>([])
   const [expired, setExpired] = useState<Certification[]>([])
   const [attendance, setAttendance] = useState<{ recorded: number; headcount: number } | null>(null)
+  // The other two things waiting on HR besides leave: overtime days nobody has decided, and
+  // months of attendance nobody has validated. Both were invisible from here.
+  const [overtimePending, setOvertimePending] = useState(0)
+  const [monthsToValidate, setMonthsToValidate] = useState(0)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -62,6 +78,17 @@ function HrOverviewPage() {
       })
       .catch(() => undefined)
       .finally(() => setLoading(false))
+
+    // Counted separately so a slow or empty month never holds up the rest of the page.
+    api
+      .listOvertime(thisMonth())
+      .then(({ items }) => setOvertimePending(items.filter((i) => i.status === 'PENDING' && i.minutes > 0).length))
+      .catch(() => undefined)
+    // Last month, not this one: a month can only be validated once it has ended.
+    api
+      .listMonthValidations(lastMonth())
+      .then(({ items }) => setMonthsToValidate(items.filter((i) => i.state !== 'VALIDATED').length))
+      .catch(() => undefined)
   }, [canAccess])
 
   if (loading) return <TableSkeleton rows={6} cols={4} />
@@ -73,7 +100,7 @@ function HrOverviewPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard
           label={t.hr.overview.activeHeadcount}
           value={active}
@@ -87,6 +114,22 @@ function HrOverviewPage() {
           deltaTone="warning"
           delta={pending.length > 0 ? t.hr.overview.actionNeeded : undefined}
           icon={CalendarDays}
+        />
+        <StatCard
+          label={t.hr.overview.overtimeAwaiting}
+          value={overtimePending}
+          deltaTone="warning"
+          delta={overtimePending > 0 ? t.hr.overview.actionNeeded : undefined}
+          sub={t.hr.overview.thisMonth}
+          icon={Clock}
+        />
+        <StatCard
+          label={t.hr.overview.validationAwaiting}
+          value={monthsToValidate}
+          deltaTone="warning"
+          delta={monthsToValidate > 0 ? t.hr.overview.actionNeeded : undefined}
+          sub={t.hr.overview.lastMonth}
+          icon={FileCheck2}
         />
         <StatCard
           label={t.hr.overview.certRenewals}

@@ -1197,3 +1197,19 @@ loses ERP, Connect and Marketing.
 - Verified with a disposable script against a running server: HR gets 200 on the register and the PDF and on
   staff documents, Operations 200 on the register but 403 on documents, a technician 403 on the register, and
   HR 403 on closing a session.
+
+### 24b. HR's three approvals (verified 2026-09-16)
+
+HR approves **leave**, **overtime** and **month-end attendance validation**. All three already worked;
+verified end to end against a running server with a disposable HR account (10/10): log, list, approve and
+reject leave; see, approve and undo an overtime day; list, validate and unvalidate a month. Worth knowing:
+`POST /api/attendance-validations/month/validate` returns **400 "A month can be validated from its last
+day"** for a month still running — that is the §22 rule, not a permission problem, and it is why the
+Overview card counts *last* month.
+
+The gap was visibility, not capability: the HR Overview showed leave awaiting approval but neither of the
+other two. It now has five cards — Active Headcount, On Leave Today, Leave Awaiting Approval, **Overtime
+Awaiting Approval** (this month, PENDING with minutes > 0) and **Attendance Awaiting Validation** (last
+month, any employee whose state is not VALIDATED) — plus Certification Renewals. The two new counts are
+fetched in their own calls, not folded into the existing `Promise.all`, so a slow or empty month never
+holds up the rest of the page.
