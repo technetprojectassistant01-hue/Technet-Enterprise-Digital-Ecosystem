@@ -26,10 +26,10 @@ export const en = {
     SALES_OFFICER: 'Sales Officer',
     FINANCE_OFFICER: 'Finance Officer',
     STOREKEEPER: 'Storekeeper',
-    HR_OFFICER: 'HR Officer',
+    HR_OFFICER: 'HR',
     OPERATIONS_MANAGER: 'Operations Manager',
-    FIELD_TECHNICIAN: 'Field Technician',
-    EMPLOYEE: 'Employee',
+    FIELD_TECHNICIAN: 'Staff Technician',
+    EMPLOYEE: 'Staff Office',
   },
 
   /** Keyed by the English label in dashboard/nav.ts. Technet module names are brand names. */

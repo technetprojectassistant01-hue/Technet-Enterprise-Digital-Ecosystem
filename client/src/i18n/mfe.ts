@@ -27,10 +27,10 @@ export const mfe: Dict = {
     SALES_OFFICER: 'Ofisie Lavant',
     FINANCE_OFFICER: 'Ofisie Finans',
     STOREKEEPER: 'Magazinie',
-    HR_OFFICER: 'Ofisie RH',
+    HR_OFFICER: 'RH',
     OPERATIONS_MANAGER: 'Manazer Operasion',
-    FIELD_TECHNICIAN: 'Teknisien Teren',
-    EMPLOYEE: 'Anplwaye',
+    FIELD_TECHNICIAN: 'Teknisien',
+    EMPLOYEE: 'Personel Biro',
   },
 
   nav: {
