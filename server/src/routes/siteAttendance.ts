@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
-import { OPS_MANAGE_ROLES, OPS_SUBMIT_ROLES } from "../lib/roles";
+import { ATTENDANCE_VIEW_ROLES, OPS_MANAGE_ROLES, OPS_SUBMIT_ROLES } from "../lib/roles";
 import { distanceMeters, SITE_GEOFENCE_RADIUS_METERS } from "../lib/geo";
 import { notifyEmployee, notifyRoles } from "../lib/notifications";
 import { parseClockTime } from "../lib/clockTime";
@@ -109,7 +109,7 @@ function reportRange(query: Record<string, unknown>): { start: Date; end: Date }
 }
 
 /** Team-wide view for managers: who's checked in right now, plus the given month's history (defaults to this month). */
-router.get("/", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
+router.get("/", requireRole(...ATTENDANCE_VIEW_ROLES), async (req, res) => {
   const { start, end } = reportRange(req.query as Record<string, unknown>);
   const { employeeId } = req.query;
   const employeeFilter = typeof employeeId === "string" && employeeId ? { employeeId } : {};
@@ -187,7 +187,7 @@ router.get("/", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
  * GPS and the app's own timestamps alongside what was typed, and has no validation/DRAFT concept:
  * it is an internal management listing, not an official per-employee sheet.
  */
-router.get("/report/pdf", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
+router.get("/report/pdf", requireRole(...ATTENDANCE_VIEW_ROLES), async (req, res) => {
   const range = parseRange(req.query.from, req.query.to);
   if ("error" in range) return res.status(400).json({ error: range.error });
 

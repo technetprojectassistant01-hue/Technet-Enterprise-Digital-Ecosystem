@@ -3,7 +3,7 @@ import { Lock } from 'lucide-react'
 import ModuleHeader from '../dashboard/ModuleHeader'
 import { EmptyState } from '../dashboard/ui'
 import { useAuth } from '../context/AuthContext'
-import { hasRole, FIELD_ONLY_ROLES, HR_ROLES, WORKFORCE_VIEW_ROLES } from '../lib/permissions'
+import { hasRole, ATTENDANCE_VIEW_ROLES, FIELD_ONLY_ROLES, HR_ROLES, WORKFORCE_VIEW_ROLES } from '../lib/permissions'
 import type { Role } from '../lib/api'
 import { navLabel, useT } from '../i18n'
 
@@ -22,6 +22,9 @@ const TABS: { label: string; to: string; end?: boolean; visible: (role?: Role) =
   { label: 'Employees', to: '/dashboard/hr/employees', visible: (r) => !hasRole(r, FIELD_ONLY_ROLES) },
   { label: 'Leave', to: '/dashboard/hr/leave', visible: (r) => hasRole(r, HR_ROLES) },
   { label: 'Attendance', to: '/dashboard/hr/attendance', visible: (r) => hasRole(r, WORKFORCE_VIEW_ROLES) },
+  // The GPS check-ins payroll and validation are actually built on, as opposed to the office
+  // register above. Same panel the admin landing page shows.
+  { label: 'Site Attendance', to: '/dashboard/hr/site-attendance', visible: (r) => hasRole(r, ATTENDANCE_VIEW_ROLES) },
   { label: 'Overtime', to: '/dashboard/hr/overtime', visible: (r) => hasRole(r, HR_ROLES) },
   { label: 'Validations', to: '/dashboard/hr/validations', visible: (r) => hasRole(r, HR_ROLES) },
   { label: 'Payroll', to: '/dashboard/hr/payroll', visible: (r) => hasRole(r, HR_ROLES) },
