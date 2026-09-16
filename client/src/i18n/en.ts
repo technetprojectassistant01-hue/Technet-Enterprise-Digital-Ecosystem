@@ -280,6 +280,19 @@ export const en = {
     approved: 'Approved',
   },
 
+  /** The admin landing page panel: everyone else's attendance, since an admin doesn't check in. */
+  staffAttendance: {
+    title: 'Staff Attendance',
+    empty: 'No check-ins recorded this month.',
+    loadFailed: 'Failed to load staff attendance',
+    onSiteNow: (n: number) => (n === 1 ? '1 checked in now' : `${n} checked in now`),
+    peopleToday: (n: number) => (n === 1 ? '1 person' : `${n} people`),
+    latestDay: (date: string) => `Latest day with check-ins: ${date}`,
+    viewFull: 'Full register',
+    stillIn: 'Still checked in',
+    noSite: 'No site given',
+  },
+
   myAttendance: {
     title: 'My Attendance',
     todayTitle: 'Today',

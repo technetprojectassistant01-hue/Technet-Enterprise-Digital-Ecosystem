@@ -7,6 +7,7 @@ import { hasRole, FIELD_ONLY_ROLES, OPS_SUBMIT_ROLES } from './lib/permissions'
 import AttendanceWidget from './dashboard/AttendanceWidget'
 import MyAttendanceHistory from './dashboard/MyAttendanceHistory'
 import TodayAttendance from './dashboard/TodayAttendance'
+import StaffAttendancePanel from './dashboard/StaffAttendancePanel'
 import { useT } from './i18n'
 
 interface QuickStats {
@@ -18,8 +19,12 @@ function DashboardHome() {
   const { user } = useAuth()
   const t = useT()
   const canNonField = !hasRole(user?.role, FIELD_ONLY_ROLES)
+  // An admin administers the website rather than visiting sites, so they don't check in and get
+  // no attendance of their own here — they see everybody else's instead (user request 2026-09-16).
+  const isAdmin = user?.role === 'ADMIN'
+  const canCheckIn = !!user?.employeeId && !isAdmin
   // Same audience as the check-in card: staff with an employee record who can check in.
-  const canSeeMyAttendance = !!user?.employeeId && hasRole(user?.role, OPS_SUBMIT_ROLES)
+  const canSeeMyAttendance = canCheckIn && hasRole(user?.role, OPS_SUBMIT_ROLES)
 
   const [stats, setStats] = useState<QuickStats>({
     activeProjects: null,
@@ -51,7 +56,9 @@ function DashboardHome() {
         {user?.name ? t.overview.welcomeBack(user.name) : t.overview.welcome}
       </h1>
 
-      {user?.employeeId && <AttendanceWidget />}
+      {canCheckIn && <AttendanceWidget />}
+
+      {isAdmin && <StaffAttendancePanel />}
 
       {canSeeMyAttendance && <TodayAttendance />}
 

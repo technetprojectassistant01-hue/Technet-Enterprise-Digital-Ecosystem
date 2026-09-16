@@ -281,6 +281,18 @@ export const mfe: Dict = {
     approved: 'Aksepte',
   },
 
+  staffAttendance: {
+    title: 'Prezans Personel',
+    empty: 'Pena check-in pou sa mwa-la.',
+    loadFailed: 'Pa finn kapav sarz prezans personel',
+    onSiteNow: (n: number) => (n === 1 ? '1 pe travay la' : `${n} pe travay la`),
+    peopleToday: (n: number) => (n === 1 ? '1 dimounn' : `${n} dimounn`),
+    latestDay: (date: string) => `Dernie zour ar check-in: ${date}`,
+    viewFull: 'Rezis konple',
+    stillIn: 'Ankor check-in',
+    noSite: 'Pena sit',
+  },
+
   myAttendance: {
     title: 'Mo prezans',
     todayTitle: 'Zordi',
