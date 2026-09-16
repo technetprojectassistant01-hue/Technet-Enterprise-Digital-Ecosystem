@@ -31,6 +31,39 @@ function looksLikeEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
+/**
+ * Every relation that points at a User with onDelete: Restrict — i.e. the ones that actually stop
+ * a delete. Named in the words an admin would use, because the old error just listed three guesses
+ * ("stock movements, documents, or activity") and left them hunting. Keep in step with the schema:
+ * a new required User relation belongs here too, or its rows become an unexplained refusal.
+ */
+async function blockingRecords(userId: string): Promise<string[]> {
+  const checks: [string, Promise<number>][] = [
+    ["daily report", prisma.dailyWorkReport.count({ where: { submittedById: userId } })],
+    ["intervention report", prisma.interventionReport.count({ where: { createdById: userId } })],
+    ["maintenance report", prisma.maintenanceReport.count({ where: { submittedById: userId } })],
+    ["maintenance request", prisma.maintenanceRequest.count({ where: { requestedById: userId } })],
+    ["maintenance contract", prisma.maintenanceContract.count({ where: { createdById: userId } })],
+    ["maintenance schedule", prisma.maintenanceSchedule.count({ where: { createdById: userId } })],
+    ["work order", prisma.workOrder.count({ where: { createdById: userId } })],
+    ["document", prisma.document.count({ where: { uploadedById: userId } })],
+    ["stock movement", prisma.stockMovement.count({ where: { createdById: userId } })],
+    ["goods receipt", prisma.goodsReceipt.count({ where: { receivedById: userId } })],
+    ["purchase requisition", prisma.purchaseRequisition.count({ where: { requestedById: userId } })],
+    ["requisition status change", prisma.requisitionStatusHistory.count({ where: { changedById: userId } })],
+    ["project status change", prisma.projectStatusHistory.count({ where: { changedById: userId } })],
+    ["quotation follow-up", prisma.quotationFollowUp.count({ where: { createdById: userId } })],
+    ["payroll run", prisma.payrollRun.count({ where: { createdById: userId } })],
+    ["tool hand-out", prisma.toolCheckout.count({ where: { issuedById: userId } })],
+    ["portal login granted", prisma.customerPortalUser.count({ where: { createdById: userId } })],
+  ];
+  const counts = await Promise.all(checks.map(([, p]) => p));
+  return checks
+    .map(([label], i) => [label, counts[i]] as const)
+    .filter(([, n]) => n > 0)
+    .map(([label, n]) => `${n} ${label}${n === 1 ? "" : "s"}`);
+}
+
 const userSelect = {
   id: true,
   email: true,
@@ -181,7 +214,11 @@ router.delete("/:id", async (req, res) => {
   } catch (err) {
     if (isNotFoundError(err)) return res.status(404).json({ error: "User not found" });
     if (isForeignKeyConstraintError(err)) {
-      return res.status(409).json({ error: "User has related records (stock movements, documents, or activity) and cannot be deleted" });
+      const blockers = await blockingRecords(id);
+      const what = blockers.length ? blockers.join(", ") : "records elsewhere in the system";
+      return res.status(409).json({
+        error: `This account cannot be deleted because its work is still on file: ${what}. Deleting it would erase that history. To hand the login to someone else, use Change Email and set a new name and password instead.`,
+      });
     }
     throw err;
   }
