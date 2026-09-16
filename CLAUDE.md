@@ -1019,10 +1019,14 @@ refresh on the `ATTENDANCE_CHANGED_EVENT` the card fires after a check-in/out.
 **An ADMIN gets no check-in card** (2026-09-16, user request): "admin should not have the check in and
 check out, it is for the administration of the website". So `DashboardHome.tsx` hides the card, Today and
 My Attendance for `role === 'ADMIN'` and shows **Staff Attendance** instead
-(`dashboard/StaffAttendancePanel.tsx`) — everyone's check-ins for today grouped per person, falling back
-to the most recent day with records so the panel isn't blank before the first check-in of the morning,
-with a link to Team Attendance for the full month. It reuses `GET /api/site-attendance` (the
-`OPS_MANAGE_ROLES` team endpoint) with no date params, so there is no new API. ADMIN is deliberately
+(`dashboard/StaffAttendancePanel.tsx`) — a month-at-a-time register, one row per visit, with a link to
+Team Attendance. Each row puts what the person typed (time and location, both legs) next to what the app
+recorded (server timestamp and GPS fix with its map link and mismatch label), plus Late and Overtime
+markers and an inline Approve/Reject for the overtime. It reuses `GET /api/site-attendance` (the
+`OPS_MANAGE_ROLES` team endpoint) and `GET /api/overtime` + `POST /api/overtime/decide` (`HR_ROLES`,
+which includes ADMIN), so there is no new API and an approval here writes the same `OvertimeDecision`
+as Workforce → Overtime. Late is computed client-side per employee via `computeDayFlags` — feed it one
+person at a time, since it groups purely by day and would otherwise merge two people's days. ADMIN is deliberately
 still in `OPS_SUBMIT_ROLES` — the check-in *API* is unchanged, only the surface is gone — because that
 group also gates submitting daily and intervention reports. An admin with a session left open from
 before this change can only be closed from Team Attendance's Close action (§7a).
