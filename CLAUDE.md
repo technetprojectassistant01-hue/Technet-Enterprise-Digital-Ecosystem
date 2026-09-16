@@ -1329,3 +1329,12 @@ gone from the create form in `WorkOrdersPage.tsx`; no work order had ever used i
 `WorkOrder.projectId` and its relation are **kept** — dropping a nullable column nothing reads is a
 migration for no gain, and `POST /api/work-orders` still accepts `projectId` if anything ever sends it.
 The unused `t.ops.wo.project` label stays in the three dictionaries for the same reason.
+
+**Work order numbers are server-generated** (2026-09-16, user request), joining employee codes, quotation
+numbers and tool tags. `lib/workOrderNumber.ts` takes the highest *numeric* number on file and adds one,
+so a deleted work order never has its number reissued, with `FIRST_WORK_ORDER_NUMBER = 100` because that
+is where this company started. Non-numeric numbers are skipped rather than breaking the scan. The create
+route wraps the insert in the same five-attempt retry the other generators use: a unique clash means two
+managers saved together, so it takes the next number instead of failing. The field and its validation are
+gone from the form and from `WorkOrderInput`. Verified against the real data: with 100 and 101 on file,
+two consecutive creates came back 102 and 103.

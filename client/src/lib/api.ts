@@ -1834,7 +1834,7 @@ export interface WorkOrderDetail extends WorkOrder {
 export interface WorkOrderInput {
   customerId: string
   projectId?: string | null
-  workOrderNumber: string
+  /** Assigned by the server on create; nothing sends it any more. */
   title: string
   jobCategory: JobCategory
   description?: string

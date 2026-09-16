@@ -8,6 +8,7 @@ import { OPS_MANAGE_ROLES, OPS_SUBMIT_ROLES } from "../lib/roles";
 import { geocodeAddress } from "../lib/geocode";
 import { notifyEmployee, notifyRoles } from "../lib/notifications";
 import { mauritiusDay } from "../lib/overtime";
+import { generateWorkOrderNumber } from "../lib/workOrderNumber";
 
 const router = Router();
 
@@ -211,14 +212,11 @@ router.get("/:id", async (req, res) => {
 });
 
 router.post("/", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
-  const { customerId, projectId, workOrderNumber, title, jobCategory, description, scheduledDate, technicianIds, siteQuery } =
+  const { customerId, projectId, title, jobCategory, description, scheduledDate, technicianIds, siteQuery } =
     req.body ?? {};
 
   if (typeof customerId !== "string" || !customerId) {
     return res.status(400).json({ error: "customerId is required" });
-  }
-  if (typeof workOrderNumber !== "string" || !workOrderNumber.trim()) {
-    return res.status(400).json({ error: "Work order number is required" });
   }
   if (typeof title !== "string" || !title.trim()) {
     return res.status(400).json({ error: "Title is required" });
@@ -237,12 +235,16 @@ router.post("/", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
   }
   const techIds = Array.isArray(technicianIds) ? (technicianIds as string[]).filter((v) => typeof v === "string") : [];
 
+  // The number is assigned here, not typed by a manager. A unique-constraint clash means two
+  // saves landed together, so take the next one and try again - the same retry loop
+  // generateEmployeeCode and generateQuotationNumber sit behind.
+  for (let attempt = 0; attempt < 5; attempt++) {
   try {
     const workOrder = await prisma.workOrder.create({
       data: {
         customerId,
         projectId: typeof projectId === "string" && projectId ? projectId : null,
-        workOrderNumber: workOrderNumber.trim(),
+        workOrderNumber: await generateWorkOrderNumber(),
         title: title.trim(),
         jobCategory: jobCategory as JobCategory,
         description: typeof description === "string" && description.trim() ? description.trim() : null,
@@ -265,12 +267,14 @@ router.post("/", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
         }),
       ),
     );
-    res.status(201).json({ workOrder });
+    return res.status(201).json({ workOrder });
   } catch (err) {
-    if (isUniqueConstraintError(err)) return res.status(409).json({ error: "A work order with that number already exists" });
+    if (isUniqueConstraintError(err)) continue;
     if (isForeignKeyConstraintError(err)) return res.status(400).json({ error: "Customer, project, or technician not found" });
     throw err;
   }
+  }
+  return res.status(409).json({ error: "Couldn't assign a work order number. Try again." });
 });
 
 router.patch("/:id", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {

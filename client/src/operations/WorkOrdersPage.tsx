@@ -47,7 +47,6 @@ function WorkOrdersPage() {
 
   const [showCreate, setShowCreate] = useState(false)
   const [customerId, setCustomerId] = useState('')
-  const [workOrderNumber, setWorkOrderNumber] = useState('')
   const [title, setTitle] = useState('')
   const [jobCategory, setJobCategory] = useState<JobCategory>('SERVICING')
   const [description, setDescription] = useState('')
@@ -94,7 +93,6 @@ function WorkOrdersPage() {
 
   function openCreate() {
     setCustomerId(customers[0]?.id || '')
-    setWorkOrderNumber('')
     setTitle('')
     setJobCategory('SERVICING')
     setDescription('')
@@ -117,10 +115,6 @@ function WorkOrdersPage() {
       setFormError(t.shared.selectCustomer)
       return
     }
-    if (!workOrderNumber.trim()) {
-      setFormError(t.ops.wo.numberRequired)
-      return
-    }
     if (!title.trim()) {
       setFormError(t.ops.wo.titleRequired)
       return
@@ -134,7 +128,6 @@ function WorkOrdersPage() {
     try {
       await api.createWorkOrder({
         customerId,
-        workOrderNumber,
         title,
         jobCategory,
         description: description || undefined,
@@ -345,16 +338,8 @@ function WorkOrdersPage() {
                 ))}
               </select>
             </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <label className={labelClass}>{t.ops.wo.number}</label>
-                <input
-                  value={workOrderNumber}
-                  onChange={(e) => setWorkOrderNumber(e.target.value)}
-                  required
-                  className={`mt-2 ${inputClass}`}
-                />
-              </div>
+            {/* The number is assigned by the server on save, so there is nothing to type here. */}
+            <div className="grid grid-cols-1 gap-4">
               <div>
                 <label className={labelClass}>{t.shared.jobCategory}</label>
                 <select
