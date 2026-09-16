@@ -936,6 +936,16 @@ email means contacting an admin. Don't reintroduce self-service credential manag
 - **Admin-side capability already existed** and is unchanged: `POST /api/users` creates with
   email/password/role, `PATCH /api/users/:id` sets a new password (logged as
   `ADMIN_PASSWORD_RESET_FORCED`), both surfaced on `/dashboard/users`.
+- **User Management was reworked 2026-09-16** (`UsersPage.tsx`): search + role filter, an avatar/name/email
+  cell instead of a bare email column, role as a badge rather than an inline dropdown, a card list under
+  `md` (a five-column table is unreadable on a phone), and Add User moved into a Modal. Change Email and
+  the row's role dropdown were folded into one **Edit User** dialog — name, email and role saved together,
+  sending only the fields that actually changed, so an unchanged email never trips the duplicate check and
+  no spurious USER_EMAIL_CHANGED / USER_ROLE_CHANGED event is written. **The name is editable for the
+  first time**; `PATCH /api/users/:id` always accepted `name`, it was simply never exposed. Password stays
+  its own action. `GET /api/users` now also returns the linked `employee` (id, code, name), shown as a
+  column linking to the HR profile plus a banner counting logins with no employee record — the gap behind
+  "the new technicians see no check-in card" (§22).
 - **Admins can change any sign-in email, including their own** (added 2026-09-12): `PATCH
   /api/users/:id` takes `email`, surfaced as "Change Email" on `/dashboard/users`. Emails are
   trimmed and lowercased on create and update (same normalisation the portal needed, §9), a

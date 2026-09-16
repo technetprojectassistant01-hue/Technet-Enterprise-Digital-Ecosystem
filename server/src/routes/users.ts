@@ -70,6 +70,10 @@ const userSelect = {
   name: true,
   role: true,
   createdAt: true,
+  // Surfaced so User Management shows at a glance whether a login is attached to an employee
+  // record. Without that link the person has no check-in card, no leave and no payroll, which
+  // reads as a broken app rather than a missing setup step.
+  employee: { select: { id: true, employeeCode: true, firstName: true, lastName: true } },
 } satisfies Prisma.UserSelect;
 
 router.get("/", async (_req, res) => {
