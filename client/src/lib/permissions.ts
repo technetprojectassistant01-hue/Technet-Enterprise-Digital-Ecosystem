@@ -16,6 +16,14 @@ export const PROCUREMENT_ROLES: readonly Role[] = ['ADMIN', 'STOREKEEPER']
 /** Technet Store tools & equipment: register tools, issue them against requests, record returns. */
 export const TOOL_MANAGE_ROLES: readonly Role[] = ['ADMIN', 'STOREKEEPER']
 export const HR_ROLES: readonly Role[] = ['ADMIN', 'HR_OFFICER']
+
+/**
+ * Reading another person's uploaded personal documents — ID card, passport, medical notes,
+ * certificates. Narrower than HR_ROLES on purpose (user decision 2026-09-16): ADMIN exists to run
+ * the platform, and none of that work needs somebody's medical certificate. Staff always keep
+ * full access to their own under My Documents.
+ */
+export const PERSONAL_DOCUMENT_ROLES: readonly Role[] = ['HR_OFFICER']
 /** Read-only "who's around today" visibility for Operations Managers, alongside HR's full edit rights. */
 export const WORKFORCE_VIEW_ROLES: readonly Role[] = ['ADMIN', 'HR_OFFICER', 'OPERATIONS_MANAGER']
 export const OPS_MANAGE_ROLES: readonly Role[] = ['ADMIN', 'OPERATIONS_MANAGER']

@@ -1,15 +1,15 @@
 import { Router, type Request, type Response } from "express";
 import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
-import { HR_ROLES } from "../lib/roles";
+import { PERSONAL_DOCUMENT_ROLES } from "../lib/roles";
 
 /**
  * Personal documents (driving licence, ID card, passport, certificates…).
  *
  * - myDocumentsRouter (/api/my-documents): the signed-in employee uploads, lists, downloads and
  *   deletes their own. Any role — only a linked employee record is needed.
- * - employeeDocumentsRouter (/api/employee-documents): HR_ROLES list and download an employee's
- *   documents from the HR profile. Read-only.
+ * - employeeDocumentsRouter (/api/employee-documents): PERSONAL_DOCUMENT_ROLES (HR only, not ADMIN)
+ *   list and download an employee's documents from the HR profile. Read-only.
  *
  * Deliberately separate from the business Documents module, which every office role can browse.
  */
@@ -118,7 +118,7 @@ myDocumentsRouter.delete("/:id", async (req, res) => {
 });
 
 export const employeeDocumentsRouter = Router();
-employeeDocumentsRouter.use(requireAuth, requireRole(...HR_ROLES));
+employeeDocumentsRouter.use(requireAuth, requireRole(...PERSONAL_DOCUMENT_ROLES));
 
 employeeDocumentsRouter.get("/", async (req, res) => {
   const { employeeId } = req.query;

@@ -1122,8 +1122,13 @@ disposable scratch scripts against the real DB plus rendered PDFs; the dialog an
   record): upload a photo or PDF (≤10MB) with **Name, Type, Upload media** — the three fields the user
   asked for — then download or delete it. Stored in its own `EmployeeDocument` table, **not** the business
   `Document` table, because that one is listed and downloadable by every office role and these are
-  personal data. `/api/my-documents` only ever touches the caller's own rows; HR_ROLES get a read-only
-  "Personal Documents" panel on the HR employee profile via `/api/employee-documents`. The table has an
+  personal data. `/api/my-documents` only ever touches the caller's own rows. **HR_OFFICER only, not
+  ADMIN**, gets the read-only "Personal Documents" panel on the HR employee profile via
+  `/api/employee-documents` (`PERSONAL_DOCUMENT_ROLES`, narrowed 2026-09-16 at the user's request):
+  these are ID cards, passports and medical notes, and an admin runs the platform without needing them.
+  Enforced server-side, not just by hiding the panel — verified with a disposable script that ADMIN gets
+  403 on list and download while HR_OFFICER gets 200. Admins keep every other part of the HR profile;
+  re-widening is a one-line change to that group in both `roles.ts` and `permissions.ts`. The table has an
   `expiryDate` column that is currently unused (the form dropped it at the user's request).
 - **Location dialogs on the check-in card** (`AttendanceWidget.tsx`, `lib/geolocation.ts`): the phone's own
   permission prompt can't be restyled, so our dialogs wrap it — "Allow location?" (Allow / Don't allow) before
