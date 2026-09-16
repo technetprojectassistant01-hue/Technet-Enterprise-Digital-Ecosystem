@@ -209,6 +209,8 @@ export const mfe: Dict = {
     welcomeBack: (name: string) => `Byenveni ankor, ${name}`,
     activeProjects: 'Proze aktif',
     pendingRequisitions: 'Demann lasa pe atann',
+    notLinked:
+      'Ou kont pa ankor lie ar enn fis anplwaye, alor check-in ek check-out pa disponib. Demann enn administrater pou lie li dan ERP → HR → Employees.',
   },
 
   attendance: {

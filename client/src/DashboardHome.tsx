@@ -1,4 +1,6 @@
+import { Lock } from 'lucide-react'
 import { useAuth } from './context/AuthContext'
+import { EmptyState } from './dashboard/ui'
 import { hasRole, OPS_SUBMIT_ROLES } from './lib/permissions'
 import AttendanceWidget from './dashboard/AttendanceWidget'
 import MyAttendanceHistory from './dashboard/MyAttendanceHistory'
@@ -23,6 +25,11 @@ function DashboardHome() {
       </h1>
 
       {canCheckIn && <AttendanceWidget />}
+
+      {/* A brand-new login has no Employee record until HR links one, and without that link there
+          is no check-in card, no Today and no My Attendance — which read as a broken page rather
+          than a setup step. Say so instead of showing an empty screen. */}
+      {!isAdmin && !user?.employeeId && <EmptyState icon={Lock} message={t.overview.notLinked} />}
 
       {isAdmin && <StaffAttendancePanel />}
 

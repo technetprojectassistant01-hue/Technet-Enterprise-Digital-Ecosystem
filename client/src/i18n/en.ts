@@ -207,6 +207,8 @@ export const en = {
     welcomeBack: (name: string) => `Welcome back, ${name}`,
     activeProjects: 'Active Projects',
     pendingRequisitions: 'Pending Requisitions',
+    notLinked:
+      'Your account is not linked to an employee record yet, so check in and check out are not available. Ask an administrator to link it under ERP → HR → Employees.',
   },
 
   attendance: {

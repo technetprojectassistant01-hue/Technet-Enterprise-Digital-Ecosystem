@@ -234,6 +234,12 @@ function UsersPage() {
               {submitting ? 'Creating…' : 'Create'}
             </button>
             {formError && <p className="w-full text-sm text-red-400">{formError}</p>}
+            {/* A login on its own cannot check in — SiteAttendance hangs off Employee, not User.
+                Saying so here is cheaper than the silent blank landing page it otherwise causes. */}
+            <p className="w-full text-xs text-ink-400">
+              A login on its own cannot check in or take leave. After creating it, add the person under ERP → HR →
+              Employees and set this account as their Linked Login.
+            </p>
           </form>
         </Panel>
       )}
