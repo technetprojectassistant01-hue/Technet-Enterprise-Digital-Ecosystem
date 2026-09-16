@@ -442,7 +442,7 @@ router.post("/requests/:id/approve", async (req, res) => {
 
     await syncEmploymentStatuses();
     await notifyEmployee(updated.employeeId, "LEAVE_REQUEST_APPROVED", `Your ${updated.leaveType.name} request was approved`, {
-      link: "/dashboard/erp/hr/leave",
+      link: "/dashboard/hr/leave",
     });
     res.json({ request: updated });
   } catch (err) {
@@ -478,7 +478,7 @@ router.post("/requests/:id/reject", async (req, res) => {
   });
 
   await notifyEmployee(updated.employeeId, "LEAVE_REQUEST_REJECTED", `Your ${updated.leaveType.name} request was rejected`, {
-    link: "/dashboard/erp/hr/leave",
+    link: "/dashboard/hr/leave",
   });
   res.json({ request: updated });
 });

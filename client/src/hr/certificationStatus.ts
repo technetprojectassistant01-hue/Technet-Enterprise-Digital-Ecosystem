@@ -1,5 +1,5 @@
-import type { BadgeTone } from '../../dashboard/ui'
-import type { Certification } from '../../lib/api'
+import type { BadgeTone } from '../dashboard/ui'
+import type { Certification } from '../lib/api'
 
 export type CertificationState = 'NO_EXPIRY' | 'VALID' | 'EXPIRING' | 'EXPIRED'
 

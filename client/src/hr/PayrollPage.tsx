@@ -161,7 +161,7 @@ function PayrollPage() {
                   <tr key={r.id} className="border-b border-ink-800 last:border-0">
                     <td className="px-3 py-3">
                       <Link
-                        to={`/dashboard/workforce/payroll/${r.id}`}
+                        to={`/dashboard/hr/payroll/${r.id}`}
                         className="font-medium text-ink-100 hover:text-cyan-accent hover:underline"
                       >
                         {months[r.month - 1]} {r.year}

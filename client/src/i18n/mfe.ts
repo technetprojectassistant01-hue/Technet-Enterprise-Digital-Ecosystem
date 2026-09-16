@@ -67,7 +67,7 @@ export const mfe: Dict = {
     'Intervention Reports': 'Rapor intervansion',
     'Team Attendance': 'Prezans lekip',
     'Field Operations': 'Operasion teren',
-    'Technet Workforce': 'Technet Workforce',
+    'Technet HR': 'Technet HR',
     Availability: 'Disponibilite',
     Attendance: 'Prezans',
     Payroll: 'Pey',

@@ -1150,3 +1150,26 @@ disposable scratch scripts against the real DB plus rendered PDFs; the dialog an
   `reason`, on My Leave and HR's leave requests tab.
 - **The technician side was declared finished by the user on 2026-09-14.** Next work is expected to move to
   other roles (admin/HR/office) menu by menu.
+
+## 24. Technet HR — one module for people (2026-09-16)
+
+HR's work was split across two unrelated top-level menus: **ERP → HR** held Overview, Employees, Leave and
+Certifications while **Technet Workforce** held Availability, Attendance, Overtime, Validations and Payroll.
+One HR officer's job, two menus — and on the way through ERP they passed Finance, Procurement and Inventory
+that are not theirs. The user asked to merge them; offered three shapes, they picked a single **Technet HR**.
+
+- **`/dashboard/hr/*`**, `client/src/hr/` (both `erp/hr/` and `workforce/` are gone), one
+  `HrModuleLayout.tsx` replacing `HrLayout` and `WorkforceLayout`. Nine tabs: Overview, Employees, Leave,
+  Attendance, Overtime, Validations, Payroll, Certifications, Availability.
+- **Permissions did not change** — only where things live. Each tab carries the group its own API already
+  enforces (`leave`/`certifications`/`payroll`/`overtime`/`attendance-validations` are `HR_ROLES`;
+  the attendance register and Availability are `WORKFORCE_VIEW_ROLES`, since Operations consults who is
+  around before assigning a job; Overview and Employees read at `NON_FIELD_ROLES`, as they always did).
+  A tab a role cannot use is **not rendered**, rather than being a dead link — the old Workforce layout
+  showed all five tabs then blocked the whole module with one EmptyState.
+- **Old links redirect**: `/dashboard/erp/hr/*` and `/dashboard/workforce/*` both land in the right place,
+  and the two detail pages keep their id (`RedirectEmployee` / `RedirectPayroll` in `App.tsx`) so a link in
+  a notification already sent still opens the right record. Server notification links in `leave.ts`,
+  `myLeave.ts` and `overtimeQueue.ts` were repointed too.
+- ERP lost its HR tab in `ErpLayout.tsx` and its HR branch in `nav.ts`; the nav dictionary key
+  `'Technet Workforce'` became `'Technet HR'` in all three languages.

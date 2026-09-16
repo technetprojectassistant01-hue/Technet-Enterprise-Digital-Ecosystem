@@ -96,7 +96,7 @@ router.post("/requests", async (req, res) => {
       HR_ROLES,
       "LEAVE_REQUEST_SUBMITTED",
       `${employee.firstName} ${employee.lastName} requested ${request.leaveType.name}`,
-      { link: "/dashboard/erp/hr/leave" },
+      { link: "/dashboard/hr/leave" },
     );
     res.status(201).json({ request });
   } catch (err) {
@@ -133,7 +133,7 @@ router.put("/requests/:id", async (req, res) => {
       HR_ROLES,
       "LEAVE_REQUEST_SUBMITTED",
       `${employee.firstName} ${employee.lastName} updated their ${result.request.leaveType.name} request`,
-      { link: "/dashboard/erp/hr/leave" },
+      { link: "/dashboard/hr/leave" },
     );
     res.json({ request: result.request });
   } catch (err) {

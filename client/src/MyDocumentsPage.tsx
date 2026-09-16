@@ -86,7 +86,7 @@ function MyDocumentsPage() {
   // An admin has no personal documents page of their own: they read everyone else's on the HR
   // employee profile. An old bookmark still lands somewhere useful.
   if (user?.role === 'ADMIN') {
-    return <Navigate to="/dashboard/erp/hr/employees" replace />
+    return <Navigate to="/dashboard/hr/employees" replace />
   }
 
   if (!user?.employeeId) return <EmptyState icon={Lock} message={t.myDocuments.notLinked} />

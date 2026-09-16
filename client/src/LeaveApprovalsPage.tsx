@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import * as api from './lib/api'
 import type { LeaveType } from './lib/api'
 import { TableSkeleton } from './dashboard/ui'
-import LeaveRequestsTab from './erp/hr/LeaveRequestsTab'
+import LeaveRequestsTab from './hr/LeaveRequestsTab'
 import { useT } from './i18n'
 
 type View = 'pending' | 'approved'

@@ -52,7 +52,7 @@ function PayrollDetailPage() {
     try {
       await api.deletePayrollRun(run.id)
       toast.success(t.workforce.payroll.deleted)
-      navigate('/dashboard/workforce/payroll')
+      navigate('/dashboard/hr/payroll')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t.workforce.payroll.deleteFailed)
     }
@@ -67,7 +67,7 @@ function PayrollDetailPage() {
   return (
     <div className="flex flex-col gap-6">
       <Link
-        to="/dashboard/workforce/payroll"
+        to="/dashboard/hr/payroll"
         className="flex w-fit items-center gap-2 text-sm text-ink-400 hover:text-ink-100"
       >
         <ArrowLeft className="h-4 w-4" />

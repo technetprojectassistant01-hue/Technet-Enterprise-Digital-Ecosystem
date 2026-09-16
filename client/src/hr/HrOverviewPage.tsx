@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Users, CalendarDays, BadgeCheck, ClipboardCheck, ArrowRight, Lock } from 'lucide-react'
-import * as api from '../../lib/api'
-import type { Certification, Employee, LeaveRequest } from '../../lib/api'
-import { Panel, StatCard, Badge, EmptyState, TableSkeleton } from '../../dashboard/ui'
-import { useAuth } from '../../context/AuthContext'
-import { hasRole, HR_ROLES } from '../../lib/permissions'
-import { leaveRequestStatusTone } from '../statusTones'
+import * as api from '../lib/api'
+import type { Certification, Employee, LeaveRequest } from '../lib/api'
+import { Panel, StatCard, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
+import { useAuth } from '../context/AuthContext'
+import { hasRole, HR_ROLES } from '../lib/permissions'
+import { leaveRequestStatusTone } from '../erp/statusTones'
 import { certificationState, certificationStateTone } from './certificationStatus'
-import { enumLabel, navLabel, useT } from '../../i18n'
+import { enumLabel, navLabel, useT } from '../i18n'
 
 function formatDate(value: string | null, locale: string): string {
   if (!value) return '—'
@@ -104,7 +104,7 @@ function HrOverviewPage() {
           icon={CalendarDays}
           action={
             <Link
-              to="/dashboard/erp/hr/leave"
+              to="/dashboard/hr/leave"
               className="flex items-center gap-1 text-xs text-ink-300 hover:text-cyan-accent"
             >
               {t.hr.overview.openLeave} <ArrowRight className="h-3 w-3" />
@@ -138,7 +138,7 @@ function HrOverviewPage() {
           icon={Users}
           action={
             <Link
-              to="/dashboard/erp/hr/employees"
+              to="/dashboard/hr/employees"
               className="flex items-center gap-1 text-xs text-ink-300 hover:text-cyan-accent"
             >
               {navLabel(t, 'Employees')} <ArrowRight className="h-3 w-3" />
@@ -168,7 +168,7 @@ function HrOverviewPage() {
           icon={BadgeCheck}
           action={
             <Link
-              to="/dashboard/erp/hr/certifications"
+              to="/dashboard/hr/certifications"
               className="flex items-center gap-1 text-xs text-ink-300 hover:text-cyan-accent"
             >
               {t.hr.overview.allCertifications} <ArrowRight className="h-3 w-3" />
@@ -205,7 +205,7 @@ function HrOverviewPage() {
           icon={ClipboardCheck}
           action={
             <Link
-              to="/dashboard/workforce/attendance"
+              to="/dashboard/hr/attendance"
               className="flex items-center gap-1 text-xs text-ink-300 hover:text-cyan-accent"
             >
               {t.hr.overview.dailyRegisterLink} <ArrowRight className="h-3 w-3" />

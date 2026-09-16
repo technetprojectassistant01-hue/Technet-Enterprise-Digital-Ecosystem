@@ -5,7 +5,6 @@ const TABS = [
   { label: 'Inventory', to: '/dashboard/erp/inventory' },
   { label: 'Finance', to: '/dashboard/erp/finance' },
   { label: 'Procurement', to: '/dashboard/erp/procurement' },
-  { label: 'HR', to: '/dashboard/erp/hr' },
   { label: 'Projects', to: '/dashboard/erp/projects' },
   { label: 'Documents', to: '/dashboard/erp/documents' },
 ]

@@ -67,7 +67,7 @@ export const en = {
     'Intervention Reports': 'Intervention Reports',
     'Team Attendance': 'Team Attendance',
     'Field Operations': 'Field Operations',
-    'Technet Workforce': 'Technet Workforce',
+    'Technet HR': 'Technet HR',
     Availability: 'Availability',
     Attendance: 'Attendance',
     Payroll: 'Payroll',

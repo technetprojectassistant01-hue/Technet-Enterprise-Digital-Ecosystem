@@ -54,7 +54,7 @@ export async function notifyHrOfOvertime(employeeId: string, checkInAt: Date): P
     const minutes = overtime.minutes % 60;
     await notifyRoles(HR_ROLES, "OVERTIME_PENDING", title, {
       message: `${hours}h ${minutes}m of overtime (${overtime.firstIn} → ${overtime.lastOut})`,
-      link: "/dashboard/workforce/overtime",
+      link: "/dashboard/hr/overtime",
     });
   } catch (err) {
     console.error("Failed to notify HR of overtime", err);

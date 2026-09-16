@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Plus, Pencil, Trash2, CalendarDays } from 'lucide-react'
-import * as api from '../../lib/api'
-import type { PublicHoliday } from '../../lib/api'
-import { Panel, Modal, EmptyState, TableSkeleton } from '../../dashboard/ui'
-import { useToast } from '../../dashboard/ToastContext'
-import { useConfirm } from '../../dashboard/ConfirmContext'
+import * as api from '../lib/api'
+import type { PublicHoliday } from '../lib/api'
+import { Panel, Modal, EmptyState, TableSkeleton } from '../dashboard/ui'
+import { useToast } from '../dashboard/ToastContext'
+import { useConfirm } from '../dashboard/ConfirmContext'
 import { inputClass, labelClass, primaryButtonClass } from './formStyles'
-import { useT } from '../../i18n'
+import { useT } from '../i18n'
 
 function currentYear(): number {
   return new Date().getUTCFullYear()

@@ -1,16 +1,16 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Search, Plus, Pencil, Trash2, UserCog, Download } from 'lucide-react'
-import * as api from '../../lib/api'
-import type { Employee, EmploymentStatus } from '../../lib/api'
-import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton } from '../../dashboard/ui'
-import { primaryButtonClass, secondaryButtonClass } from '../../dashboard/buttonStyles'
-import { downloadCsv } from '../../lib/csv'
-import { useToast } from '../../dashboard/ToastContext'
-import { useConfirm } from '../../dashboard/ConfirmContext'
-import { useAuth } from '../../context/AuthContext'
-import { hasRole, HR_ROLES } from '../../lib/permissions'
-import { employmentStatusTone as statusTone } from '../statusTones'
+import * as api from '../lib/api'
+import type { Employee, EmploymentStatus } from '../lib/api'
+import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
+import { primaryButtonClass, secondaryButtonClass } from '../dashboard/buttonStyles'
+import { downloadCsv } from '../lib/csv'
+import { useToast } from '../dashboard/ToastContext'
+import { useConfirm } from '../dashboard/ConfirmContext'
+import { useAuth } from '../context/AuthContext'
+import { hasRole, HR_ROLES } from '../lib/permissions'
+import { employmentStatusTone as statusTone } from '../erp/statusTones'
 import EmployeeForm, {
   EMPTY_EMPLOYEE_FORM,
   toEmployeeFormState,
@@ -262,7 +262,7 @@ function EmployeesPage() {
                   <tr key={e.id} className="border-b border-ink-800 last:border-0">
                     <td className="px-3 py-3 font-mono text-ink-300">{e.employeeCode}</td>
                     <td className="px-3 py-3 font-medium">
-                      <Link to={`/dashboard/erp/hr/employees/${e.id}`} className="text-ink-100 hover:text-cyan-accent">
+                      <Link to={`/dashboard/hr/employees/${e.id}`} className="text-ink-100 hover:text-cyan-accent">
                         {e.firstName} {e.lastName}
                       </Link>
                     </td>

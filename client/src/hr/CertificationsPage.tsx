@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Plus, Pencil, Trash2, Search, BadgeCheck, GraduationCap, Lock } from 'lucide-react'
-import * as api from '../../lib/api'
-import type { Certification, TrainingRecord } from '../../lib/api'
-import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton } from '../../dashboard/ui'
-import { useToast } from '../../dashboard/ToastContext'
-import { useConfirm } from '../../dashboard/ConfirmContext'
-import { useAuth } from '../../context/AuthContext'
-import { hasRole, HR_ROLES } from '../../lib/permissions'
-import { useEmployees } from '../useEmployees'
-import { formatMoney } from '../../lib/format'
+import * as api from '../lib/api'
+import type { Certification, TrainingRecord } from '../lib/api'
+import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
+import { useToast } from '../dashboard/ToastContext'
+import { useConfirm } from '../dashboard/ConfirmContext'
+import { useAuth } from '../context/AuthContext'
+import { hasRole, HR_ROLES } from '../lib/permissions'
+import { useEmployees } from '../erp/useEmployees'
+import { formatMoney } from '../lib/format'
 import { inputClass, labelClass, primaryButtonClass } from './formStyles'
 import {
   certificationState,
@@ -404,7 +404,7 @@ function CertificationsPage() {
                       <tr key={c.id} className="border-b border-ink-800 last:border-0">
                         <td className="px-3 py-3">
                           <Link
-                            to={`/dashboard/erp/hr/employees/${c.employeeId}`}
+                            to={`/dashboard/hr/employees/${c.employeeId}`}
                             className="font-medium text-ink-100 hover:text-cyan-accent"
                           >
                             {c.employee.firstName} {c.employee.lastName}
@@ -479,7 +479,7 @@ function CertificationsPage() {
                   <tr key={t.id} className="border-b border-ink-800 last:border-0">
                     <td className="px-3 py-3">
                       <Link
-                        to={`/dashboard/erp/hr/employees/${t.employeeId}`}
+                        to={`/dashboard/hr/employees/${t.employeeId}`}
                         className="font-medium text-ink-100 hover:text-cyan-accent"
                       >
                         {t.employee.firstName} {t.employee.lastName}
