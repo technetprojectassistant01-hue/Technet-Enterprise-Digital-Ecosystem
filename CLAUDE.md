@@ -1350,3 +1350,16 @@ Expect *more* honest failures than before: a query that only matched somewhere a
 instead of wrong coordinates. The 400 message says so, and points out the field can be left blank. Real
 behaviour, measured: "Rose Hill", "Ebene" and "Wellkin, Moka" resolve; "Celero Ltd, Level 5" does not —
 a floor or unit never geocodes, which is the limitation §7b already records, not a regression.
+
+**The site field is off the New Work Order form** (2026-09-16, user request) — it was optional and the
+geocoding failure blocked the whole save. Creating a work order no longer calls Nominatim at all. The
+**detail page keeps its site editor** (`WorkOrderDetailPage`), so a location can still be set afterwards,
+where a failed lookup costs nothing.
+
+**Nominatim rate limiting is the real cause of intermittent failures**, not a broken lookup — evidence
+from the live data: on 14 Sep six check-ins in a row all recorded UNCHECKABLE, including "Port Louis" and
+"Wellkin Moka", which resolve perfectly when queried on their own; on 16 Sep, spread out, "Pailles" came
+back MATCHED at 1099m and "Moka" MISMATCH at 13.4km. The free service allows roughly one request a
+second, so retrying a failed save immediately makes it more likely to fail again. If this becomes a real
+nuisance the options are a paid geocoder (§7b: the user chose free Nominatim knowingly) or caching
+lookups by query string.
