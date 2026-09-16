@@ -206,7 +206,7 @@ export const fr: Dict = {
     activeProjects: 'Projets actifs',
     pendingRequisitions: "Demandes d'achat en attente",
     notLinked:
-      "Votre compte n'est pas encore lié à une fiche employé : le pointage n'est donc pas disponible. Demandez à un administrateur de le lier dans ERP → RH → Employés.",
+      "Votre compte n'est pas encore lié à une fiche employé : le pointage n'est donc pas disponible. Demandez à un administrateur de le lier dans Technet HR → Employés.",
   },
 
   attendance: {

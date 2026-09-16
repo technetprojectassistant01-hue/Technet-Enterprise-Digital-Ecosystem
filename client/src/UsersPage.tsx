@@ -245,7 +245,7 @@ function UsersPage() {
             {unlinked === 1 ? '1 login is' : `${unlinked} logins are`} not attached to an employee record, so those
             people cannot check in, request leave or be paid. Attach them under{' '}
             <Link to="/dashboard/hr/employees" className="font-semibold underline">
-              ERP → HR → Employees
+              Technet HR → Employees
             </Link>
             .
           </span>
@@ -487,7 +487,7 @@ function UsersPage() {
                 Saying so here is cheaper than the silent blank landing page it otherwise causes. */}
             <p className="rounded-lg border border-ink-800 bg-ink-950 px-3 py-2.5 text-xs text-ink-300">
               A login on its own cannot check in, request leave or be paid. After creating it, add the person under
-              ERP → HR → Employees and set this account as their Linked Login.
+              Technet HR → Employees and set this account as their Linked Login.
             </p>
 
             <button type="submit" disabled={submitting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
