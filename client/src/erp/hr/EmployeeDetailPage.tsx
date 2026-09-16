@@ -13,6 +13,7 @@ import { Panel, Modal, Badge, EmptyState, TableSkeleton, Avatar } from '../../da
 import { secondaryButtonClass } from '../../dashboard/buttonStyles'
 import { useToast } from '../../dashboard/ToastContext'
 import { useAuth } from '../../context/AuthContext'
+import { hasRole, PERSONAL_DOCUMENT_ROLES } from '../../lib/permissions'
 import { employmentStatusTone, projectStatusTone, leaveRequestStatusTone } from '../statusTones'
 import { formatMoney } from '../../lib/format'
 import EmployeeForm, {
@@ -74,6 +75,9 @@ function EmployeeDetailPage() {
   const toast = useToast()
   const { user } = useAuth()
   const canSeeSensitive = user?.role === 'ADMIN' || user?.role === 'HR_OFFICER'
+  // Uploaded ID cards, passports and medical notes are HR's alone — an admin runs the platform and
+  // does not need them (PERSONAL_DOCUMENT_ROLES; the API refuses them too, not just this panel).
+  const canSeePersonalDocuments = hasRole(user?.role, PERSONAL_DOCUMENT_ROLES)
 
   const [employee, setEmployee] = useState<EmployeeDetail | null>(null)
   const [balances, setBalances] = useState<LeaveBalance[]>([])
@@ -385,7 +389,7 @@ function EmployeeDetailPage() {
           </Panel>
         )}
 
-        {canSeeSensitive && id && <EmployeeDocumentsPanel employeeId={id} />}
+        {canSeePersonalDocuments && id && <EmployeeDocumentsPanel employeeId={id} />}
 
         <Panel title="Project Involvement" icon={FolderKanban}>
           {employee.managedProjects.length === 0 && employee.projectAssignments.length === 0 ? (

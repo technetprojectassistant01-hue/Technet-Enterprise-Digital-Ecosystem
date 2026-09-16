@@ -30,6 +30,14 @@ export const PROCUREMENT_ROLES = ["ADMIN", "STOREKEEPER"] as const;
 export const TOOL_MANAGE_ROLES = ["ADMIN", "STOREKEEPER"] as const;
 export const HR_ROLES = ["ADMIN", "HR_OFFICER"] as const;
 
+/**
+ * Reading another person's uploaded personal documents — ID card, passport, medical notes,
+ * certificates. Narrower than HR_ROLES on purpose (user decision 2026-09-16): ADMIN exists to run
+ * the platform, and none of that work needs somebody's medical certificate. Staff always keep
+ * full access to their own under /api/my-documents.
+ */
+export const PERSONAL_DOCUMENT_ROLES = ["HR_OFFICER"] as const;
+
 /** Read-only "who's around today" visibility for Operations Managers, alongside HR's full edit rights. */
 export const WORKFORCE_VIEW_ROLES = ["ADMIN", "HR_OFFICER", "OPERATIONS_MANAGER"] as const;
 
