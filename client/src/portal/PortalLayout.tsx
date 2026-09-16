@@ -57,7 +57,7 @@ function PortalLayout() {
         </nav>
       </header>
 
-      <InstallAppPrompt appName="Technet Client Portal" />
+      <InstallAppPrompt appName="Technet Client Portal" scope={customer?.id} />
 
       <main className="mx-auto max-w-5xl px-6 py-8">
         <Outlet />

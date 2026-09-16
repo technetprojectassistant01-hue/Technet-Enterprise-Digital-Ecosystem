@@ -161,23 +161,33 @@ export function InstallAppDialog({
 // Once per page load across every InstallAppPrompt — so seeing it on the login page doesn't
 // bring it straight back on the dashboard after signing in.
 let shownThisVisit = false
+/** Whoever the "shown once" flag above belongs to, so signing in as someone else starts over. */
+let shownForScope = 'device'
 
 /**
  * Pops the install dialog up once per visit, a few seconds in, on any device that can install
- * and hasn't already — unless "Not now" was chosen in the last week.
+ * and hasn't already — unless that person chose "Not now" in the last week.
+ *
+ * `scope` is the signed-in user's id, so the once-per-visit flag and the week-long snooze both
+ * follow the person rather than the browser: a second technician signing in on the same phone
+ * still gets offered the app.
  */
-export function InstallAppPrompt({ appName }: { appName: string }) {
+export function InstallAppPrompt({ appName, scope = 'device' }: { appName: string; scope?: string }) {
   const method = useInstallMethod()
   const [open, setOpen] = useState(false)
 
   useEffect(() => {
-    if (!method || shownThisVisit || isInstallPromptSnoozed()) return
+    if (scope !== shownForScope) {
+      shownForScope = scope
+      shownThisVisit = false
+    }
+    if (!method || shownThisVisit || isInstallPromptSnoozed(scope)) return
     const timer = setTimeout(() => {
       shownThisVisit = true
       setOpen(true)
     }, 3000)
     return () => clearTimeout(timer)
-  }, [method])
+  }, [method, scope])
 
   if (!open || !method) return null
   return (
@@ -185,7 +195,7 @@ export function InstallAppPrompt({ appName }: { appName: string }) {
       appName={appName}
       method={method}
       onNotNow={() => {
-        snoozeInstallPrompt()
+        snoozeInstallPrompt(scope)
         setOpen(false)
       }}
       onDone={() => setOpen(false)}

@@ -8,6 +8,7 @@ import MobileNav from './dashboard/MobileNav'
 import NotificationBell from './dashboard/NotificationBell'
 import SyncStatus from './dashboard/SyncStatus'
 import { useToast } from './dashboard/ToastContext'
+import { useAuth } from './context/AuthContext'
 import { InstallAppPrompt } from './dashboard/InstallAppDialog'
 import { setOutboxDropHandler, startOutbox } from './lib/outbox'
 import { useOnline } from './lib/useOnline'
@@ -17,6 +18,7 @@ import { useT } from './i18n'
 function Dashboard() {
   const t = useT()
   const toast = useToast()
+  const { user } = useAuth()
   const toastRef = useRef(toast)
   toastRef.current = toast
   const { pathname } = useLocation()
@@ -143,7 +145,7 @@ function Dashboard() {
           </div>
         )}
 
-        <InstallAppPrompt appName="Technet Digital" />
+        <InstallAppPrompt appName="Technet Digital" scope={user?.id} />
 
         <main className="flex-1 px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
           <div key={pathname} className="animate-fade-in">
