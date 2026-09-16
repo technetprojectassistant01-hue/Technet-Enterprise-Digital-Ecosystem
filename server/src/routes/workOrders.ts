@@ -7,6 +7,7 @@ import { formatInterventionNumber } from "../lib/interventionNumber";
 import { OPS_MANAGE_ROLES, OPS_SUBMIT_ROLES } from "../lib/roles";
 import { geocodeAddress } from "../lib/geocode";
 import { notifyEmployee, notifyRoles } from "../lib/notifications";
+import { mauritiusDay } from "../lib/overtime";
 
 const router = Router();
 
@@ -88,6 +89,58 @@ router.get("/", async (req, res) => {
     orderBy: { scheduledDate: "desc" },
   });
   res.json({ workOrders });
+});
+
+/**
+ * The jobs assigned to the signed-in technician for one day — what they see on the landing page
+ * right where they check in, so a day's work arrives with them rather than having to be hunted
+ * for in the full Work Orders list (which shows everybody's).
+ *
+ * `carriedOver` is anything still open from an earlier day. Without it a job that slipped past
+ * its scheduled date would silently vanish from the technician's view while still being open,
+ * which is exactly the lifecycle drift that made auto-detection unusable (CLAUDE.md §7a).
+ */
+router.get("/my-day", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
+  const employee = await prisma.employee.findUnique({ where: { userId: req.user!.sub }, select: { id: true } });
+  if (!employee) return res.status(403).json({ error: "No employee record is linked to your account" });
+
+  // Mauritius is UTC+4 year round, and scheduledDate is stored at UTC midnight of the chosen day.
+  const day = parseDateOnly(req.query.date) ?? parseDateOnly(mauritiusDay(new Date()));
+  if (!day) return res.status(400).json({ error: "Invalid date" });
+  const nextDay = new Date(day.getTime() + 24 * 60 * 60 * 1000);
+
+  const OPEN: Status[] = ["SCHEDULED", "IN_PROGRESS", "WAITING_FOR_PARTS", "REOPENED"];
+  const workOrders = await prisma.workOrder.findMany({
+    where: {
+      technicians: { some: { employeeId: employee.id } },
+      OR: [
+        { scheduledDate: { gte: day, lt: nextDay } },
+        { scheduledDate: { lt: day }, status: { in: OPEN } },
+      ],
+    },
+    select: {
+      id: true,
+      workOrderNumber: true,
+      title: true,
+      description: true,
+      jobCategory: true,
+      status: true,
+      scheduledDate: true,
+      siteAddress: true,
+      siteLat: true,
+      siteLng: true,
+      customer: { select: { id: true, name: true, company: true, phone: true, address: true } },
+      technicians: { include: { employee: { select: EMPLOYEE_SELECT } } },
+    },
+    orderBy: { scheduledDate: "asc" },
+  });
+
+  const isToday = (w: (typeof workOrders)[number]) => w.scheduledDate >= day && w.scheduledDate < nextDay;
+  res.json({
+    date: day.toISOString().slice(0, 10),
+    today: workOrders.filter(isToday),
+    carriedOver: workOrders.filter((w) => !isToday(w)),
+  });
 });
 
 /** Manager-facing feed for the Field Operations view: who's in the field right now, plus recent history. */

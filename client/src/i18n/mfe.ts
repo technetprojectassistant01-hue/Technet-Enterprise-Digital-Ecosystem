@@ -325,6 +325,22 @@ export const mfe: Dict = {
     excelNote: 'Fisie Excel la enn CSV — Excel ek Google Sheets ouver li direk.',
   },
 
+  myJobs: {
+    title: 'Mo Travay Zordi',
+    empty: 'Pena okenn travay programe pou ou zordi.',
+    emptyHint: 'Si finn dir ou al kot enn plas, kontakte ou sipervizer.',
+    loadFailed: 'Pa finn kapav sarz ou bann travay',
+    carriedOver: 'Ankor ouver depi enn lot zour',
+    count: (n) => (n === 1 ? '1 travay' : `${n} travay`),
+    site: 'Sit',
+    noSite: 'Pena ladres sit',
+    openMap: 'Ouver dan Maps',
+    customerPhone: 'Apel kliyan',
+    withYou: 'Ar ou',
+    viewJob: 'Ouver travay',
+    scheduledFor: (date) => `Programe ${date}`,
+  },
+
   myAttendance: {
     title: 'Mo prezans',
     todayTitle: 'Zordi',
