@@ -278,6 +278,18 @@ export const fr: Dict = {
     approved: 'Approuvés',
   },
 
+  staffAttendance: {
+    title: 'Présence du personnel',
+    empty: 'Aucun pointage enregistré ce mois-ci.',
+    loadFailed: 'Échec du chargement des présences',
+    onSiteNow: (n: number) => (n === 1 ? '1 pointage en cours' : `${n} pointages en cours`),
+    peopleToday: (n: number) => (n === 1 ? '1 personne' : `${n} personnes`),
+    latestDay: (date: string) => `Dernier jour avec pointages : ${date}`,
+    viewFull: 'Registre complet',
+    stillIn: 'Toujours pointé',
+    noSite: 'Aucun site indiqué',
+  },
+
   myAttendance: {
     title: 'Ma présence',
     todayTitle: "Aujourd'hui",
