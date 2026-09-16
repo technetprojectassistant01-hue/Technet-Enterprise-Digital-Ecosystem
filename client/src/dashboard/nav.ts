@@ -37,7 +37,13 @@ import {
   UserCheck,
   type LucideIcon,
 } from 'lucide-react'
-import { FIELD_ONLY_ROLES, NON_ADMIN_ROLES, NON_COMMERCIAL_ROLES, NON_OPS_MANAGE_ROLES } from '../lib/permissions'
+import {
+  ADMINISTRATIVE_ROLES,
+  FIELD_ONLY_ROLES,
+  NON_ADMIN_ROLES,
+  NON_COMMERCIAL_ROLES,
+  NON_OPS_MANAGE_ROLES,
+} from '../lib/permissions'
 import type { Role } from '../lib/api'
 
 export interface NavItem {
@@ -53,11 +59,11 @@ export interface NavItem {
 export const MAIN_NAV: NavItem[] = [
   // The landing page is mainly the check-in/check-out card, so it's named for that.
   { label: 'Attendance', to: '/dashboard', icon: Clock, end: true },
-  // Admin approves leave rather than requesting it here, so they get Leave Approvals instead.
-  { label: 'My Leave', to: '/dashboard/my-leave', icon: CalendarDays, hiddenFrom: ['ADMIN'] },
+  // Admin and HR approve leave rather than requesting it: Leave Approvals and Technet HR > Leave.
+  { label: 'My Leave', to: '/dashboard/my-leave', icon: CalendarDays, hiddenFrom: ADMINISTRATIVE_ROLES },
   { label: 'Leave Approvals', to: '/dashboard/leave-approvals', icon: CalendarCheck, hiddenFrom: NON_ADMIN_ROLES },
-  // Admin reads everyone's documents on the HR employee profile instead of keeping their own.
-  { label: 'My Documents', to: '/dashboard/my-documents', icon: IdCard, hiddenFrom: ['ADMIN'] },
+  // Admin and HR read everyone's documents on the HR employee profile instead of keeping their own.
+  { label: 'My Documents', to: '/dashboard/my-documents', icon: IdCard, hiddenFrom: ADMINISTRATIVE_ROLES },
   {
     label: 'Technet ERP',
     to: '/dashboard/erp',
