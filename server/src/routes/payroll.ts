@@ -2,7 +2,8 @@ import { Router } from "express";
 import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { isNotFoundError, isUniqueConstraintError } from "../lib/prismaErrors";
-import { computeNetPay } from "../lib/payroll";
+import { computeNetPay, sumApprovedOvertimeHours, sumWorkedHours } from "../lib/payroll";
+import { dayToDate, mauritiusMonthRange } from "../lib/overtime";
 import { HR_ROLES } from "../lib/roles";
 import { workingDaysBetween } from "../lib/workingDays";
 
@@ -58,6 +59,11 @@ router.post("/process", async (req, res) => {
   const start = new Date(Date.UTC(year, month - 1, 1));
   const end = new Date(Date.UTC(year, month, 0));
   const daysInMonth = end.getUTCDate();
+  // Site attendance is a timestamp, so its month runs on Mauritius wall-clock boundaries rather
+  // than the UTC dates leave and public holidays are stored on.
+  const visitWindow = mauritiusMonthRange(`${year}-${String(month).padStart(2, "0")}`);
+  // OvertimeDecision.date is UTC midnight of the Mauritius day, the same shape dayToDate returns.
+  const overtimeWindow = { gte: dayToDate(start.toISOString().slice(0, 10)), lte: dayToDate(end.toISOString().slice(0, 10)) };
 
   const employees = await prisma.employee.findMany({
     where: { employmentStatus: { not: "TERMINATED" }, basicSalary: { not: null } },
@@ -76,10 +82,17 @@ router.post("/process", async (req, res) => {
 
   const lines = await Promise.all(
     employees.map(async (employee) => {
-      const [records, leaveRequests] = await Promise.all([
-        prisma.attendanceRecord.findMany({
-          where: { employeeId: employee.id, date: { gte: start, lte: end } },
-          select: { hoursWorked: true, overtimeHours: true },
+      const [visits, overtimeDecisions, leaveRequests] = await Promise.all([
+        // Hours come from the site attendance HR actually sees and validates, not from the manual
+        // office register, which no longer has a screen to fill it (CLAUDE.md §24d).
+        prisma.siteAttendance.findMany({
+          where: { employeeId: employee.id, checkInAt: { gte: visitWindow.start, lt: visitWindow.end } },
+          select: { checkInAt: true, checkOutAt: true },
+        }),
+        // Only overtime HR has approved is paid attention to; pending and rejected days count zero.
+        prisma.overtimeDecision.findMany({
+          where: { employeeId: employee.id, status: "APPROVED", date: overtimeWindow },
+          select: { minutes: true },
         }),
         prisma.leaveRequest.findMany({
           where: {
@@ -93,8 +106,8 @@ router.post("/process", async (req, res) => {
         }),
       ]);
 
-      const hoursWorked = records.reduce((sum, r) => sum + (r.hoursWorked ? r.hoursWorked.toNumber() : 0), 0);
-      const overtimeHours = records.reduce((sum, r) => sum + r.overtimeHours.toNumber(), 0);
+      const hoursWorked = sumWorkedHours(visits);
+      const overtimeHours = sumApprovedOvertimeHours(overtimeDecisions);
       // A leave request's stored `days` total covers its whole span, which can run past this
       // month's boundary — summing it directly would double-count the same days in two
       // consecutive payroll runs. Re-derive just the working days that actually fall in
@@ -110,8 +123,8 @@ router.post("/process", async (req, res) => {
       return {
         employeeId: employee.id,
         basicSalary,
-        hoursWorked: Number(hoursWorked.toFixed(2)),
-        overtimeHours: Number(overtimeHours.toFixed(2)),
+        hoursWorked,
+        overtimeHours,
         unpaidLeaveDays: Number(unpaidLeaveDays.toFixed(2)),
         deduction,
         netPay,
