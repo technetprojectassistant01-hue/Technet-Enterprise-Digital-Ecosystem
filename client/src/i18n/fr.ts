@@ -62,7 +62,7 @@ export const fr: Dict = {
     'Intervention Reports': "Rapports d'intervention",
     'Team Attendance': "Présence de l'équipe",
     'Field Operations': 'Opérations terrain',
-    'Technet Workforce': 'Technet Workforce',
+    'Technet HR': 'Technet HR',
     Availability: 'Disponibilité',
     Attendance: 'Présence',
     Payroll: 'Paie',

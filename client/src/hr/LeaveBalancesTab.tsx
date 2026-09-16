@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Scale, RefreshCw, Pencil } from 'lucide-react'
-import * as api from '../../lib/api'
-import type { LeaveBalance, LeaveType } from '../../lib/api'
-import { Panel, Modal, EmptyState, TableSkeleton } from '../../dashboard/ui'
-import { useToast } from '../../dashboard/ToastContext'
-import { useEmployees } from '../useEmployees'
+import * as api from '../lib/api'
+import type { LeaveBalance, LeaveType } from '../lib/api'
+import { Panel, Modal, EmptyState, TableSkeleton } from '../dashboard/ui'
+import { useToast } from '../dashboard/ToastContext'
+import { useEmployees } from '../erp/useEmployees'
 import { inputClass, labelClass, primaryButtonClass, secondaryButtonClass } from './formStyles'
-import { useT } from '../../i18n'
+import { useT } from '../i18n'
 
 function remainingOf(balance: LeaveBalance): number {
   return Number(balance.entitledDays) + Number(balance.carriedOverDays) - Number(balance.usedDays)

@@ -289,11 +289,11 @@ function TechnetErpPage() {
         <Link to="/dashboard/erp/procurement/purchase-orders" className="block">
           <StatCard label="OPEN PURCHASE ORDERS" value={purchaseOrders === null ? '—' : openPurchaseOrders.length} />
         </Link>
-        <Link to="/dashboard/erp/hr/employees" className="block">
+        <Link to="/dashboard/hr/employees" className="block">
           <StatCard label="ACTIVE HEADCOUNT" value={employees === null ? '—' : activeHeadcount.length} />
         </Link>
         {canSeeHr && (
-          <Link to="/dashboard/erp/hr/leave" className="block">
+          <Link to="/dashboard/hr/leave" className="block">
             <StatCard
               label="LEAVE PENDING APPROVAL"
               value={pendingLeaveCount === null ? '—' : pendingLeaveCount}

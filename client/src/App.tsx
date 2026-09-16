@@ -1,4 +1,4 @@
-import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
+import { Navigate, Outlet, Route, Routes, useParams } from 'react-router-dom'
 import Login from './Login'
 import ForgotPassword from './ForgotPassword'
 import ResetPassword from './ResetPassword'
@@ -21,12 +21,12 @@ import QuotationsPage from './erp/QuotationsPage'
 import QuotationDetailPage from './erp/QuotationDetailPage'
 import QuotationFollowUpPage from './erp/QuotationFollowUpPage'
 import ContractsPage from './erp/ContractsPage'
-import HrLayout from './erp/hr/HrLayout'
-import HrOverviewPage from './erp/hr/HrOverviewPage'
-import EmployeesPage from './erp/hr/EmployeesPage'
-import EmployeeDetailPage from './erp/hr/EmployeeDetailPage'
-import LeavePage from './erp/hr/LeavePage'
-import CertificationsPage from './erp/hr/CertificationsPage'
+import HrModuleLayout from './hr/HrModuleLayout'
+import HrOverviewPage from './hr/HrOverviewPage'
+import EmployeesPage from './hr/EmployeesPage'
+import EmployeeDetailPage from './hr/EmployeeDetailPage'
+import LeavePage from './hr/LeavePage'
+import CertificationsPage from './hr/CertificationsPage'
 import ProjectsPage from './erp/ProjectsPage'
 import ProjectDetailPage from './erp/ProjectDetailPage'
 import ProcurementLayout from './erp/ProcurementLayout'
@@ -48,13 +48,12 @@ import FieldOperationsPage from './operations/FieldOperationsPage'
 import StoreLayout from './store/StoreLayout'
 import ToolsPage from './store/ToolsPage'
 import ToolRequestsPage from './store/ToolRequestsPage'
-import WorkforceLayout from './workforce/WorkforceLayout'
-import AvailabilityTab from './workforce/AvailabilityTab'
-import AttendancePage from './workforce/AttendancePage'
-import OvertimePage from './workforce/OvertimePage'
-import AttendanceValidationPage from './workforce/AttendanceValidationPage'
-import PayrollPage from './workforce/PayrollPage'
-import PayrollDetailPage from './workforce/PayrollDetailPage'
+import AvailabilityTab from './hr/AvailabilityTab'
+import AttendancePage from './hr/AttendancePage'
+import OvertimePage from './hr/OvertimePage'
+import AttendanceValidationPage from './hr/AttendanceValidationPage'
+import PayrollPage from './hr/PayrollPage'
+import PayrollDetailPage from './hr/PayrollDetailPage'
 import MarketingLayout from './marketing/MarketingLayout'
 import CampaignsPage from './marketing/CampaignsPage'
 import CampaignDetailPage from './marketing/CampaignDetailPage'
@@ -76,6 +75,20 @@ import ProtectedRoute from './ProtectedRoute'
 import AdminRoute from './AdminRoute'
 import RoleRoute from './RoleRoute'
 import { FIELD_ONLY_ROLES } from './lib/permissions'
+
+/**
+ * A moved detail page keeps its id: /dashboard/erp/hr/employees/abc becomes
+ * /dashboard/hr/employees/abc, so a link in an old notification still opens the right record.
+ */
+function RedirectEmployee() {
+  const { id } = useParams<{ id: string }>()
+  return <Navigate to={`/dashboard/hr/employees/${id}`} replace />
+}
+
+function RedirectPayroll() {
+  const { id } = useParams<{ id: string }>()
+  return <Navigate to={`/dashboard/hr/payroll/${id}`} replace />
+}
 
 function App() {
   return (
@@ -118,13 +131,13 @@ function App() {
                 <Route path="purchase-orders" element={<PurchaseOrdersPage />} />
                 <Route path="purchase-orders/:id" element={<PurchaseOrderDetailPage />} />
               </Route>
-              <Route path="hr" element={<HrLayout />}>
-                <Route index element={<HrOverviewPage />} />
-                <Route path="employees" element={<EmployeesPage />} />
-                <Route path="employees/:id" element={<EmployeeDetailPage />} />
-                <Route path="leave" element={<LeavePage />} />
-                <Route path="certifications" element={<CertificationsPage />} />
-              </Route>
+              {/* HR moved out of ERP into its own Technet HR module (2026-09-16). Old links,
+                  including those in notifications already sent, follow it. */}
+              <Route path="hr/employees/:id" element={<RedirectEmployee />} />
+              <Route path="hr/employees" element={<Navigate to="/dashboard/hr/employees" replace />} />
+              <Route path="hr/leave" element={<Navigate to="/dashboard/hr/leave" replace />} />
+              <Route path="hr/certifications" element={<Navigate to="/dashboard/hr/certifications" replace />} />
+              <Route path="hr/*" element={<Navigate to="/dashboard/hr" replace />} />
               <Route path="projects" element={<ProjectsPage />} />
               <Route path="projects/:id" element={<ProjectDetailPage />} />
               <Route path="documents" element={<DocumentsPage />} />
@@ -155,15 +168,29 @@ function App() {
             <Route path="team-attendance" element={<TeamAttendancePage />} />
             <Route path="field-tracking" element={<FieldOperationsPage />} />
           </Route>
-          <Route path="workforce" element={<WorkforceLayout />}>
-            <Route index element={<Navigate to="availability" replace />} />
-            <Route path="availability" element={<AvailabilityTab />} />
+          {/* Technet HR: the people work that used to be split between ERP > HR and Technet
+              Workforce. Each tab keeps the role gate its own API already enforces. */}
+          <Route path="hr" element={<HrModuleLayout />}>
+            <Route index element={<HrOverviewPage />} />
+            <Route path="employees" element={<EmployeesPage />} />
+            <Route path="employees/:id" element={<EmployeeDetailPage />} />
+            <Route path="leave" element={<LeavePage />} />
             <Route path="attendance" element={<AttendancePage />} />
             <Route path="overtime" element={<OvertimePage />} />
             <Route path="validations" element={<AttendanceValidationPage />} />
             <Route path="payroll" element={<PayrollPage />} />
             <Route path="payroll/:id" element={<PayrollDetailPage />} />
+            <Route path="certifications" element={<CertificationsPage />} />
+            <Route path="availability" element={<AvailabilityTab />} />
           </Route>
+          {/* Technet Workforce was folded into Technet HR (2026-09-16). */}
+          <Route path="workforce/payroll/:id" element={<RedirectPayroll />} />
+          <Route path="workforce/availability" element={<Navigate to="/dashboard/hr/availability" replace />} />
+          <Route path="workforce/attendance" element={<Navigate to="/dashboard/hr/attendance" replace />} />
+          <Route path="workforce/overtime" element={<Navigate to="/dashboard/hr/overtime" replace />} />
+          <Route path="workforce/validations" element={<Navigate to="/dashboard/hr/validations" replace />} />
+          <Route path="workforce/payroll" element={<Navigate to="/dashboard/hr/payroll" replace />} />
+          <Route path="workforce/*" element={<Navigate to="/dashboard/hr" replace />} />
           <Route element={<RoleRoute blockedRoles={FIELD_ONLY_ROLES} />}>
             <Route path="marketing" element={<MarketingLayout />}>
               <Route index element={<Navigate to="campaigns" replace />} />

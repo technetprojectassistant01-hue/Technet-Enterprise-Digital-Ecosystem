@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Download, IdCard } from 'lucide-react'
-import * as api from '../../lib/api'
-import type { EmployeeDocument } from '../../lib/api'
-import { Panel, TableSkeleton } from '../../dashboard/ui'
-import { useToast } from '../../dashboard/ToastContext'
-import { downloadAuthenticated } from '../../MyDocumentsPage'
-import { useT } from '../../i18n'
+import * as api from '../lib/api'
+import type { EmployeeDocument } from '../lib/api'
+import { Panel, TableSkeleton } from '../dashboard/ui'
+import { useToast } from '../dashboard/ToastContext'
+import { downloadAuthenticated } from '../MyDocumentsPage'
+import { useT } from '../i18n'
 
 /**
  * The documents an employee uploaded themselves on My Documents (licence, ID, passport…), shown to

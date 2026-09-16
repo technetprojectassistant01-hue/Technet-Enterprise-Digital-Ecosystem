@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
-import * as api from '../../lib/api'
+import * as api from '../lib/api'
 import type {
   ContractType,
   Employee,
@@ -7,9 +7,9 @@ import type {
   EmploymentStatus,
   Gender,
   LinkableUser,
-} from '../../lib/api'
+} from '../lib/api'
 import { inputClass, labelClass, primaryButtonClass } from './formStyles'
-import { useT } from '../../i18n'
+import { useT } from '../i18n'
 
 const STATUSES: EmploymentStatus[] = ['ACTIVE', 'ON_LEAVE', 'TERMINATED']
 const GENDERS: Gender[] = ['MALE', 'FEMALE', 'OTHER']

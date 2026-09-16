@@ -244,7 +244,7 @@ function UsersPage() {
           <span>
             {unlinked === 1 ? '1 login is' : `${unlinked} logins are`} not attached to an employee record, so those
             people cannot check in, request leave or be paid. Attach them under{' '}
-            <Link to="/dashboard/erp/hr/employees" className="font-semibold underline">
+            <Link to="/dashboard/hr/employees" className="font-semibold underline">
               ERP → HR → Employees
             </Link>
             .
@@ -375,7 +375,7 @@ function UsersPage() {
                     <td className="px-5 py-3">
                       {u.employee ? (
                         <Link
-                          to={`/dashboard/erp/hr/employees/${u.employee.id}`}
+                          to={`/dashboard/hr/employees/${u.employee.id}`}
                           className="text-ink-200 hover:text-cyan-accent hover:underline"
                         >
                           <span className="font-mono text-xs text-ink-400">{u.employee.employeeCode}</span>{' '}

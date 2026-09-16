@@ -1,21 +1,21 @@
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, Pencil, X, FolderKanban, ShieldAlert, CalendarDays, BadgeCheck } from 'lucide-react'
-import * as api from '../../lib/api'
+import * as api from '../lib/api'
 import type {
   Certification,
   EmployeeDetail,
   LeaveBalance,
   LeaveRequest,
   TrainingRecord,
-} from '../../lib/api'
-import { Panel, Modal, Badge, EmptyState, TableSkeleton, Avatar } from '../../dashboard/ui'
-import { secondaryButtonClass } from '../../dashboard/buttonStyles'
-import { useToast } from '../../dashboard/ToastContext'
-import { useAuth } from '../../context/AuthContext'
-import { hasRole, PERSONAL_DOCUMENT_ROLES } from '../../lib/permissions'
-import { employmentStatusTone, projectStatusTone, leaveRequestStatusTone } from '../statusTones'
-import { formatMoney } from '../../lib/format'
+} from '../lib/api'
+import { Panel, Modal, Badge, EmptyState, TableSkeleton, Avatar } from '../dashboard/ui'
+import { secondaryButtonClass } from '../dashboard/buttonStyles'
+import { useToast } from '../dashboard/ToastContext'
+import { useAuth } from '../context/AuthContext'
+import { hasRole, PERSONAL_DOCUMENT_ROLES } from '../lib/permissions'
+import { employmentStatusTone, projectStatusTone, leaveRequestStatusTone } from '../erp/statusTones'
+import { formatMoney } from '../lib/format'
 import EmployeeForm, {
   toEmployeeFormState,
   toEmployeeInput,
@@ -170,7 +170,7 @@ function EmployeeDetailPage() {
   return (
     <div className="flex flex-col gap-6">
       <Link
-        to="/dashboard/erp/hr/employees"
+        to="/dashboard/hr/employees"
         className="flex w-fit items-center gap-2 text-sm text-ink-300 hover:text-ink-100"
       >
         <ArrowLeft className="h-4 w-4" />

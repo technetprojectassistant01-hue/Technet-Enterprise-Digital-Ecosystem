@@ -1,12 +1,12 @@
 import { useState, type FormEvent } from 'react'
 import { Plus, Pencil, Trash2, Layers, Sparkles } from 'lucide-react'
-import * as api from '../../lib/api'
-import type { LeaveType } from '../../lib/api'
-import { Panel, Modal, Badge, EmptyState } from '../../dashboard/ui'
-import { useToast } from '../../dashboard/ToastContext'
-import { useConfirm } from '../../dashboard/ConfirmContext'
+import * as api from '../lib/api'
+import type { LeaveType } from '../lib/api'
+import { Panel, Modal, Badge, EmptyState } from '../dashboard/ui'
+import { useToast } from '../dashboard/ToastContext'
+import { useConfirm } from '../dashboard/ConfirmContext'
 import { inputClass, labelClass, primaryButtonClass, secondaryButtonClass } from './formStyles'
-import { useT } from '../../i18n'
+import { useT } from '../i18n'
 
 interface FormState {
   code: string
