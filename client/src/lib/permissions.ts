@@ -19,11 +19,11 @@ export const HR_ROLES: readonly Role[] = ['ADMIN', 'HR_OFFICER']
 
 /**
  * Reading another person's uploaded personal documents — ID card, passport, medical notes,
- * certificates. Narrower than HR_ROLES on purpose (user decision 2026-09-16): ADMIN exists to run
- * the platform, and none of that work needs somebody's medical certificate. Staff always keep
- * full access to their own under My Documents.
+ * certificates, from the HR employee profile. Briefly HR-only on 2026-09-16; the user then decided
+ * the same day that an admin should see everything, so ADMIN is back. Staff keep full control of
+ * their own under My Documents, and admins have no My Documents page of their own.
  */
-export const PERSONAL_DOCUMENT_ROLES: readonly Role[] = ['HR_OFFICER']
+export const PERSONAL_DOCUMENT_ROLES: readonly Role[] = ['ADMIN', 'HR_OFFICER']
 /** Read-only "who's around today" visibility for Operations Managers, alongside HR's full edit rights. */
 export const WORKFORCE_VIEW_ROLES: readonly Role[] = ['ADMIN', 'HR_OFFICER', 'OPERATIONS_MANAGER']
 export const OPS_MANAGE_ROLES: readonly Role[] = ['ADMIN', 'OPERATIONS_MANAGER']
