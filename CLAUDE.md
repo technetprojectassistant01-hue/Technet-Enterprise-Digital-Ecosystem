@@ -1244,3 +1244,12 @@ Availability. `/dashboard/workforce/attendance` redirects to `/dashboard/hr` rat
 **Kept on purpose**: the `/api/attendance` router and the `AttendanceRecord` table. HR Overview still calls
 `getAttendanceSummary(today())` for its "attendance today" panel, and the data is not worth discarding.
 Restoring the office register is a matter of putting the three deleted components back from git history.
+
+**Payroll is stranded from the attendance it should use** (found 2026-09-16, not fixed). `payroll.ts`
+computes `hoursWorked` and `overtimeHours` from **`AttendanceRecord`** — the manual office register — and
+never reads `SiteAttendance` or the `OvertimeDecision` rows HR approves. Removing the Attendance tab
+(§24d) closed the last way to create `AttendanceRecord` rows, so payroll now has no live source at all:
+2 rows exist against 23 site visits and 1 approved overtime decision, and only 1 of 8 employees has a
+`basicSalary`. A run today pays ~0 hours for nearly everyone. **The fix is to point payroll at
+`SiteAttendance` for hours and at approved `OvertimeDecision` rows for overtime** — the user was told and
+chose to leave HR as it stands for now, so this is the first thing to pick up if payroll comes up.
