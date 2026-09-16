@@ -1281,3 +1281,31 @@ Measured on the real data when this landed: Fabrizio went from 0 to 113.61 hours
 for August, and 67.95 approved overtime hours. **Those figures are inflated by forgotten sessions and by
 test rows whose check-out precedes their check-in** (§7a) — the arithmetic is right, the underlying visits
 are not. Only 1 of 8 employees has a `basicSalary`, and payroll skips the rest.
+
+## 26. What a Storekeeper sees (2026-09-16)
+
+Asked for "only technet store to add tools and equipment and approve requests and also technet operations".
+Taken literally that would also have removed Inventory, Suppliers, Requisitions and Purchase Orders, which
+`PROCUREMENT_ROLES` gives the storekeeper and nobody else but ADMIN — raised with the user, who chose to
+**keep their procurement**.
+
+Three named groups now do the work in `client/src/lib/permissions.ts`:
+
+- **`ERP_HIDDEN_ROLES`** (FIELD_TECHNICIAN, EMPLOYEE, HR_OFFICER) — cannot open Technet ERP at all. The
+  storekeeper is deliberately absent: Inventory and Procurement live there.
+- **`NON_COMMERCIAL_ROLES`** gained STOREKEEPER — it now hides Technet Connect, Technet Digital Marketing
+  and, inside ERP, the Overview, Finance, Projects and Documents branches.
+- **`NON_HR_ROLES`** (FIELD_TECHNICIAN, EMPLOYEE, STOREKEEPER) — hides Technet HR, and drives the Overview
+  and Employees tabs in `HrModuleLayout` that used to key off `FIELD_ONLY_ROLES`.
+
+`ErpLayout` filters its own tab strip the same way, so the strip agrees with the sidebar, and `ErpIndex`
+in `App.tsx` sends a storekeeper to Inventory rather than the commercial dashboard they may not open.
+The commercial routes sit inside their own `RoleRoute`, so a typed URL is refused, not merely hidden.
+
+A storekeeper's menu: Attendance, My Leave, My Documents, **Technet ERP** (Inventory + Procurement only),
+**Technet Store**, **Technet Operations** (minus Team Attendance and Field Operations, already
+`NON_OPS_MANAGE_ROLES`), Settings, Help.
+
+Verified with a disposable STOREKEEPER account against a running server: 200 on tools, tool requests,
+inventory, suppliers, requisitions, purchase orders and work orders; 403 on leave, payroll, overtime and
+the site attendance register.

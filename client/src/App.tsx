@@ -73,12 +73,24 @@ import SettingsPage from './SettingsPage'
 import ProtectedRoute from './ProtectedRoute'
 import AdminRoute from './AdminRoute'
 import RoleRoute from './RoleRoute'
-import { NON_COMMERCIAL_ROLES } from './lib/permissions'
+import { hasRole, ERP_HIDDEN_ROLES, NON_COMMERCIAL_ROLES } from './lib/permissions'
+import { useAuth } from './context/AuthContext'
 
 /**
  * A moved detail page keeps its id: /dashboard/erp/hr/employees/abc becomes
  * /dashboard/hr/employees/abc, so a link in an old notification still opens the right record.
  */
+/**
+ * ERP's landing page is the commercial dashboard — revenue, quotations, customers. A storekeeper
+ * reaches ERP for Inventory and Procurement only, so the module opens on Inventory for them
+ * rather than on a page they are not allowed to see.
+ */
+function ErpIndex() {
+  const { user } = useAuth()
+  if (hasRole(user?.role, NON_COMMERCIAL_ROLES)) return <Navigate to="inventory" replace />
+  return <TechnetErpPage />
+}
+
 function RedirectEmployee() {
   const { id } = useParams<{ id: string }>()
   return <Navigate to={`/dashboard/hr/employees/${id}`} replace />
@@ -107,11 +119,12 @@ function App() {
           <Route path="help" element={<HelpCenterContent />} />
           <Route path="privacy" element={<LegalContent doc="privacy" />} />
           <Route path="terms" element={<LegalContent doc="terms" />} />
-          <Route element={<RoleRoute blockedRoles={NON_COMMERCIAL_ROLES} />}>
+          <Route element={<RoleRoute blockedRoles={ERP_HIDDEN_ROLES} />}>
             <Route path="erp" element={<ErpLayout />}>
-              <Route index element={<TechnetErpPage />} />
-              <Route path="inventory" element={<InventoryPage />} />
-              <Route path="finance" element={<FinanceLayout />}>
+              {/* Inventory and Procurement are the storekeeper's; the selling half is not. */}
+              <Route index element={<ErpIndex />} />
+              <Route element={<RoleRoute blockedRoles={NON_COMMERCIAL_ROLES} />}>
+                <Route path="finance" element={<FinanceLayout />}>
                 <Route index element={<Navigate to="customers" replace />} />
                 <Route path="customers" element={<CustomersPage />} />
                 <Route path="invoices" element={<InvoicesPage />} />
@@ -122,6 +135,12 @@ function App() {
                 <Route path="follow-up" element={<QuotationFollowUpPage />} />
                 <Route path="contracts" element={<ContractsPage />} />
               </Route>
+                <Route path="projects" element={<ProjectsPage />} />
+                <Route path="projects/:id" element={<ProjectDetailPage />} />
+                <Route path="documents" element={<DocumentsPage />} />
+              </Route>
+              {/* Inventory and Procurement stay open to the storekeeper. */}
+              <Route path="inventory" element={<InventoryPage />} />
               <Route path="procurement" element={<ProcurementLayout />}>
                 <Route index element={<Navigate to="suppliers" replace />} />
                 <Route path="suppliers" element={<SuppliersPage />} />
@@ -137,9 +156,6 @@ function App() {
               <Route path="hr/leave" element={<Navigate to="/dashboard/hr/leave" replace />} />
               <Route path="hr/certifications" element={<Navigate to="/dashboard/hr/certifications" replace />} />
               <Route path="hr/*" element={<Navigate to="/dashboard/hr" replace />} />
-              <Route path="projects" element={<ProjectsPage />} />
-              <Route path="projects/:id" element={<ProjectDetailPage />} />
-              <Route path="documents" element={<DocumentsPage />} />
             </Route>
           </Route>
           <Route path="store" element={<StoreLayout />}>

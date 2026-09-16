@@ -1,19 +1,34 @@
 import { NavLink, Outlet } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
+import { hasRole, NON_COMMERCIAL_ROLES } from '../lib/permissions'
+import type { Role } from '../lib/api'
 
-const TABS = [
-  { label: 'Overview', to: '/dashboard/erp', end: true },
+/**
+ * A storekeeper reaches ERP for Inventory and Procurement only — the selling half is not their
+ * job (user request 2026-09-16). Tabs they cannot use are left out rather than shown as dead
+ * links, the same rule Technet HR follows.
+ */
+const TABS: { label: string; to: string; end?: boolean; commercial?: boolean }[] = [
+  { label: 'Overview', to: '/dashboard/erp', end: true, commercial: true },
   { label: 'Inventory', to: '/dashboard/erp/inventory' },
-  { label: 'Finance', to: '/dashboard/erp/finance' },
+  { label: 'Finance', to: '/dashboard/erp/finance', commercial: true },
   { label: 'Procurement', to: '/dashboard/erp/procurement' },
-  { label: 'Projects', to: '/dashboard/erp/projects' },
-  { label: 'Documents', to: '/dashboard/erp/documents' },
+  { label: 'Projects', to: '/dashboard/erp/projects', commercial: true },
+  { label: 'Documents', to: '/dashboard/erp/documents', commercial: true },
 ]
 
+function visibleTabs(role: Role | undefined) {
+  return TABS.filter((tab) => !tab.commercial || !hasRole(role, NON_COMMERCIAL_ROLES))
+}
+
 function ErpLayout() {
+  const { user } = useAuth()
+  const tabs = visibleTabs(user?.role)
+
   return (
     <div className="flex flex-col gap-6">
       <nav className="flex flex-wrap gap-1 border-b border-ink-800">
-        {TABS.map((tab) => (
+        {tabs.map((tab) => (
           <NavLink
             key={tab.to}
             to={tab.to}

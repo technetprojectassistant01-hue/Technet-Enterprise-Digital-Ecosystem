@@ -3,7 +3,7 @@ import { Lock } from 'lucide-react'
 import ModuleHeader from '../dashboard/ModuleHeader'
 import { EmptyState } from '../dashboard/ui'
 import { useAuth } from '../context/AuthContext'
-import { hasRole, FIELD_ONLY_ROLES, HR_ROLES, WORKFORCE_VIEW_ROLES } from '../lib/permissions'
+import { hasRole, NON_HR_ROLES, HR_ROLES, WORKFORCE_VIEW_ROLES } from '../lib/permissions'
 import type { Role } from '../lib/api'
 import { navLabel, useT } from '../i18n'
 
@@ -17,9 +17,10 @@ import { navLabel, useT } from '../i18n'
  * left out rather than shown as a dead link.
  */
 const TABS: { label: string; to: string; end?: boolean; visible: (role?: Role) => boolean }[] = [
-  // Overview and Employees read at the same breadth the API allows: any office role.
-  { label: 'Overview', to: '/dashboard/hr', end: true, visible: (r) => !hasRole(r, FIELD_ONLY_ROLES) },
-  { label: 'Employees', to: '/dashboard/hr/employees', visible: (r) => !hasRole(r, FIELD_ONLY_ROLES) },
+  // Overview and Employees read at the same breadth the API allows, minus the roles with no
+  // business in HR at all.
+  { label: 'Overview', to: '/dashboard/hr', end: true, visible: (r) => !hasRole(r, NON_HR_ROLES) },
+  { label: 'Employees', to: '/dashboard/hr/employees', visible: (r) => !hasRole(r, NON_HR_ROLES) },
   { label: 'Leave', to: '/dashboard/hr/leave', visible: (r) => hasRole(r, HR_ROLES) },
   { label: 'Overtime', to: '/dashboard/hr/overtime', visible: (r) => hasRole(r, HR_ROLES) },
   { label: 'Validations', to: '/dashboard/hr/validations', visible: (r) => hasRole(r, HR_ROLES) },
