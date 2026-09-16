@@ -6,6 +6,7 @@ import { useAuth } from './context/AuthContext'
 import { Panel, EmptyState, TableSkeleton, Modal } from './dashboard/ui'
 import { useToast } from './dashboard/ToastContext'
 import { useConfirm } from './dashboard/ConfirmContext'
+import { useT } from './i18n'
 
 /** A random temporary password for an admin-forced reset - the employee should change it on first login. */
 function generateTempPassword(): string {
@@ -30,6 +31,7 @@ const inputClass =
 
 function UsersPage() {
   const toast = useToast()
+  const t = useT()
   const confirm = useConfirm()
   const { user: currentUser } = useAuth()
   const [users, setUsers] = useState<ManagedUser[]>([])
@@ -199,7 +201,7 @@ function UsersPage() {
             <select value={role} onChange={(e) => setRole(e.target.value as Role)} className={inputClass}>
               {ROLES.map((r) => (
                 <option key={r} value={r}>
-                  {r}
+                  {t.roles[r]}
                 </option>
               ))}
             </select>
@@ -251,7 +253,7 @@ function UsersPage() {
                     >
                       {ROLES.map((r) => (
                         <option key={r} value={r}>
-                          {r}
+                          {t.roles[r]}
                         </option>
                       ))}
                     </select>

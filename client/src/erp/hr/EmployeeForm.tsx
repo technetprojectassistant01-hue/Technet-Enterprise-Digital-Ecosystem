@@ -9,6 +9,7 @@ import type {
   LinkableUser,
 } from '../../lib/api'
 import { inputClass, labelClass, primaryButtonClass } from './formStyles'
+import { useT } from '../../i18n'
 
 const STATUSES: EmploymentStatus[] = ['ACTIVE', 'ON_LEAVE', 'TERMINATED']
 const GENDERS: Gender[] = ['MALE', 'FEMALE', 'OTHER']
@@ -165,6 +166,7 @@ function EmployeeForm({
    * editable once the employee exists in case HR needs to correct it. */
   isCreate?: boolean
 }) {
+  const t = useT()
   const [showPayroll, setShowPayroll] = useState(false)
   const [linkableUsers, setLinkableUsers] = useState<LinkableUser[]>([])
   const set = (patch: Partial<EmployeeFormState>) => setForm({ ...form, ...patch })
@@ -188,7 +190,7 @@ function EmployeeForm({
                 value={u.id}
                 disabled={u.linkedEmployeeId !== null && u.id !== form.userId}
               >
-                {u.email} ({u.role})
+                {u.email} ({t.roles[u.role]})
                 {u.linkedEmployeeId !== null && u.id !== form.userId ? ' — already linked' : ''}
               </option>
             ))}

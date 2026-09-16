@@ -22,10 +22,10 @@ export const fr: Dict = {
     SALES_OFFICER: 'Chargé des ventes',
     FINANCE_OFFICER: 'Chargé des finances',
     STOREKEEPER: 'Magasinier',
-    HR_OFFICER: 'Chargé RH',
+    HR_OFFICER: 'RH',
     OPERATIONS_MANAGER: 'Responsable des opérations',
-    FIELD_TECHNICIAN: 'Technicien terrain',
-    EMPLOYEE: 'Employé',
+    FIELD_TECHNICIAN: 'Technicien',
+    EMPLOYEE: 'Personnel de bureau',
   },
 
   nav: {
