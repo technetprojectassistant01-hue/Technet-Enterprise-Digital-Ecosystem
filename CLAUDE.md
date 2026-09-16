@@ -105,6 +105,12 @@ Role groups used for gating (server `roles.ts` / client `permissions.ts`):
 - `QUOTE_REQUEST_VIEW_ROLES` = ADMIN, SALES_OFFICER, OPERATIONS_MANAGER — added 2026-08-25, read-only visibility into the Quote Request queue for Operations Managers; creating/converting/declining stays `SALES_ROLES`-only. See §10.
 - `MARKETING_ROLES` = ADMIN, SALES_OFFICER — added 2026-08-26 for Technet Digital Marketing Phase 1. No Technet stakeholder has confirmed who owns marketing yet, so this defaults to Sales as the closest adjacent function, same pragmatic pattern as `CUSTOMER_MANAGE_ROLES`. Read access is broader (`NON_FIELD_ROLES`, same as the rest of ERP-ish modules); only writes are gated to `MARKETING_ROLES`. See §10a.
 
+**Display names vs enum values** (2026-09-16): the `Role` enum is unchanged, but three roles are
+shown to users under different names — FIELD_TECHNICIAN reads "Staff Technician", EMPLOYEE reads
+"Staff Office", HR_OFFICER reads "HR". They live in the `roles` block of `client/src/i18n/*.ts`, so
+renaming one again is a dictionary edit — no migration, no RBAC impact. Code, API payloads and this
+file still use the enum values.
+
 **Customer portal auth is a separate domain, not a 9th `Role`.** Technet Connect (`/portal/*`, added 2026-08-24) does not reuse `Role`/`requireAuth`/`requireRole` at all — a `CustomerPortalUser` login gets its own cookie (`portal_token`, not `token`), its own JWT signing (`server/src/lib/portalJwt.ts`, `verifyPortalToken`) carrying a distinct `audience: "portal"` claim, its own cookie config (`server/src/lib/portalAuthCookie.ts` — a deliberate separate copy of `authCookie.ts`, same first-party `Lax` + 30-day-renewing behaviour), and its own middleware (`requirePortalAuth`, sets `req.portalUser`, never `req.user`). This was deliberate: adding a `CUSTOMER` role into the existing enum would have meant auditing every broad allow-list (`NON_FIELD_ROLES`, etc.) across dozens of routes to make sure a customer token could never slip through. The `audience` claim is the actual enforcement point — verified in this session that a genuine staff JWT placed directly in the `portal_token` cookie is rejected outright, not just kept out by cookie-name convention.
 
 On the client, note that `AuthProvider` (staff, `client/src/context/AuthContext.tsx`) is mounted at the app root in `main.tsx`, above `<App/>` — so it runs on *every* route including `/portal/*`, even though staff and portal never share a cookie. Fixed 2026-08-25 (`32c1ccf`): its mount-time `/api/auth/me` check now short-circuits when `window.location.pathname` starts with `/portal`, since that call was guaranteed to 401 there and was pure noise. It's still mounted globally (not worth restructuring the provider tree for this), just skips the fetch on portal paths.
@@ -878,8 +884,9 @@ wording complaints come in, they're one-line dictionary edits); **choice saved o
   "EN"), full-width in Settings → Language. `LanguageProvider` sits **outside** `AuthProvider` in
   `main.tsx`.
 - **Translated so far (Phase 1):** sign-in, forgot/reset password, app shell (header, sidebar,
-  phone quick-nav, nav tree, banners, footer, role names — the header now shows e.g. "Field
-  Technician" instead of the raw enum), sync indicator, notification panel chrome, confirm dialog,
+  phone quick-nav, nav tree, banners, footer, role names — the header now shows e.g. "Staff
+  Technician" instead of the raw enum; User Management's role dropdowns and HR's Linked Login
+  picker read the same labels as of 2026-09-16), sync indicator, notification panel chrome, confirm dialog,
   Settings, install pop-up + iPhone guide, Help Center (its FAQ lives in `help.sections` per
   language — **FAQ answers quote each language's own button labels, keep them in step**).
   Overview, My Attendance and My Leave. **Phase 1 finished 2026-09-12 with all of Technet
