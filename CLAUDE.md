@@ -1213,3 +1213,20 @@ Awaiting Approval** (this month, PENDING with minutes > 0) and **Attendance Awai
 month, any employee whose state is not VALIDATED) — plus Certification Renewals. The two new counts are
 fetched in their own calls, not folded into the existing `Promise.all`, so a slow or empty month never
 holds up the rest of the page.
+
+### 24c. Admin and HR administer; they do not clock in (2026-09-16)
+
+`ADMINISTRATIVE_ROLES` (ADMIN, HR_OFFICER) in `client/src/lib/permissions.ts` is the single name for
+"runs the system rather than being tracked by it". Both get **no check-in card, no My Jobs Today, no
+Today/My Attendance, no My Leave and no My Documents**; the landing page gives them the **Staff Attendance**
+register instead. It began as an `isAdmin` check on the landing page and was widened the same day, after
+HR hit "your account is not linked to an employee record yet, so check in and check out are not available"
+— the notice is now suppressed for these roles, since for them it describes a feature they are not meant
+to have rather than a setup step.
+
+Where old links land: My Leave sends ADMIN to Leave Approvals and HR_OFFICER to Technet HR → Leave (the
+full register, where HR actually works); My Documents sends both to Technet HR → Employees.
+
+**So neither account needs an Employee record.** Everything they read — the attendance register, staff
+documents, leave, overtime, validations — is gated on their role, not on a linked employee. Link one only
+if that person genuinely works as staff too and should appear in payroll.

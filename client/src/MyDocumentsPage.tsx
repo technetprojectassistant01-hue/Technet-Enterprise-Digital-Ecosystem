@@ -83,9 +83,9 @@ function MyDocumentsPage() {
     if (user?.employeeId) load()
   }, [user?.employeeId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // An admin has no personal documents page of their own: they read everyone else's on the HR
-  // employee profile. An old bookmark still lands somewhere useful.
-  if (user?.role === 'ADMIN') {
+  // Admin and HR have no personal documents page of their own: they read everyone else's on the
+  // HR employee profile. An old bookmark still lands somewhere useful.
+  if (user?.role === 'ADMIN' || user?.role === 'HR_OFFICER') {
     return <Navigate to="/dashboard/hr/employees" replace />
   }
 

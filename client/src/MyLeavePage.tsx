@@ -162,9 +162,13 @@ function MyLeavePage() {
     }
   }
 
-  // Admins use Leave Approvals instead (an old bookmark or link still lands somewhere useful).
+  // Admin and HR approve leave rather than requesting it here; an old bookmark still lands
+  // somewhere useful. HR goes to the full register, which is where they work.
   if (user?.role === 'ADMIN') {
     return <Navigate to="/dashboard/leave-approvals" replace />
+  }
+  if (user?.role === 'HR_OFFICER') {
+    return <Navigate to="/dashboard/hr/leave" replace />
   }
 
   if (!user?.employeeId) {
