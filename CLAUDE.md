@@ -1253,3 +1253,31 @@ never reads `SiteAttendance` or the `OvertimeDecision` rows HR approves. Removin
 `basicSalary`. A run today pays ~0 hours for nearly everyone. **The fix is to point payroll at
 `SiteAttendance` for hours and at approved `OvertimeDecision` rows for overtime** — the user was told and
 chose to leave HR as it stands for now, so this is the first thing to pick up if payroll comes up.
+
+## 25. Payroll reads the real attendance (2026-09-16)
+
+Fixes the first half of the gap recorded above. `POST /api/payroll/process` took `hoursWorked` and
+`overtimeHours` from `AttendanceRecord`, the manual office register, which had no screen left to fill it —
+so every payslip showed zero. It now reads:
+
+- **Hours** from `SiteAttendance`, via `sumWorkedHours()` in `lib/payroll.ts`: the recorded
+  `checkOutAt - checkInAt`, the same figure "Hours Recorded" shows on the attendance PDF and the Staff
+  Attendance panel, so a payslip cannot disagree with the register HR validated. A visit with no check-out
+  contributes nothing, and a check-out before its check-in clamps to zero rather than subtracting.
+- **Overtime** from `OvertimeDecision` where `status = APPROVED`, via `sumApprovedOvertimeHours()`. Pending
+  and rejected days count zero, which is what HR's approval is for.
+
+Month boundaries differ by source and both are needed: site attendance is a timestamp, so it uses
+`mauritiusMonthRange()`; `OvertimeDecision.date` is UTC midnight of the Mauritius day, so it uses
+`dayToDate()`; leave and public holidays keep the UTC dates they were already on.
+
+**Still outstanding — overtime is recorded but not paid.** `computeNetPay()` is unchanged: net pay is
+basic salary minus a pro-rated unpaid-leave deduction, and hours/overtime remain informational columns,
+because no overtime rate exists anywhere in the schema or the SDD. Paying overtime needs a rate from
+management (Mauritius practice is typically 1.5x the normal hourly rate, 2x on Sundays and public
+holidays) plus a decision on how the hourly rate is derived from a monthly salary.
+
+Measured on the real data when this landed: Fabrizio went from 0 to 113.61 hours for September and 199.71
+for August, and 67.95 approved overtime hours. **Those figures are inflated by forgotten sessions and by
+test rows whose check-out precedes their check-in** (§7a) — the arithmetic is right, the underlying visits
+are not. Only 1 of 8 employees has a `basicSalary`, and payroll skips the rest.
