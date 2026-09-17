@@ -14,10 +14,15 @@ function generateTempPassword(): string {
 
 const router = Router();
 
-router.use(requireAuth, requireRole(...NON_FIELD_ROLES));
+router.use(requireAuth);
 
+/**
+ * The list is open to every signed-in user because technicians must pick a customer on an
+ * intervention report. Field roles get only what a picker needs — no contact details or portal login.
+ */
 router.get("/", async (req, res) => {
   const { search } = req.query;
+  const office = (NON_FIELD_ROLES as readonly string[]).includes(req.user!.role);
 
   const where: Prisma.CustomerWhereInput = {};
   if (typeof search === "string" && search.trim()) {
@@ -28,13 +33,22 @@ router.get("/", async (req, res) => {
     ];
   }
 
-  const customers = await prisma.customer.findMany({
-    where,
-    include: { portalUser: { select: { id: true, email: true } } },
-    orderBy: { name: "asc" },
-  });
+  const customers = office
+    ? await prisma.customer.findMany({
+        where,
+        include: { portalUser: { select: { id: true, email: true } } },
+        orderBy: { name: "asc" },
+      })
+    : await prisma.customer.findMany({
+        where,
+        select: { id: true, name: true, company: true },
+        orderBy: { name: "asc" },
+      });
   res.json({ customers });
 });
+
+// Everything below — customer details and all changes — stays with office roles.
+router.use(requireRole(...NON_FIELD_ROLES));
 
 router.get("/:id", async (req, res) => {
   const id = req.params.id as string;
