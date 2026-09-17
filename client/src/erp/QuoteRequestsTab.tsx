@@ -242,7 +242,7 @@ function QuoteRequestsTab() {
       toast.success('Converted to a draft quotation')
       // Jump straight to the new quotation - the Quotations tab's own list only
       // loads once on mount, so switching tabs wouldn't show it without this.
-      window.location.href = `/dashboard/erp/finance/quotations/${quotation.id}`
+      window.location.href = `/dashboard/erp/customers/quotations/${quotation.id}`
       return
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Failed to convert request')

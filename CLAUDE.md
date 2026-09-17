@@ -62,7 +62,7 @@ Everyone lands on **Overview** (`/dashboard`) — as of 2026-08-19 this is real,
 |---|---|---|
 | **Technet ERP** | Built | Umbrella for Sales/Finance, Procurement, HR, Projects, Documents, Inventory |
 | — Inventory | Built | Items, stock movements |
-| — Finance | Built | Customers, Invoices (+PDF), Quotations (+PDF, see the Quotation-rework note below, and §10d for the 2026-08-27 Call Log/payment-terms/validity/Product Line addendum), Follow-Up of Quotation, Expenses, Contracts |
+| — Customers (was Finance) | Built | Customers, Quotations (+PDF, see the Quotation-rework note below, and §10d for the 2026-08-27 Call Log/payment-terms/validity/Product Line addendum), Follow-Up of Quotation, Contracts. **Invoices and Expenses screens removed 2026-09-17** — see §27. |
 | — Procurement | Built | Suppliers, Requisitions, Purchase Orders (+PDF), goods receipt |
 | — HR | Built | Employee profiles, Leave (types/balances/requests/timesheet, public holiday calendar excluded from working-day counts — added 2026-08-20, manually maintained since several Mauritius holidays are lunar/gazette-dependent), Certifications & Training. **Attendance moved to Technet Workforce 2026-08-20** — see below. The default leave type "Unpaid Leave" was renamed **"Local Leave"** (code LOCAL) 2026-09-14 by migration — name only; HR sets whether it is paid in Leave Types. Self-service leave requests for employees added 2026-08-26 — see §10b. |
 | — Projects | Built | Project registry, assignments, status history |
@@ -1363,3 +1363,24 @@ back MATCHED at 1099m and "Moka" MISMATCH at 13.4km. The free service allows rou
 second, so retrying a failed save immediately makes it more likely to fail again. If this becomes a real
 nuisance the options are a paid geocoder (§7b: the user chose free Nominatim knowingly) or caching
 lookups by query string.
+
+## 27. Finance became Customers (2026-09-17)
+
+The user: "we don't need to do finances on the app… we use QuickBooks". ERP → Finance is now
+**ERP → Customers** at `/dashboard/erp/customers` (`erp/CustomersLayout.tsx`, was `FinanceLayout`) with
+four tabs: Customers (index), Quotations, Follow-Up, Contracts. Decisions confirmed with the user:
+**Procurement stays** (the storekeeper's Suppliers/Requisitions/Purchase Orders are untouched), **portal
+Invoices removed**, **Follow-Up kept**.
+
+- **Removed (client only)**: `InvoicesPage`, `InvoiceDetailPage`, `ExpensesPage`, `PortalInvoicesPage`, their
+  client API functions and `invoiceStatusTone`; revenue/expenses/profit/outstanding and the revenue trend on the
+  ERP Overview (a stat card now shows Active Contracts); Invoiced/Expensed/Variance and the invoice/expense
+  panels on Project detail; Monthly Revenue and Overdue Invoices on Technet Insight; "invoices" wording in the
+  portal, Customers page, Connect page and the privacy/terms text in all three languages.
+- **Kept on purpose, same pattern as §21**: the `Invoice`/`Expense` tables and data, `/api/invoices`,
+  `/api/expenses`, `/api/portal/invoices`, the invoice PDF generator, and the server fields
+  `monthlyRevenue`/`overdueInvoices` in the Insight summary. Nothing reads them from the UI any more.
+  Deleting the server side is a separate decision.
+- **Old links redirect**: `/dashboard/erp/finance/quotations/:id` keeps its id, the other finance paths land on
+  their new tab, anything else (invoices, expenses) on the customer list. Server notification links in
+  `quotations.ts` and `portal.ts` were repointed.

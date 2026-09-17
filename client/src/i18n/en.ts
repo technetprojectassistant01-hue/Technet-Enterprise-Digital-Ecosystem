@@ -40,10 +40,7 @@ export const en = {
     'Leave Approvals': 'Leave Approvals',
     'Technet ERP': 'Technet ERP',
     Inventory: 'Inventory',
-    Finance: 'Finance',
     Customers: 'Customers',
-    Invoices: 'Invoices',
-    Expenses: 'Expenses',
     Quotations: 'Quotations',
     'Follow-Up': 'Follow-Up',
     Contracts: 'Contracts',
@@ -1584,7 +1581,7 @@ export const en = {
             'Attendance: each time you check in or check out, the time you enter, the time the server received it, the site and place you type, your transport cost, any job you pick, and your device\'s location (GPS) at that moment.',
             'Work records: work orders, daily reports, maintenance and intervention reports, including photos, materials used and customer signatures.',
             'Tools and equipment: the tools you request, which tools you were issued and when, and when and in what condition they came back.',
-            'Client Portal: your company\'s details, the login email set up for you, your quotations, invoices, job status and any quote requests you send.',
+            'Client Portal: your company\'s details, the login email set up for you, your quotations, job status and any quote requests you send.',
             'Security log: sign-ins (successful and failed), password resets and changes to user accounts, with the time and the account involved.',
             'Notifications and reminders: messages the app sends you and, if you turn on check-in reminders, your device\'s push subscription.',
           ],
@@ -1671,7 +1668,7 @@ export const en = {
         {
           title: 'Client Portal',
           paragraphs: [
-            'Quotations, invoices and job statuses in the portal are provided for your convenience. The signed quotation or issued invoice is the document that counts; if something in the portal looks wrong, contact Technet.',
+            'Quotations and job statuses in the portal are provided for your convenience. The signed quotation is the document that counts; if something in the portal looks wrong, contact Technet.',
             'Sending a quote request through the portal does not create a contract until Technet sends you a quotation and you accept it.',
           ],
         },

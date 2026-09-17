@@ -343,61 +343,6 @@ export interface SalesLineItemInput {
   unitPrice: number
 }
 
-export interface InvoiceInput {
-  customerId: string
-  projectId?: string | null
-  invoiceNumber: string
-  vatRate?: number
-  status?: InvoiceStatus
-  issueDate?: string
-  dueDate?: string
-  poReference?: string
-  terms?: string
-  items: SalesLineItemInput[]
-}
-
-export function listInvoices(params: { status?: InvoiceStatus; projectId?: string } = {}) {
-  const query = new URLSearchParams()
-  if (params.status) query.set('status', params.status)
-  if (params.projectId) query.set('projectId', params.projectId)
-  const qs = query.toString()
-  return request<{ invoices: Invoice[] }>(`/api/invoices${qs ? `?${qs}` : ''}`)
-}
-
-export function getInvoice(id: string) {
-  return request<{ invoice: Invoice }>(`/api/invoices/${id}`)
-}
-
-export function createInvoice(input: InvoiceInput) {
-  return request<{ invoice: Invoice }>('/api/invoices', {
-    method: 'POST',
-    body: JSON.stringify(input),
-  })
-}
-
-export interface InvoiceUpdateInput {
-  status?: InvoiceStatus
-  dueDate?: string | null
-  projectId?: string | null
-  poReference?: string | null
-  terms?: string | null
-}
-
-export function updateInvoice(id: string, input: InvoiceUpdateInput) {
-  return request<{ invoice: Invoice }>(`/api/invoices/${id}`, {
-    method: 'PATCH',
-    body: JSON.stringify(input),
-  })
-}
-
-export function deleteInvoice(id: string) {
-  return request<null>(`/api/invoices/${id}`, { method: 'DELETE' })
-}
-
-export function invoicePdfUrl(id: string) {
-  return `${API_URL}/api/invoices/${id}/pdf`
-}
-
 export interface Expense {
   id: string
   category: string
@@ -408,41 +353,6 @@ export interface Expense {
   supplier: SupplierSummary | null
   projectId: string | null
   createdAt: string
-}
-
-export interface ExpenseInput {
-  category: string
-  description?: string
-  amount: number
-  date?: string
-  projectId?: string | null
-  supplierId?: string | null
-}
-
-export function listExpenses(params: { category?: string; projectId?: string } = {}) {
-  const query = new URLSearchParams()
-  if (params.category) query.set('category', params.category)
-  if (params.projectId) query.set('projectId', params.projectId)
-  const qs = query.toString()
-  return request<{ expenses: Expense[] }>(`/api/expenses${qs ? `?${qs}` : ''}`)
-}
-
-export function createExpense(input: ExpenseInput) {
-  return request<{ expense: Expense }>('/api/expenses', {
-    method: 'POST',
-    body: JSON.stringify(input),
-  })
-}
-
-export function updateExpense(id: string, input: Partial<ExpenseInput>) {
-  return request<{ expense: Expense }>(`/api/expenses/${id}`, {
-    method: 'PATCH',
-    body: JSON.stringify(input),
-  })
-}
-
-export function deleteExpense(id: string) {
-  return request<null>(`/api/expenses/${id}`, { method: 'DELETE' })
 }
 
 export type QuotationStatus = 'DRAFT' | 'SENT' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED'
@@ -3028,10 +2938,6 @@ export function portalListQuotations() {
   return request<{ quotations: Quotation[] }>('/api/portal/quotations')
 }
 
-export function portalListInvoices() {
-  return request<{ invoices: Invoice[] }>('/api/portal/invoices')
-}
-
 export interface PortalWorkOrder {
   id: string
   workOrderNumber: string
@@ -3060,10 +2966,6 @@ export function portalSubmitQuoteRequest(description: string) {
 
 export function portalQuotationPdfUrl(id: string) {
   return `${API_URL}/api/portal/quotations/${id}/pdf`
-}
-
-export function portalInvoicePdfUrl(id: string) {
-  return `${API_URL}/api/portal/invoices/${id}/pdf`
 }
 
 // ---- Technet Digital Marketing (Phase 1: campaigns + content calendar, no AI, no auto-publish) ----

@@ -112,7 +112,7 @@ router.post("/quote-requests", async (req, res) => {
     SALES_ROLES,
     "QUOTATION_REQUEST_SUBMITTED",
     `${customer?.company || customer?.name || "A customer"} requested a quotation`,
-    { message: request.description.slice(0, 200), link: "/dashboard/erp/finance/quotations" },
+    { message: request.description.slice(0, 200), link: "/dashboard/erp/customers/quotations" },
   );
 
   res.status(201).json({ request });

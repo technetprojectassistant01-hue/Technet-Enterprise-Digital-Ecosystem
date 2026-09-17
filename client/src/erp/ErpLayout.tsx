@@ -11,7 +11,7 @@ import type { Role } from '../lib/api'
 const TABS: { label: string; to: string; end?: boolean; commercial?: boolean }[] = [
   { label: 'Overview', to: '/dashboard/erp', end: true, commercial: true },
   { label: 'Inventory', to: '/dashboard/erp/inventory' },
-  { label: 'Finance', to: '/dashboard/erp/finance', commercial: true },
+  { label: 'Customers', to: '/dashboard/erp/customers', commercial: true },
   { label: 'Procurement', to: '/dashboard/erp/procurement' },
   { label: 'Projects', to: '/dashboard/erp/projects', commercial: true },
   { label: 'Documents', to: '/dashboard/erp/documents', commercial: true },

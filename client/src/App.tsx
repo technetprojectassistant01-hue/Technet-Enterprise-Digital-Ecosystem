@@ -12,11 +12,8 @@ import MyDocumentsPage from './MyDocumentsPage'
 import ErpLayout from './erp/ErpLayout'
 import TechnetErpPage from './TechnetErpPage'
 import InventoryPage from './erp/InventoryPage'
-import FinanceLayout from './erp/FinanceLayout'
+import CustomersLayout from './erp/CustomersLayout'
 import CustomersPage from './erp/CustomersPage'
-import InvoicesPage from './erp/InvoicesPage'
-import InvoiceDetailPage from './erp/InvoiceDetailPage'
-import ExpensesPage from './erp/ExpensesPage'
 import QuotationsPage from './erp/QuotationsPage'
 import QuotationDetailPage from './erp/QuotationDetailPage'
 import QuotationFollowUpPage from './erp/QuotationFollowUpPage'
@@ -64,7 +61,6 @@ import PortalProtectedRoute from './portal/PortalProtectedRoute'
 import PortalLogin from './portal/PortalLogin'
 import PortalLayout from './portal/PortalLayout'
 import PortalQuotationsPage from './portal/PortalQuotationsPage'
-import PortalInvoicesPage from './portal/PortalInvoicesPage'
 import PortalWorkOrdersPage from './portal/PortalWorkOrdersPage'
 import PortalRequestQuotePage from './portal/PortalRequestQuotePage'
 import InsightDashboardPage from './insight/InsightDashboardPage'
@@ -96,6 +92,11 @@ function RedirectEmployee() {
   return <Navigate to={`/dashboard/hr/employees/${id}`} replace />
 }
 
+function RedirectQuotation() {
+  const { id } = useParams<{ id: string }>()
+  return <Navigate to={`/dashboard/erp/customers/quotations/${id}`} replace />
+}
+
 function RedirectPayroll() {
   const { id } = useParams<{ id: string }>()
   return <Navigate to={`/dashboard/hr/payroll/${id}`} replace />
@@ -124,17 +125,21 @@ function App() {
               {/* Inventory and Procurement are the storekeeper's; the selling half is not. */}
               <Route index element={<ErpIndex />} />
               <Route element={<RoleRoute blockedRoles={NON_COMMERCIAL_ROLES} />}>
-                <Route path="finance" element={<FinanceLayout />}>
-                <Route index element={<Navigate to="customers" replace />} />
-                <Route path="customers" element={<CustomersPage />} />
-                <Route path="invoices" element={<InvoicesPage />} />
-                <Route path="invoices/:id" element={<InvoiceDetailPage />} />
-                <Route path="expenses" element={<ExpensesPage />} />
-                <Route path="quotations" element={<QuotationsPage />} />
-                <Route path="quotations/:id" element={<QuotationDetailPage />} />
-                <Route path="follow-up" element={<QuotationFollowUpPage />} />
-                <Route path="contracts" element={<ContractsPage />} />
-              </Route>
+                {/* Finance became Customers (2026-09-17): invoices and expenses are kept in
+                    QuickBooks, so only the customer side stays. */}
+                <Route path="customers" element={<CustomersLayout />}>
+                  <Route index element={<CustomersPage />} />
+                  <Route path="quotations" element={<QuotationsPage />} />
+                  <Route path="quotations/:id" element={<QuotationDetailPage />} />
+                  <Route path="follow-up" element={<QuotationFollowUpPage />} />
+                  <Route path="contracts" element={<ContractsPage />} />
+                </Route>
+                {/* Old Finance links, including those in notifications already sent. */}
+                <Route path="finance/quotations/:id" element={<RedirectQuotation />} />
+                <Route path="finance/quotations" element={<Navigate to="/dashboard/erp/customers/quotations" replace />} />
+                <Route path="finance/follow-up" element={<Navigate to="/dashboard/erp/customers/follow-up" replace />} />
+                <Route path="finance/contracts" element={<Navigate to="/dashboard/erp/customers/contracts" replace />} />
+                <Route path="finance/*" element={<Navigate to="/dashboard/erp/customers" replace />} />
                 <Route path="projects" element={<ProjectsPage />} />
                 <Route path="projects/:id" element={<ProjectDetailPage />} />
                 <Route path="documents" element={<DocumentsPage />} />
@@ -229,7 +234,6 @@ function App() {
           <Route element={<PortalLayout />}>
             <Route index element={<Navigate to="quotations" replace />} />
             <Route path="quotations" element={<PortalQuotationsPage />} />
-            <Route path="invoices" element={<PortalInvoicesPage />} />
             <Route path="jobs" element={<PortalWorkOrdersPage />} />
             <Route path="request-quote" element={<PortalRequestQuotePage />} />
           </Route>

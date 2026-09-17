@@ -40,10 +40,7 @@ export const mfe: Dict = {
     'Leave Approvals': 'Aprouv konze',
     'Technet ERP': 'Technet ERP',
     Inventory: 'Inventer',
-    Finance: 'Finans',
     Customers: 'Kliyan',
-    Invoices: 'Fakir',
-    Expenses: 'Depans',
     Quotations: 'Devi',
     'Follow-Up': 'Swivi',
     Contracts: 'Kontra',
@@ -1578,7 +1575,7 @@ export const mfe: Dict = {
             'Prezans: sak fwa ou pointe lariver ouswa depar, ler ki ou rantre, ler ki server la resevwar li, sit ek landrwa ki ou ekrir, ou fre transpor, travay ki ou swazir si ena, ek landrwa (GPS) ou aparey sa moman la.',
             'Travay: bon travay, rapor zournalie, rapor mintenans ek rapor intervansion, avek foto, materyel servi ek sinyatir klian.',
             'Zouti ek lekipman: zouti ki ou demande, ki zouti finn donn ou ek kan, ek kan ek dan ki leta zot finn retourne.',
-            'Portay Klian: detay ou konpani, imel koneksion ki finn kre pou ou, ou bann devi, fakir, eta travay ek bann demann devi ki ou avoye.',
+            'Portay Klian: detay ou konpani, imel koneksion ki finn kre pou ou, ou bann devi, eta travay ek bann demann devi ki ou avoye.',
             'Rezis sekirite: koneksion (reisi ek rate), reinisializasion mo de pas ek sanzman lor kont itilizater, avek ler la ek kont ki konsernen.',
             'Notifikasion ek rapel: mesaz ki aplikasion la avoy ou ek, si ou aktiv rapel pointaz, abonnman push ou aparey.',
           ],
@@ -1665,7 +1662,7 @@ export const mfe: Dict = {
         {
           title: 'Portay Klian',
           paragraphs: [
-            'Devi, fakir ek eta travay dan portay la la pou ou fasilite. Se devi sinye ouswa fakir emi ki konte; si enn kiksoz paret pa bon, kontakte Technet.',
+            'Devi ek eta travay dan portay la la pou ou fasilite. Se devi sinye ki konte; si enn kiksoz paret pa bon, kontakte Technet.',
             'Enn demann devi par portay la pa fer enn kontra ziska Technet avoy ou enn devi e ou aksepte li.',
           ],
         },

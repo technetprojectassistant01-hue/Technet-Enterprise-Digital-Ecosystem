@@ -402,7 +402,7 @@ function QuotationDetailPage() {
   return (
     <div className="flex flex-col gap-6">
       <Link
-        to="/dashboard/erp/finance/quotations"
+        to="/dashboard/erp/customers/quotations"
         className="flex w-fit items-center gap-2 text-sm text-ink-400 hover:text-ink-100"
       >
         <ArrowLeft className="h-4 w-4" />
@@ -445,7 +445,7 @@ function QuotationDetailPage() {
                 try {
                   await api.deleteQuotation(quotation.id)
                   toast.success('Quotation deleted')
-                  window.location.href = '/dashboard/erp/finance/quotations'
+                  window.location.href = '/dashboard/erp/customers/quotations'
                 } catch (err) {
                   toast.error(err instanceof Error ? err.message : 'Failed to delete quotation')
                 }

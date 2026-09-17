@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, Plus, X, Receipt, CreditCard, Wallet } from 'lucide-react'
+import { ArrowLeft, Plus, X, Wallet } from 'lucide-react'
 import * as api from '../lib/api'
 import type { ProjectDetail, ProjectStatus } from '../lib/api'
 import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
@@ -10,7 +10,7 @@ import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
 import { hasRole, OPS_MANAGE_ROLES } from '../lib/permissions'
 import { useAssignableEmployees } from './useEmployees'
-import { projectStatusTone, projectStatusTransitions, invoiceStatusTone } from './statusTones'
+import { projectStatusTone, projectStatusTransitions } from './statusTones'
 import { formatMoney } from '../lib/format'
 
 const inputClass =
@@ -123,10 +123,7 @@ function ProjectDetailPage() {
     return <EmptyState icon={X} message={error || 'Project not found'} />
   }
 
-  const invoiced = project.invoices.reduce((sum, i) => sum + Number(i.total), 0)
-  const expensed = project.expenses.reduce((sum, e) => sum + Number(e.amount), 0)
   const budget = project.budget ? Number(project.budget) : null
-  const variance = budget !== null ? budget - expensed : null
   const nextStatuses = projectStatusTransitions[project.status]
   const assignedIds = new Set(project.assignments.map((a) => a.employeeId))
   const availableEmployees = employees.filter((e) => !assignedIds.has(e.id))
@@ -170,14 +167,6 @@ function ProjectDetailPage() {
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="BUDGET" value={budget !== null ? formatMoney(budget) : '—'} icon={Wallet} />
-        <StatCard label="INVOICED" value={formatMoney(invoiced)} icon={Receipt} />
-        <StatCard label="EXPENSED" value={formatMoney(expensed)} icon={CreditCard} />
-        <StatCard
-          label="VARIANCE"
-          value={variance !== null ? formatMoney(variance) : '—'}
-          deltaTone={variance !== null && variance < 0 ? 'warning' : 'positive'}
-          icon={Wallet}
-        />
       </div>
 
       <Panel
@@ -222,57 +211,6 @@ function ProjectDetailPage() {
           </div>
         )}
       </Panel>
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <Panel
-          title="Invoices"
-          icon={Receipt}
-          action={
-            <Link to="/dashboard/erp/finance/invoices" className="text-xs font-semibold text-cyan-accent hover:underline">
-              Manage &gt;
-            </Link>
-          }
-        >
-          {project.invoices.length === 0 ? (
-            <p className="text-sm text-ink-400">No invoices for this project.</p>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {project.invoices.map((inv) => (
-                <div key={inv.id} className="flex items-center justify-between rounded-lg bg-ink-800 px-4 py-2.5">
-                  <span className="font-mono text-sm text-ink-100">{inv.invoiceNumber}</span>
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm text-ink-300">{formatMoney(inv.total)}</span>
-                    <Badge tone={invoiceStatusTone[inv.status]}>{inv.status}</Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </Panel>
-
-        <Panel
-          title="Expenses"
-          icon={CreditCard}
-          action={
-            <Link to="/dashboard/erp/finance/expenses" className="text-xs font-semibold text-cyan-accent hover:underline">
-              Manage &gt;
-            </Link>
-          }
-        >
-          {project.expenses.length === 0 ? (
-            <p className="text-sm text-ink-400">No expenses for this project.</p>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {project.expenses.map((exp) => (
-                <div key={exp.id} className="flex items-center justify-between rounded-lg bg-ink-800 px-4 py-2.5">
-                  <span className="text-sm text-ink-100">{exp.category}</span>
-                  <span className="text-sm text-ink-300">{formatMoney(exp.amount)}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </Panel>
-      </div>
 
       {showAssign && (
         <Modal title="Assign Employee" onClose={() => setShowAssign(false)}>

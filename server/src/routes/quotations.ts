@@ -719,7 +719,7 @@ router.patch("/:id", requireRole(...SALES_ROLES), async (req, res) => {
         quotation.createdById,
         status === "ACCEPTED" ? "QUOTATION_ACCEPTED" : "QUOTATION_REJECTED",
         `Quotation ${quotation.quotationNumber} was ${status === "ACCEPTED" ? "accepted" : "rejected"}`,
-        { link: `/dashboard/erp/finance/quotations/${quotation.id}` },
+        { link: `/dashboard/erp/customers/quotations/${quotation.id}` },
       );
     }
     res.json({ quotation });

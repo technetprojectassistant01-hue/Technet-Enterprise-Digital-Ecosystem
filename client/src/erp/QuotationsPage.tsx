@@ -155,7 +155,7 @@ function QuotationsPage() {
       setShowCreate(false)
       // Jump straight to the new quotation instead of leaving the user on the list to hunt for
       // it - same fix already applied to the quote-request conversion flow.
-      navigate(`/dashboard/erp/finance/quotations/${quotation.id}`)
+      navigate(`/dashboard/erp/customers/quotations/${quotation.id}`)
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Failed to create quotation')
     } finally {
@@ -348,7 +348,7 @@ function QuotationsPage() {
                   <tr key={q.id} className="border-b border-ink-800 last:border-0">
                     <td className="px-3 py-3">
                       <Link
-                        to={`/dashboard/erp/finance/quotations/${q.id}`}
+                        to={`/dashboard/erp/customers/quotations/${q.id}`}
                         className="font-mono font-medium text-ink-100 hover:text-cyan-accent hover:underline"
                       >
                         {q.quotationNumber}

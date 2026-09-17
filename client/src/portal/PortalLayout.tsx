@@ -6,7 +6,6 @@ import { InstallAppPrompt } from '../dashboard/InstallAppDialog'
 
 const TABS = [
   { label: 'Quotations', to: '/portal/quotations' },
-  { label: 'Invoices', to: '/portal/invoices' },
   { label: 'Jobs', to: '/portal/jobs' },
   { label: 'Request a Quote', to: '/portal/request-quote' },
 ]

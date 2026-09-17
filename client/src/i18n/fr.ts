@@ -35,10 +35,7 @@ export const fr: Dict = {
     'Leave Approvals': 'Validation des congés',
     'Technet ERP': 'Technet ERP',
     Inventory: 'Inventaire',
-    Finance: 'Finance',
     Customers: 'Clients',
-    Invoices: 'Factures',
-    Expenses: 'Dépenses',
     Quotations: 'Devis',
     'Follow-Up': 'Suivi',
     Contracts: 'Contrats',
@@ -1589,7 +1586,7 @@ export const fr: Dict = {
             "Présence : à chaque pointage d'arrivée ou de départ, l'heure que vous saisissez, l'heure de réception par le serveur, le site et le lieu que vous tapez, vos frais de transport, le travail choisi le cas échéant, et la position (GPS) de votre appareil à ce moment-là.",
             "Travaux : bons de travail, rapports journaliers, rapports de maintenance et d'intervention, y compris photos, matériel utilisé et signatures des clients.",
             "Outils et équipements : les outils que vous demandez, ceux qui vous ont été remis et quand, et quand et dans quel état ils ont été rendus.",
-            'Portail Client : les informations de votre société, l\'e-mail de connexion créé pour vous, vos devis, factures, l\'état des travaux et vos demandes de devis.',
+            'Portail Client : les informations de votre société, l\'e-mail de connexion créé pour vous, vos devis, l\'état des travaux et vos demandes de devis.',
             'Journal de sécurité : connexions (réussies et échouées), réinitialisations de mot de passe et modifications des comptes, avec l\'heure et le compte concerné.',
             "Notifications et rappels : les messages que l'application vous envoie et, si vous activez les rappels de pointage, l'abonnement push de votre appareil.",
           ],
@@ -1676,7 +1673,7 @@ export const fr: Dict = {
         {
           title: 'Portail Client',
           paragraphs: [
-            "Les devis, factures et états des travaux du portail sont fournis pour votre commodité. Le devis signé ou la facture émise fait foi ; si quelque chose vous semble incorrect, contactez Technet.",
+            "Les devis et états des travaux du portail sont fournis pour votre commodité. Le devis signé fait foi ; si quelque chose vous semble incorrect, contactez Technet.",
             "Une demande de devis envoyée par le portail ne crée pas de contrat tant que Technet ne vous a pas envoyé un devis et que vous ne l'avez pas accepté.",
           ],
         },
