@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Banknote, FolderKanban, CalendarClock, Receipt, Wrench, Box, MapPinned } from 'lucide-react'
+import { FolderKanban, CalendarClock, Wrench, Box, MapPinned } from 'lucide-react'
 import * as api from '../lib/api'
 import type { InsightSummary } from '../lib/api'
 import { Panel, StatCard, TableSkeleton } from '../dashboard/ui'
-import { formatMoney } from '../lib/format'
 
 function InsightDashboardPage() {
   const [summary, setSummary] = useState<InsightSummary | null>(null)
@@ -26,7 +25,7 @@ function InsightDashboardPage() {
       <div>
         <h1 className="text-2xl font-bold text-ink-100">Technet Insight</h1>
         <p className="mt-1 text-sm text-ink-300">
-          Cross-module executive summary, drawn from Finance, Projects, Operations, Tools & Equipment, and
+          Cross-module executive summary, drawn from Projects, Operations, Tools & Equipment, and
           Inventory. Read-only - it reflects a snapshot on load, not a live feed.
         </p>
       </div>
@@ -43,26 +42,12 @@ function InsightDashboardPage() {
             As of {new Date(summary.generatedAt).toLocaleString()}
           </p>
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard
-              label="Monthly Revenue"
-              value={formatMoney(summary.monthlyRevenue)}
-              icon={Banknote}
-              sub="Paid invoices this month"
-            />
             <StatCard label="Active Projects" value={summary.activeProjects} icon={FolderKanban} />
             <StatCard
               label="Active Work Orders"
               value={summary.activeWorkOrders}
               icon={CalendarClock}
               sub="Scheduled + in progress"
-            />
-            <StatCard
-              label="Overdue Invoices"
-              value={summary.overdueInvoices.count}
-              icon={Receipt}
-              delta={summary.overdueInvoices.count > 0 ? 'Attention' : undefined}
-              deltaTone="warning"
-              sub={formatMoney(summary.overdueInvoices.total)}
             />
             <StatCard
               label="Pending Tool Requests"

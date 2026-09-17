@@ -64,7 +64,7 @@ function QuotationFollowUpPage() {
         {list.map((q) => (
           <li key={q.id}>
             <Link
-              to={`/dashboard/erp/finance/quotations/${q.id}`}
+              to={`/dashboard/erp/customers/quotations/${q.id}`}
               className="flex items-center justify-between rounded-md bg-ink-800 px-4 py-3 text-sm hover:bg-ink-700"
             >
               <div>

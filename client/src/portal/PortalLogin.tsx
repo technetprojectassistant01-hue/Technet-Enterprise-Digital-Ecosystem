@@ -47,7 +47,7 @@ function PortalLogin() {
 
           <h1 className="text-center text-2xl font-semibold text-ink-100">Client Portal</h1>
           <p className="mt-1 text-center text-sm text-ink-300">
-            View your quotations, invoices, and job status
+            View your quotations and job status
           </p>
 
           <div className="mt-8">

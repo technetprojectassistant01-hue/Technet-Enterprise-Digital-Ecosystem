@@ -20,8 +20,6 @@ import * as api from './lib/api'
 import type {
   InventoryItem,
   Customer,
-  Invoice,
-  Expense,
   Quotation,
   Contract,
   Project,
@@ -30,7 +28,7 @@ import type {
   Document as ErpDocument,
   Employee,
 } from './lib/api'
-import { Panel, StatCard, BarChart, Badge, EmptyState, TableSkeleton } from './dashboard/ui'
+import { Panel, StatCard, Badge, EmptyState, TableSkeleton } from './dashboard/ui'
 import { contractStatusTone, projectStatusTone } from './erp/statusTones'
 import { formatMoney } from './lib/format'
 import { useAuth } from './context/AuthContext'
@@ -42,8 +40,6 @@ const PIPELINE_STEPS = [
   { label: 'CONTRACT', icon: Radio },
   { label: 'PROJECT', icon: Wrench },
 ]
-
-const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
 
 function timeAgo(iso: string) {
   const diffMs = Date.now() - new Date(iso).getTime()
@@ -66,8 +62,6 @@ function TechnetErpPage() {
 
   const [inventory, setInventory] = useState<InventoryItem[] | null>(null)
   const [customers, setCustomers] = useState<Customer[] | null>(null)
-  const [invoices, setInvoices] = useState<Invoice[] | null>(null)
-  const [expenses, setExpenses] = useState<Expense[] | null>(null)
   const [quotations, setQuotations] = useState<Quotation[] | null>(null)
   const [contracts, setContracts] = useState<Contract[] | null>(null)
   const [projects, setProjects] = useState<Project[] | null>(null)
@@ -80,8 +74,6 @@ function TechnetErpPage() {
   useEffect(() => {
     api.listInventory().then(({ items }) => setInventory(items)).catch(() => setInventory([]))
     api.listCustomers().then(({ customers }) => setCustomers(customers)).catch(() => setCustomers([]))
-    api.listInvoices().then(({ invoices }) => setInvoices(invoices)).catch(() => setInvoices([]))
-    api.listExpenses().then(({ expenses }) => setExpenses(expenses)).catch(() => setExpenses([]))
     api.listQuotations().then(({ quotations }) => setQuotations(quotations)).catch(() => setQuotations([]))
     api.listContracts().then(({ contracts }) => setContracts(contracts)).catch(() => setContracts([]))
     api.listProjects().then(({ projects }) => setProjects(projects)).catch(() => setProjects([]))
@@ -99,33 +91,6 @@ function TechnetErpPage() {
   }, [canSeeHr])
 
   const lowStockItems = (inventory ?? []).filter((i) => i.quantity <= i.minStockLevel)
-
-  const paidInvoices = (invoices ?? []).filter((i) => i.status === 'PAID')
-  const revenue = paidInvoices.reduce((sum, i) => sum + Number(i.total), 0)
-  const totalExpenses = (expenses ?? []).reduce((sum, e) => sum + Number(e.amount), 0)
-  const profit = revenue - totalExpenses
-  const outstanding = (invoices ?? [])
-    .filter((i) => i.status === 'SENT' || i.status === 'OVERDUE')
-    .reduce((sum, i) => sum + Number(i.total), 0)
-
-  const now = new Date()
-  const monthlyRevenue = paidInvoices
-    .filter((i) => {
-      const d = new Date(i.paidAt || i.issueDate)
-      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
-    })
-    .reduce((sum, i) => sum + Number(i.total), 0)
-
-  const revenueTrend = Array.from({ length: 10 }).map((_, i) => {
-    const d = new Date(now.getFullYear(), now.getMonth() - (9 - i), 1)
-    const total = paidInvoices
-      .filter((inv) => {
-        const pd = new Date(inv.paidAt || inv.issueDate)
-        return pd.getMonth() === d.getMonth() && pd.getFullYear() === d.getFullYear()
-      })
-      .reduce((sum, inv) => sum + Number(inv.total), 0)
-    return { label: MONTHS[d.getMonth()], value: total }
-  })
 
   const activeQuotations = (quotations ?? []).filter((q) => q.status === 'DRAFT' || q.status === 'SENT')
   const acceptedQuotations = (quotations ?? []).filter((q) => q.status === 'ACCEPTED')
@@ -154,13 +119,6 @@ function TechnetErpPage() {
       title: 'New Customer Added',
       detail: `${c.company || c.name} · ${timeAgo(c.createdAt)}`,
       at: c.createdAt,
-    })),
-    ...(invoices ?? []).map((i) => ({
-      icon: Receipt,
-      tone: 'accent' as const,
-      title: i.status === 'PAID' ? `Invoice ${i.invoiceNumber} Paid` : `Invoice ${i.invoiceNumber} Created`,
-      detail: `${formatMoney(i.total)} · ${timeAgo(i.createdAt)}`,
-      at: i.createdAt,
     })),
     ...(quotations ?? []).map((q) => ({
       icon: Receipt,
@@ -210,8 +168,6 @@ function TechnetErpPage() {
 
   const loaded =
     customers !== null &&
-    invoices !== null &&
-    expenses !== null &&
     quotations !== null &&
     contracts !== null &&
     projects !== null &&
@@ -225,7 +181,7 @@ function TechnetErpPage() {
         <div>
           <h1 className="text-2xl font-bold text-ink-100">Engineering Dashboard</h1>
           <p className="mt-1 text-sm text-ink-300">
-            Real-time oversight of operations and financial performance.
+            Customers, quotations, projects and purchasing at a glance.
           </p>
         </div>
         <div className="flex gap-3">
@@ -241,10 +197,10 @@ function TechnetErpPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        <Link to="/dashboard/erp/finance/customers" className="block">
+        <Link to="/dashboard/erp/customers" className="block">
           <StatCard label="TOTAL CUSTOMERS" value={customers === null ? '—' : customers.length} />
         </Link>
-        <Link to="/dashboard/erp/finance/quotations" className="block">
+        <Link to="/dashboard/erp/customers/quotations" className="block">
           <StatCard
             label="ACTIVE QUOTATIONS"
             value={quotations === null ? '—' : activeQuotations.length}
@@ -252,11 +208,8 @@ function TechnetErpPage() {
             deltaTone="warning"
           />
         </Link>
-        <Link to="/dashboard/erp/finance/invoices" className="block">
-          <StatCard
-            label="MONTHLY REVENUE"
-            value={invoices === null ? '—' : formatMoney(monthlyRevenue)}
-          />
+        <Link to="/dashboard/erp/customers/contracts" className="block">
+          <StatCard label="ACTIVE CONTRACTS" value={contracts === null ? '—' : activeContracts.length} />
         </Link>
         <Link to="/dashboard/erp/inventory" className="block">
           <StatCard
@@ -302,45 +255,6 @@ function TechnetErpPage() {
             />
           </Link>
         )}
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <Panel
-          className="lg:col-span-2"
-          title="Monthly Revenue Trend"
-          action={<span className="text-xs font-semibold text-cyan-accent">LAST 10 MONTHS</span>}
-        >
-          <BarChart data={revenueTrend} highlight={(_, i) => i === revenueTrend.length - 1} />
-        </Panel>
-
-        <Panel title="Finance Summary">
-          <div className="flex flex-col gap-3">
-            <div className="rounded-lg border-l-2 border-cyan-accent bg-ink-800 px-4 py-3">
-              <div className="text-[11px] font-semibold tracking-widest text-ink-400">REVENUE</div>
-              <div className="mt-1 text-lg font-semibold text-cyan-accent">{formatMoney(revenue)}</div>
-            </div>
-            <div className="rounded-lg border-l-2 border-ink-600 bg-ink-800 px-4 py-3">
-              <div className="text-[11px] font-semibold tracking-widest text-ink-400">EXPENSES</div>
-              <div className="mt-1 text-lg font-semibold text-ink-100">{formatMoney(totalExpenses)}</div>
-            </div>
-            <div className="rounded-lg border-l-2 border-cyan-accent bg-ink-800 px-4 py-3">
-              <div className="text-[11px] font-semibold tracking-widest text-ink-400">PROFIT</div>
-              <div className="mt-1 text-lg font-semibold text-cyan-accent">{formatMoney(profit)}</div>
-            </div>
-            <div className="rounded-lg border-l-2 border-red-400/70 bg-ink-800 px-4 py-3">
-              <div className="text-[11px] font-semibold tracking-widest text-ink-400">
-                OUTSTANDING INVOICES
-              </div>
-              <div className="mt-1 text-lg font-semibold text-ink-100">{formatMoney(outstanding)}</div>
-            </div>
-          </div>
-          <Link
-            to="/dashboard/erp/finance/invoices"
-            className="mt-4 block w-full rounded-md border border-ink-700 py-2.5 text-center text-sm text-cyan-accent hover:bg-ink-800"
-          >
-            View Full Statement
-          </Link>
-        </Panel>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -514,7 +428,7 @@ function TechnetErpPage() {
           title="Active Customer Contracts"
           action={
             <Link
-              to="/dashboard/erp/finance/contracts"
+              to="/dashboard/erp/customers/contracts"
               className="text-xs font-semibold text-cyan-accent hover:underline"
             >
               View All &gt;

@@ -201,7 +201,7 @@ function CustomersPage() {
     if (!portalAccessFor) return
     const ok = await confirm({
       title: 'Revoke portal access',
-      message: `Revoke ${portalAccessFor.name}'s portal login? They will no longer be able to sign in to view quotations, invoices, or jobs.`,
+      message: `Revoke ${portalAccessFor.name}'s portal login? They will no longer be able to sign in to view quotations or jobs.`,
       confirmLabel: 'Revoke',
       tone: 'danger',
     })
@@ -450,7 +450,7 @@ function CustomersPage() {
           ) : (
             <div className="flex flex-col gap-4">
               <p className="text-sm text-ink-300">
-                Grant this customer their own login to view quotations, invoices, and job status, and to request new
+                Grant this customer their own login to view quotations and job status, and to request new
                 quotations.
               </p>
               <div>

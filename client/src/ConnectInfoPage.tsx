@@ -24,10 +24,10 @@ function ConnectInfoPage() {
         <Panel title="Grant a customer access" icon={KeyRound}>
           <p className="text-sm text-ink-300">
             From the Customers page, grant a customer their own portal login so they can view their
-            quotations, invoices, and job status, or reset/revoke it later.
+            quotations and job status, or reset/revoke it later.
           </p>
           <Link
-            to="/dashboard/erp/finance/customers"
+            to="/dashboard/erp/customers"
             className="mt-4 flex items-center gap-1 text-sm text-cyan-accent hover:underline"
           >
             Open Customers <ArrowRight className="h-3.5 w-3.5" />
@@ -40,7 +40,7 @@ function ConnectInfoPage() {
             under Quote Requests — convert it into a real quotation or decline it there.
           </p>
           <Link
-            to="/dashboard/erp/finance/quotations"
+            to="/dashboard/erp/customers/quotations"
             className="mt-4 flex items-center gap-1 text-sm text-cyan-accent hover:underline"
           >
             Open Quotations <ArrowRight className="h-3.5 w-3.5" />
