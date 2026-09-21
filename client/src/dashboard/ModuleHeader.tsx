@@ -4,6 +4,11 @@ import { useAuth } from '../context/AuthContext'
 import { Avatar } from './ui'
 import { useT } from '../i18n'
 
+type ModuleSearchResult = {
+  label: string
+  to: string
+}
+
 interface ModuleTab {
   label: string
   to: string
@@ -25,16 +30,25 @@ function ModuleHeader({
   subtitle,
   tabs,
   searchPlaceholder,
+  searchValue,
+  onSearchChange,
+  searchResults,
+  onSearchSubmit,
 }: {
   /** Optional: a module can show just its tabs (Technet Store does). */
   title?: string
   subtitle?: string
   tabs: ModuleTab[]
   searchPlaceholder?: string
+  searchValue?: string
+  onSearchChange?: (value: string) => void
+  searchResults?: ModuleSearchResult[]
+  onSearchSubmit?: () => void
 }) {
   const { user } = useAuth()
   const t = useT()
   const displayName = user?.name || user?.email || ''
+  const canRenderLiveSearch = searchValue !== undefined || onSearchChange !== undefined || !!searchResults || !!onSearchSubmit
 
   return (
     <div className="-mx-4 -mt-4 mb-6 border-b border-ink-800 bg-ink-900 px-4 py-4 sm:-mx-6 sm:px-6 sm:-mt-6 lg:-mx-8 lg:px-8">
@@ -67,14 +81,42 @@ function ModuleHeader({
         </div>
 
         <div className="hidden items-center gap-4 lg:flex">
-          <div className="hidden items-center gap-2 rounded-md border border-ink-700 bg-ink-950 px-3 py-1.5 sm:flex">
-            <Search className="h-3.5 w-3.5 text-ink-400" />
-            <input
-              type="text"
-              placeholder={searchPlaceholder ?? t.shell.moduleSearchPlaceholder}
-              className="w-40 bg-transparent text-xs text-ink-100 placeholder-ink-500 outline-none"
-            />
-          </div>
+          {canRenderLiveSearch && (
+            <div className="relative hidden items-center gap-2 rounded-md border border-ink-700 bg-ink-950 px-3 py-1.5 sm:flex">
+              <Search className="h-3.5 w-3.5 text-ink-400" />
+              <input
+                type="text"
+                value={searchValue ?? ''}
+                onChange={(event) => onSearchChange?.(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && onSearchSubmit) {
+                    event.preventDefault()
+                    onSearchSubmit()
+                  }
+                }}
+                placeholder={searchPlaceholder ?? t.shell.moduleSearchPlaceholder}
+                className="w-40 bg-transparent text-xs text-ink-100 placeholder-ink-500 outline-none"
+              />
+
+              {searchValue && searchResults && searchResults.length > 0 && (
+                <div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-md border border-ink-700 bg-ink-950 shadow-xl">
+                  {searchResults.map((item) => (
+                    <button
+                      key={`${item.to}-${item.label}`}
+                      type="button"
+                      onClick={() => {
+                        if (onSearchChange) onSearchChange('')
+                        window.location.assign(item.to)
+                      }}
+                      className="block w-full px-3 py-2 text-left text-xs text-ink-200 transition hover:bg-ink-800"
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           <button type="button" className="text-ink-300 hover:text-ink-100" aria-label={t.shell.notifications}>
             <Bell className="h-4 w-4" />
           </button>
