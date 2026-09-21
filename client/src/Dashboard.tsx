@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { Menu, Search, Settings, X } from 'lucide-react'
 import Logo from './components/Logo'
 import UserMenu from './dashboard/UserMenu'
@@ -14,17 +14,56 @@ import { setOutboxDropHandler, startOutbox } from './lib/outbox'
 import { useOnline } from './lib/useOnline'
 import { watchForAppUpdate } from './lib/appUpdate'
 import { useT } from './i18n'
+import { MAIN_NAV, type NavItem, visibleNav } from './dashboard/nav'
+
+type NavSearchResult = {
+  label: string
+  to: string
+}
 
 function Dashboard() {
   const t = useT()
   const toast = useToast()
   const { user } = useAuth()
+  const navigate = useNavigate()
   const toastRef = useRef(toast)
   toastRef.current = toast
   const { pathname } = useLocation()
   const online = useOnline()
   const [navOpen, setNavOpen] = useState(false)
   const [updateAvailable, setUpdateAvailable] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+
+  const searchResults = useMemo<NavSearchResult[]>(() => {
+    const query = searchQuery.trim().toLowerCase()
+    if (!query) return []
+
+    const matches: NavSearchResult[] = []
+
+    const walk = (items: NavItem[]) => {
+      for (const item of items) {
+        if (item.label.toLowerCase().includes(query)) {
+          matches.push({ label: item.label, to: item.to })
+        }
+
+        if (item.children?.length) {
+          walk(item.children)
+        }
+      }
+    }
+
+    walk(visibleNav(MAIN_NAV, user?.role))
+
+    return matches.slice(0, 8)
+  }, [searchQuery, user?.role])
+
+  const submitSearch = () => {
+    const match = searchResults[0]
+    if (!match) return
+
+    navigate(match.to)
+    setSearchQuery('')
+  }
 
   // Start the offline outbox (the service worker itself is registered in main.tsx): it replays
   // field submissions that were saved on the device during a signal drop. A submission the
@@ -105,13 +144,45 @@ function Dashboard() {
             <Logo size="sm" />
           </div>
 
-          <div className="hidden max-w-md flex-1 items-center gap-2 rounded-lg border border-ink-700 bg-ink-900 px-3 py-2 sm:flex">
+          <div className="relative hidden max-w-md flex-1 items-center gap-2 rounded-lg border border-ink-700 bg-ink-900 px-3 py-2 sm:flex">
             <Search className="h-4 w-4 text-ink-400" />
             <input
               type="text"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault()
+                  submitSearch()
+                }
+              }}
               placeholder={t.shell.searchPlaceholder}
               className="w-full bg-transparent text-sm text-ink-100 placeholder-ink-500 outline-none"
+              aria-label={t.shell.searchPlaceholder}
             />
+
+            {searchQuery.trim() && (
+              <div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-lg border border-ink-700 bg-ink-950 shadow-2xl">
+                {searchResults.length > 0 ? (
+                  searchResults.map((item) => (
+                    <button
+                      key={`${item.to}-${item.label}`}
+                      type="button"
+                      onClick={() => {
+                        navigate(item.to)
+                        setSearchQuery('')
+                      }}
+                      className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm text-ink-200 transition hover:bg-ink-800"
+                    >
+                      <span>{item.label}</span>
+                      <span className="text-xs text-ink-500">Open</span>
+                    </button>
+                  ))
+                ) : (
+                  <div className="px-3 py-2 text-sm text-ink-400">No matching pages found</div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="ml-auto flex items-center gap-3 sm:gap-5">
