@@ -1101,6 +1101,8 @@ model SiteAttendance {
    * Travel cost for the trip out, in MUR. Optional - not every visit has one.
    */
   checkInTransportCost          Decimal?       @db.Decimal(10, 2)
+  /** Why no transport cost was claimed for the trip out, when the amount is zero. */
+  checkInTransportNote          String?
   /**
    * Whether checkInNote resolved to somewhere near the GPS fix. Advisory only, never blocking.
    */
@@ -1133,6 +1135,8 @@ model SiteAttendance {
    * Travel cost for the return trip, in MUR.
    */
   checkOutTransportCost          Decimal?       @db.Decimal(10, 2)
+  /** Why no transport cost was claimed for the return trip, when the amount is zero. */
+  checkOutTransportNote          String?
   checkOutLocationMatch          LocationMatch?
   checkOutLocationDistanceMeters Int?
   /**

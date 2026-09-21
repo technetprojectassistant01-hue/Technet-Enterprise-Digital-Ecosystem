@@ -145,6 +145,7 @@ function AttendanceWidget() {
   // rather than sending the prefill — on a page open a while, the prefill is stale.
   const [declaredTimeEdited, setDeclaredTimeEdited] = useState(false)
   const [transportCost, setTransportCost] = useState('')
+  const [transportNote, setTransportNote] = useState('')
 
   const [locationDialog, setLocationDialog] = useState<LocationDialogMode | null>(null)
   /** What to do once location is available: submit the check-in/out, or nothing (asked on page load). */
@@ -196,16 +197,19 @@ function AttendanceWidget() {
     setNote('')
     setSite('')
     setTransportCost('')
+    setTransportNote('')
     setDeclaredTime(currentClockTime())
     setDeclaredTimeEdited(false)
   }
 
   /** Transport cost is required — a technician with no travel enters 0. */
-  function parseTransport(): { value: number } | { error: string } {
+  function parseTransport(): { value: number; note: string | undefined } | { error: string } {
     if (!transportCost.trim()) return { error: t.attendance.enterTransport }
     const amount = Number(transportCost)
     if (!Number.isFinite(amount) || amount < 0) return { error: t.attendance.transportInvalid }
-    return { value: amount }
+    const note = transportNote.trim()
+    if (amount === 0 && !note) return { error: t.attendance.zeroTransportNoteRequired }
+    return { value: amount, note: note || undefined }
   }
 
   /** Gets a GPS fix and runs the action with it; a refusal opens the "blocked" dialog. */
@@ -275,6 +279,7 @@ function AttendanceWidget() {
           site: site.trim() || undefined,
           timeIn: declaredTimeEdited ? declaredTime : currentClockTime(),
           transportCost: transport.value,
+          transportNote: transport.note,
         },
       })
       toast.success(queued ? t.attendance.queued : t.attendance.checkedInToast)
@@ -306,6 +311,7 @@ function AttendanceWidget() {
           site: site.trim() || undefined,
           timeOut: declaredTimeEdited ? declaredTime : currentClockTime(),
           transportCost: transport.value,
+          transportNote: transport.note,
         },
       })
       toast.success(queued ? t.attendance.queued : t.attendance.checkedOutToast)
@@ -382,22 +388,37 @@ function AttendanceWidget() {
             </div>
           )
           const transport = (
-            <div className="flex flex-col gap-1">
-              <label htmlFor="att-transport" className={fieldLabelClass}>
-                {t.attendance.transport}
-              </label>
-              <input
-                id="att-transport"
-                type="number"
-                inputMode="decimal"
-                min="0"
-                step="0.01"
-                value={transportCost}
-                onChange={(e) => setTransportCost(e.target.value)}
-                placeholder={t.attendance.transportPlaceholder}
-                className={inputClass}
-              />
-            </div>
+            <>
+              <div className="flex flex-col gap-1">
+                <label htmlFor="att-transport" className={fieldLabelClass}>
+                  {t.attendance.transport}
+                </label>
+                <input
+                  id="att-transport"
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step="0.01"
+                  value={transportCost}
+                  onChange={(e) => setTransportCost(e.target.value)}
+                  placeholder={t.attendance.transportPlaceholder}
+                  className={inputClass}
+                />
+              </div>
+              <div className="col-span-2 flex flex-col gap-1">
+                <label htmlFor="att-transport-note" className={fieldLabelClass}>
+                  {t.attendance.transportNote}
+                </label>
+                <input
+                  id="att-transport-note"
+                  value={transportNote}
+                  onChange={(e) => setTransportNote(e.target.value)}
+                  placeholder={t.attendance.transportNotePlaceholder}
+                  maxLength={200}
+                  className={inputClass}
+                />
+              </div>
+            </>
           )
           const siteField = (
             <div className="flex flex-col gap-1">

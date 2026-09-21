@@ -37,11 +37,13 @@ const VISIT_SELECT = {
   checkInNote: true,
   checkInSite: true,
   checkInTransportCost: true,
+  checkInTransportNote: true,
   checkOutAt: true,
   checkOutDeclaredTime: true,
   checkOutNote: true,
   checkOutSite: true,
   checkOutTransportCost: true,
+  checkOutTransportNote: true,
   checkOutByManager: true,
 } as const;
 
@@ -80,11 +82,13 @@ function fingerprintOf({ visits, approved }: Awaited<ReturnType<typeof loadRange
         v.checkInNote,
         v.checkInSite,
         v.checkInTransportCost?.toString() ?? null,
+        v.checkInTransportNote,
         v.checkOutAt?.toISOString() ?? null,
         v.checkOutDeclaredTime,
         v.checkOutNote,
         v.checkOutSite,
         v.checkOutTransportCost?.toString() ?? null,
+        v.checkOutTransportNote,
         v.checkOutByManager,
       ]),
     );
