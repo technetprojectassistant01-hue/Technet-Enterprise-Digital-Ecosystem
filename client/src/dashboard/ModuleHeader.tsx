@@ -1,4 +1,5 @@
-import { NavLink } from 'react-router-dom'
+import { useMemo, useState } from 'react'
+import { NavLink, useNavigate } from 'react-router-dom'
 import { Bell, Search, Settings } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { Avatar } from './ui'
@@ -47,8 +48,41 @@ function ModuleHeader({
 }) {
   const { user } = useAuth()
   const t = useT()
+  const navigate = useNavigate()
   const displayName = user?.name || user?.email || ''
-  const canRenderLiveSearch = searchValue !== undefined || onSearchChange !== undefined || !!searchResults || !!onSearchSubmit
+  const [localSearchValue, setLocalSearchValue] = useState('')
+  const effectiveSearchValue = searchValue ?? localSearchValue
+  const canRenderSearch = searchPlaceholder !== undefined || searchValue !== undefined || onSearchChange !== undefined || !!searchResults || !!onSearchSubmit
+
+  const matchingTabs = useMemo(() => {
+    const query = effectiveSearchValue.trim().toLowerCase()
+    if (!query) return []
+
+    return tabs.filter((tab) => tab.label.toLowerCase().includes(query)).slice(0, 6)
+  }, [effectiveSearchValue, tabs])
+
+  const results = searchResults ?? matchingTabs
+
+  const updateSearch = (value: string) => {
+    if (onSearchChange) {
+      onSearchChange(value)
+    } else {
+      setLocalSearchValue(value)
+    }
+  }
+
+  const submitSearch = () => {
+    if (onSearchSubmit) {
+      onSearchSubmit()
+      return
+    }
+
+    const firstResult = results[0]
+    if (!firstResult) return
+
+    navigate(firstResult.to)
+    updateSearch('')
+  }
 
   return (
     <div className="-mx-4 -mt-4 mb-6 border-b border-ink-800 bg-ink-900 px-4 py-4 sm:-mx-6 sm:px-6 sm:-mt-6 lg:-mx-8 lg:px-8">
@@ -81,38 +115,40 @@ function ModuleHeader({
         </div>
 
         <div className="hidden items-center gap-4 lg:flex">
-          {canRenderLiveSearch && (
+          {canRenderSearch && (
             <div className="relative hidden items-center gap-2 rounded-md border border-ink-700 bg-ink-950 px-3 py-1.5 sm:flex">
               <Search className="h-3.5 w-3.5 text-ink-400" />
               <input
                 type="text"
-                value={searchValue ?? ''}
-                onChange={(event) => onSearchChange?.(event.target.value)}
+                value={effectiveSearchValue}
+                onChange={(event) => updateSearch(event.target.value)}
                 onKeyDown={(event) => {
-                  if (event.key === 'Enter' && onSearchSubmit) {
+                  if (event.key === 'Enter') {
                     event.preventDefault()
-                    onSearchSubmit()
+                    submitSearch()
                   }
                 }}
                 placeholder={searchPlaceholder ?? t.shell.moduleSearchPlaceholder}
                 className="w-40 bg-transparent text-xs text-ink-100 placeholder-ink-500 outline-none"
               />
 
-              {searchValue && searchResults && searchResults.length > 0 && (
+              {effectiveSearchValue.trim() && (
                 <div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-md border border-ink-700 bg-ink-950 shadow-xl">
-                  {searchResults.map((item) => (
+                  {results.length > 0 ? results.map((item) => (
                     <button
                       key={`${item.to}-${item.label}`}
                       type="button"
                       onClick={() => {
-                        if (onSearchChange) onSearchChange('')
-                        window.location.assign(item.to)
+                        updateSearch('')
+                        navigate(item.to)
                       }}
                       className="block w-full px-3 py-2 text-left text-xs text-ink-200 transition hover:bg-ink-800"
                     >
                       {item.label}
                     </button>
-                  ))}
+                  )) : (
+                    <div className="px-3 py-2 text-xs text-ink-400">No matching pages found</div>
+                  )}
                 </div>
               )}
             </div>
