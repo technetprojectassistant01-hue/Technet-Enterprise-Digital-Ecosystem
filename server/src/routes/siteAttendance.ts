@@ -352,11 +352,13 @@ router.get("/me/history", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => 
       checkInNote: true,
       checkInSite: true,
       checkInTransportCost: true,
+      checkInTransportNote: true,
       checkOutAt: true,
       checkOutDeclaredTime: true,
       checkOutNote: true,
       checkOutSite: true,
       checkOutTransportCost: true,
+      checkOutTransportNote: true,
       checkOutByManager: true,
       workOrder: { select: { id: true, workOrderNumber: true, title: true } },
     },
@@ -424,6 +426,10 @@ router.post("/check-in", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
   if ("error" in declaredTime) return res.status(400).json({ error: declaredTime.error });
   const transportCost = parseTransportCost((req.body as { transportCost?: unknown })?.transportCost);
   if ("error" in transportCost) return res.status(400).json({ error: transportCost.error });
+  const transportNote = parseNote({ note: (req.body as { transportNote?: unknown })?.transportNote });
+  if (transportCost.value === 0 && !transportNote) {
+    return res.status(400).json({ error: "Explain why transport cost is zero" });
+  }
 
   // A check-in queued offline is replayed on reconnect; if the first attempt actually landed
   // before the signal dropped, hand back the open session rather than creating a second one.
@@ -485,6 +491,7 @@ router.post("/check-in", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
         checkInSite: parseSite(req.body),
         checkInDeclaredTime: declaredTime.value,
         checkInTransportCost: transportCost.value,
+        checkInTransportNote: transportNote,
         checkInLocationMatch: locationCheck.match,
         checkInLocationDistanceMeters: locationCheck.distanceMeters,
       },
@@ -517,6 +524,10 @@ router.post("/check-out", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => 
   if ("error" in declaredTime) return res.status(400).json({ error: declaredTime.error });
   const transportCost = parseTransportCost((req.body as { transportCost?: unknown })?.transportCost);
   if ("error" in transportCost) return res.status(400).json({ error: transportCost.error });
+  const transportNote = parseNote({ note: (req.body as { transportNote?: unknown })?.transportNote });
+  if (transportCost.value === 0 && !transportNote) {
+    return res.status(400).json({ error: "Explain why transport cost is zero" });
+  }
 
   // As with check-in: a replay of a check-out that already landed returns the last session
   // rather than the "not currently checked in" 404 that would otherwise alarm the technician.
@@ -558,6 +569,7 @@ router.post("/check-out", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => 
         checkOutSite: parseSite(req.body),
         checkOutDeclaredTime: declaredTime.value,
         checkOutTransportCost: transportCost.value,
+        checkOutTransportNote: transportNote,
         checkOutLocationMatch: locationCheck.match,
         checkOutLocationDistanceMeters: locationCheck.distanceMeters,
       },

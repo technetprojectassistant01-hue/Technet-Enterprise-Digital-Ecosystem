@@ -1709,6 +1709,7 @@ export interface SiteAttendance {
   checkInLocationDistanceMeters: number | null
   /** Travel cost for the trip out, in MUR. Decimal, so it arrives as a string. */
   checkInTransportCost: string | null
+  checkInTransportNote: string | null
   checkOutAt: string | null
   checkOutLat: string | null
   checkOutLng: string | null
@@ -1716,6 +1717,7 @@ export interface SiteAttendance {
   checkOutSite: string | null
   checkOutDeclaredTime: string | null
   checkOutTransportCost: string | null
+  checkOutTransportNote: string | null
   checkOutLocationMatch: LocationMatch | null
   checkOutLocationDistanceMeters: number | null
   /** A manager closed a forgotten session rather than the technician checking out. Such a row

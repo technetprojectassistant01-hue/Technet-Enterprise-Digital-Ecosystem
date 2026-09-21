@@ -595,6 +595,11 @@ function TeamAttendancePage() {
                           </td>
                           <td className="px-3 py-2 text-ink-300">
                             {totalTransportCost(v) > 0 ? formatMoney(totalTransportCost(v)) : <span className="text-ink-400">—</span>}
+                            {(v.checkInTransportNote || v.checkOutTransportNote) && (
+                              <span className="mt-0.5 block text-xs text-ink-400">
+                                {v.checkInTransportNote || v.checkOutTransportNote}
+                              </span>
+                            )}
                           </td>
                         </tr>
                       ))}
