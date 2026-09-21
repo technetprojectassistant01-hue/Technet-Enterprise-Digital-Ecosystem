@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Plus, Pencil, Trash2, ScrollText, Download } from 'lucide-react'
+import { Plus, Pencil, Trash2, ScrollText, Download, Search } from 'lucide-react'
 import * as api from '../lib/api'
 import type { Contract, ContractStatus } from '../lib/api'
 import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
@@ -46,6 +46,7 @@ function ContractsPage() {
   const [contracts, setContracts] = useState<Contract[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
 
   const [editing, setEditing] = useState<Contract | null>(null)
   const [showCreate, setShowCreate] = useState(false)
@@ -158,6 +159,10 @@ function ContractsPage() {
   const activeValue = contracts
     .filter((c) => c.status === 'IN_PROGRESS' || c.status === 'PLANNING')
     .reduce((sum, c) => sum + Number(c.value), 0)
+  const searchTerm = search.trim().toLowerCase()
+  const visibleContracts = searchTerm
+    ? contracts.filter((contract) => `${contract.customer.company || contract.customer.name} ${contract.service}`.toLowerCase().includes(searchTerm))
+    : contracts
 
   function exportCsv() {
     downloadCsv(
@@ -216,11 +221,15 @@ function ContractsPage() {
       </div>
 
       <Panel title="Active Registry">
+        <div className="mb-4 flex max-w-md items-center gap-2 rounded-md border border-ink-600 bg-ink-950 px-3 py-2">
+          <Search className="h-4 w-4 text-ink-400" />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search company or service" className="w-full bg-transparent text-sm text-ink-100 outline-none placeholder-ink-500" />
+        </div>
         {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
 
         {loading ? (
           <TableSkeleton cols={5} />
-        ) : contracts.length === 0 ? (
+        ) : visibleContracts.length === 0 ? (
           <EmptyState icon={ScrollText} message="No contracts yet. Create your first contract to get started." />
         ) : (
           <div className="overflow-x-auto">
@@ -235,7 +244,7 @@ function ContractsPage() {
                 </tr>
               </thead>
               <tbody>
-                {contracts.map((c) => (
+                {visibleContracts.map((c) => (
                   <tr key={c.id} className="border-b border-ink-800 last:border-0">
                     <td className="px-3 py-3 font-medium text-ink-100">{c.customer.company || c.customer.name}</td>
                     <td className="px-3 py-3 text-ink-300">{c.service}</td>

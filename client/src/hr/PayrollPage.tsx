@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, Banknote, Trash2, Download, Lock } from 'lucide-react'
+import { Plus, Banknote, Trash2, Download, Lock, Search } from 'lucide-react'
 import * as api from '../lib/api'
 import type { PayrollRun } from '../lib/api'
 import { Panel, StatCard, Modal, EmptyState, TableSkeleton } from '../dashboard/ui'
@@ -28,6 +28,7 @@ function PayrollPage() {
   const [runs, setRuns] = useState<PayrollRun[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
 
   const [showProcess, setShowProcess] = useState(false)
   const [year, setYear] = useState(now.getFullYear())
@@ -93,6 +94,10 @@ function PayrollPage() {
 
   const latestTotal = runs[0]?.totalNetPay ?? 0
   const latestCount = runs[0]?.employeeCount ?? 0
+  const searchTerm = search.trim().toLowerCase()
+  const visibleRuns = searchTerm
+    ? runs.filter((run) => `${months[run.month - 1]} ${run.year} ${run.createdBy.name || run.createdBy.email}`.toLowerCase().includes(searchTerm))
+    : runs
 
   function exportCsv() {
     downloadCsv(
@@ -137,11 +142,15 @@ function PayrollPage() {
       </div>
 
       <Panel title={t.workforce.payroll.runs}>
+        <div className="mb-4 flex max-w-md items-center gap-2 rounded-md border border-ink-600 bg-ink-950 px-3 py-2">
+          <Search className="h-4 w-4 text-ink-400" />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search period or processor" className="w-full bg-transparent text-sm text-ink-100 outline-none placeholder-ink-500" />
+        </div>
         {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
 
         {loading ? (
           <TableSkeleton cols={5} />
-        ) : runs.length === 0 ? (
+        ) : visibleRuns.length === 0 ? (
           <EmptyState icon={Banknote} message={t.workforce.payroll.empty} />
         ) : (
           <div className="overflow-x-auto">
@@ -157,7 +166,7 @@ function PayrollPage() {
                 </tr>
               </thead>
               <tbody>
-                {runs.map((r) => (
+                {visibleRuns.map((r) => (
                   <tr key={r.id} className="border-b border-ink-800 last:border-0">
                     <td className="px-3 py-3">
                       <Link

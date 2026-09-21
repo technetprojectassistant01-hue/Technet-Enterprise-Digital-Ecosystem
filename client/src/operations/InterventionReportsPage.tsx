@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, FileText, Download } from 'lucide-react'
+import { Plus, FileText, Download, Search } from 'lucide-react'
 import * as api from '../lib/api'
 import type { InterventionReport, ReportStatus, JobCategory, ServiceCategory } from '../lib/api'
 import { WORK_TYPE_LABELS, JOB_CATEGORY_LABELS } from '../lib/api'
@@ -51,6 +51,7 @@ function InterventionReportsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS)
+  const [search, setSearch] = useState('')
   const [stats, setStats] = useState({ pending: 0, due: 0 })
   const requestId = useRef(0)
 
@@ -108,6 +109,15 @@ function InterventionReportsPage() {
     setFilters(EMPTY_FILTERS)
     load(EMPTY_FILTERS)
   }
+
+  const searchTerm = search.trim().toLowerCase()
+  const visibleReports = searchTerm
+    ? reports.filter((report) =>
+        `${report.interventionNumber} ${report.workOrder?.workOrderNumber ?? ''} ${report.customer?.company ?? report.customer?.name ?? ''} ${report.natureOfIntervention} ${report.actionTaken}`
+          .toLowerCase()
+          .includes(searchTerm),
+      )
+    : reports
 
   /** Quick relative-date shortcuts for the common "how many in the last N months" phone-call question. */
   function applyQuickRange(months: number) {
@@ -189,6 +199,10 @@ function InterventionReportsPage() {
       </div>
 
       <Panel title={t.ops.ir.registry}>
+        <div className="mb-4 flex max-w-md items-center gap-2 rounded-md border border-ink-600 bg-ink-950 px-3 py-2">
+          <Search className="h-4 w-4 text-ink-400" />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Report number, work order, customer, or subject" className="w-full bg-transparent text-sm text-ink-100 outline-none placeholder-ink-500" />
+        </div>
         <div className="mb-4 flex flex-wrap items-end gap-4">
           <div className="flex max-w-xs flex-1 flex-col gap-1">
             <label className="text-xs font-semibold tracking-widest text-ink-400">{t.shared.customer}</label>
@@ -313,7 +327,7 @@ function InterventionReportsPage() {
 
         {loading ? (
           <TableSkeleton cols={8} />
-        ) : reports.length === 0 ? (
+        ) : visibleReports.length === 0 ? (
           <EmptyState icon={FileText} message={t.ops.ir.empty} />
         ) : (
           <div className="overflow-x-auto">
@@ -331,7 +345,7 @@ function InterventionReportsPage() {
                 </tr>
               </thead>
               <tbody>
-                {reports.map((r) => {
+                {visibleReports.map((r) => {
                   const reminderDue = r.nextReminderAt && new Date(r.nextReminderAt) <= new Date()
                   return (
                     <tr key={r.id} className="border-b border-ink-800 last:border-0">

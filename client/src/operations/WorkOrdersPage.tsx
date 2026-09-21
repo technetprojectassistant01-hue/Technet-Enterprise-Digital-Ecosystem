@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, Trash2, Wrench, Download } from 'lucide-react'
+import { Plus, Trash2, Wrench, Download, Search } from 'lucide-react'
 import * as api from '../lib/api'
 import type { WorkOrder, JobCategory } from '../lib/api'
 import { JOB_CATEGORY_LABELS } from '../lib/api'
@@ -44,6 +44,7 @@ function WorkOrdersPage() {
   const [to, setTo] = useState('')
   const [filterCustomerId, setFilterCustomerId] = useState('')
   const [filterTechnicianId, setFilterTechnicianId] = useState('')
+  const [search, setSearch] = useState('')
 
   const [showCreate, setShowCreate] = useState(false)
   const [customerId, setCustomerId] = useState('')
@@ -161,6 +162,16 @@ function WorkOrdersPage() {
 
   const scheduledCount = workOrders.filter((w) => w.status === 'SCHEDULED').length
   const inProgressCount = workOrders.filter((w) => w.status === 'IN_PROGRESS').length
+  const searchTerm = search.trim().toLowerCase()
+  const visibleWorkOrders = searchTerm
+    ? workOrders.filter((wo) =>
+        `${wo.workOrderNumber} ${wo.title} ${wo.customer.company || wo.customer.name} ${wo.technicians
+          .map((x) => `${x.employee.firstName} ${x.employee.lastName}`)
+          .join(' ')}`
+          .toLowerCase()
+          .includes(searchTerm),
+      )
+    : workOrders
 
   // CSV headers and values stay in English: it's a data file for Excel, and a column named the
   // same way whoever exported it keeps reports and formulas working.
@@ -210,6 +221,13 @@ function WorkOrdersPage() {
 
       <Panel title={t.ops.wo.ledger}>
         <div className="mb-4 flex flex-wrap items-end gap-4">
+          <div className="flex min-w-[14rem] flex-1 flex-col gap-1">
+            <label className="text-xs font-semibold tracking-widest text-ink-400">SEARCH</label>
+            <div className="flex items-center gap-2 rounded-md border border-ink-600 bg-ink-950 px-3 py-2">
+              <Search className="h-4 w-4 text-ink-400" />
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Number, title, customer, or technician" className="w-full bg-transparent text-sm text-ink-100 outline-none placeholder-ink-500" />
+            </div>
+          </div>
           <div className="flex max-w-xs flex-1 flex-col gap-1">
             <label className="text-xs font-semibold tracking-widest text-ink-400">{t.shared.customer}</label>
             <select
@@ -259,7 +277,7 @@ function WorkOrdersPage() {
 
         {loading ? (
           <TableSkeleton cols={6} />
-        ) : workOrders.length === 0 ? (
+        ) : visibleWorkOrders.length === 0 ? (
           <EmptyState icon={Wrench} message={t.ops.wo.empty} />
         ) : (
           <div className="overflow-x-auto">
@@ -276,7 +294,7 @@ function WorkOrdersPage() {
                 </tr>
               </thead>
               <tbody>
-                {workOrders.map((wo) => (
+                {visibleWorkOrders.map((wo) => (
                   <tr key={wo.id} className="border-b border-ink-800 last:border-0">
                     <td className="px-3 py-3">
                       <Link

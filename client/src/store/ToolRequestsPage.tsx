@@ -40,6 +40,7 @@ function ToolRequestsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<ToolRequestStatus | ''>('')
+  const [requestSearch, setRequestSearch] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   // New request / editing one
@@ -228,7 +229,12 @@ function ToolRequestsPage() {
 
   const pendingCount = requests.filter((r) => r.status === 'PENDING').length
   const approvedCount = requests.filter((r) => r.status === 'ISSUED').length
-  const shownRequests = statusFilter ? requests.filter((r) => r.status === statusFilter) : requests
+  const requestTerm = requestSearch.trim().toLowerCase()
+  const shownRequests = requests.filter((r) => {
+    if (statusFilter && r.status !== statusFilter) return false
+    if (!requestTerm) return true
+    return `${r.requestNumber} ${r.items} ${r.typeOrBrand} ${r.purpose} ${fullName(r.employee)}`.toLowerCase().includes(requestTerm)
+  })
 
   return (
     <div className="flex flex-col gap-6">
@@ -255,6 +261,13 @@ function ToolRequestsPage() {
 
       <Panel title={canManage ? t.toolRequests.allRequests : t.toolRequests.myRequests}>
         <div className="mb-4 flex flex-wrap items-end gap-4">
+          <div className="flex min-w-[14rem] flex-1 flex-col gap-1">
+            <label className={labelClass}>{t.tools.search}</label>
+            <div className="flex items-center gap-2 rounded-md border border-ink-600 bg-ink-950 px-3 py-2">
+              <Search className="h-4 w-4 text-ink-400" />
+              <input value={requestSearch} onChange={(e) => setRequestSearch(e.target.value)} placeholder={t.tools.searchPlaceholder} className="w-full bg-transparent text-sm text-ink-100 outline-none placeholder-ink-500" />
+            </div>
+          </div>
           <div className="flex flex-col gap-1">
             <label className={labelClass}>{t.shared.status}</label>
             <select
