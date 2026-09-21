@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Plus, Check, X as XIcon, ClipboardList, Download, ImagePlus, Images } from 'lucide-react'
+import { Plus, Check, X as XIcon, ClipboardList, Download, ImagePlus, Images, Search } from 'lucide-react'
 import * as api from '../lib/api'
 import type { DailyWorkReport, InterventionReport } from '../lib/api'
 import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
@@ -39,6 +39,7 @@ function DailyReportsPage() {
   const [error, setError] = useState<string | null>(null)
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
+  const [search, setSearch] = useState('')
 
   const [showCreate, setShowCreate] = useState(false)
   const [date, setDate] = useState(todayISO())
@@ -113,6 +114,15 @@ function DailyReportsPage() {
     setFrom('')
     setTo('')
   }
+
+  const searchTerm = search.trim().toLowerCase()
+  const visibleReports = searchTerm
+    ? reports.filter((report) =>
+        `${report.summary} ${report.technicians.map((x) => `${x.employee.firstName} ${x.employee.lastName}`).join(' ')}`
+          .toLowerCase()
+          .includes(searchTerm),
+      )
+    : reports
 
   function openCreate() {
     setDate(todayISO())
@@ -252,6 +262,13 @@ function DailyReportsPage() {
 
       <Panel title={t.ops.daily.registry}>
         <div className="mb-4 flex flex-wrap items-end gap-4">
+          <div className="flex min-w-[14rem] flex-1 flex-col gap-1">
+            <label className="text-xs font-semibold tracking-widest text-ink-400">SEARCH</label>
+            <div className="flex items-center gap-2 rounded-md border border-ink-600 bg-ink-950 px-3 py-2">
+              <Search className="h-4 w-4 text-ink-400" />
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Summary or technician" className="w-full bg-transparent text-sm text-ink-100 outline-none placeholder-ink-500" />
+            </div>
+          </div>
           <div className="flex flex-col gap-1">
             <label className="text-xs font-semibold tracking-widest text-ink-400">{t.shared.from}</label>
             <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className={inputClass} />
@@ -271,7 +288,7 @@ function DailyReportsPage() {
 
         {loading ? (
           <TableSkeleton cols={5} />
-        ) : reports.length === 0 ? (
+        ) : visibleReports.length === 0 ? (
           <EmptyState icon={ClipboardList} message={t.ops.daily.empty} />
         ) : (
           <div className="overflow-x-auto">
@@ -288,7 +305,7 @@ function DailyReportsPage() {
                 </tr>
               </thead>
               <tbody>
-                {reports.map((r) => (
+                {visibleReports.map((r) => (
                   <tr key={r.id} className="border-b border-ink-800 last:border-0">
                     <td className="px-3 py-3 text-ink-100">{r.date.slice(0, 10)}</td>
                     <td className="px-3 py-3 max-w-sm truncate text-ink-300" title={r.summary}>
