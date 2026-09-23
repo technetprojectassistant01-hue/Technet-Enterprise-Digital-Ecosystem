@@ -445,9 +445,82 @@ router.post("/", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
   }
 });
 
-router.patch("/:id", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
+router.patch("/:id", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
   const id = req.params.id as string;
-  const { workOrderId } = req.body ?? {};
+  const body = req.body ?? {};
+  const { workOrderId } = body;
+
+  const existing = await prisma.interventionReport.findUnique({ where: { id }, select: { createdById: true, status: true } });
+  if (!existing) return res.status(404).json({ error: "Intervention report not found" });
+
+  const isManager = (OPS_MANAGE_ROLES as readonly string[]).includes(req.user!.role);
+  const isRejectedCreator = existing.status === "REJECTED" && existing.createdById === req.user!.sub;
+  if (!isManager && !isRejectedCreator) return res.status(403).json({ error: "Only the report creator may correct a rejected report" });
+
+  if (isRejectedCreator) {
+    const { customerId, jobCategory, workType, natureOfIntervention, actionTaken, technicianIds, units } = body;
+    if (typeof customerId !== "string" || !customerId || !JOB_CATEGORIES.includes(jobCategory) || !WORK_TYPES.includes(workType)) {
+      return res.status(400).json({ error: "Customer, job category, and work type are required" });
+    }
+    if (typeof natureOfIntervention !== "string" || !natureOfIntervention.trim()) {
+      return res.status(400).json({ error: "Nature of intervention is required" });
+    }
+    if (typeof actionTaken !== "string" || !actionTaken.trim()) {
+      return res.status(400).json({ error: "Action taken is required" });
+    }
+    const techIds = Array.isArray(technicianIds) ? technicianIds.filter((value: unknown): value is string => typeof value === "string") : [];
+    const unitRows = Array.isArray(units) ? units : [];
+    const data: Prisma.InterventionReportUpdateInput = {
+      customer: { connect: { id: customerId } },
+      workOrder: workOrderId ? { connect: { id: workOrderId } } : { disconnect: true },
+      jobCategory: jobCategory as JobCategory,
+      workType: workType as WorkType,
+      workTypeOther: typeof body.workTypeOther === "string" && body.workTypeOther.trim() ? body.workTypeOther.trim() : null,
+      contactPerson: body.contactPerson || null,
+      contactPhone: body.contactPhone || null,
+      contactEmail: body.contactEmail || null,
+      equipment: body.equipment || null,
+      make: body.make || null,
+      model: body.model || null,
+      serialNo: body.serialNo || null,
+      natureOfIntervention: natureOfIntervention.trim(),
+      actionTaken: actionTaken.trim(),
+      workCompleted: body.workCompleted !== false,
+      incompleteDetails: body.workCompleted === false ? body.incompleteDetails || null : null,
+      timeIn: body.timeIn || null,
+      timeOut: body.timeOut || null,
+      warrantyStatus: body.warrantyStatus || null,
+      technicianReport: body.technicianReport || null,
+      materialsUsed: body.materialsUsed || null,
+      comments: body.comments || null,
+      additionalInfo: body.additionalInfo || null,
+      signedByName: body.signedByName || null,
+      status: "SUBMITTED",
+      reviewedBy: { disconnect: true },
+      reviewedAt: null,
+      reviewNote: null,
+      technicians: { deleteMany: {}, create: techIds.map((employeeId) => ({ employeeId })) },
+      units: {
+        deleteMany: {},
+        create: unitRows.map((unit: { label: string; problem: string; action?: string }, index: number) => ({
+          label: unit.label.trim(),
+          problem: unit.problem.trim(),
+          action: unit.action?.trim() || null,
+          order: index,
+        })),
+      },
+    };
+    try {
+      const updated = await prisma.interventionReport.update({ where: { id }, data, select: DETAIL_SELECT });
+      await notifyRoles(OPS_MANAGE_ROLES, "INTERVENTION_REPORT_SUBMITTED", `Intervention report ${withInterventionNumber(updated).interventionNumber} needs review`, {
+        link: `/dashboard/operations/intervention-reports/${id}`,
+      });
+      return res.json({ interventionReport: withInterventionNumber(updated) });
+    } catch (err) {
+      if (isForeignKeyConstraintError(err)) return res.status(400).json({ error: "Customer, work order, or technician not found" });
+      throw err;
+    }
+  }
 
   const data: Prisma.InterventionReportUpdateInput = {};
   if (workOrderId !== undefined) {
