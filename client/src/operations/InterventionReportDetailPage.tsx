@@ -6,7 +6,6 @@ import type { InterventionReport, ReminderInterval, PhotoKind } from '../lib/api
 import { Panel, Badge, EmptyState, TableSkeleton, Modal } from '../dashboard/ui'
 import { primaryButtonClass, secondaryButtonClass, dangerButtonClass } from '../dashboard/buttonStyles'
 import { useToast } from '../dashboard/ToastContext'
-import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
 import { hasRole, OPS_MANAGE_ROLES } from '../lib/permissions'
 import { reportStatusTone } from '../erp/statusTones'
@@ -86,7 +85,6 @@ function PhotoGrid({
 function InterventionReportDetailPage() {
   const { id } = useParams<{ id: string }>()
   const toast = useToast()
-  const confirm = useConfirm()
   const t = useT()
   const { user } = useAuth()
   const workOrders = useWorkOrders()
