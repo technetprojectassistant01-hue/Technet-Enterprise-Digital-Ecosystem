@@ -3,8 +3,8 @@ import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, X, Check, Download, Link2, BellRing } from 'lucide-react'
 import * as api from '../lib/api'
 import type { InterventionReport, ReminderInterval, PhotoKind } from '../lib/api'
-import { Panel, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
-import { primaryButtonClass, dangerButtonClass } from '../dashboard/buttonStyles'
+import { Panel, Badge, EmptyState, TableSkeleton, Modal } from '../dashboard/ui'
+import { primaryButtonClass, secondaryButtonClass, dangerButtonClass } from '../dashboard/buttonStyles'
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
@@ -95,6 +95,8 @@ function InterventionReportDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [actioning, setActioning] = useState(false)
+  const [showRejectModal, setShowRejectModal] = useState(false)
+  const [rejectionComment, setRejectionComment] = useState('')
   const [downloadingAttachment, setDownloadingAttachment] = useState(false)
 
   const [linkWorkOrderId, setLinkWorkOrderId] = useState('')
@@ -129,19 +131,23 @@ function InterventionReportDetailPage() {
     }
   }
 
+  function openRejectModal() {
+    setRejectionComment('')
+    setShowRejectModal(true)
+  }
+
   async function handleReject() {
     if (!report) return
-    const ok = await confirm({
-      title: t.ops.irDetail.rejectTitle,
-      message: t.ops.irDetail.rejectMessage(report.interventionNumber),
-      confirmLabel: t.shared.reject,
-      tone: 'danger',
-    })
-    if (!ok) return
+    const note = rejectionComment.trim()
+    if (!note) {
+      toast.error(t.ops.irDetail.rejectionCommentRequired)
+      return
+    }
     setActioning(true)
     try {
-      await api.rejectInterventionReport(report.id)
+      await api.rejectInterventionReport(report.id, note)
       toast.success(t.shared.reportRejected)
+      setShowRejectModal(false)
       load()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t.shared.rejectFailed)
@@ -245,7 +251,7 @@ function InterventionReportDetailPage() {
               <Check className="h-4 w-4" />
               {t.shared.approve}
             </button>
-            <button type="button" onClick={handleReject} disabled={actioning} className={dangerButtonClass}>
+            <button type="button" onClick={openRejectModal} disabled={actioning} className={dangerButtonClass}>
               <X className="h-4 w-4" />
               {t.shared.reject}
             </button>
@@ -259,6 +265,36 @@ function InterventionReportDetailPage() {
             <span className="font-semibold text-ink-100">{t.ops.irDetail.reviewNote}</span> {report.reviewNote}
           </p>
         </Panel>
+      )}
+
+      {showRejectModal && (
+        <Modal title={t.ops.irDetail.rejectTitle} onClose={() => setShowRejectModal(false)}>
+          <div className="flex flex-col gap-4">
+            <p className="text-sm text-ink-300">{t.ops.irDetail.rejectMessage(report.interventionNumber)}</p>
+            <div>
+              <label htmlFor="rejection-comment" className={fieldLabelClass}>
+                {t.ops.irDetail.rejectionComment}
+              </label>
+              <textarea
+                id="rejection-comment"
+                value={rejectionComment}
+                onChange={(e) => setRejectionComment(e.target.value)}
+                placeholder={t.ops.irDetail.rejectionCommentPlaceholder}
+                rows={4}
+                maxLength={1000}
+                className={`mt-2 w-full ${inputClass}`}
+              />
+            </div>
+            <div className="flex justify-end gap-3">
+              <button type="button" onClick={() => setShowRejectModal(false)} className={secondaryButtonClass}>
+                {t.common.cancel}
+              </button>
+              <button type="button" onClick={handleReject} disabled={actioning} className={dangerButtonClass}>
+                {actioning ? t.shared.saving : t.ops.irDetail.confirmRejection}
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
 
       {canManage && !report.workOrder && (
