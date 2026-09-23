@@ -1,23 +1,26 @@
-name: Check-in reminder
+name: Attendance reminders
 
-# 04:15 UTC is 08:15 in Mauritius (UTC+4, no daylight saving), Monday to Saturday.
+# Mauritius is UTC+4 with no daylight saving time. 04:15 UTC is 08:15 Mauritius and
+# 13:15 UTC is 17:15 Mauritius, Monday to Saturday.
 #
 # This lives here rather than in a timer inside the server because the Render free instance
 # sleeps after ~15 minutes idle: at 08:15, before anyone has opened the app, there is no process
 # alive for a setInterval to run in. The request below is also what wakes it.
 #
 # GitHub's scheduled runners are best-effort and can lag by several minutes under load, so treat
-# 08:15 as "shortly after 08:15" rather than a precise alarm.
+# both times as "shortly after" rather than precise alarms.
 on:
   schedule:
     - cron: "15 4 * * 1-6"
+    - cron: "15 13 * * 1-6"
   workflow_dispatch: # so it can be fired by hand to test, without waiting for tomorrow
 
 jobs:
-  remind:
+  check-in:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '15 4 * * 1-6'
     runs-on: ubuntu-latest
     steps:
-      - name: Wake the API and send reminders
+      - name: Send 08:15 Mauritius check-in reminders
         env:
           API_URL: ${{ vars.API_URL || 'https://technet-digital-api.onrender.com' }}
           REMINDER_SECRET: ${{ secrets.REMINDER_TRIGGER_SECRET }}
@@ -27,8 +30,6 @@ jobs:
             exit 1
           fi
 
-          # A sleeping free instance takes 30-60s to wake, and the reminder request itself is what
-          # wakes it, so allow generously rather than timing out on a cold start.
           response=$(curl -sS -m 180 -w '\n%{http_code}' -X POST \
             -H "x-reminder-secret: $REMINDER_SECRET" \
             -H 'Content-Type: application/json' \
@@ -39,9 +40,35 @@ jobs:
           echo "HTTP $status"
           echo "$body"
 
-          # A 404 here means the secret did not match — the endpoint hides itself rather than
-          # returning 401, so a wrong secret and a missing route look identical on purpose.
           if [ "$status" != "200" ]; then
-            echo "Reminder trigger failed."
+            echo "Check-in reminder trigger failed."
+            exit 1
+          fi
+
+  check-out:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '15 13 * * 1-6'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send 17:15 Mauritius check-out reminders
+        env:
+          API_URL: ${{ vars.API_URL || 'https://technet-digital-api.onrender.com' }}
+          REMINDER_SECRET: ${{ secrets.REMINDER_TRIGGER_SECRET }}
+        run: |
+          if [ -z "$REMINDER_SECRET" ]; then
+            echo "REMINDER_TRIGGER_SECRET is not set in repository secrets — nothing sent."
+            exit 1
+          fi
+
+          response=$(curl -sS -m 180 -w '\n%{http_code}' -X POST \
+            -H "x-reminder-secret: $REMINDER_SECRET" \
+            -H 'Content-Type: application/json' \
+            "$API_URL/api/push/send-checkout-reminders")
+
+          body=$(echo "$response" | sed '$d')
+          status=$(echo "$response" | tail -n1)
+          echo "HTTP $status"
+          echo "$body"
+          if [ "$status" != "200" ]; then
+            echo "Check-out reminder trigger failed."
             exit 1
           fi
