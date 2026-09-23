@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import { prisma } from "../lib/prisma";
 import { requireAuth } from "../middleware/auth";
 import { pushConfigured, sendPushToUser } from "../lib/push";
@@ -70,23 +70,25 @@ router.get("/status", requireAuth, async (req, res) => {
   res.json({ enabled: pushConfigured, devices: count });
 });
 
+function mauritiusToday(): Date {
+  const now = new Date(Date.now() + 4 * 60 * 60 * 1000);
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+}
+
 /**
- * Fires the morning check-in reminder. Triggered from outside, not on a timer inside this
- * process: the Render free instance sleeps after ~15 minutes idle, so at 08:15 - before anybody
- * has opened the app - there is no process alive for a setInterval to run in. A scheduled
- * GitHub Actions workflow wakes it and calls this.
+ * Fires attendance reminders from an external scheduler. The Render free instance sleeps after
+ * roughly 15 minutes idle, so GitHub Actions wakes it at 08:15 and 17:15 Mauritius time.
  *
  * Guarded by a shared secret rather than a session, because the caller is a machine. Returns 404
  * rather than 401 when the secret is wrong or unset, so the endpoint's existence isn't
  * advertised to anybody probing.
  */
-router.post("/send-checkin-reminders", async (req, res) => {
+async function sendAttendanceReminders(kind: "check-in" | "check-out", req: Request, res: Response) {
   const secret = process.env.REMINDER_TRIGGER_SECRET;
   const provided = req.get("x-reminder-secret");
   if (!secret || provided !== secret) return res.status(404).json({ error: "Not found" });
 
-  const today = todayUtc();
-  const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+  const today = mauritiusToday();
 
   // A gazetted holiday cancels the whole run - nobody is expected on site, so nobody should be
   // nagged. The calendar is maintained by hand precisely because several Mauritius holidays move.
@@ -99,8 +101,7 @@ router.post("/send-checkin-reminders", async (req, res) => {
     where: {
       employmentStatus: { not: "TERMINATED" },
       userId: { not: null },
-      // Already checked in - the reminder only exists for people who haven't.
-      siteAttendance: { none: { checkOutAt: null } },
+      siteAttendance: kind === "check-in" ? { none: { checkOutAt: null } } : { some: { checkOutAt: null } },
       // On approved leave covering today.
       leaveRequests: { none: { status: "APPROVED", startDate: { lte: today }, endDate: { gte: today } } },
     },
@@ -111,17 +112,22 @@ router.post("/send-checkin-reminders", async (req, res) => {
   let remindedUsers = 0;
   for (const employee of employees) {
     const delivered = await sendPushToUser(employee.userId!, {
-      title: "Time to check in",
-      body: `Good morning ${employee.firstName} — open Technet Digital and check in for today.`,
+      title: kind === "check-in" ? "Time to check in" : "Time to check out",
+      body:
+        kind === "check-in"
+          ? `Good morning ${employee.firstName} — open Technet Digital and check in for today.`
+          : `Good afternoon ${employee.firstName} — open Technet Digital and check out when you have finished work.`,
       url: "/dashboard",
-      // One tag for the whole feature, so a second run replaces the first rather than stacking.
-      tag: "checkin-reminder",
+      tag: `${kind}-reminder`,
     });
     if (delivered > 0) remindedUsers += 1;
     devicesReached += delivered;
   }
 
-  res.json({ candidates: employees.length, remindedUsers, devicesReached, date: today.toISOString().slice(0, 10) });
-});
+  res.json({ kind, candidates: employees.length, remindedUsers, devicesReached, date: today.toISOString().slice(0, 10) });
+}
+
+router.post("/send-checkin-reminders", (req, res) => sendAttendanceReminders("check-in", req, res));
+router.post("/send-checkout-reminders", (req, res) => sendAttendanceReminders("check-out", req, res));
 
 export default router;
