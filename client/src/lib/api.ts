@@ -1806,7 +1806,9 @@ export function createWorkOrder(input: WorkOrderInput) {
 }
 
 export interface WorkOrderUpdateInput {
+  customerId?: string
   title?: string
+  jobCategory?: JobCategory
   description?: string | null
   scheduledDate?: string
   status?: WorkOrderStatus
