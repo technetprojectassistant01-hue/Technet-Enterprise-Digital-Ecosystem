@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, Trash2, Wrench, Download, Search } from 'lucide-react'
+import { Plus, Trash2, Wrench, Download, Search, Pencil } from 'lucide-react'
 import * as api from '../lib/api'
 import type { WorkOrder, JobCategory } from '../lib/api'
 import { JOB_CATEGORY_LABELS } from '../lib/api'
@@ -47,6 +47,7 @@ function WorkOrdersPage() {
   const [search, setSearch] = useState('')
 
   const [showCreate, setShowCreate] = useState(false)
+  const [editing, setEditing] = useState<WorkOrder | null>(null)
   const [customerId, setCustomerId] = useState('')
   const [title, setTitle] = useState('')
   const [jobCategory, setJobCategory] = useState<JobCategory>('SERVICING')
@@ -92,12 +93,25 @@ function WorkOrdersPage() {
   }
 
   function openCreate() {
+    setEditing(null)
     setCustomerId(customers[0]?.id || '')
     setTitle('')
     setJobCategory('SERVICING')
     setDescription('')
     setScheduledDate('')
     setTechnicianIds([])
+    setFormError(null)
+    setShowCreate(true)
+  }
+
+  function openEdit(workOrder: WorkOrder) {
+    setEditing(workOrder)
+    setCustomerId(workOrder.customer.id)
+    setTitle(workOrder.title)
+    setJobCategory(workOrder.jobCategory)
+    setDescription(workOrder.description ?? '')
+    setScheduledDate(workOrder.scheduledDate.slice(0, 10))
+    setTechnicianIds(workOrder.technicians.map((technician) => technician.employee.id))
     setFormError(null)
     setShowCreate(true)
   }
@@ -125,19 +139,32 @@ function WorkOrdersPage() {
 
     setSubmitting(true)
     try {
-      await api.createWorkOrder({
-        customerId,
-        title,
-        jobCategory,
-        description: description || undefined,
-        scheduledDate,
-        technicianIds,
-      })
-      toast.success(t.ops.wo.created)
+      if (editing) {
+        await api.updateWorkOrder(editing.id, {
+          customerId,
+          title,
+          jobCategory,
+          description: description || null,
+          scheduledDate,
+          technicianIds,
+        })
+        toast.success(t.ops.woDetail.updated)
+      } else {
+        await api.createWorkOrder({
+          customerId,
+          title,
+          jobCategory,
+          description: description || undefined,
+          scheduledDate,
+          technicianIds,
+        })
+        toast.success(t.ops.wo.created)
+      }
       setShowCreate(false)
+      setEditing(null)
       load()
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : t.ops.wo.createFailed)
+      setFormError(err instanceof Error ? err.message : editing ? t.ops.woDetail.updateFailed : t.ops.wo.createFailed)
     } finally {
       setSubmitting(false)
     }
@@ -319,12 +346,10 @@ function WorkOrdersPage() {
                     {canWrite && (
                       <td className="px-3 py-3">
                         <div className="flex items-center justify-end gap-3 text-ink-400">
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(wo)}
-                            aria-label={t.ops.wo.deleteTitle}
-                            className="hover:text-red-400"
-                          >
+                          <button type="button" onClick={() => openEdit(wo)} aria-label="Edit work order" className="hover:text-ink-100">
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button type="button" onClick={() => handleDelete(wo)} aria-label={t.ops.wo.deleteTitle} className="hover:text-red-400">
                             <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
@@ -339,7 +364,7 @@ function WorkOrdersPage() {
       </Panel>
 
       {showCreate && (
-        <Modal title={t.ops.wo.newTitle} onClose={() => setShowCreate(false)}>
+        <Modal title={editing ? 'Edit Work Order' : t.ops.wo.newTitle} onClose={() => { setShowCreate(false); setEditing(null) }}>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             {/* Full width: Project used to sit beside it, and a lone half-width select left a gap. */}
             <div>
@@ -419,7 +444,7 @@ function WorkOrdersPage() {
             {formError && <p className="text-sm text-red-400">{formError}</p>}
 
             <button type="submit" disabled={submitting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
-              {submitting ? t.ops.wo.creating : t.ops.wo.create}
+              {submitting ? (editing ? 'Saving…' : t.ops.wo.creating) : editing ? 'Save Changes' : t.ops.wo.create}
             </button>
           </form>
         </Modal>
