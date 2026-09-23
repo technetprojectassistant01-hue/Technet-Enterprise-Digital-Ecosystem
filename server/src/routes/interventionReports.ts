@@ -526,7 +526,10 @@ router.post("/:id/approve", requireRole(...OPS_MANAGE_ROLES), async (req, res) =
 router.post("/:id/reject", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
   const id = req.params.id as string;
   const { note } = req.body ?? {};
-  const result = await review(id, req.user!.sub, "REJECTED", typeof note === "string" ? note : undefined);
+  if (typeof note !== "string" || !note.trim()) {
+    return res.status(400).json({ error: "A rejection comment is required" });
+  }
+  const result = await review(id, req.user!.sub, "REJECTED", note.trim().slice(0, 1000));
   if (result.error === "not_found") return res.status(404).json({ error: "Intervention report not found" });
   if (result.error === "invalid_transition") {
     return res.status(400).json({ error: `Cannot reject a report in ${result.fromStatus} status` });
