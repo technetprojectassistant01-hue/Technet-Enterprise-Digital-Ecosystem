@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, X, Check, Download, Link2, BellRing } from 'lucide-react'
 import * as api from '../lib/api'
 import type { InterventionReport, ReminderInterval, PhotoKind } from '../lib/api'
@@ -85,6 +85,7 @@ function PhotoGrid({
 function InterventionReportDetailPage() {
   const { id } = useParams<{ id: string }>()
   const toast = useToast()
+  const navigate = useNavigate()
   const t = useT()
   const { user } = useAuth()
   const workOrders = useWorkOrders()
@@ -210,6 +211,7 @@ function InterventionReportDetailPage() {
   if (error || !report) return <EmptyState icon={X} message={error || t.ops.irDetail.notFound} />
 
   const canManage = hasRole(user?.role, OPS_MANAGE_ROLES)
+  const canCorrect = report.status === 'REJECTED' && report.createdBy.id === user?.id
   const reminderDue = !!report.nextReminderAt && new Date(report.nextReminderAt) <= new Date()
   const workTypeLabel = enumLabel(t.labels.workType, report.workType)
 
@@ -262,6 +264,21 @@ function InterventionReportDetailPage() {
           <p className="text-sm text-ink-300">
             <span className="font-semibold text-ink-100">{t.ops.irDetail.reviewNote}</span> {report.reviewNote}
           </p>
+        </Panel>
+      )}
+
+      {canCorrect && (
+        <Panel>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-ink-300">Correct the report using the rejection comment, then resubmit it for review.</p>
+            <button
+              type="button"
+              onClick={() => navigate(`/dashboard/operations/intervention-reports/new?reportId=${report.id}`)}
+              className={primaryButtonClass}
+            >
+              Correct and Resubmit
+            </button>
+          </div>
         </Panel>
       )}
 
