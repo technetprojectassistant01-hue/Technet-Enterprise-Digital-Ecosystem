@@ -2318,6 +2318,13 @@ export function linkWorkOrderToInterventionReport(id: string, workOrderId: strin
   })
 }
 
+export function resubmitInterventionReport(id: string, input: InterventionReportInput) {
+  return request<{ interventionReport: InterventionReport }>(`/api/intervention-reports/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
+}
+
 export function setInterventionReportReminder(id: string, interval: ReminderInterval | null) {
   return request<{ interventionReport: InterventionReport }>(`/api/intervention-reports/${id}/reminder`, {
     method: 'POST',
