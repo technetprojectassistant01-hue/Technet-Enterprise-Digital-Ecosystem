@@ -291,10 +291,13 @@ router.post("/", requireRole(...OPS_MANAGE_ROLES), async (req, res) => {
 
 router.patch("/:id", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
   const id = req.params.id as string;
-  const { title, description, scheduledDate, status, technicianIds, siteQuery } = req.body ?? {};
+  const { customerId, title, jobCategory, description, scheduledDate, status, technicianIds, siteQuery } = req.body ?? {};
 
   if (status !== undefined && !STATUSES.includes(status)) {
     return res.status(400).json({ error: "Invalid status" });
+  }
+  if (jobCategory !== undefined && !JOB_CATEGORIES.includes(jobCategory)) {
+    return res.status(400).json({ error: "Invalid job category" });
   }
   if (status !== undefined) {
     const current = await prisma.workOrder.findUnique({ where: { id }, select: { status: true } });
@@ -308,7 +311,9 @@ router.patch("/:id", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
   }
 
   const data: Prisma.WorkOrderUpdateInput = {};
+  if (typeof customerId === "string" && customerId) data.customer = { connect: { id: customerId } };
   if (typeof title === "string" && title.trim()) data.title = title.trim();
+  if (jobCategory !== undefined) data.jobCategory = jobCategory as JobCategory;
   if (description !== undefined) data.description = description || null;
   if (scheduledDate !== undefined) data.scheduledDate = new Date(scheduledDate);
   if (status !== undefined) data.status = status as Status;
