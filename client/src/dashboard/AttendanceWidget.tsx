@@ -370,6 +370,7 @@ function AttendanceWidget() {
 
         {/* Primary action + its fields */}
         {(() => {
+          const showTransportNote = transportCost.trim() !== '' && Number.isFinite(Number(transportCost)) && Number(transportCost) === 0
           const time = (
             <div className="flex flex-col gap-1">
               <label htmlFor="att-time" className={fieldLabelClass}>
@@ -405,19 +406,21 @@ function AttendanceWidget() {
                   className={inputClass}
                 />
               </div>
-              <div className="col-span-2 flex flex-col gap-1">
-                <label htmlFor="att-transport-note" className={fieldLabelClass}>
-                  {t.attendance.transportNote}
-                </label>
-                <input
-                  id="att-transport-note"
-                  value={transportNote}
-                  onChange={(e) => setTransportNote(e.target.value)}
-                  placeholder={t.attendance.transportNotePlaceholder}
-                  maxLength={200}
-                  className={inputClass}
-                />
-              </div>
+              {showTransportNote && (
+                <div className="col-span-2 flex flex-col gap-1">
+                  <label htmlFor="att-transport-note" className={fieldLabelClass}>
+                    {t.attendance.transportNote}
+                  </label>
+                  <input
+                    id="att-transport-note"
+                    value={transportNote}
+                    onChange={(e) => setTransportNote(e.target.value)}
+                    placeholder={t.attendance.transportNotePlaceholder}
+                    maxLength={200}
+                    className={inputClass}
+                  />
+                </div>
+              )}
             </>
           )
           const siteField = (
