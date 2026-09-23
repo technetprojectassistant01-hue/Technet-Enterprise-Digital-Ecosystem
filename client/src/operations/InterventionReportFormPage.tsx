@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Paperclip, X as XIcon, ImagePlus, Lock } from 'lucide-react'
+import * as api from '../lib/api'
 import type { InterventionReport, JobCategory, WarrantyStatus } from '../lib/api'
 import { JOB_CATEGORY_LABELS, WORK_TYPE_LABELS } from '../lib/api'
 import type { ServiceCategory } from '../lib/api'
@@ -147,6 +148,7 @@ function InterventionReportFormPage() {
   const canSubmit = hasRole(user?.role, OPS_SUBMIT_ROLES)
   const [searchParams] = useSearchParams()
   const preselectedWorkOrderId = searchParams.get('workOrderId') || ''
+  const correctionReportId = searchParams.get('reportId') || ''
 
   const customers = useCustomers()
   const workOrders = useWorkOrders()
@@ -197,6 +199,44 @@ function InterventionReportFormPage() {
 
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [loadingCorrection, setLoadingCorrection] = useState(!!correctionReportId)
+
+  useEffect(() => {
+    if (!correctionReportId) return
+    api
+      .getInterventionReport(correctionReportId)
+      .then(({ interventionReport }) => {
+        setCustomerId(interventionReport.customerId)
+        setWorkOrderId(interventionReport.workOrderId || '')
+        setContactPerson(interventionReport.contactPerson || '')
+        setContactPhone(interventionReport.contactPhone || '')
+        setContactEmail(interventionReport.contactEmail || '')
+        setJobCategory(interventionReport.jobCategory)
+        setWorkType(interventionReport.workType)
+        setWorkTypeOther(interventionReport.workTypeOther || '')
+        setEquipment(interventionReport.equipment || '')
+        setMake(interventionReport.make || '')
+        setModel(interventionReport.model || '')
+        setSerialNo(interventionReport.serialNo || '')
+        setNatureOfIntervention(interventionReport.natureOfIntervention)
+        setActionTaken(interventionReport.actionTaken)
+        setWorkCompleted(interventionReport.workCompleted)
+        setIncompleteDetails(interventionReport.incompleteDetails || '')
+        setUnits(interventionReport.units.map((unit) => ({ label: unit.label, problem: unit.problem, action: unit.action || '' })))
+        setTechnicianIds(interventionReport.technicians.map((technician) => technician.employee.id))
+        setTimeIn(interventionReport.timeIn || '')
+        setTimeOut(interventionReport.timeOut || '')
+        setWarrantyStatus(interventionReport.warrantyStatus || '')
+        setTechnicianReport(interventionReport.technicianReport || '')
+        setMaterialsUsed(interventionReport.materialsUsed || '')
+        setComments(interventionReport.comments || '')
+        setAdditionalInfo(interventionReport.additionalInfo || '')
+        setSignedByName(interventionReport.signedByName || '')
+        setDraftRestored(false)
+      })
+      .catch((err) => setFormError(err instanceof Error ? err.message : t.ops.irForm.submitFailed))
+      .finally(() => setLoadingCorrection(false))
+  }, [correctionReportId])
 
   useEffect(() => {
     const fields: DraftFields = {
@@ -342,7 +382,7 @@ function InterventionReportFormPage() {
       setFormError(t.ops.irForm.actionRequired)
       return
     }
-    if (!signatureData) {
+    if (!correctionReportId && !signatureData) {
       setFormError(t.ops.irForm.signRequired)
       return
     }
@@ -362,6 +402,40 @@ function InterventionReportFormPage() {
 
     setSubmitting(true)
     try {
+      if (correctionReportId) {
+        const { interventionReport } = await api.resubmitInterventionReport(correctionReportId, {
+          customerId,
+          workOrderId: workOrderId || undefined,
+          contactPerson: contactPerson || undefined,
+          contactPhone: contactPhone || undefined,
+          contactEmail: contactEmail || undefined,
+          jobCategory,
+          workType,
+          workTypeOther: workType === 'OTHER' ? workTypeOther || undefined : undefined,
+          equipment: equipment || undefined,
+          make: make || undefined,
+          model: model || undefined,
+          serialNo: serialNo || undefined,
+          natureOfIntervention,
+          actionTaken,
+          workCompleted,
+          incompleteDetails: workCompleted ? undefined : incompleteDetails || undefined,
+          timeIn: timeIn || undefined,
+          timeOut: timeOut || undefined,
+          warrantyStatus: warrantyStatus || undefined,
+          technicianReport: technicianReport || undefined,
+          materialsUsed: materialsUsed || undefined,
+          comments: comments || undefined,
+          additionalInfo: additionalInfo || undefined,
+          technicianIds,
+          units: cleanedUnits.length > 0 ? cleanedUnits : undefined,
+          signedByName,
+        })
+        toast.success(t.ops.irForm.submitted)
+        navigate(`/dashboard/operations/intervention-reports/${interventionReport.id}`)
+        return
+      }
+
       let attachmentData: string | undefined
       if (attachmentFile) {
         attachmentData = await readFileAsDataUrl(attachmentFile)
@@ -436,6 +510,8 @@ function InterventionReportFormPage() {
       setSubmitting(false)
     }
   }
+
+  if (loadingCorrection) return null
 
   if (!canSubmit) {
     return <EmptyState icon={Lock} message={t.ops.irForm.noPermission} />
