@@ -287,6 +287,7 @@ model User {
   overtimeDecisionsMade     OvertimeDecision[] @relation("OvertimeDecider")
   attendanceValidationsDecided AttendanceValidation[] @relation("AttendanceValidationDecider")
   employeeDocumentsUploaded EmployeeDocument[] @relation("EmployeeDocumentUploader")
+  attendanceAnomaliesResolved AttendanceAnomaly[] @relation("AttendanceAnomalyResolver")
 
   quotationsCreated Quotation[] @relation("QuotationCreator")
 
@@ -438,6 +439,9 @@ model Employee {
   overtimeDecisions OvertimeDecision[]
   attendanceValidations AttendanceValidation[]
   personalDocuments EmployeeDocument[]
+
+  attendanceAudits    AttendanceAudit[]
+  attendanceAnomalies AttendanceAnomaly[]
 }
 
 model Certification {
@@ -1148,6 +1152,7 @@ model SiteAttendance {
   checkOutByManager              Boolean        @default(false)
 
   verifications SiteVerification[]
+  audits        AttendanceAudit[]
 
   @@index([workOrderId])
   @@index([employeeId])
@@ -1183,6 +1188,97 @@ model SiteVerification {
   exitReasonNote   String?
 
   @@index([siteAttendanceId])
+}
+
+/**
+ * A random, unpredictable "are you still there" push notification during an open shift - the free
+ * alternative to continuous GPS tracking. Compared against the technician's own check-in GPS fix
+ * (not a work order's site coordinates, which are optional and rarely set - see SiteVerification's
+ * comment above), so it works for every open session, not just work-order-linked ones.
+ */
+enum AuditStatus {
+  /** Scheduled. The push may or may not have gone out yet - see pushSentAt. */
+  PENDING
+  /** The technician tapped through in time and a GPS fix was captured. */
+  CONFIRMED
+  /** Push sent, no response within the 5-minute window - a strike. */
+  MISSED
+  /**
+   * Due, but the employee has no push subscription registered. Not a strike - opting out of the
+   * "Reminders" push toggle must not read as a compliance failure.
+   */
+  SKIPPED
+  /** The shift ended (checkout) before this one fired. */
+  CANCELLED
+}
+
+model AttendanceAudit {
+  id               String          @id @default(uuid())
+  siteAttendanceId String
+  siteAttendance   SiteAttendance  @relation(fields: [siteAttendanceId], references: [id], onDelete: Cascade)
+  employeeId       String
+  employee         Employee        @relation(fields: [employeeId], references: [id])
+  scheduledAt      DateTime
+  pushSentAt       DateTime?
+  respondedAt      DateTime?
+  status           AuditStatus     @default(PENDING)
+  lat              Decimal?        @db.Decimal(9, 6)
+  lng              Decimal?        @db.Decimal(9, 6)
+  distanceMeters   Int?
+  /** Reuses LocationMatch (MATCHED/MISMATCH/UNCHECKABLE) for consistency with the check-in/out fields above. */
+  match            LocationMatch?
+  createdAt        DateTime        @default(now())
+
+  // Each audit can be paired into at most one anomaly, as either its earlier or later strike -
+  // enforced by the unique FK below, not just by the app's "skip if already paired" check.
+  anomalyAsFirst  AttendanceAnomaly? @relation("AnomalyFirstAudit")
+  anomalyAsSecond AttendanceAnomaly? @relation("AnomalySecondAudit")
+
+  @@index([siteAttendanceId])
+  @@index([employeeId])
+  @@index([status, scheduledAt])
+}
+
+/**
+ * HIGH when both flagged audits were MISSED outright (no response at all - device off, or the app
+ * closed deliberately); STANDARD when at least one was a CONFIRMED-but-too-far response. A simple,
+ * tunable v1 rule, not a scored risk model.
+ */
+enum AnomalySeverity {
+  STANDARD
+  HIGH
+}
+
+enum AnomalyStatus {
+  OPEN
+  CONFIRMED_VIOLATION
+  FALSE_POSITIVE
+  DISMISSED
+}
+
+/**
+ * Created once an employee racks up two consecutive audit strikes (missed or out-of-radius) -
+ * never on a single one. Reviewed by Operations on the Attendance Anomalies queue; HR can see it
+ * (same access split as Team Attendance) but only Operations decides it.
+ */
+model AttendanceAnomaly {
+  id             String          @id @default(uuid())
+  employeeId     String
+  employee       Employee        @relation(fields: [employeeId], references: [id])
+  firstAuditId   String          @unique
+  firstAudit     AttendanceAudit @relation("AnomalyFirstAudit", fields: [firstAuditId], references: [id])
+  secondAuditId  String          @unique
+  secondAudit    AttendanceAudit @relation("AnomalySecondAudit", fields: [secondAuditId], references: [id])
+  severity       AnomalySeverity @default(STANDARD)
+  status         AnomalyStatus   @default(OPEN)
+  resolvedById   String?
+  resolvedBy     User?           @relation("AttendanceAnomalyResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+  resolvedAt     DateTime?
+  resolutionNote String?
+  createdAt      DateTime        @default(now())
+
+  @@index([employeeId])
+  @@index([status])
 }
 
 model DailyWorkReport {
@@ -1500,6 +1596,7 @@ enum NotificationType {
   ATTENDANCE_VALIDATION_REQUESTED
   ATTENDANCE_VALIDATED
   ATTENDANCE_VALIDATION_REJECTED
+  ATTENDANCE_ANOMALY_DETECTED
 }
 
 model Notification {
