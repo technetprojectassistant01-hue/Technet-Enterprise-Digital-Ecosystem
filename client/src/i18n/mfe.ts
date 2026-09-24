@@ -267,6 +267,10 @@ export const mfe: Dict = {
     remindersNeedHomeScreen: 'Azout lor lekran dakey pou gagn rapel',
     remindersOffToast: 'Rapel pointaz finn tegn',
     remindersOnToast: 'Rapel aktive — nou pou rapel ou a 8h15 si ou pa ankor pointe',
+    reminderTest: 'Avoy enn test',
+    reminderTestSending: 'Pe avoye…',
+    reminderTestSent: 'Rappel test finn avoye',
+    reminderTestNotDelivered: 'Server pa finn trouv okenn device aktif',
     reminderFailed: 'Pa finn kapav sanz rapel',
   },
 
