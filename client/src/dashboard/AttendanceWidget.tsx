@@ -65,6 +65,7 @@ function ReminderToggle() {
   const [devices, setDevices] = useState<number | null>(null)
   const [available, setAvailable] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [testBusy, setTestBusy] = useState(false)
   const support = pushSupport()
 
   useEffect(() => {
@@ -101,16 +102,35 @@ function ReminderToggle() {
     }
   }
 
+  async function sendTest() {
+    setTestBusy(true)
+    try {
+      const { delivered } = await api.sendPushReminderTest()
+      toast.success(delivered > 0 ? t.attendance.reminderTestSent : t.attendance.reminderTestNotDelivered)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t.attendance.reminderFailed)
+    } finally {
+      setTestBusy(false)
+    }
+  }
+
   return (
-    <button
-      type="button"
-      onClick={toggle}
-      disabled={busy}
-      className="flex items-center gap-1.5 text-xs text-ink-400 hover:text-cyan-accent disabled:opacity-50"
-    >
-      {devices > 0 ? <BellRing className="h-3.5 w-3.5 text-cyan-accent" /> : <BellOff className="h-3.5 w-3.5" />}
-      {devices > 0 ? t.attendance.remindersOn : t.attendance.remindMe}
-    </button>
+    <div className="flex items-center gap-3">
+      <button
+        type="button"
+        onClick={toggle}
+        disabled={busy || testBusy}
+        className="flex items-center gap-1.5 text-xs text-ink-400 hover:text-cyan-accent disabled:opacity-50"
+      >
+        {devices > 0 ? <BellRing className="h-3.5 w-3.5 text-cyan-accent" /> : <BellOff className="h-3.5 w-3.5" />}
+        {devices > 0 ? t.attendance.remindersOn : t.attendance.remindMe}
+      </button>
+      {devices > 0 && (
+        <button type="button" onClick={sendTest} disabled={busy || testBusy} className="text-xs text-ink-400 hover:text-cyan-accent disabled:opacity-50">
+          {testBusy ? t.attendance.reminderTestSending : t.attendance.reminderTest}
+        </button>
+      )}
+    </div>
   )
 }
 
