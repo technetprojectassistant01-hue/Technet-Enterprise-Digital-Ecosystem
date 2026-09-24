@@ -3,6 +3,7 @@ import { prisma } from "../lib/prisma";
 import { requireAuth } from "../middleware/auth";
 import { pushConfigured, sendPushToUser } from "../lib/push";
 import { todayUtc } from "../lib/leaveRequests";
+import { AUDIT_RESPONSE_WINDOW_MS, evaluateStrike } from "../lib/attendanceAudit";
 
 const router = Router();
 
@@ -144,5 +145,67 @@ async function sendAttendanceReminders(kind: "check-in" | "check-out", req: Requ
 
 router.post("/send-checkin-reminders", (req, res) => sendAttendanceReminders("check-in", req, res));
 router.post("/send-checkout-reminders", (req, res) => sendAttendanceReminders("check-out", req, res));
+
+/**
+ * Fires and sweeps random attendance-audit pings, called every 5 minutes by
+ * .github/workflows/attendance-audit.yml (GitHub's minimum cron granularity - same secret-guard
+ * and "machine caller" posture as the reminder endpoints above).
+ *
+ * Off by default: this stays a no-op until ATTENDANCE_AUDIT_ENABLED=true is set in the server
+ * environment. The code shipping does not mean the feature is cleared to run against real
+ * technicians - that also needs the Mauritius Data Protection Act consent/policy update, which is
+ * a separate, explicitly out-of-scope piece of work. Don't set the env var before that lands.
+ */
+router.post("/run-attendance-audits", async (req, res) => {
+  const secret = process.env.REMINDER_TRIGGER_SECRET;
+  const provided = req.get("x-reminder-secret");
+  if (!secret || provided !== secret) return res.status(404).json({ error: "Not found" });
+
+  if (process.env.ATTENDANCE_AUDIT_ENABLED !== "true") {
+    return res.json({ enabled: false, pushed: 0, missed: 0 });
+  }
+
+  const due = await prisma.attendanceAudit.findMany({
+    where: { status: "PENDING", scheduledAt: { lte: new Date() }, pushSentAt: null },
+    include: { employee: { select: { userId: true } } },
+  });
+
+  let pushed = 0;
+  let skipped = 0;
+  for (const audit of due) {
+    if (!audit.employee.userId) {
+      await prisma.attendanceAudit.update({ where: { id: audit.id }, data: { status: "SKIPPED" } });
+      skipped += 1;
+      continue;
+    }
+    const delivered = await sendPushToUser(audit.employee.userId, {
+      title: "Compliance check",
+      body: "Tap within 5 minutes to confirm you're on site.",
+      url: `/dashboard/audit-check?id=${audit.id}`,
+      tag: `audit-${audit.id}`,
+    });
+    if (delivered > 0) {
+      await prisma.attendanceAudit.update({ where: { id: audit.id }, data: { pushSentAt: new Date() } });
+      pushed += 1;
+    } else {
+      // No device registered - not the employee's fault, so this must not count as a strike.
+      await prisma.attendanceAudit.update({ where: { id: audit.id }, data: { status: "SKIPPED" } });
+      skipped += 1;
+    }
+  }
+
+  const overdue = await prisma.attendanceAudit.findMany({
+    where: {
+      status: "PENDING",
+      pushSentAt: { lte: new Date(Date.now() - AUDIT_RESPONSE_WINDOW_MS) },
+    },
+  });
+  for (const audit of overdue) {
+    await prisma.attendanceAudit.update({ where: { id: audit.id }, data: { status: "MISSED" } });
+    await evaluateStrike(audit.id);
+  }
+
+  res.json({ enabled: true, pushed, skipped, missed: overdue.length });
+});
 
 export default router;
