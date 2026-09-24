@@ -99,6 +99,24 @@ export const MAIN_NAV: NavItem[] = [
       { label: 'Documents', to: '/dashboard/erp/documents', icon: FileText, hiddenFrom: NON_COMMERCIAL_ROLES },
     ],
   },
+  // Technet HR holds everything about people. Employees, Leave and Certifications used to live
+  // under Technet ERP and the rest under Technet Workforce, which split one job across two menus.
+  {
+    label: 'Technet HR',
+    to: '/dashboard/hr',
+    icon: Users,
+    hiddenFrom: NON_HR_ROLES,
+    children: [
+      { label: 'Overview', to: '/dashboard/hr', icon: LayoutGrid, end: true },
+      { label: 'Employees', to: '/dashboard/hr/employees', icon: UserCog },
+      { label: 'Leave', to: '/dashboard/hr/leave', icon: CalendarDays },
+      { label: 'Overtime', to: '/dashboard/hr/overtime', icon: Clock },
+      { label: 'Validations', to: '/dashboard/hr/validations', icon: FileCheck2 },
+      { label: 'Payroll', to: '/dashboard/hr/payroll', icon: Banknote },
+      { label: 'Certifications', to: '/dashboard/hr/certifications', icon: BadgeCheck },
+      { label: 'Availability', to: '/dashboard/hr/availability', icon: UserCheck },
+    ],
+  },
   {
     label: 'Technet Store',
     to: '/dashboard/store',
@@ -120,24 +138,6 @@ export const MAIN_NAV: NavItem[] = [
       // Manager-only screens: technicians and office roles don't see them in the menu.
       { label: 'Team Attendance', to: '/dashboard/operations/team-attendance', icon: MapPinned, hiddenFrom: NON_OPS_MANAGE_ROLES },
       { label: 'Field Operations', to: '/dashboard/operations/field-tracking', icon: Radar, hiddenFrom: NON_OPS_MANAGE_ROLES },
-    ],
-  },
-  // Technet HR holds everything about people. Employees, Leave and Certifications used to live
-  // under Technet ERP and the rest under Technet Workforce, which split one job across two menus.
-  {
-    label: 'Technet HR',
-    to: '/dashboard/hr',
-    icon: Users,
-    hiddenFrom: NON_HR_ROLES,
-    children: [
-      { label: 'Overview', to: '/dashboard/hr', icon: LayoutGrid, end: true },
-      { label: 'Employees', to: '/dashboard/hr/employees', icon: UserCog },
-      { label: 'Leave', to: '/dashboard/hr/leave', icon: CalendarDays },
-      { label: 'Overtime', to: '/dashboard/hr/overtime', icon: Clock },
-      { label: 'Validations', to: '/dashboard/hr/validations', icon: FileCheck2 },
-      { label: 'Payroll', to: '/dashboard/hr/payroll', icon: Banknote },
-      { label: 'Certifications', to: '/dashboard/hr/certifications', icon: BadgeCheck },
-      { label: 'Availability', to: '/dashboard/hr/availability', icon: UserCheck },
     ],
   },
   { label: 'Technet Digital Marketing', to: '/dashboard/marketing', icon: Megaphone, hiddenFrom: NON_COMMERCIAL_ROLES },
