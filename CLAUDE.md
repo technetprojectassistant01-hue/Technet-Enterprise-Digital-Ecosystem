@@ -68,7 +68,7 @@ Everyone lands on **Overview** (`/dashboard`) — as of 2026-08-19 this is real,
 | — Projects | Built | Project registry, assignments, status history |
 | — Documents | Built | File storage (DB `Bytes` column, not S3/cloud storage), categorized by Contract/Invoice/HR/Project/General/Quotation |
 | **Technet Store** (was Technet Maintenance) | **Rebuilt as Tools & Equipment** (2026-09-14) | See §21. Two tabs: **Tools & Equipment** (`/dashboard/store/tools`, the individually-tracked tool register with who holds what) and **Tool Requests** (`/dashboard/store/requests`). It used to be customer-equipment maintenance (Assets/Contracts/Requests/Schedule + maintenance visit reports) — those **screens were removed at the user's request**, but the tables, data and `/api/maintenance-*` routes were deliberately kept (see §21). |
-| **Technet Operations** | Built | Work Orders (now with a `WAITING_FOR_PARTS`/`REOPENED` lifecycle, added 2026-08-19), Daily Reports, Intervention Reports, Team Attendance, Field Operations — see §7, this is where most recent work has concentrated |
+| **Technet Operations** | Built | Work Orders (now with a `WAITING_FOR_PARTS`/`REOPENED` lifecycle, added 2026-08-19), Daily Reports, Intervention Reports, Team Attendance, Field Operations, Attendance Anomalies (§28, random GPS audit pings — built but **off** until `ATTENDANCE_AUDIT_ENABLED` is set) — see §7, this is where most recent work has concentrated |
 | **Technet Workforce** | Built | Restructured 2026-08-20 per manager/stakeholder discussion, to stop ERP HR and Workforce covering the same ground. Three tabs: **Availability** (`/dashboard/workforce/availability`, default landing page) — read-only "who's available today" grouped into Available/On Leave/Absent, built on the existing manual attendance register (no real biometric attendance-machine integration exists — see §11), visible to HR **and Operations Managers** (`WORKFORCE_VIEW_ROLES`) since Operations consults it before assigning jobs, though job assignment itself stays in Operations, not Workforce. **Attendance** (moved from ERP HR — daily register + timesheets, HR-only edit rights). **Payroll** (run creation, per-employee line breakdown, net pay computation, HR-only). |
 | **Technet Connect** | **Built** (2026-08-24) | Customer self-service portal at `/portal/*` — a fully separate auth domain from staff, not the internal `Role` enum (see §6). Customers view their own quotations/invoices (SENT+ only, drafts hidden) with PDF download, track job/work-order status (customer-safe field subset — no GPS, no technician names), and submit quote requests. Staff grants/resets/revokes portal access from the Customers page (`/dashboard/erp/finance/customers`), and manages incoming requests from a new "Quote Requests" tab on the Quotations page, converting one into a real draft `Quotation`. No self-registration — staff-granted only. |
 | **Technet Digital Marketing** | **Built — Phase 1 only** (2026-08-26) | `/dashboard/marketing` — Campaigns (`MarketingCampaign`) and a flat, filterable Content Calendar across all campaigns' `MarketingPost`s (title/platform/copy/scheduled date/status). Deliberately no AI, no auto-publish, no real platform integrations (Phases 2/3 of a 3-phase scoping plan — see §10a) — Marketing plans posts here and marks them Posted by hand after publishing elsewhere themselves. Gated to `MARKETING_ROLES` (ADMIN + SALES_OFFICER — no confirmed real owner yet, see §6). |
@@ -1467,3 +1467,70 @@ Invoices removed**, **Follow-Up kept**.
 - **Old links redirect**: `/dashboard/erp/finance/quotations/:id` keeps its id, the other finance paths land on
   their new tab, anything else (invoices, expenses) on the customer list. Server notification links in
   `quotations.ts` and `portal.ts` were repointed.
+
+## 28. Random attendance audit pings (2026-09-24)
+
+The trust problem §7a's GPS check-in doesn't solve on its own: a technician can check in, leave the
+site, and only come back to check out, and the shift log looks clean the whole time. Solved for
+free with unpredictable "are you still there?" push notifications during an open shift, rather than
+any paid tracking/mapping service.
+
+**A request for this arrived assuming the wrong backend** - worth recording since it could recur.
+The ask assumed Technet Digital's API runs on Cloudflare Workers (reasoning from the client's
+`*.workers.dev` URL) and specified Workers-only primitives - a Workers-compatible VAPID library,
+Durable Object alarms/Cron Triggers/queues. **The API is a normal Node.js + Express app on Render**
+(§2/§3); the Cloudflare Worker (`client/worker/index.ts`) is only the static-asset host + `/api/*`
+proxy for the client. Checking this before building mattered: it meant no new push infrastructure
+was needed at all (Web Push already exists, §18) and the existing GitHub Actions cron pattern
+(`checkin-reminder.yml`) was the right scheduling mechanism, not new infra.
+
+- **Reference point is the technician's own check-in GPS fix** (`SiteAttendance.checkInLat/Lng`),
+  not a work order's site coordinates - those are optional and rarely set now (§7a), so anchoring
+  there would silently do nothing for most sessions. `AUDIT_MATCH_RADIUS_METERS = 300` (a real
+  GPS-fix-to-GPS-fix comparison, tighter than the 10km address-centroid check in §7a but with
+  headroom for ordinary drift and legitimate movement around a site).
+- **Scheduling has no dependency on a shift-length model**: `scheduleAuditTimes()`
+  (`server/src/lib/attendanceAudit.ts`) picks 2-4 random offsets 30 minutes-8 hours after check-in,
+  at least 45 minutes apart, at check-in time. Anything still `PENDING` at check-out (including a
+  manager's forgotten-session close) is simply set `CANCELLED`, so there's nothing to model.
+- **New models**: `AttendanceAudit` (one scheduled/answered ping; `AuditStatus` =
+  `PENDING`/`CONFIRMED`/`MISSED`/`SKIPPED`/`CANCELLED`) and `AttendanceAnomaly` (opened once an
+  employee racks up two *consecutive* strikes - never on one). A missing push subscription is
+  `SKIPPED`, deliberately not a strike - opting out of the existing "Reminders" toggle must never
+  read as a compliance failure. "Consecutive" means back-to-back in that employee's own audit
+  history with no time cap and not scoped to a single shift (a deliberate choice, confirmed with the
+  user) - a `SKIPPED`/`CANCELLED` audit in between neither breaks nor extends a streak, but a clean
+  `CONFIRMED`/`MATCHED` one resets it. Severity is `HIGH` only when both paired strikes were
+  outright `MISSED` (no response at all), `STANDARD` otherwise.
+- **The poller** is `POST /api/push/run-attendance-audits` (`server/src/routes/push.ts`), same
+  secret-guard as the existing reminder endpoints, called every 5 minutes 07:00-18:59 Mauritius
+  Mon-Sat by `.github/workflows/attendance-audit.yml` (GitHub's minimum cron granularity; this
+  daytime window was a deliberate choice over a 24/7 or wider cron, confirmed with the user, so an
+  audit scheduled outside it just goes stale rather than firing late).
+- **Confirming** is `GET`/`POST /api/attendance-audits/:id[/confirm]` - a foreground page
+  (`client/src/operations/AuditCheckPage.tsx`, opened by the notification's `notificationclick`, no
+  Service Worker geolocation involved) that calls the existing `getPosition()`
+  (`client/src/lib/geolocation.ts`). A late tap past the 5-minute window 410s rather than racing the
+  poller's own `MISSED` sweep. **The technician's own screen never shows a match/mismatch verdict**
+  - same no-covert-monitoring precedent as `AttendanceWidget.tsx` (§7a): this is about not
+  confronting people with monitoring in their own UI, not concealment, and the outcome is fully
+  visible to managers.
+- **Manager review queue**: `/dashboard/operations/anomalies`
+  (`AttendanceAnomaliesPage.tsx`), visible to `ATTENDANCE_VIEW_ROLES` (HR included, same split as
+  Team Attendance in §27e) but the three decisions - Mark False Positive / Confirm Violation /
+  Dismiss - are `OPS_MANAGE_ROLES`-only.
+- **Off by default, on purpose**: `POST /api/push/run-attendance-audits` no-ops entirely unless
+  `ATTENDANCE_AUDIT_ENABLED=true` is set in the server environment. The code shipping is not the
+  same as the feature being cleared to run against real technicians - that also needs the
+  Mauritius Data Protection Act consent/employment-agreement update, which is explicitly
+  out-of-scope work flagged back rather than built. **Don't set that env var in Render before that
+  policy work is confirmed done.** The two-hourly photo-proof idea from the same request was
+  likewise flagged back, not built.
+- Verified with unit tests (`server/src/lib/attendanceAudit.test.ts`) for the pure scheduling/
+  strike logic, and a disposable `server/scratch-attendance-audit.ts` (deleted after use, per §9)
+  against the real dev database for `evaluateStrike`'s Prisma-touching pairing logic - including
+  that a stray `notifyRoles` notification the script triggered was found and deleted afterward, not
+  just the rows the script created directly. The full HTTP-level poller/confirm round trip and a
+  live `workflow_dispatch` firing were **not** exercised this session (would touch the shared
+  production database/notifications further and needs `ATTENDANCE_AUDIT_ENABLED` set to do
+  anything) - worth doing once policy sign-off actually turns the feature on.
