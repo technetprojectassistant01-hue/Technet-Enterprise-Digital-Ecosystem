@@ -44,3 +44,12 @@ services:
         sync: false
       - key: REMINDER_TRIGGER_SECRET
         sync: false
+      # Master on/off switch for random GPS attendance-audit pings (server/src/routes/push.ts,
+      # CLAUDE.md §28). Declared here (sync: false) so the Blueprint doesn't drop it, but the
+      # value itself is set by hand in the dashboard, same as the secrets above - this repo never
+      # sets it to "true" itself. Unset (or anything other than the literal string "true") keeps
+      # POST /api/push/run-attendance-audits a no-op even though .github/workflows/attendance-audit.yml
+      # is already running on its cron. Set to "true" only once real GPS audit pings against
+      # technicians are actually meant to start.
+      - key: ATTENDANCE_AUDIT_ENABLED
+        sync: false
