@@ -4,7 +4,7 @@ import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { isForeignKeyConstraintError, isNotFoundError, isUniqueConstraintError } from "../lib/prismaErrors";
 import { formatInterventionNumber } from "../lib/interventionNumber";
-import { OPS_MANAGE_ROLES, OPS_SUBMIT_ROLES } from "../lib/roles";
+import { ATTENDANCE_VIEW_ROLES, OPS_MANAGE_ROLES, OPS_SUBMIT_ROLES } from "../lib/roles";
 import { geocodeAddress } from "../lib/geocode";
 import { notifyEmployee, notifyRoles } from "../lib/notifications";
 import { mauritiusDay } from "../lib/overtime";
@@ -160,7 +160,7 @@ router.get("/my-day", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
 // "Who is in the field right now", for Field Operations. Site attendance no longer links to a
 // work order (CLAUDE.md §7a), so this is a team-attendance feed: open sessions, plus the last
 // 50 closed ones.
-router.get("/site-tracking", requireRole(...OPS_MANAGE_ROLES), async (_req, res) => {
+router.get("/site-tracking", requireRole(...ATTENDANCE_VIEW_ROLES), async (_req, res) => {
   const [current, recentlyCompleted] = await Promise.all([
     prisma.siteAttendance.findMany({
       where: { checkOutAt: null },
