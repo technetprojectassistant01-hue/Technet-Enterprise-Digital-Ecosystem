@@ -32,7 +32,6 @@ export const NON_OPS_MANAGE_ROLES: readonly Role[] = [
   'SALES_OFFICER',
   'FINANCE_OFFICER',
   'STOREKEEPER',
-  'HR_OFFICER',
   'FIELD_TECHNICIAN',
   'EMPLOYEE',
 ]
