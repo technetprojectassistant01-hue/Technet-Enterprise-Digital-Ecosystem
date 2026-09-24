@@ -1,0 +1,43 @@
+name: Attendance audit pings
+
+# Every 5 minutes, 07:00-18:59 Mauritius (03:00-14:59 UTC, UTC+4 with no daylight saving), Mon-Sat -
+# same daytime window as checkin-reminder.yml. 5 minutes is GitHub's minimum cron granularity, and
+# scheduled runs are best-effort and can lag under load, same caveat as that job.
+#
+# The endpoint itself is gated behind ATTENDANCE_AUDIT_ENABLED on the server and is a no-op until
+# that's set - see server/src/routes/push.ts. Merging/enabling this workflow does not turn real
+# pings on; setting that env var in Render does, and shouldn't happen before the Data Protection
+# Act consent/policy work is finished.
+on:
+  schedule:
+    - cron: "*/5 3-14 * * 1-6"
+  workflow_dispatch: # so it can be fired by hand to test, without waiting for the next tick
+
+jobs:
+  run-audits:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run due attendance audit pings
+        env:
+          API_URL: ${{ vars.API_URL || 'https://technet-digital-api.onrender.com' }}
+          REMINDER_SECRET: ${{ secrets.REMINDER_TRIGGER_SECRET }}
+        run: |
+          if [ -z "$REMINDER_SECRET" ]; then
+            echo "REMINDER_TRIGGER_SECRET is not set in repository secrets — nothing sent."
+            exit 1
+          fi
+
+          response=$(curl -sS -m 180 -w '\n%{http_code}' -X POST \
+            -H "x-reminder-secret: $REMINDER_SECRET" \
+            -H 'Content-Type: application/json' \
+            "$API_URL/api/push/run-attendance-audits")
+
+          body=$(echo "$response" | sed '$d')
+          status=$(echo "$response" | tail -n1)
+          echo "HTTP $status"
+          echo "$body"
+
+          if [ "$status" != "200" ]; then
+            echo "Attendance audit trigger failed."
+            exit 1
+          fi
