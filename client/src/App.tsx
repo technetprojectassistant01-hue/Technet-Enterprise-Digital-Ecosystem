@@ -222,8 +222,10 @@ function App() {
           <Route path="settings" element={<SettingsPage />} />
           <Route element={<AdminRoute />}>
             <Route path="users" element={<UsersPage />} />
-            <Route path="leave-approvals" element={<LeaveApprovalsPage />} />
             <Route path="insight" element={<InsightDashboardPage />} />
+          </Route>
+          <Route element={<AdminRoute allowHr />}>
+            <Route path="leave-approvals" element={<LeaveApprovalsPage />} />
           </Route>
         </Route>
       </Route>
