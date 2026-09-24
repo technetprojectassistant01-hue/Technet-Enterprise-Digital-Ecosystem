@@ -90,8 +90,8 @@ export async function enablePushReminders(): Promise<void> {
 export async function disablePushReminders(): Promise<void> {
   const registration = await navigator.serviceWorker.getRegistration()
   const subscription = await registration?.pushManager.getSubscription()
-  if (!subscription) return
-  const endpoint = subscription.endpoint
-  await subscription.unsubscribe().catch(() => {})
-  await api.removePushSubscription(endpoint)
+  if (subscription) {
+    await subscription.unsubscribe().catch(() => {})
+  }
+  await api.removeAllPushSubscriptions()
 }
