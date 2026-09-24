@@ -42,6 +42,8 @@ import InterventionReportFormPage from './operations/InterventionReportFormPage'
 import InterventionReportDetailPage from './operations/InterventionReportDetailPage'
 import TeamAttendancePage from './operations/TeamAttendancePage'
 import FieldOperationsPage from './operations/FieldOperationsPage'
+import AttendanceAnomaliesPage from './operations/AttendanceAnomaliesPage'
+import AuditCheckPage from './operations/AuditCheckPage'
 import StoreLayout from './store/StoreLayout'
 import ToolsPage from './store/ToolsPage'
 import ToolRequestsPage from './store/ToolRequestsPage'
@@ -187,7 +189,9 @@ function App() {
             <Route path="intervention-reports/:id" element={<InterventionReportDetailPage />} />
             <Route path="team-attendance" element={<TeamAttendancePage />} />
             <Route path="field-tracking" element={<FieldOperationsPage />} />
+            <Route path="anomalies" element={<AttendanceAnomaliesPage />} />
           </Route>
+          <Route path="audit-check" element={<AuditCheckPage />} />
           {/* Technet HR: the people work that used to be split between ERP > HR and Technet
               Workforce. Each tab keeps the role gate its own API already enforces. */}
           <Route path="hr" element={<HrModuleLayout />}>
