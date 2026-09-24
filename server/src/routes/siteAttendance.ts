@@ -6,6 +6,7 @@ import { distanceMeters, SITE_GEOFENCE_RADIUS_METERS } from "../lib/geo";
 import { notifyEmployee, notifyRoles } from "../lib/notifications";
 import { parseClockTime } from "../lib/clockTime";
 import { checkLocationAgainstGps } from "../lib/locationMatch";
+import { cancelPendingAudits, scheduleAuditTimes } from "../lib/attendanceAudit";
 import { claimRequest, releaseRequest } from "../lib/idempotency";
 import { notifyHrOfOvertime } from "../lib/overtimeQueue";
 import { buildAttendanceReport, parseRange } from "../lib/attendanceReport";
@@ -309,6 +310,7 @@ router.post("/:id/close", requireRole(...OPS_MANAGE_ROLES), async (req, res) => 
     include: { employee: { select: EMPLOYEE_SELECT }, workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE },
   });
   await notifyHrOfOvertime(siteAttendance.employeeId, siteAttendance.checkInAt);
+  await cancelPendingAudits(siteAttendance.id);
   res.json({ siteAttendance });
 });
 
@@ -498,6 +500,18 @@ router.post("/check-in", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
       include: { workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE },
     });
 
+    // 2-4 random "are you still there" audit pings, timed against this check-in - see
+    // lib/attendanceAudit.ts. Scheduled here, sent later by the poller (POST
+    // /api/push/run-attendance-audits); any still PENDING at checkout are cancelled below.
+    const auditTimes = scheduleAuditTimes(siteAttendance.checkInAt);
+    await prisma.attendanceAudit.createMany({
+      data: auditTimes.map((scheduledAt) => ({
+        siteAttendanceId: siteAttendance.id,
+        employeeId: employee.id,
+        scheduledAt,
+      })),
+    });
+
     // Only a genuinely new check-in reaches here - the deduped-replay branch above already
     // returned. Scoped to OPS_MANAGE_ROLES (not HR): Team Attendance/Field Operations, the screens
     // this links to, are already OPS_MANAGE_ROLES-gated, so notifying HR would point at a page
@@ -576,6 +590,8 @@ router.post("/check-out", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => 
       include: { workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE },
     });
     await notifyHrOfOvertime(siteAttendance.employeeId, siteAttendance.checkInAt);
+    // Nothing should ping after the shift has ended - cancel whatever audits were still pending.
+    await cancelPendingAudits(siteAttendance.id);
     res.json({ siteAttendance });
   } catch (err) {
     await releaseRequest(clientRequestId);
