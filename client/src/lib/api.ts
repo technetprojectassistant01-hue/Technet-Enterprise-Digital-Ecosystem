@@ -3120,6 +3120,10 @@ export function removePushSubscription(endpoint: string) {
   return request<{ ok: true }>('/api/push/unsubscribe', { method: 'POST', body: JSON.stringify({ endpoint }) })
 }
 
+export function removeAllPushSubscriptions() {
+  return request<{ ok: true }>('/api/push/unsubscribe-all', { method: 'POST' })
+}
+
 export function sendPushReminderTest() {
   return request<{ delivered: number }>('/api/push/test', { method: 'POST' })
 }
