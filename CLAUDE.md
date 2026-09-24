@@ -1527,10 +1527,25 @@ was needed at all (Web Push already exists, §18) and the existing GitHub Action
   policy work is confirmed done.** The two-hourly photo-proof idea from the same request was
   likewise flagged back, not built.
 - Verified with unit tests (`server/src/lib/attendanceAudit.test.ts`) for the pure scheduling/
-  strike logic, and a disposable `server/scratch-attendance-audit.ts` (deleted after use, per §9)
+  strike logic, a disposable `server/scratch-attendance-audit.ts` (deleted after use, per §9)
   against the real dev database for `evaluateStrike`'s Prisma-touching pairing logic - including
   that a stray `notifyRoles` notification the script triggered was found and deleted afterward, not
-  just the rows the script created directly. The full HTTP-level poller/confirm round trip and a
-  live `workflow_dispatch` firing were **not** exercised this session (would touch the shared
-  production database/notifications further and needs `ATTENDANCE_AUDIT_ENABLED` set to do
-  anything) - worth doing once policy sign-off actually turns the feature on.
+  just the rows the script created directly - and a real Playwright run against the local dev
+  server (disposable script in `pw-check/`, deleted after use, screenshots not kept) driving
+  `GET`/`POST /api/attendance-audits/:id[/confirm]` end to end through the actual
+  `AuditCheckPage.tsx`: pending → confirm on-site → neutral "recorded" message with no verdict
+  shown; reload of a resolved audit → "already recorded", not the form again; an already-`MISSED`
+  audit → same; an expired (past the 5-minute window) audit → "expired", no confirm button
+  rendered; and confirming from ~2km away → real `MISMATCH` recorded server-side
+  (`distanceMeters: 2002`, verified via Prisma) while the technician's own screen still shows only
+  the neutral "recorded" message - confirming the no-covert-monitoring UI precedent holds in
+  practice, not just in the code. One false alarm along the way is worth remembering: a request can
+  look permanently hung when it's really just the Neon cold-start delay (§9) compounding across
+  several requests fired close together - increasing the wait rather than assuming a bug resolved
+  it. A disposable test employee/user (`audit-pwcheck@test.local`) was created for the login and
+  fully deleted afterward, along with its session/audit/anomaly rows.
+- **Not** exercised this session: the poller endpoint itself
+  (`POST /api/push/run-attendance-audits`) and a live `workflow_dispatch` firing of
+  `attendance-audit.yml` - both need `ATTENDANCE_AUDIT_ENABLED` set to do anything, and firing the
+  real GitHub Actions workflow hits the production API. Worth doing once policy sign-off actually
+  turns the feature on.
