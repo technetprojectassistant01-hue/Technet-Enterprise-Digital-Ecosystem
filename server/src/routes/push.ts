@@ -70,6 +70,16 @@ router.get("/status", requireAuth, async (req, res) => {
   res.json({ enabled: pushConfigured, devices: count });
 });
 
+router.post("/test", requireAuth, async (req, res) => {
+  const delivered = await sendPushToUser(req.user!.sub, {
+    title: "Technet reminder test",
+    body: "Push reminders are working on this device.",
+    url: "/dashboard",
+    tag: "reminder-test",
+  });
+  res.json({ delivered });
+});
+
 function mauritiusToday(): Date {
   const now = new Date(Date.now() + 4 * 60 * 60 * 1000);
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
