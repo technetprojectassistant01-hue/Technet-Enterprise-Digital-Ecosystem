@@ -1731,6 +1731,44 @@ export interface SiteAttendanceWithEmployee extends SiteAttendance {
   employee: EmployeeSummary
 }
 
+/** A random "are you still there" GPS audit ping during an open shift - the free alternative to continuous tracking. */
+export type AuditStatus = 'PENDING' | 'CONFIRMED' | 'MISSED' | 'SKIPPED' | 'CANCELLED'
+
+export interface AttendanceAudit {
+  id: string
+  siteAttendanceId: string
+  employeeId: string
+  scheduledAt: string
+  pushSentAt: string | null
+  respondedAt: string | null
+  status: AuditStatus
+  lat: string | null
+  lng: string | null
+  distanceMeters: number | null
+  match: LocationMatch | null
+  createdAt: string
+}
+
+export type AnomalySeverity = 'STANDARD' | 'HIGH'
+export type AnomalyStatus = 'OPEN' | 'CONFIRMED_VIOLATION' | 'FALSE_POSITIVE' | 'DISMISSED'
+
+export interface AttendanceAnomaly {
+  id: string
+  employeeId: string
+  employee: EmployeeSummary
+  firstAuditId: string
+  firstAudit: AttendanceAudit
+  secondAuditId: string
+  secondAudit: AttendanceAudit
+  severity: AnomalySeverity
+  status: AnomalyStatus
+  resolvedById: string | null
+  resolvedBy: { id: string; name: string } | null
+  resolvedAt: string | null
+  resolutionNote: string | null
+  createdAt: string
+}
+
 export interface WorkOrderDetail extends WorkOrder {
   project: { id: string; name: string } | null
   interventionReports: {
@@ -1837,6 +1875,29 @@ export function verifyMyLocation(coords: { lat: number; lng: number }) {
 export function submitMyExitReason(input: { reason: SiteExitReason; note?: string }) {
   return request<{ verification: SiteVerification }>('/api/site-attendance/exit-reason', {
     method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function getAttendanceAudit(id: string) {
+  return request<{ audit: AttendanceAudit; expired: boolean }>(`/api/attendance-audits/${id}`)
+}
+
+export function confirmAttendanceAudit(id: string, coords: { lat: number; lng: number }) {
+  return request<{ ok: true }>(`/api/attendance-audits/${id}/confirm`, {
+    method: 'POST',
+    body: JSON.stringify(coords),
+  })
+}
+
+export function listAttendanceAnomalies(status?: AnomalyStatus) {
+  const query = status ? `?status=${status}` : ''
+  return request<{ anomalies: AttendanceAnomaly[] }>(`/api/attendance-audits/anomalies${query}`)
+}
+
+export function decideAttendanceAnomaly(id: string, input: { status: Exclude<AnomalyStatus, 'OPEN'>; note?: string }) {
+  return request<{ anomaly: AttendanceAnomaly }>(`/api/attendance-audits/anomalies/${id}`, {
+    method: 'PATCH',
     body: JSON.stringify(input),
   })
 }
@@ -2763,6 +2824,7 @@ export type NotificationType =
   | 'ATTENDANCE_VALIDATION_REQUESTED'
   | 'ATTENDANCE_VALIDATED'
   | 'ATTENDANCE_VALIDATION_REJECTED'
+  | 'ATTENDANCE_ANOMALY_DETECTED'
 
 export interface Notification {
   id: string
