@@ -64,6 +64,11 @@ router.post("/unsubscribe", requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
+router.post("/unsubscribe-all", requireAuth, async (req, res) => {
+  await prisma.pushSubscription.deleteMany({ where: { userId: req.user!.sub } });
+  res.json({ ok: true });
+});
+
 /** Whether this user has any device registered - drives the toggle's state in the UI. */
 router.get("/status", requireAuth, async (req, res) => {
   const count = await prisma.pushSubscription.count({ where: { userId: req.user!.sub } });
