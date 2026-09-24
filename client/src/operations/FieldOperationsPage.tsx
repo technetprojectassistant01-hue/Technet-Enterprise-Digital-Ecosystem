@@ -4,7 +4,7 @@ import * as api from '../lib/api'
 import type { SiteTrackingEntry } from '../lib/api'
 import { Panel, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { useAuth } from '../context/AuthContext'
-import { hasRole, OPS_MANAGE_ROLES } from '../lib/permissions'
+import { hasRole, ATTENDANCE_VIEW_ROLES } from '../lib/permissions'
 import { mapLink } from '../lib/geolocation'
 import { locationMismatchLabel, statedTimeSuffix, totalTransportCost } from '../lib/siteAttendance'
 import { formatMoney } from '../lib/format'
@@ -102,7 +102,7 @@ function RequestCheck({ entry }: { entry: SiteTrackingEntry }) {
 function FieldOperationsPage() {
   const t = useT()
   const { user } = useAuth()
-  const canAccess = hasRole(user?.role, OPS_MANAGE_ROLES)
+  const canAccess = hasRole(user?.role, ATTENDANCE_VIEW_ROLES)
 
   const [current, setCurrent] = useState<SiteTrackingEntry[]>([])
   const [recentlyCompleted, setRecentlyCompleted] = useState<SiteTrackingEntry[]>([])
