@@ -5,7 +5,7 @@ import * as api from '../lib/api'
 import type { SiteAttendanceWithEmployee, TechnicianAttendanceSummary } from '../lib/api'
 import { Panel, Badge, EmptyState, Modal, TableSkeleton } from '../dashboard/ui'
 import { useAuth } from '../context/AuthContext'
-import { hasRole, OPS_MANAGE_ROLES } from '../lib/permissions'
+import { hasRole, ATTENDANCE_VIEW_ROLES } from '../lib/permissions'
 import { mapLink } from '../lib/geolocation'
 import {
   hasLocationMismatch,
@@ -122,7 +122,7 @@ function hoursOnSite(v: SiteAttendanceWithEmployee): string {
 function TeamAttendancePage() {
   const t = useT()
   const { user } = useAuth()
-  const canAccess = hasRole(user?.role, OPS_MANAGE_ROLES)
+  const canAccess = hasRole(user?.role, ATTENDANCE_VIEW_ROLES)
   const employees = useEmployees()
   const toast = useToast()
 
