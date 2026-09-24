@@ -266,6 +266,10 @@ export const en = {
     remindersNeedHomeScreen: 'Add to your Home Screen for reminders',
     remindersOffToast: 'Check-in reminders turned off',
     remindersOnToast: "Reminders on — we'll nudge you at 8:15 if you haven't checked in",
+    reminderTest: 'Send test',
+    reminderTestSending: 'Sending…',
+    reminderTestSent: 'Test reminder sent',
+    reminderTestNotDelivered: 'The server found no active device subscription',
     reminderFailed: 'Could not change reminder settings',
   },
 
