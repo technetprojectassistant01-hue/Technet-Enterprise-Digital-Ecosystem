@@ -1339,6 +1339,89 @@ managers saved together, so it takes the next number instead of failing. The fie
 gone from the form and from `WorkOrderInput`. Verified against the real data: with 100 and 101 on file,
 two consecutive creates came back 102 and 103.
 
+## 27. Recent implementation updates (2026-09-21 to 2026-09-24)
+
+This section records the changes made after the previous handoff update. The implementation was pushed
+to `main` in small, separate commits per the user's requested workflow. The unrelated `package-lock.json`
+churn caused by a local `npm i` was intentionally left uncommitted.
+
+### 27a. Search and module navigation
+
+- The dashboard shell search (`client/src/Dashboard.tsx`) is functional: it searches the visible navigation
+  tree, shows matching pages, and navigates on click or Enter. It is not a decorative input.
+- `ModuleHeader` search (`client/src/dashboard/ModuleHeader.tsx`) is functional for module tabs. It is
+  controlled when a page supplies live search props and otherwise searches the current module's actual tabs.
+  Inactive module headers no longer show dead search controls.
+- Registry pages gained local text filtering where they previously had no useful search: Work Orders,
+  Daily Reports, Intervention Reports, Tool Requests, Payroll Runs and Contracts. Existing API/date/status
+  filters remain in place; the new text filters search the loaded records client-side.
+- The Operations module header now includes Work Orders, Daily Reports, Intervention Reports, Team Attendance
+  and Field Operations for users in `ATTENDANCE_VIEW_ROLES`; other roles retain the first three tabs.
+- The main navigation order for HR is now Attendance, Technet HR, Technet Store, then Technet Operations.
+  Existing role filtering still hides ERP, Connect, Marketing and Insight from HR.
+
+### 27b. Work-order corrections
+
+- Managers can edit an existing work order from `client/src/operations/WorkOrdersPage.tsx`.
+- The edit form can correct customer, job category, title, description, scheduled date and assigned technicians.
+- `PATCH /api/work-orders/:id` now accepts `customerId` and `jobCategory` in addition to its existing update
+  fields. Work-order status remains governed by `ALLOWED_TRANSITIONS`.
+- Work-order completion is a shared `WorkOrder.status`, not a per-technician status: when one assigned
+  technician marks the work order completed, every technician assigned to that work order sees it completed.
+
+### 27c. Intervention report rejection and resubmission
+
+- Rejecting an intervention report now requires a non-empty reviewer comment. The comment is stored in the
+  existing `InterventionReport.reviewNote` field and is visible on the report detail page.
+- The rejection UI opens a comment modal instead of immediately rejecting. English, French and Mauritian
+  Creole dictionaries contain the new labels and validation messages.
+- The original report creator can use **Correct and Resubmit** on a rejected report. The correction form loads
+  the original report, preserves its existing signature, updates the editable fields, resets the status to
+  `SUBMITTED`, clears the old review state, and notifies operations management for review again.
+- The server enforces creator ownership and only permits this correction path for reports whose current status
+  is `REJECTED`; manager-only administrative linking/editing remains protected.
+
+### 27d. Field attendance transport explanations
+
+- A field technician entering transport `0` for check-in or check-out must provide a reason. The client shows
+  the reason field only when the entered value is numerically zero (`0`, `0.00`, etc.).
+- The API enforces the same rule, so a client bypass cannot save a zero transport amount without an explanation.
+- `SiteAttendance` now stores `checkInTransportNote` and `checkOutTransportNote` through migration
+  `20260921120000_require_zero_transport_note`. The explanation remains separate from the GPS location note.
+- The reason is exposed through attendance data/report fingerprints and displayed to supervisors in Team
+  Attendance.
+
+### 27e. Attendance permissions for HR
+
+- HR now has full read access to the staff attendance register through `ATTENDANCE_VIEW_ROLES`.
+- Team Attendance uses `ATTENDANCE_VIEW_ROLES` on the client instead of only `OPS_MANAGE_ROLES`.
+- Field Operations is also readable by HR: its client page and the server's `/api/work-orders/site-tracking`
+  endpoint use `ATTENDANCE_VIEW_ROLES`. HR can read the field feed; operations-only actions such as closing
+  forgotten sessions or requesting a location verification remain `OPS_MANAGE_ROLES`.
+- Leave Approvals is available to HR as well as Admin. `AdminRoute` accepts an explicit `allowHr` option,
+  and only the Leave Approvals route uses it; User Management and Insight remain Admin-only.
+
+### 27f. Push attendance reminders
+
+- Web Push reminders use the existing `PushSubscription` model, VAPID credentials and service worker, so a
+  registered device can receive notifications while the PWA is closed. This is browser/PWA push, not a native
+  WhatsApp-style app guarantee; iOS requires the app to be installed to the Home Screen.
+- Scheduled reminders are triggered by `.github/workflows/checkin-reminder.yml` in Mauritius time converted
+  to UTC: `04:15 UTC` for 08:15 check-in reminders and `13:15 UTC` for 17:15 check-out reminders, Monday
+  through Saturday. The server derives the business date in `Indian/Mauritius`, not from the host's UTC day.
+- Check-in reminders target employees without an open attendance session; check-out reminders target employees
+  with an open attendance session. Approved leave and public holidays are excluded.
+- `/api/push/send-checkout-reminders` was added beside the existing check-in endpoint. `/api/push/test` sends
+  an immediate authenticated test notification to the signed-in user's registered device.
+- The Attendance card shows a **Send test** action while reminders are enabled and reports whether the server
+  reached a device. This is the first diagnostic step when a scheduled reminder is not visible.
+- Stale subscriptions are handled by `/api/push/unsubscribe-all`; disabling reminders now clears all server
+  subscriptions even if the browser lost its local subscription. This lets the toggle reliably move from
+  **Reminders on** back to **Remind me**, after which the device can be registered again.
+- A successful GitHub Actions run proves only that the API was called. It does not prove a browser displayed the
+  notification; use **Send test**, verify browser/OS notification permission, and confirm the PWA is installed
+  on iOS.
+
 **The work-order site lookup was never confined to Mauritius** (fixed 2026-09-16). `resolveSiteLocation`
 in `workOrders.ts` called `geocodeAddress` with no options, so it ignored the `countrycodes=mu` rule §7b
 says anything comparing typed text to a place must set. Measured against the real API: **"Rose Hill"
