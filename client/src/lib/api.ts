@@ -3119,3 +3119,7 @@ export function savePushSubscription(payload: {
 export function removePushSubscription(endpoint: string) {
   return request<{ ok: true }>('/api/push/unsubscribe', { method: 'POST', body: JSON.stringify({ endpoint }) })
 }
+
+export function sendPushReminderTest() {
+  return request<{ delivered: number }>('/api/push/test', { method: 'POST' })
+}
