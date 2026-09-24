@@ -263,6 +263,10 @@ export const fr: Dict = {
     remindersNeedHomeScreen: "Ajoutez à l'écran d'accueil pour les rappels",
     remindersOffToast: 'Rappels de pointage désactivés',
     remindersOnToast: "Rappels activés — nous vous préviendrons à 8 h 15 si vous n'avez pas pointé",
+    reminderTest: 'Envoyer un test',
+    reminderTestSending: 'Envoi…',
+    reminderTestSent: 'Rappel test envoyé',
+    reminderTestNotDelivered: "Aucun appareil actif n'est enregistré sur le serveur",
     reminderFailed: 'Impossible de modifier les rappels',
   },
 
