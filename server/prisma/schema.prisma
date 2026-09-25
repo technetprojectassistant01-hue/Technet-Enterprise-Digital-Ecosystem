@@ -1220,6 +1220,9 @@ model AttendanceAudit {
   employee         Employee        @relation(fields: [employeeId], references: [id])
   scheduledAt      DateTime
   pushSentAt       DateTime?
+  /** A second, re-alerting push partway through the response window - re-vibrates/re-sounds via the
+   * same notification tag, for a technician who missed the first one. Null until sent, at most once. */
+  nudgedAt         DateTime?
   respondedAt      DateTime?
   status           AuditStatus     @default(PENDING)
   lat              Decimal?        @db.Decimal(9, 6)
