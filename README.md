@@ -132,6 +132,9 @@ and get set in the Render dashboard:
 | `JWT_SECRET` | Any long random string — **rotating it logs every user out** |
 | `RESEND_API_KEY` | From Resend, for password-reset email |
 | `EMAIL_FROM` | The verified sender address |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | Web Push credentials. Without these, push (reminders and audit pings) silently no-ops — see `server/src/lib/push.ts` |
+| `REMINDER_TRIGGER_SECRET` | Shared secret an external caller sends as the `x-reminder-secret` header to fire push reminders/audit pings — see **Scheduled jobs** below |
+| `ATTENDANCE_AUDIT_ENABLED` | Master on/off switch for real GPS audit pings (`true` to enable). Leave unset in any environment where technicians shouldn't actually be pinged yet |
 
 Use Neon's direct URL, not the pooled one: `prisma migrate deploy` takes advisory
 locks that Neon's connection pooler doesn't support, so migrations fail on the
@@ -164,6 +167,30 @@ Railway setup. Nothing reads it.
   no egress), not a larger database.
 
 If full Cloudflare-only hosting becomes a requirement later, the API would need to be rewritten with [Hono](https://hono.dev) (an Express-like framework that runs on Workers) instead of Express, paired with Cloudflare D1 as the database.
+
+### Scheduled jobs
+
+Three server-side jobs run on a schedule, all guarded by the same shared-secret pattern (an
+external caller sends `x-reminder-secret: $REMINDER_TRIGGER_SECRET`; a missing or wrong secret
+gets a 404, not a 401, so the endpoint's existence isn't advertised):
+
+| Job | Endpoint | Schedule (Mauritius time) |
+|---|---|---|
+| Check-in reminder | `POST /api/push/send-checkin-reminders` | 08:15, Mon–Sat |
+| Check-out reminder | `POST /api/push/send-checkout-reminders` | 17:15, Mon–Sat |
+| Attendance audit pings | `POST /api/push/run-attendance-audits` | Every 5 min, 07:00–18:59, Mon–Sat |
+
+**These run on an external cron service ([cron-job.org](https://cron-job.org), free tier), not
+GitHub Actions.** GitHub Actions `schedule:` triggers were tried first and measured unreliable on
+this account — a `*/5` cron fired once in over 4 hours, and a fixed twice-daily cron landed roughly
+once a day at unpredictable times, regardless of its configured hours (ruled out: repo Actions
+permissions, billing/throttling — see CLAUDE.md §27f for the full measurement). `.github/workflows/
+checkin-reminder.yml` and `attendance-audit.yml` still exist but are `workflow_dispatch`-only now,
+for manual testing — they are not what triggers these jobs in production.
+
+Each cron-job.org job's own timezone is set to `Indian/Mauritius`, so its schedule is entered
+directly in local time with no UTC conversion. If a reminder or audit ping goes missing, check that
+job's execution history on cron-job.org first — it's the real scheduler now.
 
 ## API
 
