@@ -1406,9 +1406,13 @@ churn caused by a local `npm i` was intentionally left uncommitted.
 - Web Push reminders use the existing `PushSubscription` model, VAPID credentials and service worker, so a
   registered device can receive notifications while the PWA is closed. This is browser/PWA push, not a native
   WhatsApp-style app guarantee; iOS requires the app to be installed to the Home Screen.
-- Scheduled reminders are triggered by `.github/workflows/checkin-reminder.yml` in Mauritius time converted
-  to UTC: `04:15 UTC` for 08:15 check-in reminders and `13:15 UTC` for 17:15 check-out reminders, Monday
-  through Saturday. The server derives the business date in `Indian/Mauritius`, not from the host's UTC day.
+- Scheduled reminders are triggered by an external cron service (**cron-job.org**, 2026-09-25 - see the
+  note below), calling `/api/push/send-checkin-reminders` at 08:15 Mauritius and
+  `/api/push/send-checkout-reminders` at 17:15 Mauritius, Monday through Saturday, both with the
+  `x-reminder-secret` header set to the same `REMINDER_TRIGGER_SECRET` value as Render.
+  `.github/workflows/checkin-reminder.yml` still exists but is `workflow_dispatch`-only now (manual testing),
+  its `schedule:` triggers removed. The server derives the business date in `Indian/Mauritius`, not from the
+  host's UTC day.
 - Check-in reminders target employees without an open attendance session; check-out reminders target employees
   with an open attendance session. Approved leave and public holidays are excluded.
 - `/api/push/send-checkout-reminders` was added beside the existing check-in endpoint. `/api/push/test` sends
@@ -1418,9 +1422,23 @@ churn caused by a local `npm i` was intentionally left uncommitted.
 - Stale subscriptions are handled by `/api/push/unsubscribe-all`; disabling reminders now clears all server
   subscriptions even if the browser lost its local subscription. This lets the toggle reliably move from
   **Reminders on** back to **Remind me**, after which the device can be registered again.
-- A successful GitHub Actions run proves only that the API was called. It does not prove a browser displayed the
+- A successful trigger run proves only that the API was called. It does not prove a browser displayed the
   notification; use **Send test**, verify browser/OS notification permission, and confirm the PWA is installed
   on iOS.
+
+**GitHub Actions `schedule:` cron is not reliable on this account - migrated off it entirely (2026-09-25).**
+Measured directly (see git history around this date for both workflow files): `checkin-reminder.yml`'s fixed
+twice-daily cron (04:15/13:15 UTC) landed roughly **once a day**, at times unrelated to either configured
+slot (e.g. 09:18, 17:50, 09:55 UTC over a week of samples) - not the "several minutes of lag" the old comment
+here assumed. `attendance-audit.yml`'s `*/5` schedule (built the same day this was found, §28) showed the
+identical pattern: one run in over 4 hours, an hour past its own configured window, then nothing for a full
+day. This is a platform/account-level GitHub Actions scheduling limitation, confirmed **not** caused by repo
+settings (Actions permissions checked: "Allow all actions and reusable workflows", nothing restricted) or
+billing (usage metering shows $0 billed, no throttling). Both workflow files were changed to
+`workflow_dispatch`-only; **cron-job.org** (free tier) now calls the same secret-guarded endpoints directly,
+with each job's timezone set to `Indian/Mauritius` so schedule hours need no UTC conversion. If a future
+reminder/audit stops arriving, check the cron-job.org job's own execution history before assuming the server
+or GitHub Actions is the problem - it's the actual scheduler now, not decoration.
 
 **The work-order site lookup was never confined to Mauritius** (fixed 2026-09-16). `resolveSiteLocation`
 in `workOrders.ts` called `geocodeAddress` with no options, so it ignored the `countrycodes=mu` rule §7b
@@ -1504,9 +1522,12 @@ was needed at all (Web Push already exists, §18) and the existing GitHub Action
   outright `MISSED` (no response at all), `STANDARD` otherwise.
 - **The poller** is `POST /api/push/run-attendance-audits` (`server/src/routes/push.ts`), same
   secret-guard as the existing reminder endpoints, called every 5 minutes 07:00-18:59 Mauritius
-  Mon-Sat by `.github/workflows/attendance-audit.yml` (GitHub's minimum cron granularity; this
-  daytime window was a deliberate choice over a 24/7 or wider cron, confirmed with the user, so an
-  audit scheduled outside it just goes stale rather than firing late).
+  Mon-Sat (this daytime window was a deliberate choice, confirmed with the user, so an audit
+  scheduled outside it just goes stale rather than firing late). **Not** called by
+  `.github/workflows/attendance-audit.yml`'s cron any more - GitHub Actions scheduled triggers
+  proved unreliable on this account (measured the same day, see §27f) and the file is now
+  `workflow_dispatch`-only for manual testing. **cron-job.org** is the real trigger, timezone set
+  to `Indian/Mauritius` on the job itself so the 07:00-18:59 window needs no UTC math.
 - **Confirming** is `GET`/`POST /api/attendance-audits/:id[/confirm]` - a foreground page
   (`client/src/operations/AuditCheckPage.tsx`, opened by the notification's `notificationclick`, no
   Service Worker geolocation involved) that calls the existing `getPosition()`
@@ -1519,13 +1540,26 @@ was needed at all (Web Push already exists, §18) and the existing GitHub Action
   (`AttendanceAnomaliesPage.tsx`), visible to `ATTENDANCE_VIEW_ROLES` (HR included, same split as
   Team Attendance in §27e) but the three decisions - Mark False Positive / Confirm Violation /
   Dismiss - are `OPS_MANAGE_ROLES`-only.
-- **Off by default, on purpose**: `POST /api/push/run-attendance-audits` no-ops entirely unless
-  `ATTENDANCE_AUDIT_ENABLED=true` is set in the server environment. The code shipping is not the
-  same as the feature being cleared to run against real technicians - that also needs the
-  Mauritius Data Protection Act consent/employment-agreement update, which is explicitly
-  out-of-scope work flagged back rather than built. **Don't set that env var in Render before that
-  policy work is confirmed done.** The two-hourly photo-proof idea from the same request was
-  likewise flagged back, not built.
+- **Built off by default, on purpose - but already switched on regardless.** `POST
+  /api/push/run-attendance-audits` no-ops entirely unless `ATTENDANCE_AUDIT_ENABLED=true`, which
+  was meant to gate real pings behind the Mauritius Data Protection Act consent/employment-agreement
+  update (explicitly out-of-scope work, flagged back rather than built - a draft policy PDF exists,
+  see below, but was never reviewed or issued). **The user set the env var to `true` in Render on
+  2026-09-25 anyway**, after being told plainly this meant real GPS audit pings would start against
+  real technicians before that policy work was done. That's the user's call to make, not a
+  technical decision - if this comes up again, the policy/consent gap is still real and unresolved,
+  it just isn't blocking the feature any more. The two-hourly photo-proof idea from the same request
+  is still flagged back, not built.
+- **The draft policy** is `Technet_GPS_Attendance_Policy_DRAFT.pdf` (2026-09-24, in the user's
+  Downloads folder, not this repo - it's an HR/legal document, not app code). Built from a
+  separately-supplied draft (`technet_engineering_gps_attendance_policy.docx`) by rendering it
+  through this app's own PDF letterhead system (`server/src/lib/pdf/shared.ts` -
+  `drawLetterhead`/`drawFooterBanner`/Carlito fonts/brand colors, the same code every quotation and
+  invoice uses) rather than a generic document, plus a full-page "DRAFT" watermark on every page and
+  two open placeholders (who fields policy questions; the disciplinary-policy cross-reference) left
+  as visible callouts rather than invented. As of the update above, this draft has **not** been
+  reviewed by legal or issued to employees - it exists, but the policy gap it was meant to close is
+  still open.
 - Verified with unit tests (`server/src/lib/attendanceAudit.test.ts`) for the pure scheduling/
   strike logic, a disposable `server/scratch-attendance-audit.ts` (deleted after use, per §9)
   against the real dev database for `evaluateStrike`'s Prisma-touching pairing logic - including
@@ -1544,8 +1578,12 @@ was needed at all (Web Push already exists, §18) and the existing GitHub Action
   several requests fired close together - increasing the wait rather than assuming a bug resolved
   it. A disposable test employee/user (`audit-pwcheck@test.local`) was created for the login and
   fully deleted afterward, along with its session/audit/anomaly rows.
-- **Not** exercised this session: the poller endpoint itself
-  (`POST /api/push/run-attendance-audits`) and a live `workflow_dispatch` firing of
-  `attendance-audit.yml` - both need `ATTENDANCE_AUDIT_ENABLED` set to do anything, and firing the
-  real GitHub Actions workflow hits the production API. Worth doing once policy sign-off actually
-  turns the feature on.
+- **Update, 2026-09-25**: `ATTENDANCE_AUDIT_ENABLED` was set to `true` in Render at the user's
+  explicit direction, **before** the GPS attendance policy (`Technet_GPS_Attendance_Policy_DRAFT.pdf`,
+  drafted the same day) had gone through legal/DPA review or been issued to employees - flagged
+  plainly at the time, the user's call to make, made anyway. The poller was verified live via a
+  manual `workflow_dispatch` run of `attendance-audit.yml` (`{"enabled":true,"pushed":0,"skipped":0,
+  "missed":0}` - zero counts because nothing was due at that moment, not an error), which is also
+  what surfaced the GitHub Actions cron-reliability problem above. The real schedule now runs on
+  cron-job.org, confirmed via that service's own execution history (200 OK, ticking every 5 minutes
+  as configured) - the audit-ping feature is genuinely live in production, not just enabled-but-idle.
