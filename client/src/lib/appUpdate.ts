@@ -30,6 +30,13 @@ export function watchForAppUpdate(onUpdateReady: () => void): () => void {
   const checkForUpdate = () => {
     navigator.serviceWorker.getRegistration().then((reg) => reg?.update()).catch(() => {})
   }
+  // A cold launch (fully closed, then reopened - the normal way a technician opens a home-screen
+  // app, and exactly what happens after tapping a push notification) is a fresh page load with no
+  // backgrounded-to-foregrounded transition to fire visibilitychange, and no interval tick has
+  // elapsed yet either - so without this, a brand new session could run on a service worker
+  // that's a full deploy behind for however long it takes the browser's own lazy update check to
+  // get around to it. Checking once immediately closes that gap.
+  checkForUpdate()
   // An installed PWA can sit open for hours without a navigation that would otherwise trigger
   // the browser's own update check, so look periodically — and whenever it's brought back to the
   // foreground, which is how a home-screen app is usually "reopened" on a phone.
