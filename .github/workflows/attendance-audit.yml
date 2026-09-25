@@ -1,17 +1,24 @@
 name: Attendance audit pings
 
-# Every 5 minutes, 07:00-18:59 Mauritius (03:00-14:59 UTC, UTC+4 with no daylight saving), Mon-Sat -
-# same daytime window as checkin-reminder.yml. 5 minutes is GitHub's minimum cron granularity, and
-# scheduled runs are best-effort and can lag under load, same caveat as that job.
+# workflow_dispatch only - the schedule trigger was removed 2026-09-25. Measured against this
+# actual GitHub account/repo: a */5 cron here fired once in >4 hours, ~1 hour after its own
+# configured window had already closed, then not again for a full day - not "best-effort lag",
+# effectively non-functional for a 5-minute-response-window feature. checkin-reminder.yml's own
+# history shows the identical pattern (its fixed twice-daily cron lands roughly once a day at
+# unrepeatable times), so this is a platform/account-level limitation, not something wrong with
+# this specific workflow file. GitHub's own guidance is that high-frequency scheduled workflows
+# get deprioritized under load, which matches what was observed.
+#
+# The reliable trigger is now an external cron service (cron-job.org or equivalent) calling
+# POST /api/push/run-attendance-audits directly on the same schedule this file used to run
+# (every 5 minutes, 07:00-18:59 Mauritius / 03:00-14:59 UTC, Mon-Sat) with the
+# x-reminder-secret header set to the same REMINDER_TRIGGER_SECRET value configured in Render.
+# This file is kept for manual workflow_dispatch testing only.
 #
 # The endpoint itself is gated behind ATTENDANCE_AUDIT_ENABLED on the server and is a no-op until
-# that's set - see server/src/routes/push.ts. Merging/enabling this workflow does not turn real
-# pings on; setting that env var in Render does, and shouldn't happen before the Data Protection
-# Act consent/policy work is finished.
+# that's set - see server/src/routes/push.ts.
 on:
-  schedule:
-    - cron: "*/5 3-14 * * 1-6"
-  workflow_dispatch: # so it can be fired by hand to test, without waiting for the next tick
+  workflow_dispatch: # manual testing only - see above for the real trigger
 
 jobs:
   run-audits:
