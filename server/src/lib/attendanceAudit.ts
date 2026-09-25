@@ -31,6 +31,14 @@ export const AUDIT_MATCH_RADIUS_METERS = 300;
 export const AUDIT_RESPONSE_WINDOW_MS = 5 * 60 * 1000;
 
 /**
+ * How long after the first push, unanswered, a second re-alerting nudge goes out (same
+ * notification tag, so it re-vibrates/re-sounds rather than stacking a duplicate). Must leave a
+ * real gap before AUDIT_RESPONSE_WINDOW_MS closes, and the poller needs to run more often than
+ * this gap to ever catch the window - see the note on the poller endpoint itself.
+ */
+export const AUDIT_NUDGE_DELAY_MS = 2.5 * 60 * 1000;
+
+/**
  * Picks 2-4 random future times for audit pings, at least MIN_GAP_MS apart, all within
  * [MIN_OFFSET_MS, MAX_OFFSET_MS] of check-in. Pure and deterministic given a seeded `random`, so
  * it's unit-testable without touching the clock or the DB.
