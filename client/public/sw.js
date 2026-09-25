@@ -203,9 +203,22 @@ function savePendingNav(url) {
   })
 }
 
+/**
+ * Reconstructs the audit-check deep link from a notification's tag alone, for when `data` came
+ * back empty. iOS Safari has a real, observed reliability problem where a notification's `data`
+ * object isn't preserved through to `notificationclick` after a cold launch, silently falling back
+ * to a default - invisible for every push before this feature because they all defaulted to
+ * '/dashboard' anyway. `tag` is a plain string, not an object, and has held up where `data` didn't.
+ */
+function auditUrlFromTag(tag) {
+  const match = typeof tag === 'string' && tag.match(/^audit-(.+)$/)
+  return match ? `/dashboard/audit-check?id=${match[1]}` : null
+}
+
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  const target = (event.notification.data && event.notification.data.url) || '/dashboard'
+  const dataUrl = event.notification.data && event.notification.data.url
+  const target = dataUrl || auditUrlFromTag(event.notification.tag) || '/dashboard'
 
   // Focus an already-open tab rather than opening a duplicate - a technician tapping the
   // reminder should land in the app they may already have running, not a second copy.
