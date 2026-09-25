@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, Download, Lock, MapPin, Users } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Download, Lock, MapPin, Users } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import * as api from '../lib/api'
 import type { SiteAttendanceWithEmployee, TechnicianAttendanceSummary } from '../lib/api'
@@ -38,6 +38,62 @@ function WorkOrderLink({ v }: { v: SiteAttendanceWithEmployee }) {
     <Link to={`/dashboard/operations/work-orders/${v.workOrder.id}`} className="text-cyan-accent hover:underline">
       {v.workOrder.workOrderNumber}
     </Link>
+  )
+}
+
+/**
+ * A session's random compliance-check history (CLAUDE.md §28) - collapsed to a one-line summary
+ * by default, expandable to the full timeline. CANCELLED audits (still-pending ones a checkout
+ * wiped out) are left out entirely - they're not a signal about anything, just noise. Unlike the
+ * technician's own audit-check page, managers see the real match/mismatch verdict here - that
+ * distinction (not concealment, just not confronting someone with it on their own screen) is the
+ * same one the check-in widget already draws for location flags.
+ */
+function ComplianceChecks({ v }: { v: SiteAttendanceWithEmployee }) {
+  const t = useT()
+  const [open, setOpen] = useState(false)
+  const relevant = v.audits.filter((a) => a.status !== 'CANCELLED')
+  if (relevant.length === 0) return <span className="text-ink-400">{t.ops.team.checksNone}</span>
+
+  const strikes = relevant.filter((a) => a.status === 'MISSED' || (a.status === 'CONFIRMED' && a.match === 'MISMATCH')).length
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className={`flex items-center gap-1 text-xs font-semibold hover:underline ${strikes > 0 ? 'text-amber-400' : 'text-ink-300'}`}
+      >
+        {open ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+        {t.ops.team.checksSummary(relevant.length, strikes)}
+      </button>
+      {open && (
+        <ul className="mt-2 flex flex-col gap-1 border-l border-ink-700 pl-3">
+          {relevant.map((a) => (
+            <li key={a.id} className="text-xs text-ink-400">
+              {formatTime(a.scheduledAt)}
+              {' — '}
+              {a.status === 'PENDING' && t.ops.team.checkPending}
+              {a.status === 'SKIPPED' && t.ops.team.checkSkipped}
+              {a.status === 'MISSED' && <span className="font-medium text-amber-400">{t.ops.team.checkMissed}</span>}
+              {a.status === 'CONFIRMED' &&
+                (a.lat && a.lng ? (
+                  <a
+                    href={mapLink(a.lat, a.lng)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={`hover:underline ${a.match === 'MISMATCH' ? 'font-medium text-amber-400' : 'text-cyan-accent'}`}
+                  >
+                    {a.match === 'MISMATCH' ? t.ops.team.checkMismatch(a.distanceMeters ?? 0) : t.ops.team.checkMatched}
+                  </a>
+                ) : (
+                  t.ops.team.checkMatched
+                ))}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   )
 }
 
@@ -522,6 +578,7 @@ function TeamAttendancePage() {
                         <th className="px-3 py-2 font-semibold">{t.ops.team.checkInCol}</th>
                         <th className="px-3 py-2 font-semibold">{t.ops.team.checkOutCol}</th>
                         <th className="px-3 py-2 font-semibold">{t.shared.transportCol}</th>
+                        <th className="px-3 py-2 font-semibold">{t.ops.team.checksCol}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -600,6 +657,9 @@ function TeamAttendancePage() {
                                 {v.checkInTransportNote || v.checkOutTransportNote}
                               </span>
                             )}
+                          </td>
+                          <td className="px-3 py-2 align-top text-ink-300">
+                            <ComplianceChecks v={v} />
                           </td>
                         </tr>
                       ))}
