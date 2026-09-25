@@ -1,4 +1,6 @@
-import { Navigate, Outlet, Route, Routes, useParams } from 'react-router-dom'
+import { useEffect } from 'react'
+import { Navigate, Outlet, Route, Routes, useNavigate, useParams } from 'react-router-dom'
+import { consumePendingNavTarget } from './lib/pendingNav'
 import Login from './Login'
 import ForgotPassword from './ForgotPassword'
 import ResetPassword from './ResetPassword'
@@ -105,6 +107,18 @@ function RedirectPayroll() {
 }
 
 function App() {
+  const navigate = useNavigate()
+
+  // Finishes a notification's navigation on iOS, where a cold launch opens the manifest's
+  // start_url instead of the URL the notification actually asked for - see
+  // lib/pendingNav.ts and public/sw.js's notificationclick handler. A no-op on every other
+  // boot, since there's nothing to consume unless a notification tap just wrote one.
+  useEffect(() => {
+    consumePendingNavTarget().then((target) => {
+      if (target) navigate(target, { replace: true })
+    })
+  }, [navigate])
+
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
