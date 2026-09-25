@@ -3,7 +3,7 @@ import { prisma } from "../lib/prisma";
 import { requireAuth } from "../middleware/auth";
 import { pushConfigured, sendPushToUser } from "../lib/push";
 import { todayUtc } from "../lib/leaveRequests";
-import { AUDIT_RESPONSE_WINDOW_MS, evaluateStrike } from "../lib/attendanceAudit";
+import { AUDIT_NUDGE_DELAY_MS, AUDIT_RESPONSE_WINDOW_MS, evaluateStrike } from "../lib/attendanceAudit";
 
 const router = Router();
 
@@ -147,14 +147,18 @@ router.post("/send-checkin-reminders", (req, res) => sendAttendanceReminders("ch
 router.post("/send-checkout-reminders", (req, res) => sendAttendanceReminders("check-out", req, res));
 
 /**
- * Fires and sweeps random attendance-audit pings, called every 5 minutes by
- * .github/workflows/attendance-audit.yml (GitHub's minimum cron granularity - same secret-guard
- * and "machine caller" posture as the reminder endpoints above).
+ * Fires and sweeps random attendance-audit pings. Called by an external cron service
+ * (cron-job.org, not GitHub Actions - see CLAUDE.md §27f for why) hitting this endpoint directly
+ * with the same secret-guard and "machine caller" posture as the reminder endpoints above.
  *
- * Off by default: this stays a no-op until ATTENDANCE_AUDIT_ENABLED=true is set in the server
- * environment. The code shipping does not mean the feature is cleared to run against real
- * technicians - that also needs the Mauritius Data Protection Act consent/policy update, which is
- * a separate, explicitly out-of-scope piece of work. Don't set the env var before that lands.
+ * Polling frequency matters here, not just for promptness: the mid-window nudge
+ * (AUDIT_NUDGE_DELAY_MS, 2.5 min) only has a chance to fire if this endpoint gets called more
+ * often than the gap between the nudge delay and AUDIT_RESPONSE_WINDOW_MS (5 min) - at a 5-minute
+ * poll interval there is no tick left to catch it before the window closes and the MISSED sweep
+ * below takes it instead. The cron-job.org job should run at least every 1-2 minutes for the
+ * nudge to actually work, not just every 5.
+ *
+ * Stays a no-op unless ATTENDANCE_AUDIT_ENABLED=true is set in the server environment.
  */
 router.post("/run-attendance-audits", async (req, res) => {
   const secret = process.env.REMINDER_TRIGGER_SECRET;
@@ -194,6 +198,39 @@ router.post("/run-attendance-audits", async (req, res) => {
     }
   }
 
+  // A second, re-alerting push for anyone who hasn't responded yet, partway through the window -
+  // same tag as the first (see sendPushToUser's caller below), so it re-vibrates/re-sounds on the
+  // device rather than stacking a duplicate. Excludes anything already past the full response
+  // window - that's handled by the overdue sweep below instead, not nudged first.
+  const dueForNudge = await prisma.attendanceAudit.findMany({
+    where: {
+      status: "PENDING",
+      nudgedAt: null,
+      pushSentAt: {
+        not: null,
+        lte: new Date(Date.now() - AUDIT_NUDGE_DELAY_MS),
+        gt: new Date(Date.now() - AUDIT_RESPONSE_WINDOW_MS),
+      },
+    },
+    include: { employee: { select: { userId: true } } },
+  });
+
+  let nudged = 0;
+  for (const audit of dueForNudge) {
+    if (!audit.employee.userId) continue;
+    await sendPushToUser(audit.employee.userId, {
+      title: "Compliance check",
+      body: "Still waiting - tap now to confirm you're on site.",
+      url: `/dashboard/audit-check?id=${audit.id}`,
+      tag: `audit-${audit.id}`,
+    });
+    // Sent regardless of delivery count: a delivery failure here doesn't change anything about
+    // the audit's own fate (still resolves via the poller's own MISSED sweep either way), so
+    // there's nothing useful gained by distinguishing it from a successful nudge.
+    await prisma.attendanceAudit.update({ where: { id: audit.id }, data: { nudgedAt: new Date() } });
+    nudged += 1;
+  }
+
   const overdue = await prisma.attendanceAudit.findMany({
     where: {
       status: "PENDING",
@@ -205,7 +242,7 @@ router.post("/run-attendance-audits", async (req, res) => {
     await evaluateStrike(audit.id);
   }
 
-  res.json({ enabled: true, pushed, skipped, missed: overdue.length });
+  res.json({ enabled: true, pushed, skipped, nudged, missed: overdue.length });
 });
 
 export default router;
