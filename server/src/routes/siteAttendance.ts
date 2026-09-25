@@ -22,6 +22,8 @@ const WORK_ORDER_SUMMARY_SELECT = {
   select: { id: true, workOrderNumber: true, title: true, siteLat: true, siteLng: true },
 } as const;
 const VERIFICATIONS_INCLUDE = { orderBy: { checkedAt: "desc" as const } };
+/** Compliance-check history for a session, oldest first - so a manager reads it as a timeline. */
+const AUDITS_INCLUDE = { orderBy: { scheduledAt: "asc" as const } };
 
 const EXIT_REASONS = ["MATERIALS", "ANOTHER_SITE", "SUPERVISOR_INSTRUCTION", "EMERGENCY", "OTHER"] as const;
 type ExitReason = (typeof EXIT_REASONS)[number];
@@ -118,12 +120,12 @@ router.get("/", requireRole(...ATTENDANCE_VIEW_ROLES), async (req, res) => {
   const [current, history] = await Promise.all([
     prisma.siteAttendance.findMany({
       where: { checkOutAt: null, ...employeeFilter },
-      include: { employee: { select: EMPLOYEE_SELECT }, workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE },
+      include: { employee: { select: EMPLOYEE_SELECT }, workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE, audits: AUDITS_INCLUDE },
       orderBy: { checkInAt: "desc" },
     }),
     prisma.siteAttendance.findMany({
       where: { checkInAt: { gte: start, lt: end }, ...employeeFilter },
-      include: { employee: { select: EMPLOYEE_SELECT }, workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE },
+      include: { employee: { select: EMPLOYEE_SELECT }, workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE, audits: AUDITS_INCLUDE },
       orderBy: { checkInAt: "desc" },
     }),
   ]);
@@ -307,7 +309,7 @@ router.post("/:id/close", requireRole(...OPS_MANAGE_ROLES), async (req, res) => 
       checkOutByManager: true,
       checkOutNote: typeof note === "string" && note.trim() ? note.trim().slice(0, 200) : "Closed by management",
     },
-    include: { employee: { select: EMPLOYEE_SELECT }, workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE },
+    include: { employee: { select: EMPLOYEE_SELECT }, workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE, audits: AUDITS_INCLUDE },
   });
   await notifyHrOfOvertime(siteAttendance.employeeId, siteAttendance.checkInAt);
   await cancelPendingAudits(siteAttendance.id);
@@ -321,11 +323,11 @@ router.get("/me", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
   const [current, history] = await Promise.all([
     prisma.siteAttendance.findFirst({
       where: { employeeId: employee.id, checkOutAt: null },
-      include: { workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE },
+      include: { workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE, audits: AUDITS_INCLUDE },
     }),
     prisma.siteAttendance.findMany({
       where: { employeeId: employee.id },
-      include: { workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE },
+      include: { workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE, audits: AUDITS_INCLUDE },
       orderBy: { checkInAt: "desc" },
       take: 10,
     }),
@@ -439,7 +441,7 @@ router.post("/check-in", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
   if (!(await claimRequest(clientRequestId, "site-check-in"))) {
     const existing = await prisma.siteAttendance.findFirst({
       where: { employee: { userId: req.user!.sub }, checkOutAt: null },
-      include: { workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE },
+      include: { workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE, audits: AUDITS_INCLUDE },
     });
     return res.status(200).json({ siteAttendance: existing, deduped: true });
   }
@@ -497,7 +499,7 @@ router.post("/check-in", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
         checkInLocationMatch: locationCheck.match,
         checkInLocationDistanceMeters: locationCheck.distanceMeters,
       },
-      include: { workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE },
+      include: { workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE, audits: AUDITS_INCLUDE },
     });
 
     // 2-4 random "are you still there" audit pings, timed against this check-in - see
@@ -550,7 +552,7 @@ router.post("/check-out", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => 
     const last = await prisma.siteAttendance.findFirst({
       where: { employee: { userId: req.user!.sub } },
       orderBy: { checkInAt: "desc" },
-      include: { workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE },
+      include: { workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE, audits: AUDITS_INCLUDE },
     });
     return res.status(200).json({ siteAttendance: last, deduped: true });
   }
@@ -587,7 +589,7 @@ router.post("/check-out", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => 
         checkOutLocationMatch: locationCheck.match,
         checkOutLocationDistanceMeters: locationCheck.distanceMeters,
       },
-      include: { workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE },
+      include: { workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE, audits: AUDITS_INCLUDE },
     });
     await notifyHrOfOvertime(siteAttendance.employeeId, siteAttendance.checkInAt);
     // Nothing should ping after the shift has ended - cancel whatever audits were still pending.
