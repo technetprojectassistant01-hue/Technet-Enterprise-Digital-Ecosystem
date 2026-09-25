@@ -161,6 +161,11 @@ self.addEventListener('push', (event) => {
       renotify: Boolean(payload.tag),
       icon: '/icon-192.png',
       badge: '/icon-192.png',
+      // A phone on silent still buzzes - sound alone depends on the device's own per-app sound
+      // setting, which nothing here can force. Support is inconsistent across browsers/OSes, so
+      // this is a best-effort addition, not a guarantee. Same tag + renotify:true above means a
+      // nudge push (§ below) re-vibrates too, not just re-displays silently.
+      vibrate: [200, 100, 200],
       data: { url: payload.url || '/dashboard' },
     }),
   )
