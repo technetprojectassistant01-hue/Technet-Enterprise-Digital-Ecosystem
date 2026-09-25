@@ -961,6 +961,15 @@ export const mfe: Dict = {
       closing: 'Pe ferme…',
       sessionClosed: 'Sesion ferme',
       closeFailed: 'Pa finn kapav ferm sesion la',
+      checksCol: 'KONTROL',
+      checksNone: '—',
+      checksSummary: (total: number, strikes: number) =>
+        strikes > 0 ? `${strikes}/${total} signale` : `${total} kontrol${total === 1 ? '' : ''}`,
+      checkPending: 'Ankor pandan',
+      checkSkipped: 'Pena aparey anrezistre',
+      checkMissed: 'Manke',
+      checkMatched: 'Konfirme',
+      checkMismatch: (distance: number) => `Konfirme, ${distance}m lwen`,
     },
     anomalies: {
       title: 'Anomali prezans',

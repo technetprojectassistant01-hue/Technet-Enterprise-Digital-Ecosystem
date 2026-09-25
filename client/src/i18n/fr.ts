@@ -964,6 +964,15 @@ export const fr: Dict = {
       closing: 'Clôture…',
       sessionClosed: 'Session clôturée',
       closeFailed: 'Impossible de clôturer la session',
+      checksCol: 'CONTRÔLES',
+      checksNone: '—',
+      checksSummary: (total: number, strikes: number) =>
+        strikes > 0 ? `${strikes}/${total} signalé(s)` : `${total} contrôle${total === 1 ? '' : 's'}`,
+      checkPending: 'En attente',
+      checkSkipped: 'Aucun appareil enregistré',
+      checkMissed: 'Manqué',
+      checkMatched: 'Confirmé',
+      checkMismatch: (distance: number) => `Confirmé, à ${distance}m`,
     },
     anomalies: {
       title: 'Anomalies de présence',

@@ -967,6 +967,15 @@ export const en = {
       closing: 'Closing…',
       sessionClosed: 'Session closed',
       closeFailed: 'Failed to close the session',
+      checksCol: 'CHECKS',
+      checksNone: '—',
+      checksSummary: (total: number, strikes: number) =>
+        strikes > 0 ? `${strikes}/${total} flagged` : `${total} check${total === 1 ? '' : 's'}`,
+      checkPending: 'Pending',
+      checkSkipped: 'No device registered',
+      checkMissed: 'Missed',
+      checkMatched: 'Confirmed',
+      checkMismatch: (distance: number) => `Confirmed, ${distance}m away`,
     },
     anomalies: {
       title: 'Attendance Anomalies',
