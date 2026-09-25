@@ -166,6 +166,43 @@ self.addEventListener('push', (event) => {
   )
 })
 
+// Works around a real iOS limitation: when the installed home-screen app isn't already running,
+// WebKit ignores the URL passed to clients.openWindow() below and cold-launches at the manifest's
+// start_url ('/dashboard') instead. Every push before the attendance-audit feature happened to
+// already point at '/dashboard', so this was invisible until a notification needed to deep-link
+// somewhere else. Stashing the real target here lets the app itself redirect once it boots - see
+// src/lib/pendingNav.ts for the read side. Same DB/store/key names on both sides, since it's the
+// same browser IndexedDB.
+const PENDING_NAV_DB = 'technet-pending-nav'
+const PENDING_NAV_STORE = 'pending'
+const PENDING_NAV_KEY = 'target'
+
+function savePendingNav(url) {
+  return new Promise((resolve) => {
+    const req = indexedDB.open(PENDING_NAV_DB, 1)
+    req.onupgradeneeded = () => {
+      if (!req.result.objectStoreNames.contains(PENDING_NAV_STORE)) {
+        req.result.createObjectStore(PENDING_NAV_STORE)
+      }
+    }
+    req.onsuccess = () => {
+      const db = req.result
+      const tx = db.transaction(PENDING_NAV_STORE, 'readwrite')
+      tx.objectStore(PENDING_NAV_STORE).put({ url, savedAt: Date.now() }, PENDING_NAV_KEY)
+      tx.oncomplete = () => {
+        db.close()
+        resolve()
+      }
+      tx.onerror = () => {
+        db.close()
+        resolve()
+      }
+    }
+    // Never let a storage failure block the actual navigation attempt below.
+    req.onerror = () => resolve()
+  })
+}
+
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
   const target = (event.notification.data && event.notification.data.url) || '/dashboard'
@@ -173,7 +210,7 @@ self.addEventListener('notificationclick', (event) => {
   // Focus an already-open tab rather than opening a duplicate - a technician tapping the
   // reminder should land in the app they may already have running, not a second copy.
   event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+    savePendingNav(target).then(() => self.clients.matchAll({ type: 'window', includeUncontrolled: true })).then((clientList) => {
       for (const client of clientList) {
         if ('focus' in client) {
           client.navigate(target)
