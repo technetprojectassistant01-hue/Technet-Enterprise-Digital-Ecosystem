@@ -1724,6 +1724,8 @@ export interface SiteAttendance {
    * has no check-out coordinates, because nobody observed where they were. */
   checkOutByManager: boolean
   verifications: SiteVerification[]
+  /** This session's random compliance-check history, oldest first - see AttendanceAudit above. */
+  audits: AttendanceAudit[]
 }
 
 /** Endpoints that return a whole team's visits always include the technician. */
