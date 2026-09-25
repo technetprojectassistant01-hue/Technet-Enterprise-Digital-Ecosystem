@@ -3,21 +3,28 @@ name: Attendance reminders
 # Mauritius is UTC+4 with no daylight saving time. 04:15 UTC is 08:15 Mauritius and
 # 13:15 UTC is 17:15 Mauritius, Monday to Saturday.
 #
-# This lives here rather than in a timer inside the server because the Render free instance
-# sleeps after ~15 minutes idle: at 08:15, before anyone has opened the app, there is no process
-# alive for a setInterval to run in. The request below is also what wakes it.
+# workflow_dispatch only - the schedule triggers were removed 2026-09-25. Measured against this
+# actual GitHub account/repo over a week: these fixed twice-daily crons landed roughly once a day,
+# at unrepeatable times unrelated to 04:15/13:15 UTC (see git history for the measurements) - not
+# "best-effort lag" as the comment here used to say, effectively non-functional as a reminder
+# system with any real precision. attendance-audit.yml hit the identical pattern the same day.
+# This is a platform/account-level GitHub Actions scheduling limitation, not a bug in this file.
 #
-# GitHub's scheduled runners are best-effort and can lag by several minutes under load, so treat
-# both times as "shortly after" rather than precise alarms.
+# The reliable trigger is now an external cron service (cron-job.org or equivalent) calling
+# POST /api/push/send-checkin-reminders at 08:15 Mauritius and
+# POST /api/push/send-checkout-reminders at 17:15 Mauritius, both Mon-Sat, with the
+# x-reminder-secret header set to the same REMINDER_TRIGGER_SECRET value configured in Render.
+# This file is kept for manual workflow_dispatch testing only.
+#
+# This still lives here (rather than a timer inside the server) partly by inertia from when GitHub
+# Actions was the trigger - the Render free instance sleeping after ~15 minutes idle is the actual
+# reason a setInterval-based approach never worked, and that reasoning still holds regardless of
+# which external caller wakes it.
 on:
-  schedule:
-    - cron: "15 4 * * 1-6"
-    - cron: "15 13 * * 1-6"
-  workflow_dispatch: # so it can be fired by hand to test, without waiting for tomorrow
+  workflow_dispatch: # manual testing only - see above for the real trigger
 
 jobs:
   check-in:
-    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '15 4 * * 1-6'
     runs-on: ubuntu-latest
     steps:
       - name: Send 08:15 Mauritius check-in reminders
@@ -46,7 +53,6 @@ jobs:
           fi
 
   check-out:
-    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '15 13 * * 1-6'
     runs-on: ubuntu-latest
     steps:
       - name: Send 17:15 Mauritius check-out reminders
