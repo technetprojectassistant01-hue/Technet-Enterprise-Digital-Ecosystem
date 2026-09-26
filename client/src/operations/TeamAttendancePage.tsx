@@ -284,6 +284,7 @@ function TeamAttendancePage() {
         { header: 'Check-In Recorded', accessor: (v: SiteAttendanceWithEmployee) => formatTime(v.checkInAt) },
         { header: 'Check-In Site', accessor: (v: SiteAttendanceWithEmployee) => v.checkInSite ?? '' },
         { header: 'Check-In Location', accessor: (v: SiteAttendanceWithEmployee) => v.checkInNote ?? '' },
+        { header: 'Check-In Place', accessor: (v: SiteAttendanceWithEmployee) => v.checkInPlace ?? '' },
         { header: 'Time Out (stated)', accessor: (v: SiteAttendanceWithEmployee) => v.checkOutDeclaredTime ?? '' },
         {
           header: 'Check-Out Recorded',
@@ -291,6 +292,7 @@ function TeamAttendancePage() {
         },
         { header: 'Check-Out Site', accessor: (v: SiteAttendanceWithEmployee) => v.checkOutSite ?? '' },
         { header: 'Check-Out Location', accessor: (v: SiteAttendanceWithEmployee) => v.checkOutNote ?? '' },
+        { header: 'Check-Out Place', accessor: (v: SiteAttendanceWithEmployee) => v.checkOutPlace ?? '' },
         { header: 'Hours On Site', accessor: (v: SiteAttendanceWithEmployee) => hoursOnSite(v) },
         {
           header: 'Transport (MUR)',
