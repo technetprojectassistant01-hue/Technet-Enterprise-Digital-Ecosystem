@@ -147,9 +147,11 @@ router.post("/send-checkin-reminders", (req, res) => sendAttendanceReminders("ch
 router.post("/send-checkout-reminders", (req, res) => sendAttendanceReminders("check-out", req, res));
 
 /**
- * Fires and sweeps random attendance-audit pings. Called by an external cron service
- * (cron-job.org, not GitHub Actions - see CLAUDE.md §27f for why) hitting this endpoint directly
- * with the same secret-guard and "machine caller" posture as the reminder endpoints above.
+ * Fires and sweeps random attendance-audit pings, and (independent of that feature's own
+ * enable flag) reminds anyone whose shift has been open unusually long to check out. Called by an
+ * external cron service (cron-job.org, not GitHub Actions - see CLAUDE.md §27f for why) hitting
+ * this endpoint directly with the same secret-guard and "machine caller" posture as the reminder
+ * endpoints above.
  *
  * Polling frequency matters here, not just for promptness: the mid-window nudge
  * (AUDIT_NUDGE_DELAY_MS, 2.5 min) only has a chance to fire if this endpoint gets called more
@@ -158,15 +160,57 @@ router.post("/send-checkout-reminders", (req, res) => sendAttendanceReminders("c
  * below takes it instead. The cron-job.org job should run at least every 1-2 minutes for the
  * nudge to actually work, not just every 5.
  *
- * Stays a no-op unless ATTENDANCE_AUDIT_ENABLED=true is set in the server environment.
+ * The audit-ping half stays a no-op unless ATTENDANCE_AUDIT_ENABLED=true is set in the server
+ * environment; the long-shift reminder always runs regardless, since it isn't GPS monitoring and
+ * doesn't wait on that policy gate.
  */
+/**
+ * Reminds a technician who has been checked in for an unusually long time to check out, once per
+ * open session. Deliberately independent of ATTENDANCE_AUDIT_ENABLED below - this is an ordinary
+ * "don't forget" nudge, not GPS audit-ping monitoring, so it doesn't wait on the same Data
+ * Protection Act policy gate. 14 hours matches STALE_SESSION_HOURS, the threshold
+ * TeamAttendancePage.tsx already uses to flag a likely-forgotten session to managers - no shared
+ * package between client and server (CLAUDE.md §6's role-groups precedent), so keep both in sync
+ * by hand if this ever changes.
+ */
+const LONG_SHIFT_REMINDER_HOURS = 14;
+
+async function sendLongShiftReminders(): Promise<number> {
+  const staleSessions = await prisma.siteAttendance.findMany({
+    where: {
+      checkOutAt: null,
+      longShiftReminderSentAt: null,
+      checkInAt: { lte: new Date(Date.now() - LONG_SHIFT_REMINDER_HOURS * 60 * 60 * 1000) },
+    },
+    include: { employee: { select: { userId: true, firstName: true } } },
+  });
+
+  let reminded = 0;
+  for (const session of staleSessions) {
+    if (!session.employee.userId) continue;
+    await sendPushToUser(session.employee.userId, {
+      title: "Still checked in?",
+      body: `Hi ${session.employee.firstName} — you've been checked in for a while. Remember to check out when you're done for the day.`,
+      url: "/dashboard",
+      tag: `long-shift-${session.id}`,
+    });
+    // Marked sent regardless of delivery count, same reasoning as the audit nudge above - no
+    // device registered isn't something retrying on the next tick will fix.
+    await prisma.siteAttendance.update({ where: { id: session.id }, data: { longShiftReminderSentAt: new Date() } });
+    reminded += 1;
+  }
+  return reminded;
+}
+
 router.post("/run-attendance-audits", async (req, res) => {
   const secret = process.env.REMINDER_TRIGGER_SECRET;
   const provided = req.get("x-reminder-secret");
   if (!secret || provided !== secret) return res.status(404).json({ error: "Not found" });
 
+  const longShiftReminders = await sendLongShiftReminders();
+
   if (process.env.ATTENDANCE_AUDIT_ENABLED !== "true") {
-    return res.json({ enabled: false, pushed: 0, missed: 0 });
+    return res.json({ enabled: false, pushed: 0, missed: 0, longShiftReminders });
   }
 
   const due = await prisma.attendanceAudit.findMany({
@@ -242,7 +286,7 @@ router.post("/run-attendance-audits", async (req, res) => {
     await evaluateStrike(audit.id);
   }
 
-  res.json({ enabled: true, pushed, skipped, nudged, missed: overdue.length });
+  res.json({ enabled: true, pushed, skipped, nudged, missed: overdue.length, longShiftReminders });
 });
 
 export default router;
