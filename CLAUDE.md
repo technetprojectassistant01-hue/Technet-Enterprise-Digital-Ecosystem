@@ -1724,3 +1724,53 @@ audit-ping/anomaly logic:
   shift. Open questions handed back: hard-block a different-site checkout or just flag it for
   review (a hard block risks stranding someone on GPS drift alone), and how multiple sessions per
   day would interact with the existing "2-4 random audits per open shift" scheduling.
+
+## 30. Verified-attendance overhaul spec (2026-09-26) — bug fixes started first
+
+A large follow-up spec arrived covering verified check-in/photo capture, "learned places"
+replacing fixed sites, employee home-location flagging, periodic shift pings, a full anomaly-rule
+engine, an admin review page, a live map, plus a short list of concrete bug fixes and a quality
+bar (small commits, tests run after each, existing payroll/overtime/validation flows must not
+break). Given the size, the concrete well-defined bugs are being fixed first, one at a time, before
+any of the larger new features are designed or built.
+
+### 30a. "621 km from stated" — Nominatim resolving to Rodrigues, not a real GPS bug
+
+Root cause: `geocodeAddress()`'s only confinement was `countrycodes=mu`, and the Republic of
+Mauritius includes Rodrigues and Agalega, ~600km from the main island. A technician's typo
+("Paille" for "Pailles") resolved to "Île Paille en Queue", a real islet in Rodrigues - technically
+inside "mu", never where anyone actually works. Fixed with a hard `viewbox` + `bounded=1` box
+around the main island only (`MAIN_ISLAND_VIEWBOX` in `server/src/lib/geocode.ts`), wired into the
+one caller that compares a typed place against a GPS fix (`server/src/lib/locationMatch.ts`).
+Verified against the live Nominatim API before and after: "Paille" now resolves to "Carreau La
+Paille" (~35km from Pailles) instead of the Rodrigues islet (~620km). The two historical
+`SiteAttendance` rows this had already mismarked were recomputed via a disposable scratch script
+(deleted after running, per §9's convention) - `checkInLocationDistanceMeters` corrected from
+620736/620737m to 34819/34823m; no other columns touched, nothing else about those rows changed.
+
+### 30b. Late/overtime/hours were computed from the typed time, not the recorded time
+
+`server/src/lib/overtime.ts` had a `shown()` helper that preferred the technician's typed
+`checkInDeclaredTime`/`checkOutDeclaredTime` over the server-recorded `checkInAt`/`checkOutAt` GPS
+timestamp whenever a typed value was present - a self-reported field could erase lateness or
+change overtime minutes, the exact numbers payroll and discipline decisions run on. Replaced with
+`recordedMinutes()`, which always reads the recorded timestamp; `computeLateByVisit` and
+`computeOvertimeDays` (and the `firstIn`/`lastOut` display fields they return) now never look at
+the declared-time columns at all. The typed value is untouched in the database and still shown
+side-by-side with the recorded value in the CSV/PDF exports ("entered" vs "app" columns) - only the
+*calculation* changed, not what technicians see back or what's stored. Two existing unit tests
+asserted the old behavior by name ("uses the typed time when there is one") and were rewritten to
+assert the fix, plus a new case pinning "a typed on-time check-in cannot erase a late recorded
+one." `npm run test -w server` (overtime, payroll, siteAttendance, workOrders suites - the ones
+that touch this code) passes.
+
+### 30c. Still to do from this spec
+
+Not yet built: the historical-entries admin report (out-before-in, overlapping sessions, >12h
+overtime days) for HR, the two remaining bug-fix items, and everything in the new-feature sections
+(verified check-in/photo, learned places, home-location flag, shift pings, the full anomaly-rule
+engine, admin review page, live map). One open architectural question hasn't been surfaced to the
+business owner yet: the spec's new "ping every 15 minutes during a shift, flag LEFT_WORK_AREA/
+MISSED_PING" design covers the same ground as the already-shipped random 2-4-pings-per-shift audit
+system (§28/§29) - whether these are meant to replace, sit alongside, or merge with each other
+needs an answer before either is touched further.
