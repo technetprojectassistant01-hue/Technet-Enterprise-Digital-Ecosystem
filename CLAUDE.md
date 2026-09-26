@@ -1691,9 +1691,13 @@ smaller than they looked:
   printed below the place name in the PDF, a separate column in CSV), never replacing it, since
   reverse geocoding can be wrong or imprecise. **Deliberately left alone**: `MyJobsToday.tsx` -
   already showed a human-readable forward-geocoded work-order address, not raw coordinates, so
-  there was nothing to fix. **Historical rows from before this shipped have no place name and
-  won't be backfilled automatically** - a separate, easy
-  follow-up if wanted.
+  there was nothing to fix. **Historical rows were backfilled the same day** (a disposable
+  `server/scratch-backfill-places.ts`, deleted after running, per CLAUDE.md §9's scratch-script
+  convention - the data it wrote stays, only the script itself was removed): every
+  `SiteAttendance`/`AttendanceAudit` row with coordinates but no place name at the time
+  (38 check-ins, 36 check-outs, 2 audit confirms) was resolved via the same
+  `reverseGeocodeCached()` real code path. A brand-new row from here on is geocoded automatically
+  at write time (§28/§29 above) - no recurring backfill job exists or is needed.
 - **Item D (long-open-shift reminder)**: the existing checkout reminder (§27f) only fires once
   daily at a fixed 17:15 Mauritius - nothing reminded someone whose shift ran unusually long
   intra-day. Extended the existing, already-frequently-polled `run-attendance-audits` endpoint
