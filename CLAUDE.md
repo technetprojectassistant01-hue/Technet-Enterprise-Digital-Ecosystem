@@ -1680,11 +1680,19 @@ smaller than they looked:
   check-out, an audit-ping confirm - each stores its own `checkInPlace`/`checkOutPlace`/`place`
   column), never live while an admin views a page - geocoding dozens of historical rows on a
   single page load would either blow past Nominatim's rate limit or make the page serialize
-  through several seconds of network calls. Displayed on Team Attendance, Field Operations, and
-  the Attendance Anomalies queue, always alongside the existing raw-coordinate map link (as a
-  tooltip), never replacing it - reverse geocoding can be wrong or imprecise. **Historical rows
-  from before this shipped have no place name and won't be backfilled automatically** - a
-  separate, easy follow-up if wanted.
+  through several seconds of network calls. Displayed on Team Attendance, Field Operations, the
+  Attendance Anomalies queue, the Staff Attendance PDF export, the Dashboard's own Staff Attendance
+  panel (`StaffAttendancePanel.tsx` - missed in the first pass, the user caught it: "it should also
+  be showing on the dashboard"), and the Work Order detail attendance table - always alongside the
+  existing raw-coordinate map link (as a tooltip on the web pages, printed below the place name in
+  the PDF), never replacing it, since reverse geocoding can be wrong or imprecise. **Deliberately
+  left alone**: `MyJobsToday.tsx` (already showed a human-readable forward-geocoded work-order
+  address, not raw coordinates - nothing to fix) and the CSV exports (`StaffAttendanceExportDialog.tsx`,
+  Team Attendance's own CSV) - raw lat/lng columns are the more useful shape for a spreadsheet
+  someone will filter/process, matching the existing convention that CSV exports stay
+  machine-shaped while PDF/web views are the human-readable ones. **Historical rows from before
+  this shipped have no place name and won't be backfilled automatically** - a separate, easy
+  follow-up if wanted.
 - **Item D (long-open-shift reminder)**: the existing checkout reminder (§27f) only fires once
   daily at a fixed 17:15 Mauritius - nothing reminded someone whose shift ran unusually long
   intra-day. Extended the existing, already-frequently-polled `run-attendance-audits` endpoint
