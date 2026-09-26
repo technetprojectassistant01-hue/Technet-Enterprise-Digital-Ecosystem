@@ -8,6 +8,7 @@ import {
   distanceFromCheckIn,
   evaluateStrike,
 } from "../lib/attendanceAudit";
+import { reverseGeocodeCached } from "../lib/reverseGeocode";
 import type { AnomalyStatus } from "../generated/prisma/client";
 
 const router = Router();
@@ -118,6 +119,9 @@ router.post("/:id/confirm", requireRole(...OPS_SUBMIT_ROLES), async (req, res) =
     checkInLng: Number(audit.siteAttendance.checkInLng),
   });
   const match = classifyAuditDistance(distance);
+  // Usually a cache hit - an audit ping fires from very near wherever the technician checked in,
+  // which reverseGeocodeCached already resolved once at check-in time (see siteAttendance.ts).
+  const place = await reverseGeocodeCached(coords.lat, coords.lng);
 
   await prisma.attendanceAudit.update({
     where: { id: audit.id },
@@ -126,6 +130,7 @@ router.post("/:id/confirm", requireRole(...OPS_SUBMIT_ROLES), async (req, res) =
       respondedAt: new Date(),
       lat: coords.lat,
       lng: coords.lng,
+      place,
       distanceMeters: distance,
       match,
     },
