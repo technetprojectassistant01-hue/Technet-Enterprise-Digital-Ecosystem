@@ -164,6 +164,11 @@ function FieldOperationsPage() {
                           {[entry.checkInSite, entry.checkInNote].filter(Boolean).join(' — ') || t.ops.field.locationNotGiven}
                         </a>
                       </div>
+                      {entry.checkInPlace && (
+                        <div className="mt-0.5 pl-5 text-[11px] text-ink-400" title={`${entry.checkInLat}, ${entry.checkInLng}`}>
+                          {entry.checkInPlace}
+                        </div>
+                      )}
                       {flag && <div className="mt-0.5 text-[11px] font-medium text-amber-400">⚠ {flag}</div>}
                       <div className="mt-1 text-xs text-ink-400">
                         {t.ops.field.onSiteFor(formatDuration(entry.checkInAt))}
@@ -206,7 +211,14 @@ function FieldOperationsPage() {
                       <td className="px-3 py-3 text-ink-100">
                         {entry.employee.firstName} {entry.employee.lastName}
                       </td>
-                      <td className="px-3 py-3 text-ink-300">{[entry.checkInSite, entry.checkInNote].filter(Boolean).join(' — ') || '—'}</td>
+                      <td className="px-3 py-3 text-ink-300">
+                        {[entry.checkInSite, entry.checkInNote].filter(Boolean).join(' — ') || '—'}
+                        {entry.checkInPlace && (
+                          <span className="block text-[11px] text-ink-400" title={`${entry.checkInLat}, ${entry.checkInLng}`}>
+                            {entry.checkInPlace}
+                          </span>
+                        )}
+                      </td>
                       <td className="px-3 py-3 text-ink-400">
                         {entry.checkOutAt ? formatDuration(entry.checkInAt, entry.checkOutAt) : '—'}
                       </td>
