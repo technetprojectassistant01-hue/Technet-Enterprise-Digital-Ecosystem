@@ -186,6 +186,7 @@ function TeamAttendancePage() {
   const [period, setPeriod] = useState<'month' | 'week'>('month')
   const [weekStart, setWeekStart] = useState(() => mondayOf(new Date()))
   const [employeeFilter, setEmployeeFilter] = useState('')
+  const [includePast, setIncludePast] = useState(false)
   const [current, setCurrent] = useState<SiteAttendanceWithEmployee[]>([])
   const [history, setHistory] = useState<SiteAttendanceWithEmployee[]>([])
   const [summary, setSummary] = useState<TechnicianAttendanceSummary[]>([])
@@ -232,8 +233,8 @@ function TeamAttendancePage() {
     api
       .listTeamAttendance(
         period === 'week'
-          ? { from: weekStart, to: addDays(weekStart, 6), employeeId: employeeFilter || undefined }
-          : { month, employeeId: employeeFilter || undefined },
+          ? { from: weekStart, to: addDays(weekStart, 6), employeeId: employeeFilter || undefined, includePast }
+          : { month, employeeId: employeeFilter || undefined, includePast },
       )
       .then(({ current, history, summary }) => {
         setCurrent(current)
@@ -244,7 +245,7 @@ function TeamAttendancePage() {
       .finally(() => setLoading(false))
   }
 
-  useEffect(reload, [canAccess, period, month, weekStart, employeeFilter]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(reload, [canAccess, period, month, weekStart, employeeFilter, includePast]) // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
    * CSV rather than a real .xlsx: it opens straight in Excel, and the app already exports Work
@@ -536,6 +537,15 @@ function TeamAttendancePage() {
             <Download className="h-4 w-4" />
             {period === 'week' ? t.ops.team.exportWeek : t.ops.team.exportMonth}
           </button>
+          <label className="flex items-center gap-1.5 text-xs font-semibold text-ink-300">
+            <input
+              type="checkbox"
+              checked={includePast}
+              onChange={(e) => setIncludePast(e.target.checked)}
+              className="h-3.5 w-3.5 rounded border-ink-600 bg-ink-950 text-cyan-accent focus:ring-cyan-accent/40"
+            />
+            {t.ops.team.includePastEmployees}
+          </label>
           <div className="ml-auto flex flex-col gap-1">
             <label className={labelClass}>{t.shared.technicianCol}</label>
             <select value={employeeFilter} onChange={(e) => setEmployeeFilter(e.target.value)} className={inputClass}>
