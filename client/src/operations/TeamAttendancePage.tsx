@@ -78,14 +78,18 @@ function ComplianceChecks({ v }: { v: SiteAttendanceWithEmployee }) {
               {a.status === 'MISSED' && <span className="font-medium text-amber-400">{t.ops.team.checkMissed}</span>}
               {a.status === 'CONFIRMED' &&
                 (a.lat && a.lng ? (
-                  <a
-                    href={mapLink(a.lat, a.lng)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className={`hover:underline ${a.match === 'MISMATCH' ? 'font-medium text-amber-400' : 'text-cyan-accent'}`}
-                  >
-                    {a.match === 'MISMATCH' ? t.ops.team.checkMismatch(a.distanceMeters ?? 0) : t.ops.team.checkMatched}
-                  </a>
+                  <>
+                    <a
+                      href={mapLink(a.lat, a.lng)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className={`hover:underline ${a.match === 'MISMATCH' ? 'font-medium text-amber-400' : 'text-cyan-accent'}`}
+                      title={`${a.lat}, ${a.lng}`}
+                    >
+                      {a.match === 'MISMATCH' ? t.ops.team.checkMismatch(a.distanceMeters ?? 0) : t.ops.team.checkMatched}
+                    </a>
+                    {a.place && ` · ${a.place}`}
+                  </>
                 ) : (
                   t.ops.team.checkMatched
                 ))}
