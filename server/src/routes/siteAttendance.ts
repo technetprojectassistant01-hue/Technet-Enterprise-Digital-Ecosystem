@@ -114,17 +114,21 @@ function reportRange(query: Record<string, unknown>): { start: Date; end: Date }
 /** Team-wide view for managers: who's checked in right now, plus the given month's history (defaults to this month). */
 router.get("/", requireRole(...ATTENDANCE_VIEW_ROLES), async (req, res) => {
   const { start, end } = reportRange(req.query as Record<string, unknown>);
-  const { employeeId } = req.query;
+  const { employeeId, includePast } = req.query;
   const employeeFilter = typeof employeeId === "string" && employeeId ? { employeeId } : {};
+  // Defaults to current staff only (ON_LEAVE still counts as current - same convention as
+  // isAssignable() on the client - only TERMINATED is excluded). A departed employee's history
+  // still exists and is never deleted; ?includePast=true brings it back for payroll/audit lookups.
+  const activeFilter = includePast === "true" ? {} : { employee: { employmentStatus: { not: "TERMINATED" as const } } };
 
   const [current, history] = await Promise.all([
     prisma.siteAttendance.findMany({
-      where: { checkOutAt: null, ...employeeFilter },
+      where: { checkOutAt: null, ...employeeFilter, ...activeFilter },
       include: { employee: { select: EMPLOYEE_SELECT }, workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE, audits: AUDITS_INCLUDE },
       orderBy: { checkInAt: "desc" },
     }),
     prisma.siteAttendance.findMany({
-      where: { checkInAt: { gte: start, lt: end }, ...employeeFilter },
+      where: { checkInAt: { gte: start, lt: end }, ...employeeFilter, ...activeFilter },
       include: { employee: { select: EMPLOYEE_SELECT }, workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE, audits: AUDITS_INCLUDE },
       orderBy: { checkInAt: "desc" },
     }),
