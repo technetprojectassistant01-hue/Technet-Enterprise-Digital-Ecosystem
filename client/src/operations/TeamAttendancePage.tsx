@@ -107,6 +107,14 @@ function shiftMonth(month: string, delta: number): string {
   return next.toISOString().slice(0, 7)
 }
 
+/** First and last day of a "YYYY-MM" month, as "YYYY-MM-DD" - the PDF export takes a day range,
+ * not a month string, so this bridges the two view modes to the same request shape. */
+function monthDayRange(month: string): { from: string; to: string } {
+  const [year, mon] = month.split('-').map(Number)
+  const lastDay = new Date(Date.UTC(year!, mon!, 0)).getUTCDate()
+  return { from: `${month}-01`, to: `${month}-${String(lastDay).padStart(2, '0')}` }
+}
+
 function formatDay(day: string): string {
   return new Date(`${day}T00:00:00.000Z`).toLocaleDateString(undefined, {
     weekday: 'long',
@@ -187,6 +195,7 @@ function TeamAttendancePage() {
   const [weekStart, setWeekStart] = useState(() => mondayOf(new Date()))
   const [employeeFilter, setEmployeeFilter] = useState('')
   const [includePast, setIncludePast] = useState(false)
+  const [pdfDownloading, setPdfDownloading] = useState(false)
   const [current, setCurrent] = useState<SiteAttendanceWithEmployee[]>([])
   const [history, setHistory] = useState<SiteAttendanceWithEmployee[]>([])
   const [summary, setSummary] = useState<TechnicianAttendanceSummary[]>([])
@@ -307,6 +316,20 @@ function TeamAttendancePage() {
       ],
       history,
     )
+  }
+
+  /** The same period on screen, as a real PDF - the register's server-side generator
+   * (`GET /api/site-attendance/report/pdf`) already existed with no UI ever calling it. */
+  async function exportPdf() {
+    const { from, to } = period === 'week' ? { from: weekStart, to: addDays(weekStart, 6) } : monthDayRange(month)
+    setPdfDownloading(true)
+    try {
+      await api.downloadPdf(api.staffAttendanceReportPdfUrl(from, to, includePast), `team-attendance-${from}-to-${to}.pdf`)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t.myAttendance.downloadFailed)
+    } finally {
+      setPdfDownloading(false)
+    }
   }
 
   /** What the summary and empty states call the period on screen - a week or a month. */
@@ -536,6 +559,15 @@ function TeamAttendancePage() {
           >
             <Download className="h-4 w-4" />
             {period === 'week' ? t.ops.team.exportWeek : t.ops.team.exportMonth}
+          </button>
+          <button
+            type="button"
+            onClick={exportPdf}
+            disabled={history.length === 0 || pdfDownloading}
+            className={`${secondaryButtonClass} disabled:opacity-50`}
+          >
+            <Download className="h-4 w-4" />
+            {t.ops.team.exportPdf}
           </button>
           <label className="flex items-center gap-1.5 text-xs font-semibold text-ink-300">
             <input
