@@ -68,7 +68,7 @@ Everyone lands on **Overview** (`/dashboard`) — as of 2026-08-19 this is real,
 | — Projects | Built | Project registry, assignments, status history |
 | — Documents | Built | File storage (DB `Bytes` column, not S3/cloud storage), categorized by Contract/Invoice/HR/Project/General/Quotation |
 | **Technet Store** (was Technet Maintenance) | **Rebuilt as Tools & Equipment** (2026-09-14) | See §21. Two tabs: **Tools & Equipment** (`/dashboard/store/tools`, the individually-tracked tool register with who holds what) and **Tool Requests** (`/dashboard/store/requests`). It used to be customer-equipment maintenance (Assets/Contracts/Requests/Schedule + maintenance visit reports) — those **screens were removed at the user's request**, but the tables, data and `/api/maintenance-*` routes were deliberately kept (see §21). |
-| **Technet Operations** | Built | Work Orders (now with a `WAITING_FOR_PARTS`/`REOPENED` lifecycle, added 2026-08-19), Daily Reports, Intervention Reports, Team Attendance, Field Operations, Attendance Anomalies (§28, random GPS audit pings — built but **off** until `ATTENDANCE_AUDIT_ENABLED` is set) — see §7, this is where most recent work has concentrated |
+| **Technet Operations** | Built | Work Orders (now with a `WAITING_FOR_PARTS`/`REOPENED` lifecycle, added 2026-08-19), Daily Reports, Intervention Reports, Team Attendance (reverse-geocoded place names, past-employee filter, PDF export, §29), Field Operations, Attendance Anomalies (§28/§29, random GPS audit pings + nudge push — **live in production**, `ATTENDANCE_AUDIT_ENABLED=true`) — see §7, this is where most recent work has concentrated |
 | **Technet Workforce** | Built | Restructured 2026-08-20 per manager/stakeholder discussion, to stop ERP HR and Workforce covering the same ground. Three tabs: **Availability** (`/dashboard/workforce/availability`, default landing page) — read-only "who's available today" grouped into Available/On Leave/Absent, built on the existing manual attendance register (no real biometric attendance-machine integration exists — see §11), visible to HR **and Operations Managers** (`WORKFORCE_VIEW_ROLES`) since Operations consults it before assigning jobs, though job assignment itself stays in Operations, not Workforce. **Attendance** (moved from ERP HR — daily register + timesheets, HR-only edit rights). **Payroll** (run creation, per-employee line breakdown, net pay computation, HR-only). |
 | **Technet Connect** | **Built** (2026-08-24) | Customer self-service portal at `/portal/*` — a fully separate auth domain from staff, not the internal `Role` enum (see §6). Customers view their own quotations/invoices (SENT+ only, drafts hidden) with PDF download, track job/work-order status (customer-safe field subset — no GPS, no technician names), and submit quote requests. Staff grants/resets/revokes portal access from the Customers page (`/dashboard/erp/finance/customers`), and manages incoming requests from a new "Quote Requests" tab on the Quotations page, converting one into a real draft `Quotation`. No self-registration — staff-granted only. |
 | **Technet Digital Marketing** | **Built — Phase 1 only** (2026-08-26) | `/dashboard/marketing` — Campaigns (`MarketingCampaign`) and a flat, filterable Content Calendar across all campaigns' `MarketingPost`s (title/platform/copy/scheduled date/status). Deliberately no AI, no auto-publish, no real platform integrations (Phases 2/3 of a 3-phase scoping plan — see §10a) — Marketing plans posts here and marks them Posted by hand after publishing elsewhere themselves. Gated to `MARKETING_ROLES` (ADMIN + SALES_OFFICER — no confirmed real owner yet, see §6). |
@@ -1550,15 +1550,21 @@ was needed at all (Web Push already exists, §18) and the existing GitHub Action
   technical decision - if this comes up again, the policy/consent gap is still real and unresolved,
   it just isn't blocking the feature any more. The two-hourly photo-proof idea from the same request
   is still flagged back, not built.
-- **The draft policy** is `Technet_GPS_Attendance_Policy_DRAFT.pdf` (2026-09-24, in the user's
-  Downloads folder, not this repo - it's an HR/legal document, not app code). Built from a
-  separately-supplied draft (`technet_engineering_gps_attendance_policy.docx`) by rendering it
-  through this app's own PDF letterhead system (`server/src/lib/pdf/shared.ts` -
+- **The policy document**, in the user's Downloads folder (not this repo - it's an HR/legal
+  document, not app code), went through two revisions: `Technet_GPS_Attendance_Policy_DRAFT.pdf`
+  (2026-09-24, a short version rendered from a separately-supplied `.docx`, with a DRAFT watermark
+  and two open placeholders left as visible callouts), then superseded the same day by
+  `Technet_Field_Staff_Attendance_Geolocation_Policy.pdf` - a much fuller 26-section policy built
+  from a second, more thorough reference document the user supplied, at the user's explicit
+  instruction to drop the DRAFT framing and treat it as final. Both were rendered through this
+  app's own PDF letterhead system (`server/src/lib/pdf/shared.ts` -
   `drawLetterhead`/`drawFooterBanner`/Carlito fonts/brand colors, the same code every quotation and
-  invoice uses) rather than a generic document, plus a full-page "DRAFT" watermark on every page and
-  two open placeholders (who fields policy questions; the disciplinary-policy cross-reference) left
-  as visible callouts rather than invented. As of the update above, this draft has **not** been
-  reviewed by legal or issued to employees - it exists, but the policy gap it was meant to close is
+  invoice uses) rather than a generic document. The final version fills in what's actually known
+  (company contact details, the real 12-month retention already coded for audit-ping data, "today"
+  as the effective date since pings are already live) and removes the "have a lawyer review this"
+  disclaimer entirely, per that same instruction - it has **not** actually been reviewed by a
+  lawyer or checked against the live text of the DPA 2017, regardless of what the document itself
+  now says. The policy gap this was meant to close is
   still open.
 - Verified with unit tests (`server/src/lib/attendanceAudit.test.ts`) for the pure scheduling/
   strike logic, a disposable `server/scratch-attendance-audit.ts` (deleted after use, per §9)
@@ -1587,3 +1593,121 @@ was needed at all (Web Push already exists, §18) and the existing GitHub Action
   what surfaced the GitHub Actions cron-reliability problem above. The real schedule now runs on
   cron-job.org, confirmed via that service's own execution history (200 OK, ticking every 5 minutes
   as configured) - the audit-ping feature is genuinely live in production, not just enabled-but-idle.
+
+## 29. iOS push deep-linking, nudge, and attendance usability batch (2026-09-25/26)
+
+Two threads: fixing why the audit-ping notification didn't actually open the compliance-check page
+on iOS once it was live, then a separate batch of usability/data-integrity fixes for Team
+Attendance requested the next day.
+
+### 29a. iOS notification tap didn't land on the audit-check page
+
+Live-testing §28 on a real iPhone surfaced two distinct, real iOS/WebKit limitations - fixed
+without waiting to be asked, since the feature was already live and broken for the one platform it
+matters most on:
+
+- **`clients.openWindow()` ignores its own URL on a cold launch.** When the installed home-screen
+  app isn't already running, iOS opens the manifest's `start_url` (`/dashboard`) instead of the
+  notification's actual target - invisible before this feature because every prior push already
+  pointed at `/dashboard`. Fixed with a pending-nav workaround: `sw.js`'s `notificationclick`
+  stashes the real target in a small IndexedDB store (`technet-pending-nav`) before attempting to
+  open/focus a window; `client/src/lib/pendingNav.ts` reads and clears it once, and `App.tsx`
+  redirects there on boot if present. No-op on every normal boot.
+- **`event.notification.data` isn't reliably preserved through to `notificationclick`** after a
+  cold launch either - a second, independent iOS reliability problem, also invisible before now.
+  `sw.js` now falls back to reconstructing the URL from the notification's `tag` (a plain string,
+  not an object) when `data` comes back empty - audit pings already tag themselves `audit-<id>`,
+  which is enough on its own.
+- **The app's own update-detection (`appUpdate.ts`) had a real gap**: it only checked for a new
+  service worker on a 20-minute interval or a backgrounded→foregrounded transition, never on a
+  fresh cold launch (a brand new page load fires neither). Now also checks once immediately on
+  every load. Even with that fix, this session's testing found iOS can still get stuck on a
+  service worker from before the fix shipped - the reliable unstick is clearing the site's stored
+  data (Settings → Safari → Advanced → Website Data), not just reopening the app repeatedly.
+- **Verified live**, not just in code: real due audits inserted directly against a real checked-in
+  test employee's session, confirming on an actual iPhone that the notification now opens the
+  compliance-check page directly, and that the mid-window nudge below actually fires
+  (`pushSentAt`/`nudgedAt` timestamps ~3 minutes apart, both on the real device).
+
+### 29b. Mid-window nudge push, since sound/vibration can't be forced
+
+The user asked for something "like an alarm" - not possible from a web push notification on any
+platform (sound plays once, never loops; that capability is locked to native apps with Apple's
+Critical Alerts entitlement, which a business attendance app won't get). Built instead:
+
+- **Vibration pattern** added to the push payload (`sw.js`) - works even with the ringer off on
+  devices that support it. Best-effort; support is inconsistent across browsers/OSes.
+- **A second, re-alerting push** (`AUDIT_NUDGE_DELAY_MS`, 2.5 min, `server/src/lib/attendanceAudit.ts`)
+  fires if the first one goes unanswered, before the 5-minute response window closes - same
+  notification tag + `renotify: true`, so it re-vibrates/re-sounds rather than stacking a
+  duplicate. Tracked by a new `AttendanceAudit.nudgedAt` field so it fires at most once.
+  **Requires the cron-job.org poller to run tighter than every 5 minutes** (1-2 min) to have any
+  chance of catching the window before it closes - documented on the endpoint itself
+  (`server/src/routes/push.ts`) since it's easy to silently break by loosening the schedule later.
+
+### 29c. Attendance usability/data-integrity batch (business owner request)
+
+Explored before building, per the request - several items turned out to already exist or be
+smaller than they looked:
+
+- **Item C (transport-zero reason) was already fully built** (§27d, 2026-09-21) - required only
+  when the amount is zero, which is exactly the fallback the request itself suggested if "always
+  optional" didn't fit. No changes made.
+- **Item I (PDF export) was 90% already built and simply never wired up** -
+  `GET /api/site-attendance/report/pdf` (manager-facing, the whole team over a date range) existed
+  with a client URL-builder (`staffAttendanceReportPdfUrl`) that nothing ever called. Added a
+  "Download PDF" button next to Team Attendance's existing CSV export; CSV untouched. No new PDF
+  dependency - this app already uses `pdfkit` throughout (`server/src/lib/pdf/`), never
+  Puppeteer/headless-browser rendering.
+- **Item B (past employees cluttering attendance views)**: `Employee.employmentStatus` already
+  existed (`ACTIVE`/`ON_LEAVE`/`TERMINATED`) with an established client convention
+  (`isAssignable()` in `client/erp/useEmployees.ts`) - attendance views just never filtered by it.
+  Team Attendance's register, Field Operations' site-tracking, and the PDF export now default to
+  current staff only (`ON_LEAVE` still counts as current, matching `isAssignable`), each with an
+  `?includePast=true` param - Team Attendance exposes this as an "Include past employees" toggle;
+  nothing is deleted, a departed employee's history is still fully reachable.
+  - **Separately reported, not silently changed**: the "Work Order" column on Team Attendance is
+    genuinely dead weight, not just visually sparse - **0 of 38 real `SiteAttendance` rows** have
+    `workOrderId` set, measured directly against the database. Consistent with §7a (the picker was
+    removed from the check-in form 2026-09-14) - a call on whether to populate or drop the column
+    is the business owner's, not made here.
+- **Item A (reverse geocoding)**: no reverse geocoding existed (`server/src/lib/geocode.ts` is
+  forward-only, address → coordinates, used for work-order site lookup). Added
+  `reverseGeocodeCached()` (`server/src/lib/reverseGeocode.ts`) - free via OpenStreetMap Nominatim,
+  same `/reverse` endpoint family as the existing forward geocoder, identifying User-Agent, ~1
+  req/s throttle, and a `GeocodeCache` table keyed by coordinates rounded to 5 decimal places
+  (~1.1m) so the same site is never re-geocoded. **Resolved once, at write time** (check-in,
+  check-out, an audit-ping confirm - each stores its own `checkInPlace`/`checkOutPlace`/`place`
+  column), never live while an admin views a page - geocoding dozens of historical rows on a
+  single page load would either blow past Nominatim's rate limit or make the page serialize
+  through several seconds of network calls. Displayed on Team Attendance, Field Operations, and
+  the Attendance Anomalies queue, always alongside the existing raw-coordinate map link (as a
+  tooltip), never replacing it - reverse geocoding can be wrong or imprecise. **Historical rows
+  from before this shipped have no place name and won't be backfilled automatically** - a
+  separate, easy follow-up if wanted.
+- **Item D (long-open-shift reminder)**: the existing checkout reminder (§27f) only fires once
+  daily at a fixed 17:15 Mauritius - nothing reminded someone whose shift ran unusually long
+  intra-day. Extended the existing, already-frequently-polled `run-attendance-audits` endpoint
+  (`server/src/routes/push.ts`) with a `sendLongShiftReminders()` sweep - one push per open session
+  once it passes 14 hours open (`SiteAttendance.longShiftReminderSentAt`, fires once), 14 hours
+  matching `STALE_SESSION_HOURS`, the threshold Team Attendance already uses to flag a
+  likely-forgotten session to managers. Deliberately runs **independent of**
+  `ATTENDANCE_AUDIT_ENABLED` - this is an ordinary reminder, not GPS monitoring, so it doesn't wait
+  on the DPA policy gate that feature is held behind.
+
+**Explicitly not built this round - explored, plan + open questions handed back instead of code**,
+per the request's own instruction for anything touching the shift data model or the already-shipped
+audit-ping/anomaly logic:
+
+- **Item E** (break in/out for field technicians) - open question: should audit pings pause during
+  an active break? Default assumption offered was yes, not yet confirmed.
+- **Item F** (a real Sites & Geofences table, replacing "compare typed text against geocoded
+  address" with "compare GPS against a known site's real coordinates + radius") - no such table
+  exists yet; the "earlier roadmap doc" the request referenced describing it wasn't found in the
+  user's Downloads folder, so this needs the actual document or a from-scratch design pass.
+- **Items G/H** (enforce checkout-at-same-site-as-checkin; support multiple site visits per day) -
+  changes the shift data model (potentially multiple sessions per employee per day) and directly
+  intersects the audit-ping/anomaly logic already built, which currently assumes one site per open
+  shift. Open questions handed back: hard-block a different-site checkout or just flag it for
+  review (a hard block risks stranding someone on GPS drift alone), and how multiple sessions per
+  day would interact with the existing "2-4 random audits per open shift" scheduling.
