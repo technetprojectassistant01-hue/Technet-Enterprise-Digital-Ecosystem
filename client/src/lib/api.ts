@@ -1951,8 +1951,8 @@ export function myAttendanceReportPdfUrl(from: string, to: string) {
 }
 
 /** The whole team's attendance register for a range, as a PDF — the admin's Staff Attendance export. */
-export function staffAttendanceReportPdfUrl(from: string, to: string) {
-  return `${API_URL}/api/site-attendance/report/pdf?from=${from}&to=${to}`
+export function staffAttendanceReportPdfUrl(from: string, to: string, includePast = false) {
+  return `${API_URL}/api/site-attendance/report/pdf?from=${from}&to=${to}${includePast ? '&includePast=true' : ''}`
 }
 
 /** A period of the signed-in user's attendance that HR has validated. */
