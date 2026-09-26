@@ -74,8 +74,10 @@ function StaffAttendanceExportDialog({ month, onClose }: { month: Date; onClose:
         { header: 'Time Out (app)', accessor: (v) => (v.checkOutAt ? clockOf(new Date(v.checkOutAt)) : '') },
         { header: 'GPS In Latitude', accessor: (v) => v.checkInLat ?? '' },
         { header: 'GPS In Longitude', accessor: (v) => v.checkInLng ?? '' },
+        { header: 'GPS In Place', accessor: (v) => v.checkInPlace ?? '' },
         { header: 'GPS Out Latitude', accessor: (v) => v.checkOutLat ?? '' },
         { header: 'GPS Out Longitude', accessor: (v) => v.checkOutLng ?? '' },
+        { header: 'GPS Out Place', accessor: (v) => v.checkOutPlace ?? '' },
         { header: 'Location Check In', accessor: (v) => v.checkInLocationMatch ?? '' },
         { header: 'Location Check Out', accessor: (v) => v.checkOutLocationMatch ?? '' },
         {
