@@ -1,5 +1,5 @@
 import { distanceMeters } from "./geo";
-import { geocodeAddress } from "./geocode";
+import { geocodeAddress, MAIN_ISLAND_VIEWBOX } from "./geocode";
 
 export type LocationMatchResult = "MATCHED" | "MISMATCH" | "UNCHECKABLE";
 
@@ -49,9 +49,14 @@ export async function checkLocationAgainstGps(
   if (!typedLocation || !typedLocation.trim()) return NOT_CHECKED;
 
   try {
+    // Every technician works on the main island, never Rodrigues or the other outer islands -
+    // country confinement alone let a typo like "Paille" (meant "Pailles") resolve to "Île Paille
+    // en Queue", a real islet in Rodrigues ~620km away, and get reported as a 620km mismatch.
+    // Measured against the real API, 2026-09-26.
     const resolved = await geocodeAddress(typedLocation.trim(), {
       countryCode: COUNTRY_CODE,
       timeoutMs: GEOCODE_TIMEOUT_MS,
+      viewbox: MAIN_ISLAND_VIEWBOX,
     });
     if (!resolved) return NOT_CHECKED;
 
