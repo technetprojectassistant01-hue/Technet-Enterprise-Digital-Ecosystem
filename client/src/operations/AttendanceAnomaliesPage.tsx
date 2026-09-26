@@ -66,11 +66,18 @@ function AttendanceAnomaliesPage() {
     return (
       <>
         {when} — {t.ops.anomalies.statusOutOfRadius(distanceText)}
+        {audit.place && ` · ${audit.place}`}
         {audit.lat && audit.lng && (
           <>
             {' '}
             (
-            <a href={mapLink(audit.lat, audit.lng)} target="_blank" rel="noreferrer" className="text-cyan-accent hover:underline">
+            <a
+              href={mapLink(audit.lat, audit.lng)}
+              target="_blank"
+              rel="noreferrer"
+              className="text-cyan-accent hover:underline"
+              title={`${audit.lat}, ${audit.lng}`}
+            >
               map
             </a>
             )
