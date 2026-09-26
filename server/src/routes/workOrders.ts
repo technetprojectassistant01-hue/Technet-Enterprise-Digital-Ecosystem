@@ -160,10 +160,16 @@ router.get("/my-day", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
 // "Who is in the field right now", for Field Operations. Site attendance no longer links to a
 // work order (CLAUDE.md §7a), so this is a team-attendance feed: open sessions, plus the last
 // 50 closed ones.
-router.get("/site-tracking", requireRole(...ATTENDANCE_VIEW_ROLES), async (_req, res) => {
+router.get("/site-tracking", requireRole(...ATTENDANCE_VIEW_ROLES), async (req, res) => {
+  // Same convention as Team Attendance's register: current staff only by default (ON_LEAVE still
+  // counts as current, only TERMINATED is excluded), ?includePast=true brings departed employees'
+  // recent sessions back for audit lookups.
+  const activeFilter =
+    req.query.includePast === "true" ? {} : { employee: { employmentStatus: { not: "TERMINATED" as const } } };
+
   const [current, recentlyCompleted] = await Promise.all([
     prisma.siteAttendance.findMany({
-      where: { checkOutAt: null },
+      where: { checkOutAt: null, ...activeFilter },
       include: {
         employee: { select: EMPLOYEE_SELECT },
         verifications: { orderBy: { checkedAt: "desc" } },
@@ -172,7 +178,7 @@ router.get("/site-tracking", requireRole(...ATTENDANCE_VIEW_ROLES), async (_req,
       orderBy: { checkInAt: "desc" },
     }),
     prisma.siteAttendance.findMany({
-      where: { checkOutAt: { not: null } },
+      where: { checkOutAt: { not: null }, ...activeFilter },
       include: {
         employee: { select: EMPLOYEE_SELECT },
         verifications: { orderBy: { checkedAt: "desc" } },
