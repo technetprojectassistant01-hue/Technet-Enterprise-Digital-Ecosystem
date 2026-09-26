@@ -195,11 +195,14 @@ function StaffAttendancePanel() {
     </div>
   )
 
-  /** The GPS the app captured, as a map link — there is no embedded map anywhere (CLAUDE.md §9). */
-  function gpsCell(lat: string | null, lng: string | null, mismatch: string | null) {
+  /** The GPS the app captured, as a map link — there is no embedded map anywhere (CLAUDE.md §9).
+   * The reverse-geocoded place name is the primary, human-readable text; raw coordinates stay
+   * underneath as a link rather than being replaced, since geocoding can be wrong or imprecise. */
+  function gpsCell(lat: string | null, lng: string | null, place: string | null, mismatch: string | null) {
     if (!lat || !lng) return <span className="text-ink-500">{t.staffAttendance.noGps}</span>
     return (
       <div className="flex flex-col gap-1">
+        {place && <span className="text-xs text-ink-300">{place}</span>}
         <a
           href={mapLink(lat, lng)}
           target="_blank"
@@ -324,6 +327,7 @@ function StaffAttendancePanel() {
                       {gpsCell(
                         v.checkInLat,
                         v.checkInLng,
+                        v.checkInPlace,
                         locationMismatchLabel(v.checkInLocationMatch, v.checkInLocationDistanceMeters),
                       )}
                     </td>
@@ -331,6 +335,7 @@ function StaffAttendancePanel() {
                       {gpsCell(
                         v.checkOutLat,
                         v.checkOutLng,
+                        v.checkOutPlace,
                         locationMismatchLabel(v.checkOutLocationMatch, v.checkOutLocationDistanceMeters),
                       )}
                     </td>
