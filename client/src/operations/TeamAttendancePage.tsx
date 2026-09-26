@@ -402,6 +402,7 @@ function TeamAttendancePage() {
                     </div>
                     <div className="text-xs text-ink-400">
                       {t.ops.team.since(new Date(v.checkInAt).toLocaleString())}
+                      {v.checkInPlace && <span title={`${v.checkInLat}, ${v.checkInLng}`}> · {v.checkInPlace}</span>}
                       {v.checkInSite && <span> · {v.checkInSite}</span>}
                       {v.checkInNote && <span> · {v.checkInNote}</span>}
                       {openForHours(v) >= STALE_SESSION_HOURS && (
@@ -650,6 +651,11 @@ function TeamAttendancePage() {
                               {v.checkInSite && <span> · {v.checkInSite}</span>}
                       {v.checkInNote && <span> · {v.checkInNote}</span>}
                             </a>
+                            {v.checkInPlace && (
+                              <span className="mt-0.5 block text-[11px] text-ink-400" title={`${v.checkInLat}, ${v.checkInLng}`}>
+                                {v.checkInPlace}
+                              </span>
+                            )}
                             {locationMismatchLabel(v.checkInLocationMatch, v.checkInLocationDistanceMeters) && (
                               <span className="mt-0.5 block text-[11px] font-medium text-amber-400">
                                 ⚠ {locationMismatchLabel(v.checkInLocationMatch, v.checkInLocationDistanceMeters)}
@@ -677,6 +683,11 @@ function TeamAttendancePage() {
                               </a>
                             ) : (
                               <span className="text-ink-400">{t.ops.team.stillCheckedIn}</span>
+                            )}
+                            {v.checkOutPlace && (
+                              <span className="mt-0.5 block text-[11px] text-ink-400" title={`${v.checkOutLat}, ${v.checkOutLng}`}>
+                                {v.checkOutPlace}
+                              </span>
                             )}
                             {v.checkOutByManager && (
                               <span className="mt-0.5 block text-[11px] text-ink-400">{t.ops.team.closedByManagement}</span>
