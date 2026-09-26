@@ -201,10 +201,14 @@ router.get("/report/pdf", requireRole(...ATTENDANCE_VIEW_ROLES), async (req, res
   const offset = MAURITIUS_OFFSET_MINUTES * 60_000;
   const start = new Date(dayToDate(range.from).getTime() - offset);
   const end = new Date(dayToDate(range.to).getTime() + 86_400_000 - offset);
+  // Same includePast convention as the register endpoint above - without this, the PDF could
+  // silently include departed employees the screen it was exported from was actively hiding.
+  const activeFilter =
+    req.query.includePast === "true" ? {} : { employee: { employmentStatus: { not: "TERMINATED" as const } } };
 
   const [rows, decisions] = await Promise.all([
     prisma.siteAttendance.findMany({
-      where: { checkInAt: { gte: start, lt: end } },
+      where: { checkInAt: { gte: start, lt: end }, ...activeFilter },
       include: { employee: { select: { firstName: true, lastName: true } } },
       orderBy: { checkInAt: "asc" },
     }),
