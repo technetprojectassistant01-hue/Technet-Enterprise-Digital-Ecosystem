@@ -32,7 +32,7 @@ export interface OvertimeDay {
   /** Mauritius calendar day, "YYYY-MM-DD". */
   date: string;
   minutes: number;
-  /** First time in and last time out that day, "HH:MM" as shown to the technician. */
+  /** First time in and last time out that day, "HH:MM" from the server-recorded GPS timestamp. */
   firstIn: string;
   lastOut: string;
 }
@@ -51,10 +51,15 @@ function hhmm(minutes: number): string {
   return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 }
 
-/** The typed time ("HH:MM") if there is one, else the recorded clock time — as the table shows it. */
-function shown(declared: string | null, recorded: Date): number {
-  const m = declared ? /^(\d{1,2}):(\d{2})$/.exec(declared) : null;
-  return m ? Number(m[1]) * 60 + Number(m[2]) : local(recorded).minutes;
+/**
+ * Minutes-of-day from the server-recorded GPS timestamp. Late/overtime/hours must never be
+ * computed from the technician's typed time-in/time-out: that field is self-reported and edits
+ * the very numbers used for payroll and discipline decisions. The typed value stays visible
+ * elsewhere (e.g. the "entered" vs "app" columns in the export) for comparison, but never feeds
+ * a calculation.
+ */
+function recordedMinutes(recorded: Date): number {
+  return local(recorded).minutes;
 }
 
 /** The Mauritius calendar day ("YYYY-MM-DD") a timestamp falls on. */
@@ -78,9 +83,10 @@ export function mauritiusMonthRange(month: string): { start: Date; end: Date } {
 }
 
 /**
- * Minutes late per day, keyed by the id of that day's first check-in: how far the shown time-in
- * runs past the start of the working day. Sundays are never late. Mirrors computeDayFlags' `late`
- * in client/src/lib/workSchedule.ts, for the printable attendance report.
+ * Minutes late per day, keyed by the id of that day's first check-in: how far the server-recorded
+ * time-in runs past the start of the working day. Never the technician's typed time-in — that
+ * field is self-reported and must not be able to erase lateness. Sundays are never late. Mirrors
+ * computeDayFlags' `late` in client/src/lib/workSchedule.ts, for the printable attendance report.
  */
 export function computeLateByVisit(visits: (OvertimeVisit & { id: string })[]): Map<string, number> {
   const firstByDay = new Map<string, OvertimeVisit & { id: string }>();
@@ -93,7 +99,7 @@ export function computeLateByVisit(visits: (OvertimeVisit & { id: string })[]): 
   for (const v of firstByDay.values()) {
     const schedule = SCHEDULE[local(v.checkInAt).weekday];
     if (!schedule) continue;
-    const by = shown(v.checkInDeclaredTime, v.checkInAt) - schedule.start;
+    const by = recordedMinutes(v.checkInAt) - schedule.start;
     if (by > 0) late.set(v.id, by);
   }
   return late;
@@ -122,20 +128,20 @@ export function computeOvertimeDays(visits: OvertimeVisit[]): OvertimeDay[] {
     // A check-out on a later calendar day counts the extra days in full.
     const outMinutes = (v: OvertimeVisit) => {
       const dayGap = Math.round((dayToDate(local(v.checkOutAt!).day).getTime() - dayToDate(local(v.checkInAt).day).getTime()) / 86_400_000);
-      return shown(v.checkOutDeclaredTime, v.checkOutAt!) + dayGap * 1440;
+      return recordedMinutes(v.checkOutAt!) + dayGap * 1440;
     };
     const lastOut = Math.max(...sorted.map(outMinutes));
 
     const minutes = schedule
       ? lastOut - schedule.end
-      : sorted.reduce((sum, v) => sum + Math.max(0, outMinutes(v) - shown(v.checkInDeclaredTime, v.checkInAt)), 0);
+      : sorted.reduce((sum, v) => sum + Math.max(0, outMinutes(v) - recordedMinutes(v.checkInAt)), 0);
 
     if (minutes > 0) {
       result.push({
         employeeId,
         date: day,
         minutes,
-        firstIn: hhmm(shown(first.checkInDeclaredTime, first.checkInAt)),
+        firstIn: hhmm(recordedMinutes(first.checkInAt)),
         lastOut: hhmm(lastOut),
       });
     }
