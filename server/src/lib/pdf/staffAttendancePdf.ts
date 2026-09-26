@@ -18,6 +18,8 @@ export interface StaffAttendancePdfVisit {
   checkInSite: string | null;
   checkInLat: Money | null;
   checkInLng: Money | null;
+  /** Reverse-geocoded place name for checkInLat/Lng - see reverseGeocodeCached(). */
+  checkInPlace: string | null;
   checkInTransportCost: Money | null;
   checkOutAt: Date | null;
   checkOutDeclaredTime: string | null;
@@ -25,6 +27,8 @@ export interface StaffAttendancePdfVisit {
   checkOutSite: string | null;
   checkOutLat: Money | null;
   checkOutLng: Money | null;
+  /** Mirrors checkInPlace. */
+  checkOutPlace: string | null;
   checkOutTransportCost: Money | null;
   checkOutByManager: boolean;
 }
@@ -66,9 +70,19 @@ function span(minutes: number): string {
   return h > 0 ? `${h}h ${String(m % 60).padStart(2, "0")}m` : `${m}m`;
 }
 
-function coords(lat: Money | null, lng: Money | null): string {
+/** First comma-segment only, and capped - the narrow GPS columns can't afford a full Nominatim
+ * address, and the raw coordinates on the line below stay the source of truth regardless. */
+function shortPlace(place: string | null): string | null {
+  if (!place) return null;
+  const first = place.split(",")[0]?.trim() || place;
+  return first.length > 26 ? `${first.slice(0, 25)}…` : first;
+}
+
+function coords(lat: Money | null, lng: Money | null, place: string | null = null): string {
   if (lat === null || lng === null) return "—";
-  return `${Number(lat).toFixed(4)},\n${Number(lng).toFixed(4)}`;
+  const coordLine = `${Number(lat).toFixed(4)}, ${Number(lng).toFixed(4)}`;
+  const short = shortPlace(place);
+  return short ? `${short}\n${coordLine}` : coordLine;
 }
 
 /**
@@ -241,8 +255,8 @@ export function generateStaffAttendancePdf(input: StaffAttendancePdfInput): PDFK
       [v.checkOutSite, v.checkOutNote].filter(Boolean).join(" — ") || "—",
       clock(v.checkInAt),
       v.checkOutAt ? clock(v.checkOutAt) : "—",
-      coords(v.checkInLat, v.checkInLng),
-      coords(v.checkOutLat, v.checkOutLng),
+      coords(v.checkInLat, v.checkInLng, v.checkInPlace),
+      coords(v.checkOutLat, v.checkOutLng, v.checkOutPlace),
       remarks.join("\n"),
     ];
 
