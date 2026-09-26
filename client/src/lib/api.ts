@@ -1697,6 +1697,8 @@ export interface SiteAttendance {
   checkInAt: string
   checkInLat: string
   checkInLng: string
+  /** Human-readable place name for checkInLat/Lng, resolved once at check-in time. Null falls back to the raw coordinates/map link. */
+  checkInPlace: string | null
   /** Where the technician says they are. */
   checkInNote: string | null
   /** The site name they typed ("Celero, Level 5"). Display only, never geocoded. */
@@ -1713,6 +1715,8 @@ export interface SiteAttendance {
   checkOutAt: string | null
   checkOutLat: string | null
   checkOutLng: string | null
+  /** Mirrors checkInPlace - resolved once at check-out time. */
+  checkOutPlace: string | null
   checkOutNote: string | null
   checkOutSite: string | null
   checkOutDeclaredTime: string | null
@@ -1746,6 +1750,8 @@ export interface AttendanceAudit {
   status: AuditStatus
   lat: string | null
   lng: string | null
+  /** Human-readable place name for lat/lng, resolved once at confirm time. Null falls back to the raw coordinates/map link. */
+  place: string | null
   distanceMeters: number | null
   match: LocationMatch | null
   createdAt: string
