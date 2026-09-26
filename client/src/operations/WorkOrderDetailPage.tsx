@@ -290,6 +290,9 @@ function WorkOrderDetailPage() {
                           {new Date(v.checkInAt).toLocaleString()}
                           {v.checkInNote && <span> · {v.checkInNote}</span>}
                         </a>
+                        {v.checkInPlace && (
+                          <span className="mt-0.5 block text-[11px] text-ink-400">{v.checkInPlace}</span>
+                        )}
                       </td>
                       <td className="px-3 py-3 text-ink-300">
                         {v.checkOutAt && v.checkOutLat && v.checkOutLng ? (
@@ -303,7 +306,11 @@ function WorkOrderDetailPage() {
                             {new Date(v.checkOutAt).toLocaleString()}
                             {v.checkOutNote && <span> · {v.checkOutNote}</span>}
                           </a>
-                        ) : (
+                        ) : null}
+                        {v.checkOutPlace && (
+                          <span className="mt-0.5 block text-[11px] text-ink-400">{v.checkOutPlace}</span>
+                        )}
+                        {!(v.checkOutAt && v.checkOutLat && v.checkOutLng) && (
                           <span className="text-ink-400">{t.ops.woDetail.stillOnSite}</span>
                         )}
                       </td>
