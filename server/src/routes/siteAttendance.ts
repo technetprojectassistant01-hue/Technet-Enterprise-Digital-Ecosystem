@@ -6,6 +6,7 @@ import { distanceMeters, SITE_GEOFENCE_RADIUS_METERS } from "../lib/geo";
 import { notifyEmployee, notifyRoles } from "../lib/notifications";
 import { parseClockTime } from "../lib/clockTime";
 import { checkLocationAgainstGps } from "../lib/locationMatch";
+import { reverseGeocodeCached } from "../lib/reverseGeocode";
 import { cancelPendingAudits, scheduleAuditTimes } from "../lib/attendanceAudit";
 import { claimRequest, releaseRequest } from "../lib/idempotency";
 import { notifyHrOfOvertime } from "../lib/overtimeQueue";
@@ -490,8 +491,14 @@ router.post("/check-in", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
       workOrderId = rawWorkOrderId;
     }
 
-    // Advisory only, and it never blocks: a technician checks in successfully whatever this says.
-    const locationCheck = await checkLocationAgainstGps(note, coords);
+    // Both advisory, both run in parallel - neither ever blocks a technician from checking in.
+    // reverseGeocodeCached resolves once here rather than live on every admin page view later
+    // (CLAUDE.md, reverse-geocoding note) - a cache hit is instant, a miss costs one Nominatim
+    // round trip that every future check-in at the same site skips entirely.
+    const [locationCheck, checkInPlace] = await Promise.all([
+      checkLocationAgainstGps(note, coords),
+      reverseGeocodeCached(coords.lat, coords.lng),
+    ]);
 
     const siteAttendance = await prisma.siteAttendance.create({
       data: {
@@ -499,6 +506,7 @@ router.post("/check-in", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
         workOrderId,
         checkInLat: coords.lat,
         checkInLng: coords.lng,
+        checkInPlace,
         checkInNote: note,
         checkInSite: parseSite(req.body),
         checkInDeclaredTime: declaredTime.value,
@@ -581,7 +589,10 @@ router.post("/check-out", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => 
     }
 
     const checkOutNote = parseNote(req.body);
-    const locationCheck = await checkLocationAgainstGps(checkOutNote, coords);
+    const [locationCheck, checkOutPlace] = await Promise.all([
+      checkLocationAgainstGps(checkOutNote, coords),
+      reverseGeocodeCached(coords.lat, coords.lng),
+    ]);
 
     const siteAttendance = await prisma.siteAttendance.update({
       where: { id: openVisit.id },
@@ -589,6 +600,7 @@ router.post("/check-out", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => 
         checkOutAt: new Date(),
         checkOutLat: coords.lat,
         checkOutLng: coords.lng,
+        checkOutPlace,
         checkOutNote,
         checkOutSite: parseSite(req.body),
         checkOutDeclaredTime: declaredTime.value,
