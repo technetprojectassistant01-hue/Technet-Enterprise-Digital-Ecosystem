@@ -1159,6 +1159,9 @@ model SiteAttendance {
    * on. The distinction has to survive into reporting, hence a column rather than a note.
    */
   checkOutByManager              Boolean        @default(false)
+  /** Set once a "you've been checked in a long time" push has gone out for this open session, so
+   * it fires exactly once rather than on every poller tick - see server/src/routes/push.ts. */
+  longShiftReminderSentAt        DateTime?
 
   verifications SiteVerification[]
   audits        AttendanceAudit[]
