@@ -2094,7 +2094,7 @@ export interface TechnicianAttendanceSummary {
 /** `from`/`to` are inclusive "YYYY-MM-DD" days and win over `month` when both are given - a week
  * often straddles a month boundary, which `month` alone can't express. */
 export function listTeamAttendance(
-  params: { month?: string; from?: string; to?: string; employeeId?: string } = {},
+  params: { month?: string; from?: string; to?: string; employeeId?: string; includePast?: boolean } = {},
 ) {
   const query = new URLSearchParams()
   if (params.from && params.to) {
@@ -2104,6 +2104,7 @@ export function listTeamAttendance(
     query.set('month', params.month)
   }
   if (params.employeeId) query.set('employeeId', params.employeeId)
+  if (params.includePast) query.set('includePast', 'true')
   const qs = query.toString()
   return request<{
     current: SiteAttendanceWithEmployee[]
