@@ -1085,6 +1085,13 @@ model SiteAttendance {
   checkInLat                    Decimal        @db.Decimal(9, 6)
   checkInLng                    Decimal        @db.Decimal(9, 6)
   /**
+   * A human-readable place name for checkInLat/Lng, resolved once at check-in time via
+   * reverseGeocodeCached() - never live on an admin page view (CLAUDE.md, reverse-geocoding
+   * note). Null means the lookup failed or hasn't run (e.g. a row from before this existed);
+   * the raw coordinates/map link stay the fallback, never fully hidden.
+   */
+  checkInPlace                  String?
+  /**
    * Where the technician says they are - "Office", "Celero site", etc.
    */
   checkInNote                   String?
@@ -1122,6 +1129,8 @@ model SiteAttendance {
   checkOutAt                     DateTime?
   checkOutLat                    Decimal?       @db.Decimal(9, 6)
   checkOutLng                    Decimal?       @db.Decimal(9, 6)
+  /** Mirrors checkInPlace - resolved once at check-out time. */
+  checkOutPlace                  String?
   /**
    * Where the technician says they are leaving from. Optional, unlike checkInNote - by the time
    * somebody is checking out the site is usually already established by the check-in.
@@ -1227,6 +1236,8 @@ model AttendanceAudit {
   status           AuditStatus     @default(PENDING)
   lat              Decimal?        @db.Decimal(9, 6)
   lng              Decimal?        @db.Decimal(9, 6)
+  /** Human-readable place name for lat/lng, resolved once at confirm time - mirrors SiteAttendance.checkInPlace. */
+  place            String?
   distanceMeters   Int?
   /** Reuses LocationMatch (MATCHED/MISMATCH/UNCHECKABLE) for consistency with the check-in/out fields above. */
   match            LocationMatch?
@@ -1282,6 +1293,22 @@ model AttendanceAnomaly {
 
   @@index([employeeId])
   @@index([status])
+}
+
+/**
+ * Reverse-geocoding cache (GPS fix -> human-readable place name), keyed by coordinates rounded to
+ * 5 decimal places (~1.1m) so the same site is never re-geocoded. Nominatim's usage policy caps
+ * free use at roughly 1 request/second - this is what makes that survivable at any real volume,
+ * not just politeness. See server/src/lib/reverseGeocode.ts.
+ */
+model GeocodeCache {
+  id        String   @id @default(uuid())
+  latKey    Decimal  @db.Decimal(8, 5)
+  lngKey    Decimal  @db.Decimal(8, 5)
+  placeName String
+  createdAt DateTime @default(now())
+
+  @@unique([latKey, lngKey])
 }
 
 model DailyWorkReport {
