@@ -35,9 +35,11 @@ describe("computeOvertimeDays", () => {
     expect(computeOvertimeDays([visit("2026-09-16", "08:00", null)])).toEqual([]);
   });
 
-  it("uses the typed time when there is one", () => {
+  it("ignores the typed time and uses the recorded time, even when they disagree", () => {
+    // Typed check-out is 18:00, but the GPS timestamp says 17:10 - overtime must come from 17:10.
     const days = computeOvertimeDays([visit("2026-09-17", "08:00", "17:10", { checkOutDeclaredTime: "18:00" })]);
-    expect(days[0].minutes).toBe(60);
+    expect(days[0].minutes).toBe(10);
+    expect(days[0].lastOut).toBe("17:10");
   });
 
   it("groups by the Mauritius day, not the UTC day", () => {
@@ -57,13 +59,22 @@ describe("mauritiusMonthRange", () => {
 });
 
 describe("computeLateByVisit", () => {
-  it("flags only the day's first check-in, by the shown time, and never on Sunday", () => {
+  it("flags only the day's first check-in, by the recorded time, and never on Sunday", () => {
     const late = computeLateByVisit([
       { id: "a", ...visit("2026-09-14", "08:20", "12:00") },
       { id: "b", ...visit("2026-09-14", "13:30", "17:00") },
       { id: "c", ...visit("2026-09-15", "08:40", "17:00", { checkInDeclaredTime: "08:00" }) },
       { id: "d", ...visit("2026-09-20", "10:00", "11:00") },
     ]);
-    expect([...late.entries()]).toEqual([["a", 20]]);
+    expect([...late.entries()]).toEqual([
+      ["a", 20],
+      ["c", 40],
+    ]);
+  });
+
+  it("ignores a typed time-in that would erase lateness", () => {
+    // Typed 08:00 (on time), but the GPS timestamp says 08:40 - the recorded time must win.
+    const late = computeLateByVisit([{ id: "a", ...visit("2026-09-14", "08:40", "17:00", { checkInDeclaredTime: "08:00" }) }]);
+    expect(late.get("a")).toBe(40);
   });
 });
