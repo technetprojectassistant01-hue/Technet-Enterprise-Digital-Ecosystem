@@ -12,6 +12,7 @@ import { useToast } from '../dashboard/ToastContext'
 import { useEmployees } from '../erp/useEmployees'
 import { useT } from '../i18n'
 import AnomalyMiniMap from './AnomalyMiniMap'
+import SavePlaceDialog from './SavePlaceDialog'
 
 const smallButton =
   'inline-flex items-center gap-1.5 whitespace-nowrap rounded-md border border-ink-600 px-2.5 py-1.5 text-xs font-semibold text-ink-200 transition disabled:cursor-not-allowed disabled:opacity-60'
@@ -59,6 +60,8 @@ function AttendanceAnomaliesPage() {
   const [error, setError] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [notes, setNotes] = useState<Record<string, string>>({})
+  /** "Confirm Genuine" on a visit's anomaly opens the save-as-known-place dialog (spec section 2). */
+  const [savingPlaceFor, setSavingPlaceFor] = useState<AttendanceAnomaly | null>(null)
 
   function load() {
     setLoading(true)
@@ -301,6 +304,11 @@ function AttendanceAnomaliesPage() {
                             </a>
                             {v.checkInAccuracyMeters !== null && ` · ${t.ops.anomalies.accuracyMeters(v.checkInAccuracyMeters)}`}
                           </dd>
+                          {v.knownPlace && (
+                            <dd className="text-emerald-400">
+                              <span className="text-ink-300">{t.ops.anomalies.knownPlace}:</span> {v.knownPlace.name}
+                            </dd>
+                          )}
                         </div>
                         {v.checkOutAt && (
                           <div>
@@ -375,7 +383,7 @@ function AttendanceAnomaliesPage() {
                           <button
                             type="button"
                             disabled={busy}
-                            onClick={() => decide(a, 'GENUINE')}
+                            onClick={() => (a.siteAttendance ? setSavingPlaceFor(a) : decide(a, 'GENUINE'))}
                             className={`${smallButton} border-emerald-400/50 text-emerald-400`}
                           >
                             {busy ? t.ops.anomalies.deciding : t.ops.anomalies.confirmGenuine}
@@ -415,6 +423,18 @@ function AttendanceAnomaliesPage() {
           </ul>
         )}
       </Panel>
+
+      {savingPlaceFor && (
+        <SavePlaceDialog
+          anomaly={savingPlaceFor}
+          note={notes[savingPlaceFor.id] ?? ''}
+          onClose={() => setSavingPlaceFor(null)}
+          onDone={() => {
+            setSavingPlaceFor(null)
+            load()
+          }}
+        />
+      )}
     </div>
   )
 }
