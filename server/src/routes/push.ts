@@ -5,6 +5,7 @@ import { pushConfigured, sendPushToUser } from "../lib/push";
 import { todayUtc } from "../lib/leaveRequests";
 import { AUDIT_NUDGE_DELAY_MS, AUDIT_RESPONSE_WINDOW_MS, evaluateStrike } from "../lib/attendanceAudit";
 import { purgeExpiredAttendancePhotos } from "../lib/attendancePhoto";
+import { fillMissingPlaces } from "../lib/reverseGeocode";
 
 const router = Router();
 
@@ -213,9 +214,12 @@ router.post("/run-attendance-audits", async (req, res) => {
   // job of its own; a single indexed delete, so running it every few minutes costs nothing. Like
   // the long-shift reminder it is independent of the audit-ping switch below.
   const photosPurged = await purgeExpiredAttendancePhotos();
+  // Retry place names whose lookup failed at check-in/out, so no visit stays coordinates-only.
+  // Also independent of the audit-ping switch - this is display data, not monitoring.
+  const placesFilled = await fillMissingPlaces();
 
   if (process.env.ATTENDANCE_AUDIT_ENABLED !== "true") {
-    return res.json({ enabled: false, pushed: 0, missed: 0, longShiftReminders, photosPurged });
+    return res.json({ enabled: false, pushed: 0, missed: 0, longShiftReminders, photosPurged, placesFilled });
   }
 
   const due = await prisma.attendanceAudit.findMany({
@@ -291,7 +295,7 @@ router.post("/run-attendance-audits", async (req, res) => {
     await evaluateStrike(audit.id);
   }
 
-  res.json({ enabled: true, pushed, skipped, nudged, missed: overdue.length, longShiftReminders, photosPurged });
+  res.json({ enabled: true, pushed, skipped, nudged, missed: overdue.length, longShiftReminders, photosPurged, placesFilled });
 });
 
 export default router;
