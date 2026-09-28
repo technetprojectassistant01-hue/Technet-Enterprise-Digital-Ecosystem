@@ -37,6 +37,7 @@ import { employeeDocumentsRouter, myDocumentsRouter } from "./routes/employeeDoc
 import payrollRouter from "./routes/payroll";
 import siteAttendanceRouter from "./routes/siteAttendance";
 import attendanceAuditsRouter from "./routes/attendanceAudits";
+import knownPlacesRouter from "./routes/knownPlaces";
 import insightRouter from "./routes/insight";
 import securityRouter from "./routes/security";
 import portalAuthRouter from "./routes/portalAuth";
@@ -107,6 +108,7 @@ app.use("/api/employee-documents", employeeDocumentsRouter);
 app.use("/api/payroll", payrollRouter);
 app.use("/api/site-attendance", siteAttendanceRouter);
 app.use("/api/attendance-audits", attendanceAuditsRouter);
+app.use("/api/known-places", knownPlacesRouter);
 app.use("/api/insight", insightRouter);
 app.use("/api/security", securityRouter);
 app.use("/api/portal-auth", portalAuthRouter);
