@@ -7,6 +7,7 @@ import {
   MAURITIUS_OFFSET_MINUTES,
   computeOvertimeDays,
   dayToDate,
+  mauritiusDay,
   mauritiusMonthRange,
 } from "../lib/overtime";
 import { overtimeForDay } from "../lib/overtimeQueue";
@@ -59,11 +60,30 @@ router.get("/", async (req, res) => {
   const employees = await prisma.employee.findMany({ where: { id: { in: employeeIds } }, select: EMPLOYEE_SELECT });
   const employeeById = new Map(employees.map((e) => [e.id, e]));
 
+  // Spec section 6: approving overtime on a day with open or confirmed anomalies gets a warning
+  // (never a block). Counted per employee per Mauritius day of the visit's check-in.
+  const anomalyRows = await prisma.attendanceAnomaly.findMany({
+    where: { status: { in: ["OPEN", "CONFIRMED_VIOLATION"] }, siteAttendance: { checkInAt: { gte: start, lt: end } } },
+    select: { employeeId: true, siteAttendance: { select: { checkInAt: true } } },
+  });
+  const anomalyCountByKey = new Map<string, number>();
+  for (const a of anomalyRows) {
+    if (!a.siteAttendance) continue;
+    const key = `${a.employeeId}|${mauritiusDay(a.siteAttendance.checkInAt)}`;
+    anomalyCountByKey.set(key, (anomalyCountByKey.get(key) ?? 0) + 1);
+  }
+
   const items = days.map((d) => {
     const key = `${d.employeeId}|${d.date}`;
     const decision = decisionByKey.get(key) ?? null;
     decisionByKey.delete(key);
-    return { ...d, employee: employeeById.get(d.employeeId) ?? null, status: decision?.status ?? "PENDING", decision };
+    return {
+      ...d,
+      employee: employeeById.get(d.employeeId) ?? null,
+      status: decision?.status ?? "PENDING",
+      decision,
+      anomalyCount: anomalyCountByKey.get(key) ?? 0,
+    };
   });
   // A decision whose overtime no longer calculates (attendance was corrected) still shows, so HR can see it.
   for (const decision of decisionByKey.values()) {
@@ -77,6 +97,7 @@ router.get("/", async (req, res) => {
       employee: employeeById.get(decision.employeeId) ?? null,
       status: decision.status,
       decision,
+      anomalyCount: anomalyCountByKey.get(`${decision.employeeId}|${date}`) ?? 0,
     });
   }
   items.sort((a, b) => (a.date === b.date ? 0 : b.date.localeCompare(a.date)));
