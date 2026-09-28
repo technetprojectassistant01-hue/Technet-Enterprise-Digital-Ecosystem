@@ -723,6 +723,42 @@ router.post("/check-out", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => 
   }
 });
 
+/** Pings closer together than this are ignored - a phone flipping in and out of the app. */
+const MIN_PING_INTERVAL_MS = 2 * 60 * 1000;
+
+/**
+ * A location reading during an open shift (spec section 4): sent by the app every 15 minutes and
+ * whenever it returns to the foreground - only while the app is open, since a web app cannot read
+ * the location in the background (client/src/lib/useShiftPings.ts). Stored as an AttendancePing
+ * and evaluated against the anomaly rules (left the work area, travel, fake GPS, missed pings).
+ *
+ * Like the audit confirm, the response carries no verdict: the technician's own screen never
+ * shows on-site/off-site results (CLAUDE.md §7a).
+ */
+router.post("/ping", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
+  const coords = parseCoords(req.body);
+  if (!coords) return res.status(400).json({ error: "A valid lat and lng are required" });
+  const fix = parseFixMeta(req.body);
+
+  const employee = await prisma.employee.findUnique({ where: { userId: req.user!.sub }, select: { id: true } });
+  if (!employee) return res.status(403).json({ error: "No employee record is linked to your account" });
+
+  const visit = await prisma.siteAttendance.findFirst({
+    where: { employeeId: employee.id, checkOutAt: null },
+    select: { id: true, pings: { orderBy: { createdAt: "desc" }, take: 1, select: { createdAt: true } } },
+  });
+  if (!visit) return res.status(409).json({ error: "Not checked in", code: "NO_OPEN_SHIFT" });
+
+  const last = visit.pings[0]?.createdAt;
+  if (last && Date.now() - last.getTime() < MIN_PING_INTERVAL_MS) return res.json({ ok: true, skipped: true });
+
+  await prisma.attendancePing.create({
+    data: { siteAttendanceId: visit.id, lat: coords.lat, lng: coords.lng, accuracyMeters: fix.accuracyMeters, deviceAt: fix.deviceAt },
+  });
+  void evaluateVisit(visit.id);
+  res.json({ ok: true });
+});
+
 /** A periodic (not continuous) re-check of the technician's location while checked in and linked to a work order. */
 router.post("/verify-location", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
   const coords = parseCoords(req.body);
