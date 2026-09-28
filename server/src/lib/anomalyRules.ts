@@ -63,12 +63,37 @@ const MIN_TRAVEL_METERS = 1000;
 const meters = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) =>
   Math.round(distanceMeters(a.lat, a.lng, b.lat, b.lng));
 
-/** FAR_FROM_JOB (high): the check-in is more than 500 m from the linked job's coordinates. */
-export function farFromJob(checkIn: Fix, job: { id: string; lat: number; lng: number } | null): Finding[] {
+/**
+ * FAR_FROM_JOB: the check-in is more than 500 m from the linked job's coordinates. HIGH when a
+ * manager set the job's site; MEDIUM when the coordinates were geocoded from the customer's own
+ * address (spec section 2) - one customer often has several sites (CLAUDE.md §7b), so that may be
+ * the office rather than the job, and "far from it" is weaker evidence.
+ */
+export function farFromJob(
+  checkIn: Fix,
+  job: { id: string; lat: number; lng: number; fromCustomerAddress?: boolean } | null,
+): Finding[] {
   if (!job) return [];
   const distance = meters(checkIn, job);
   if (distance <= FAR_FROM_JOB_METERS) return [];
-  return [{ type: "FAR_FROM_JOB", severity: "HIGH", key: checkIn.key, details: { distanceMeters: distance, workOrderId: job.id } }];
+  return [
+    {
+      type: "FAR_FROM_JOB",
+      severity: job.fromCustomerAddress ? "MEDIUM" : "HIGH",
+      key: checkIn.key,
+      details: { distanceMeters: distance, workOrderId: job.id, siteSource: job.fromCustomerAddress ? "CUSTOMER_ADDRESS" : "MANAGER" },
+    },
+  ];
+}
+
+/**
+ * UNVERIFIED_LOCATION (low): no job linked and no known place matched - informational, so a
+ * reviewer can confirm the spot and save it as a known place; the next check-in there then
+ * matches and this stops appearing for it.
+ */
+export function unverifiedLocation(checkIn: Fix, context: { hasJob: boolean; knownPlaceId: string | null }): Finding[] {
+  if (context.hasJob || context.knownPlaceId) return [];
+  return [{ type: "UNVERIFIED_LOCATION", severity: "LOW", key: checkIn.key, details: {} }];
 }
 
 /**
