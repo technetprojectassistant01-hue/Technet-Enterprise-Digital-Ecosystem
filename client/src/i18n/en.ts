@@ -232,6 +232,15 @@ export const en = {
     goToCheckOut: 'Go to check-out',
     todaysJob: "TODAY'S JOB",
     notThisJob: 'Not this job',
+    checkInPhoto: 'CHECK-IN PHOTO',
+    takePhoto: 'Take photo',
+    retakePhoto: 'Retake',
+    photoRequired: 'Take a check-in photo first',
+    photoFailed: 'Could not read the photo. Please try again.',
+    trackingNotice: (withPhoto: boolean): string =>
+      withPhoto
+        ? 'Your location is recorded when you check in, when you check out and during your shift, and a photo is taken at check-in. This confirms attendance at the sites you visit.'
+        : 'Your location is recorded when you check in, when you check out and during your shift. This confirms attendance at the sites you visit.',
     title: 'My Attendance',
     currentStatus: 'CURRENT STATUS',
     checkedIn: 'CHECKED IN',
@@ -930,6 +939,7 @@ export const en = {
       loadFailed: 'Failed to load attendance',
       currentlyIn: 'Currently Checked In',
       since: (when: string) => `Since ${when}`,
+      checkInPhoto: 'Check-in photo',
       openDays: (days: number) => `open ${days}d — likely forgotten`,
       openHours: (hours: number) => `open ${hours}h — likely forgotten`,
       viewLocation: 'View location',
@@ -1654,7 +1664,7 @@ export const en = {
           paragraphs: [
             'Account details: your name, email address, role, language choice and a scrambled (hashed) version of your password. We never store your password itself.',
             'Employee records, entered by HR: contact details, position, department, national ID, date of birth, address, emergency contact, contract details, salary and bank details for payroll, leave, certifications and training.',
-            'Attendance: each time you check in or check out, the time you enter, the time the server received it, the site and place you type, your transport cost, any job you pick, and your device\'s location (GPS) at that moment.',
+            'Attendance: each time you check in or check out, the time you enter, the time the server received it, the site and place you type, your transport cost, the job it is linked to, and your device\'s location (GPS) and its accuracy at that moment. At check-in, a photo taken with your phone\'s camera (when the company requires one); photos are deleted after 90 days.',
             'Work records: work orders, daily reports, maintenance and intervention reports, including photos, materials used and customer signatures.',
             'Tools and equipment: the tools you request, which tools you were issued and when, and when and in what condition they came back.',
             'Client Portal: your company\'s details, the login email set up for you, your quotations, job status and any quote requests you send.',
