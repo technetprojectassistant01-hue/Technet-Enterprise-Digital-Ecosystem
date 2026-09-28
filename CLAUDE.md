@@ -1801,11 +1801,44 @@ and the spec's MISSED_PING rule are meant to reduce going forward.
   values it filled. None or several jobs -> nothing is filled: the picker the user removed on
   2026-09-14 (§7a) was deliberately not brought back. The link is used up after one check-in.
 
-### 30e. Still to do from this spec
+### 30e. The check-in photo (2026-09-28)
 
-Section 1 is done except the check-in photo (needs a storage/retention decision - DB blobs on Neon vs.
-elsewhere - and a home for the on/off setting, since no settings table exists; see §10d). Section 8 is
-done except replacing the "X km from stated" check with the spec's
+Decisions made with the user: stored **in the database**, shrunk to ~50 KB, **deleted after 90 days**
+(keeps Neon flat at ~30 MB instead of ~300 MB/year); required unless the Render env var
+**`ATTENDANCE_PHOTO_REQUIRED=false`** (an env var, not an in-app setting - same pattern as
+`ATTENDANCE_AUDIT_ENABLED`; anything other than an explicit "false" leaves it on).
+
+- `SiteAttendancePhoto` (migration `20260928110000_add_site_attendance_photo`), one per visit, its own
+  table so bytes never load with attendance lists. `createdAt` = server receive time, `lat`/`lng` =
+  the check-in fix. `server/src/lib/attendancePhoto.ts` (tested): `isPhotoRequired`,
+  `parseAttendancePhoto` (JPEG/PNG/WEBP data URL, 2 MB hard cap), `purgeExpiredAttendancePhotos`.
+- Sent inline as `photo` in the check-in body (like daily report photos), so check-in + photo are one
+  outbox item and one idempotent request. Created in the same write as the visit. Missing while
+  required -> 400 `PHOTO_REQUIRED`.
+- `GET /api/site-attendance/me` returns `photoRequired`; the widget assumes true until told otherwise
+  (a queued offline check-in without a required photo would be refused on sync). The team register
+  includes `checkInPhoto: { id, createdAt }` only; `GET /api/site-attendance/:id/photo`
+  (`ATTENDANCE_VIEW_ROLES`) serves the bytes; Team Attendance shows a "Check-in photo" link.
+- Retention runs inside `POST /api/push/run-attendance-audits` (the cron-job.org poller), independent
+  of `ATTENDANCE_AUDIT_ENABLED`; the response carries `photosPurged`.
+- **Camera, not gallery - honestly:** the widget uses `<input type="file" capture="user">`, which
+  opens the front camera directly on phones. It is not a guarantee - desktop and some Android browsers
+  still offer a file picker, and no web page can prove a file came from the camera. The server's own
+  timestamp and GPS on the photo are the trustworthy part. `shrinkImageTo(file, 640, 0.6)` in
+  `lib/imageResize.ts` (the old `shrinkImage(file)` stays single-argument so `files.map(shrinkImage)`
+  keeps working).
+- The widget shows a notice under Check In that location is recorded at check-in, check-out and
+  during the shift (the audit pings, §28), plus the photo when required. The privacy page's
+  "Attendance" data line and the Help Center check-in answer were updated in all three languages.
+  **Still stale on the privacy page**: "This is used to confirm site visits, not to judge where you
+  are the rest of the day" predates the audit pings (§28) and should be revisited.
+- **Rollout gap:** a phone still running a cached older build has no camera button and will get
+  "Take a check-in photo first" until it picks up the update (the Reload bar, §17). Set
+  `ATTENDANCE_PHOTO_REQUIRED=false` temporarily if that bites.
+
+### 30f. Still to do from this spec
+
+Section 1 is done (§30d, §30e). Section 8 is done except replacing the "X km from stated" check with the spec's
 STATED_LOCATION_MISMATCH anomaly, which belongs with the anomaly-rule engine (section 5). Not yet
 built: everything in the new-feature sections (verified check-in/photo, learned places,
 home-location flag, shift pings, the full anomaly-rule engine, admin review page, live map). Open
