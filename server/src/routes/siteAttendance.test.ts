@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseDeclaredTime, parseTransportCost } from "./siteAttendance";
+import { parseDeclaredTime, parseFixMeta, parseTransportCost } from "./siteAttendance";
 
 describe("parseTransportCost", () => {
   it("treats absent, null and blank as no cost - the field is optional", () => {
@@ -58,5 +58,41 @@ describe("parseDeclaredTime", () => {
   it("rejects a malformed time instead of dropping it silently", () => {
     expect(parseDeclaredTime("25:00")).toEqual({ error: "Time must be in HH:MM format" });
     expect(parseDeclaredTime("0830")).toEqual({ error: "Time must be in HH:MM format" });
+  });
+});
+
+describe("parseFixMeta", () => {
+  const now = new Date("2026-09-28T06:00:00Z");
+
+  it("rounds the accuracy and keeps the device time", () => {
+    const fix = parseFixMeta({ accuracy: 12.6, deviceTime: now.getTime() - 5_000 }, now);
+    expect(fix.accuracyMeters).toBe(13);
+    expect(fix.deviceAt?.toISOString()).toBe("2026-09-28T05:59:55.000Z");
+  });
+
+  it("accepts an ISO string device time", () => {
+    expect(parseFixMeta({ deviceTime: "2026-09-28T05:00:00Z" }, now).deviceAt?.toISOString()).toBe("2026-09-28T05:00:00.000Z");
+  });
+
+  it("returns nulls when nothing is sent - an older app version must still check in", () => {
+    expect(parseFixMeta({}, now)).toEqual({ accuracyMeters: null, deviceAt: null });
+    expect(parseFixMeta(undefined, now)).toEqual({ accuracyMeters: null, deviceAt: null });
+  });
+
+  it("drops junk instead of rejecting", () => {
+    expect(parseFixMeta({ accuracy: -1, deviceTime: "not a date" }, now)).toEqual({ accuracyMeters: null, deviceAt: null });
+    expect(parseFixMeta({ accuracy: "20" }, now).accuracyMeters).toBeNull();
+  });
+
+  it("keeps an accuracy of exactly 0 - a mock-location signal the anomaly rules need to see", () => {
+    expect(parseFixMeta({ accuracy: 0 }, now).accuracyMeters).toBe(0);
+  });
+
+  it("caps an absurd accuracy", () => {
+    expect(parseFixMeta({ accuracy: 5_000_000 }, now).accuracyMeters).toBe(100_000);
+  });
+
+  it("drops a device time more than 30 days away from the server clock", () => {
+    expect(parseFixMeta({ deviceTime: "2020-01-01T00:00:00Z" }, now).deviceAt).toBeNull();
   });
 });
