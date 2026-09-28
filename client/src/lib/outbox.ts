@@ -19,6 +19,8 @@
  * duplicate — see server/src/lib/idempotency.ts.
  */
 
+import { ApiError } from './api'
+
 // See the note in api.ts — `??` so an explicit empty prod value means "same origin".
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000'
 
@@ -235,7 +237,8 @@ export async function submitOrQueue<T>(spec: SubmitSpec): Promise<QueueResult<T>
     return { queued: true }
   }
   if (!res.ok) {
-    throw new Error(res.data?.error || `Request failed (${res.status})`)
+    // ApiError, not a plain Error, so a caller can branch on the server's `code` (e.g. ALREADY_CHECKED_IN).
+    throw new ApiError(res.data?.error || `Request failed (${res.status})`, res.status, res.data)
   }
 
   // Intervention reports: the create succeeded; now the photos, each its own request.
