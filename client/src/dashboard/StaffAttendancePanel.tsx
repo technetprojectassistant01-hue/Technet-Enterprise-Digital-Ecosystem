@@ -4,7 +4,8 @@ import { ChevronLeft, ChevronRight, Download, Users } from 'lucide-react'
 import * as api from '../lib/api'
 import type { OvertimeItem, SiteAttendanceWithEmployee } from '../lib/api'
 import { Panel, Badge, EmptyState, TableSkeleton } from './ui'
-import { clockOf, locationMismatchLabel } from '../lib/siteAttendance'
+import { clockOf } from '../lib/siteAttendance'
+import VerificationBadge from './VerificationBadge'
 import { computeDayFlags } from '../lib/workSchedule'
 import { mapLink } from '../lib/geolocation'
 import StaffAttendanceExportDialog from './StaffAttendanceExportDialog'
@@ -195,10 +196,12 @@ function StaffAttendancePanel() {
     </div>
   )
 
-  /** The GPS the app captured, as a map link — there is no embedded map anywhere (CLAUDE.md §9).
+  /** The GPS the app captured, as a map link (the only embedded map is the Anomalies review card).
    * The reverse-geocoded place name is the primary, human-readable text; raw coordinates stay
-   * underneath as a link rather than being replaced, since geocoding can be wrong or imprecise. */
-  function gpsCell(lat: string | null, lng: string | null, place: string | null, mismatch: string | null) {
+   * underneath as a link rather than being replaced, since geocoding can be wrong or imprecise.
+   * The old "X km from stated" badge that sat here is now the STATED_LOCATION_MISMATCH anomaly,
+   * shown through the Verified / Unverified / Flagged badge in the Flags column. */
+  function gpsCell(lat: string | null, lng: string | null, place: string | null) {
     if (!lat || !lng) return <span className="text-ink-500">{t.staffAttendance.noGps}</span>
     return (
       <div className="flex flex-col gap-1">
@@ -211,7 +214,6 @@ function StaffAttendancePanel() {
         >
           {Number(lat).toFixed(4)}, {Number(lng).toFixed(4)}
         </a>
-        {mismatch && <Badge tone="warning">{mismatch}</Badge>}
       </div>
     )
   }
@@ -323,25 +325,12 @@ function StaffAttendancePanel() {
                         </div>
                       )}
                     </td>
-                    <td className="px-3 py-3">
-                      {gpsCell(
-                        v.checkInLat,
-                        v.checkInLng,
-                        v.checkInPlace,
-                        locationMismatchLabel(v.checkInLocationMatch, v.checkInLocationDistanceMeters),
-                      )}
-                    </td>
-                    <td className="px-3 py-3">
-                      {gpsCell(
-                        v.checkOutLat,
-                        v.checkOutLng,
-                        v.checkOutPlace,
-                        locationMismatchLabel(v.checkOutLocationMatch, v.checkOutLocationDistanceMeters),
-                      )}
-                    </td>
+                    <td className="px-3 py-3">{gpsCell(v.checkInLat, v.checkInLng, v.checkInPlace)}</td>
+                    <td className="px-3 py-3">{gpsCell(v.checkOutLat, v.checkOutLng, v.checkOutPlace)}</td>
 
                     <td className="border-l border-ink-800 px-3 py-3">
-                      <div className="flex flex-col gap-1">
+                      <div className="flex flex-col items-start gap-1">
+                        <VerificationBadge visit={v} />
                         {lateMinutes !== undefined && (
                           <Badge tone="warning">{t.myAttendance.lateBy(span(lateMinutes))}</Badge>
                         )}
@@ -356,6 +345,12 @@ function StaffAttendancePanel() {
                       ) : ot.status === 'PENDING' ? (
                         <div className="flex flex-col gap-1.5">
                           <span className="text-[11px] text-ink-400">{t.staffAttendance.pending}</span>
+                          {/* A warning, never a block (spec section 6). */}
+                          {(ot.anomalyCount ?? 0) > 0 && (
+                            <span className="max-w-[14rem] text-[11px] font-medium text-amber-400">
+                              ⚠ {t.workforce.overtime.anomalyWarning(ot.anomalyCount!)}
+                            </span>
+                          )}
                           <div className="flex gap-1.5">
                             <button
                               type="button"
