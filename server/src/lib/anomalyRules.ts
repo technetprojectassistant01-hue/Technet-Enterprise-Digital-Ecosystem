@@ -20,10 +20,10 @@ export interface Finding {
   details: Record<string, unknown>;
 }
 
-/** One GPS reading from a visit: its check-in, check-out, or an answered audit ping. */
+/** One GPS reading from a visit: its check-in, check-out, an answered audit ping, or a shift ping. */
 export interface Fix {
   key: string;
-  kind: "CHECK_IN" | "CHECK_OUT" | "AUDIT";
+  kind: "CHECK_IN" | "CHECK_OUT" | "AUDIT" | "PING";
   at: Date;
   lat: number;
   lng: number;
@@ -42,6 +42,13 @@ export const TIME_MISMATCH_MINUTES = 15;
 export const STATED_LOCATION_MISMATCH_METERS = 2000;
 /** "Five or more consecutive fixes with identical coordinates". */
 export const IDENTICAL_FIX_RUN = 5;
+/**
+ * A reading coarser than this is network/Wi-Fi positioning, which legitimately returns the very
+ * same point again and again indoors - so it doesn't count toward the identical-fixes run.
+ */
+export const IDENTICAL_FIX_MAX_ACCURACY_METERS = 50;
+/** MISSED_PING: more than this with no location reading during an open shift. */
+export const MISSED_PING_MINUTES = 45;
 /** "A jump away and back within minutes". */
 export const JUMP_BACK_WINDOW_MS = 10 * 60 * 1000;
 const JUMP_AWAY_METERS = 1000;
@@ -82,14 +89,13 @@ export function checkInNearHome(
 }
 
 /**
- * LEFT_WORK_AREA (medium): a fix during the shift more than 500 m from the check-in (the shift's
- * anchor). The "pings" today are the answered random audit pings (§28); the spec's periodic
- * 15-minute pings (section 4) will feed the same rule. The roaming-job exemption belongs with
- * section 4 too.
+ * LEFT_WORK_AREA (medium): a fix during the shift - a 15-minute shift ping or an answered random
+ * audit ping - more than 500 m from the check-in (the shift's anchor). Roaming jobs are exempt;
+ * the caller simply doesn't run this rule for them (lib/anomalies.ts, ROAMING_JOB_CATEGORIES).
  */
 export function leftWorkArea(anchor: Fix, fixes: Fix[]): Finding[] {
   return fixes
-    .filter((f) => f.kind === "AUDIT")
+    .filter((f) => f.kind === "AUDIT" || f.kind === "PING")
     .map((f) => ({ fix: f, distance: meters(anchor, f) }))
     .filter(({ distance }) => distance > LEFT_WORK_AREA_METERS)
     .map(({ fix, distance }) => ({
@@ -138,7 +144,8 @@ export function impossibleTravel(dayFixes: Fix[]): Finding[] {
  * - an accuracy of exactly 0 (real receivers always report some uncertainty);
  * - five or more consecutive fixes with identical coordinates. The spec says "to 7 decimals", but
  *   coordinates are stored to 6 (~0.1 m), so identical-to-6 is the strictest check available -
- *   and real GPS repeating the same 0.1 m point five times is suspicious enough;
+ *   and real GPS repeating the same 0.1 m point five times is suspicious enough. Readings coarser
+ *   than 50 m don't count: Wi-Fi positioning repeats the same point honestly;
  * - a jump of over 1 km away and straight back within 10 minutes.
  */
 export function mockLocation(dayFixes: Fix[]): Finding[] {
@@ -151,7 +158,9 @@ export function mockLocation(dayFixes: Fix[]): Finding[] {
     }
   }
 
-  const same = (a: Fix, b: Fix) => a.lat.toFixed(6) === b.lat.toFixed(6) && a.lng.toFixed(6) === b.lng.toFixed(6);
+  const precise = (f: Fix) => f.accuracyMeters === null || f.accuracyMeters <= IDENTICAL_FIX_MAX_ACCURACY_METERS;
+  const same = (a: Fix, b: Fix) =>
+    precise(a) && precise(b) && a.lat.toFixed(6) === b.lat.toFixed(6) && a.lng.toFixed(6) === b.lng.toFixed(6);
   let runStart = 0;
   for (let i = 1; i <= sorted.length; i++) {
     if (i < sorted.length && same(sorted[i], sorted[runStart])) continue;
@@ -245,4 +254,26 @@ export function timeMismatch(key: string, typed: string | null, recordedAt: Date
 export function statedLocationMismatch(key: string, typed: string | null, distance: number | null): Finding[] {
   if (!typed || distance === null || distance <= STATED_LOCATION_MISMATCH_METERS) return [];
   return [{ type: "STATED_LOCATION_MISMATCH", severity: "MEDIUM", key, details: { typed, distanceMeters: distance } }];
+}
+
+/**
+ * MISSED_PING (low): more than 45 minutes with no location reading during an open shift - counted
+ * from the check-in, through every ping and answered audit, to the check-out (or `now` while the
+ * shift is still open). Low severity on purpose: a web app cannot read the location in the
+ * background, so a technician who locks the phone or closes the app produces exactly this gap
+ * without doing anything wrong. It records *when* the shift went unobserved; it is not by itself
+ * evidence of leaving. Each gap is keyed by its start, so a still-growing gap is counted once.
+ */
+export function missedPings(checkInAt: Date, fixTimes: Date[], end: Date): Finding[] {
+  const times = [checkInAt, ...fixTimes].map((d) => d.getTime()).filter((t) => t >= checkInAt.getTime() && t <= end.getTime());
+  times.sort((a, b) => a - b);
+  times.push(end.getTime());
+  const findings: Finding[] = [];
+  for (let i = 1; i < times.length; i++) {
+    const minutes = Math.round((times[i] - times[i - 1]) / 60_000);
+    if (minutes <= MISSED_PING_MINUTES) continue;
+    const from = new Date(times[i - 1]).toISOString();
+    findings.push({ type: "MISSED_PING", severity: "LOW", key: `gap:${from}`, details: { from, to: new Date(times[i]).toISOString(), minutes } });
+  }
+  return findings;
 }
