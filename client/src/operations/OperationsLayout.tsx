@@ -12,6 +12,7 @@ const TABS = [
   { label: 'Field Operations', to: '/dashboard/operations/field-tracking' },
   { label: 'Attendance Anomalies', to: '/dashboard/operations/anomalies' },
   { label: 'Live Map', to: '/dashboard/operations/live-map' },
+  { label: 'Known Places', to: '/dashboard/operations/known-places' },
 ]
 
 function OperationsLayout() {
