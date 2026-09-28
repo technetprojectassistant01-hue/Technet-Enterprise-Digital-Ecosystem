@@ -1735,6 +1735,8 @@ export interface SiteAttendance {
    * see siteAttendancePhotoUrl). Null when none was taken or it passed the 90-day retention.
    */
   checkInPhoto?: { id: string; createdAt: string } | null
+  /** Present on the team register only: the visit's anomalies, for the Verified/Unverified/Flagged badge. */
+  anomalies?: AnomalySummary[]
 }
 
 /** Endpoints that return a whole team's visits always include the technician. */
@@ -1762,24 +1764,103 @@ export interface AttendanceAudit {
   createdAt: string
 }
 
-export type AnomalySeverity = 'STANDARD' | 'HIGH'
-export type AnomalyStatus = 'OPEN' | 'CONFIRMED_VIOLATION' | 'FALSE_POSITIVE' | 'DISMISSED'
+/** STANDARD is the old name for MEDIUM - older rows still carry it; display it as medium. */
+export type AnomalySeverity = 'LOW' | 'MEDIUM' | 'STANDARD' | 'HIGH'
+export type AnomalyStatus = 'OPEN' | 'GENUINE' | 'CONFIRMED_VIOLATION' | 'FALSE_POSITIVE' | 'DISMISSED'
+/** Mirrors the server's AnomalyType - see server/src/lib/anomalyRules.ts for what raises each. */
+export type AnomalyType =
+  | 'AUDIT_STRIKES'
+  | 'FAR_FROM_JOB'
+  | 'UNVERIFIED_LOCATION'
+  | 'CHECKIN_NEAR_HOME'
+  | 'LEFT_WORK_AREA'
+  | 'MISSED_PING'
+  | 'IMPOSSIBLE_TRAVEL'
+  | 'MOCK_LOCATION_SUSPECTED'
+  | 'NO_GPS'
+  | 'LOW_ACCURACY'
+  | 'CLOCK_SKEW'
+  | 'TIME_MISMATCH'
+  | 'STATED_LOCATION_MISMATCH'
+
+/** The types the server raises today, for the filter (the rest are reserved for later sections). */
+export const ACTIVE_ANOMALY_TYPES: AnomalyType[] = [
+  'FAR_FROM_JOB',
+  'LEFT_WORK_AREA',
+  'IMPOSSIBLE_TRAVEL',
+  'MOCK_LOCATION_SUSPECTED',
+  'LOW_ACCURACY',
+  'CLOCK_SKEW',
+  'TIME_MISMATCH',
+  'STATED_LOCATION_MISMATCH',
+  'AUDIT_STRIKES',
+]
+
+/** The visit an anomaly is about, with every fix for the review card's mini map. */
+export interface AnomalyVisit {
+  id: string
+  checkInAt: string
+  checkInLat: string
+  checkInLng: string
+  checkInPlace: string | null
+  checkInNote: string | null
+  checkInSite: string | null
+  checkInAccuracyMeters: number | null
+  checkInDeclaredTime: string | null
+  checkOutAt: string | null
+  checkOutLat: string | null
+  checkOutLng: string | null
+  checkOutPlace: string | null
+  checkOutNote: string | null
+  checkOutAccuracyMeters: number | null
+  checkOutDeclaredTime: string | null
+  workOrder: { id: string; workOrderNumber: string; title: string; siteAddress: string | null; siteLat: string | null; siteLng: string | null } | null
+  checkInPhoto: { id: string } | null
+  audits: { id: string; respondedAt: string | null; lat: string; lng: string; place: string | null; distanceMeters: number | null }[]
+}
 
 export interface AttendanceAnomaly {
   id: string
   employeeId: string
   employee: EmployeeSummary
-  firstAuditId: string
-  firstAudit: AttendanceAudit
-  secondAuditId: string
-  secondAudit: AttendanceAudit
+  type: AnomalyType
+  siteAttendanceId: string | null
+  siteAttendance: AnomalyVisit | null
+  /** Only on AUDIT_STRIKES anomalies. */
+  firstAuditId: string | null
+  firstAudit: AttendanceAudit | null
+  secondAuditId: string | null
+  secondAudit: AttendanceAudit | null
   severity: AnomalySeverity
   status: AnomalyStatus
+  /** `latest` is the newest finding (distanceMeters, accuracyMeters, gapMinutes, ...). */
+  details: { keys: string[]; latest: Record<string, unknown>; occurrences: Record<string, unknown>[] } | null
+  occurrenceCount: number
   resolvedById: string | null
   resolvedBy: { id: string; name: string } | null
   resolvedAt: string | null
   resolutionNote: string | null
   createdAt: string
+  updatedAt: string
+}
+
+export interface AnomalyFilters {
+  status?: AnomalyStatus
+  type?: AnomalyType
+  severity?: 'LOW' | 'MEDIUM' | 'HIGH'
+  employeeId?: string
+  siteAttendanceId?: string
+  /** Mauritius days, "YYYY-MM-DD", on when the anomaly was raised. */
+  from?: string
+  to?: string
+}
+
+/** Just enough per anomaly for the register's Verified / Unverified / Flagged badge. */
+export interface AnomalySummary {
+  id: string
+  type: AnomalyType
+  severity: AnomalySeverity
+  status: AnomalyStatus
 }
 
 export interface WorkOrderDetail extends WorkOrder {
@@ -1903,9 +1984,16 @@ export function confirmAttendanceAudit(id: string, coords: { lat: number; lng: n
   })
 }
 
-export function listAttendanceAnomalies(status?: AnomalyStatus) {
-  const query = status ? `?status=${status}` : ''
+export function listAttendanceAnomalies(filters: AnomalyFilters = {}) {
+  const params = new URLSearchParams()
+  for (const [key, value] of Object.entries(filters)) if (value) params.set(key, value)
+  const query = params.toString() ? `?${params}` : ''
   return request<{ anomalies: AttendanceAnomaly[] }>(`/api/attendance-audits/anomalies${query}`)
+}
+
+/** Undo a decision - the anomaly goes back to OPEN. */
+export function reopenAttendanceAnomaly(id: string) {
+  return request<{ anomaly: AttendanceAnomaly }>(`/api/attendance-audits/anomalies/${id}/reopen`, { method: 'POST' })
 }
 
 export function decideAttendanceAnomaly(id: string, input: { status: Exclude<AnomalyStatus, 'OPEN'>; note?: string }) {
@@ -1995,6 +2083,8 @@ export interface MonthValidationItem {
   state: MonthValidationState
   validatedAt: string | null
   validatedBy: { id: string; name: string | null; email: string } | null
+  /** Open HIGH-severity anomalies in the month - validation is refused while this is above 0. */
+  openHighAnomalies?: number
 }
 
 /** `month` is "YYYY-MM". */
@@ -2014,7 +2104,8 @@ export function validateMonth(employeeId: string, month: string) {
 }
 
 export function validateWholeMonth(month: string) {
-  return request<{ validated: number }>('/api/attendance-validations/month/validate-all', {
+  // blocked: employees skipped because they have open high-severity anomalies that month.
+  return request<{ validated: number; blocked?: number }>('/api/attendance-validations/month/validate-all', {
     method: 'POST',
     body: JSON.stringify({ month }),
   })
@@ -2066,6 +2157,8 @@ export interface OvertimeItem {
     decidedAt: string
     decidedBy: { id: string; name: string | null; email: string } | null
   } | null
+  /** Open or confirmed-violation anomalies on this employee's visits that day - a warning, not a block. */
+  anomalyCount?: number
 }
 
 export function listOvertime(month: string) {
