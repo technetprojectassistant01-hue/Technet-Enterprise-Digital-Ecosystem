@@ -123,6 +123,8 @@ function AttendanceAnomaliesPage() {
         return num('accuracyMeters') !== null ? t.ops.anomalies.accuracyMeters(num('accuracyMeters')!) : null
       case 'TIME_MISMATCH':
         return num('gapMinutes') !== null ? `${String(d.typed ?? '')} · ${t.ops.anomalies.gapMinutes(num('gapMinutes')!)}` : null
+      case 'MISSED_PING':
+        return num('minutes') !== null ? t.ops.anomalies.missedPing(num('minutes')!) : null
       case 'CLOCK_SKEW':
         return num('skewMinutes') !== null ? t.ops.anomalies.skewMinutes(num('skewMinutes')!) : null
       case 'IMPOSSIBLE_TRAVEL':
