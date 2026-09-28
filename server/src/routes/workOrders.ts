@@ -335,6 +335,10 @@ router.patch("/:id", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
     data.siteLat = resolvedSite.value?.lat ?? null;
     data.siteLng = resolvedSite.value?.lng ?? null;
     data.siteAddress = resolvedSite.value?.address ?? null;
+    // A manager has now set (or cleared) this job's site - it no longer comes from the customer's
+    // address, and the background geocoder must not overwrite it (lib/jobSiteGeocode.ts).
+    data.siteFromCustomerAddress = false;
+    data.siteGeocodeAttemptedAt = new Date();
   }
 
   let newlyAssignedTechIds: string[] = [];
