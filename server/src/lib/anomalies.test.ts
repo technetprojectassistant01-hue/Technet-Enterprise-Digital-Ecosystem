@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseClientSentAt, planFinding, type ExistingAnomaly } from "./anomalies";
+import { parseClientSentAt, planFinding, roamingJobCategories, type ExistingAnomaly } from "./anomalies";
 import type { Finding } from "./anomalyRules";
 
 const now = new Date("2026-09-28T06:00:00Z");
@@ -73,5 +73,16 @@ describe("parseClientSentAt", () => {
     expect(parseClientSentAt({})).toBeNull();
     expect(parseClientSentAt({ clientSentAt: "soon" })).toBeNull();
     expect(parseClientSentAt(null)).toBeNull();
+  });
+});
+
+describe("roamingJobCategories", () => {
+  it("is empty by default", () => {
+    expect(roamingJobCategories({}).size).toBe(0);
+  });
+
+  it("reads a comma-separated list, forgiving spaces and case", () => {
+    const set = roamingJobCategories({ ROAMING_JOB_CATEGORIES: " survey, OUTDOOR_REPAIR ,," });
+    expect([...set]).toEqual(["SURVEY", "OUTDOOR_REPAIR"]);
   });
 });
