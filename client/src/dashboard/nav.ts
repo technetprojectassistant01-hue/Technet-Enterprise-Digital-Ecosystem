@@ -32,6 +32,7 @@ import {
   MapPinned,
   Radar,
   ShieldAlert,
+  Map as MapIcon,
   UserCheck,
   type LucideIcon,
 } from 'lucide-react'
@@ -140,6 +141,7 @@ export const MAIN_NAV: NavItem[] = [
       { label: 'Team Attendance', to: '/dashboard/operations/team-attendance', icon: MapPinned, hiddenFrom: NON_OPS_MANAGE_ROLES },
       { label: 'Field Operations', to: '/dashboard/operations/field-tracking', icon: Radar, hiddenFrom: NON_OPS_MANAGE_ROLES },
       { label: 'Attendance Anomalies', to: '/dashboard/operations/anomalies', icon: ShieldAlert, hiddenFrom: NON_OPS_MANAGE_ROLES },
+      { label: 'Live Map', to: '/dashboard/operations/live-map', icon: MapIcon, hiddenFrom: NON_OPS_MANAGE_ROLES },
     ],
   },
   { label: 'Technet Digital Marketing', to: '/dashboard/marketing', icon: Megaphone, hiddenFrom: NON_COMMERCIAL_ROLES },
