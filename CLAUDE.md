@@ -127,7 +127,7 @@ This is where nearly all recent sessions' work has concentrated. Sub-pages: Work
 
 **Typed time sits beside the server timestamp, never replacing it** (`checkInDeclaredTime` vs `checkInAt`). Somebody who arrives at 08:00 and opens the app at 08:20 has both on record. Managers are shown the stated time only when it differs from the recorded one — a match is noise, a mismatch is the point. If the technician never edits the prefilled box, the clock is re-read at submit, since a page left open since morning would otherwise post a stale arrival time.
 
-**The check-in ↔ work-order link: auto-detect removed 2026-09-03 (`91f1148`), technician-picked re-added 2026-09-10 (§16).** It used to auto-attach via `findCurrentWorkOrder()` (a job `IN_PROGRESS`/`SCHEDULED` for today) — which never matched once in production, because work orders aren't moved through their lifecycle. As of 2026-09-10 the technician **optionally picks** their job from a dropdown of their assigned open work orders on the check-in form (`GET /api/site-attendance/my-work-orders`; the check-in validates the job is theirs and not `COMPLETED`/`CANCELLED`). The link drives the widget's job chip and the Team Attendance "Work Order" column — **nothing else**. **The picker was removed from the check-in form 2026-09-14 at the user's request** (the form is now time + transport, then location); `GET /my-work-orders` and the optional `workOrderId` on check-in still exist server-side, so new check-ins simply carry no job and the Team Attendance column stays empty for them. Fully automatic detection is the Part 3 Phase 3 goal, contingent on work-order lifecycle discipline improving. `SiteVerification`, `SITE_GEOFENCE_RADIUS_METERS` and `POST /verify-location` remain **inert** — the picked link does **not** revive the geofence path, and the widget's dormant periodic `verifyMyLocation` effect was removed 2026-09-10 so a picked job with coordinates can't silently restart it.
+**The check-in ↔ work-order link: auto-detect removed 2026-09-03 (`91f1148`), technician-picked re-added 2026-09-10 (§16).** It used to auto-attach via `findCurrentWorkOrder()` (a job `IN_PROGRESS`/`SCHEDULED` for today) — which never matched once in production, because work orders aren't moved through their lifecycle. As of 2026-09-10 the technician **optionally picks** their job from a dropdown of their assigned open work orders on the check-in form (`GET /api/site-attendance/my-work-orders`; the check-in validates the job is theirs and not `COMPLETED`/`CANCELLED`). The link drives the widget's job chip and the Team Attendance "Work Order" column — **nothing else**. **The picker was removed from the check-in form 2026-09-14 at the user's request** (the form is now time + transport, then location); `GET /my-work-orders` and the optional `workOrderId` on check-in still exist server-side, so new check-ins simply carry no job and the Team Attendance column stays empty for them. **Since 2026-09-28 the job is attached automatically when the technician has exactly one open job scheduled that day** (§30d) - still no picker. Fully automatic detection is the Part 3 Phase 3 goal, contingent on work-order lifecycle discipline improving. `SiteVerification`, `SITE_GEOFENCE_RADIUS_METERS` and `POST /verify-location` remain **inert** — the picked link does **not** revive the geofence path, and the widget's dormant periodic `verifyMyLocation` effect was removed 2026-09-10 so a picked job with coordinates can't silently restart it.
 
 **In its place, the typed location is checked against the GPS fix** (`server/src/lib/locationMatch.ts`), recorded as `MATCHED` / `MISMATCH` / `UNCHECKABLE` plus a distance. Three things about this are load-bearing and were established by measuring the real Nominatim API, not by reasoning:
 - The lookup **must** stay confined to Mauritius (`countrycodes=mu`). Unconstrained, `"Office"` resolves to Harbin, China and `"Closed early"` to Anaheim, California — every ordinary check-in would flag as a ten-thousand-kilometre mismatch.
@@ -1777,9 +1777,35 @@ against production data: 41 sessions, 0 inverted, 1 overlapping pair, 13 of 23 o
 12h (one at 9,751 min) - i.e. forgotten check-outs are common, which the long-shift reminder (§29)
 and the spec's MISSED_PING rule are meant to reduce going forward.
 
-### 30d. Still to do from this spec
+### 30d. Section 1 (verified check-in) without the photo (2026-09-28)
 
-Section 8 is done except replacing the "X km from stated" check with the spec's
+- **GPS accuracy + device fix time are stored** on both legs: `checkInAccuracyMeters`/`checkInDeviceAt`
+  and the `checkOut*` pair (migration `20260928090000_add_attendance_accuracy_device_time`), parsed by
+  `parseFixMeta()` in `siteAttendance.ts` (tested). Both are advisory and never block a check-in: junk
+  becomes null, accuracy is capped at 100km, a device time more than 30 days off the server clock is
+  dropped, and an accuracy of exactly 0 is kept on purpose (the spec's mock-location heuristic needs
+  it). `checkInAt`/`checkOutAt` (server receive time) stay the only official times. The widget sends
+  `pos.coords.accuracy` and `pos.timestamp`; because the outbox stores the body at queue time, an
+  offline check-in keeps its real fix time even when it syncs hours later. Not yet displayed anywhere -
+  that belongs with the anomaly review page (spec section 6).
+- **A second check-in while one is open returns 409** with `code: "ALREADY_CHECKED_IN"` and the open
+  session; `submitOrQueue` now throws `ApiError` (carrying the body) instead of a plain `Error`, and the
+  widget shows a dialog with **Go to check-out**, which reloads the card onto the open visit's check-out
+  form. A queued offline replay that hits the 409 is dropped like any other 4xx (unchanged).
+- **Check-out at or before check-in is refused** (400). `checkInAt` comes from the DB clock and
+  `checkOutAt` from the app server's, so this is a real if unlikely case, not a formality.
+- **Today's job pre-fills the form - only when there is exactly one.** The widget reads
+  `GET /api/work-orders/my-day`; if exactly one of `today` is not COMPLETED/CANCELLED, Site gets the
+  customer (company, else name), Location gets `siteAddress` (else the customer address), and the
+  check-in carries `workOrderId`. A "Today's job ... Not this job" chip unlinks it and clears only the
+  values it filled. None or several jobs -> nothing is filled: the picker the user removed on
+  2026-09-14 (§7a) was deliberately not brought back. The link is used up after one check-in.
+
+### 30e. Still to do from this spec
+
+Section 1 is done except the check-in photo (needs a storage/retention decision - DB blobs on Neon vs.
+elsewhere - and a home for the on/off setting, since no settings table exists; see §10d). Section 8 is
+done except replacing the "X km from stated" check with the spec's
 STATED_LOCATION_MISMATCH anomaly, which belongs with the anomaly-rule engine (section 5). Not yet
 built: everything in the new-feature sections (verified check-in/photo, learned places,
 home-location flag, shift pings, the full anomaly-rule engine, admin review page, live map). Open
