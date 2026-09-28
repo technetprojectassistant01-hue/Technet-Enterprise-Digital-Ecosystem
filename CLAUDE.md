@@ -1842,16 +1842,63 @@ Decisions made with the user: stored **in the database**, shrunk to ~50 KB, **de
   "Take a check-in photo first" until it picks up the update (the Reload bar, §17). Set
   `ATTENDANCE_PHOTO_REQUIRED=false` temporarily if that bites.
 
-### 30f. Still to do from this spec
+### 30f. Sections 5 and 6 - anomaly rules and admin review (2026-09-28)
 
-Section 1 is done (§30d, §30e). Section 8 is done except replacing the "X km from stated" check with the spec's
-STATED_LOCATION_MISMATCH anomaly, which belongs with the anomaly-rule engine (section 5). Not yet
-built: everything in the new-feature sections (verified check-in/photo, learned places,
-home-location flag, shift pings, the full anomaly-rule engine, admin review page, live map). Open
-architectural question: the existing `AttendanceAnomaly` model is audit-pair based
-(`firstAuditId`/`secondAuditId`, STANDARD/HIGH, no `type`) while the spec wants typed per-shift
-anomalies with low/medium/high severity and an occurrence count. Recommended: extend the existing
-table rather than add a parallel one, so the one Anomalies queue serves both. Likewise the spec's
-"ping every 15 minutes during a shift, flag LEFT_WORK_AREA/MISSED_PING" design covers the same
-ground as the already-shipped random 2-4-pings-per-shift audit system (§28/§29) - whether these
-replace, sit alongside, or merge needs an answer from the business owner before either is touched.
+**Decision (made without an answer, per the recommendation given):** the existing `AttendanceAnomaly`
+table was **extended**, not duplicated (migration `20260928130000_anomaly_rules`): new `type`
+(`AnomalyType`; the old two-strike rows are `AUDIT_STRIKES`), `siteAttendanceId` (the visit; backfilled
+for old rows from their second audit), `details` JSON, `occurrenceCount`, `updatedAt`; the audit ids
+became nullable; severities gained LOW/MEDIUM (old STANDARD reads as MEDIUM, nothing new writes it, and
+the column default stays STANDARD because Postgres can't use an enum value added in the same
+migration); statuses gained GENUINE ("Confirm genuine").
+
+- **Rules** - `server/src/lib/anomalyRules.ts`, pure, 33 tests incl. haversine: FAR_FROM_JOB (>500 m
+  from the linked job's site, high), CHECKIN_NEAR_HOME (written, inert until section 3 adds home
+  coordinates), LEFT_WORK_AREA (an answered audit ping >500 m from the check-in - the audit pings are
+  the "pings" until section 4; roaming-job exemption deferred with section 4), IMPOSSIBLE_TRAVEL
+  (>150 km/h between consecutive fixes across the whole Mauritius day; a jump must also exceed 1 km
+  and both fixes' accuracy radii, or GPS drift seconds apart reads as 200+ km/h), MOCK_LOCATION_SUSPECTED
+  (accuracy exactly 0; 5+ consecutive identical fixes - to 6 decimals, the stored precision, not the
+  spec's 7; >1 km away and back within 10 min), LOW_ACCURACY (>200 m, low), CLOCK_SKEW (>5 min between
+  the phone's clock *at send time* - `clientSentAt`, stamped per attempt by `outbox.ts` `post()` - and
+  the server; deliberately not the GPS fix time, which is legitimately old for an offline check-in),
+  TIME_MISMATCH (>15 min typed vs recorded; skipped when the fix was queued offline and the typed time
+  matches the fix time), STATED_LOCATION_MISMATCH (typed place geocodes >2 km from GPS; replaces the old
+  10 km "X km from stated" label on the registers). **Not raised yet**: UNVERIFIED_LOCATION (needs known
+  places, section 2 - without them it would flag almost every check-in), MISSED_PING (section 4), NO_GPS
+  (cannot happen - the API refuses a check-in without GPS).
+- **Recorder** - `server/src/lib/anomalies.ts`: `findingsForVisit()` (pure read), `evaluateVisit()`
+  (records; never throws; fired un-awaited after check-in, check-out and each answered audit),
+  `planFinding()` (tested) does the de-dup: one OPEN anomaly per type per visit; each finding has an
+  occurrence key (`checkin:<id>`, `audit:<id>`, `<a>><b>` for travel...) and keys already counted live in
+  `details.keys`, so re-evaluation is idempotent and a reviewed occurrence is never re-raised. New HIGH
+  anomalies notify OPS_MANAGE_ROLES.
+- **Review API** (`routes/attendanceAudits.ts`): `GET /anomalies` filters status/type/severity/
+  employeeId/siteAttendanceId/from/to (Mauritius days), includes the visit (stated vs place, accuracy,
+  job, photo id, answered audits); `PATCH` decisions GENUINE/CONFIRMED_VIOLATION/FALSE_POSITIVE/DISMISSED
+  with note; `POST /anomalies/:id/reopen` = Undo (409 if a newer open one of the same type exists).
+- **Pages**: `AttendanceAnomaliesPage.tsx` rebuilt - filters in the URL (so other pages link in), cards
+  with stated vs GPS, job, accuracy, photo, and a **Leaflet + OpenStreetMap mini map**
+  (`AnomalyMiniMap.tsx`, circle markers, 500 m ring on the job) - the first embedded map in the app
+  (§9's "no embedded map" is no longer literally true; it's this one card). "Save as known place" waits
+  for section 2. Registers (Team Attendance, Staff Attendance panel) show `VerificationBadge`
+  (`verificationState()` in `lib/siteAttendance.ts`: FLAGGED = open/violation medium+high; VERIFIED =
+  job with site coords or a GENUINE decision; else UNVERIFIED) linking to the visit's anomalies. Overtime
+  (`GET /api/overtime` `anomalyCount`) shows a warning, never a block. Validations refuse
+  (`409 OPEN_HIGH_ANOMALIES`) while the employee has open HIGH anomalies that month; validate-all skips
+  them and returns `blocked`.
+- **Dry run on real data (read-only, 2026-09-28):** of 42 visits, 27 would flag - TIME_MISMATCH 26,
+  STATED_LOCATION_MISMATCH 9, IMPOSSIBLE_TRAVEL 3, LEFT_WORK_AREA 1, MOCK 1. Historical visits were
+  **not** backfilled; the queue fills from new events only. The 2 km stated-location threshold produces
+  the centroid false positives §7a predicted ("Ebene" 6.4 km, "Moka" 9-13 km).
+- Not verified in a browser (no browser automation on this machine).
+
+### 30g. Still to do from this spec
+
+Done: sections 1, 5, 6, 8 (§30a-§30f). Not built: **section 2** known places (table, match on
+check-in, admin page with map, geocoding job addresses once, "Save as known place" on the review card,
+and the UNVERIFIED_LOCATION rule), **section 3** employee home location (activates CHECKIN_NEAR_HOME),
+**section 4** the every-15-minutes foreground pings, MISSED_PING, the roaming-job exemption and the Worker
+cron, **section 7** the Live Map. Open question for the business owner: whether section 4's pings
+replace or sit beside the live random audit pings (§28/§29). The privacy page's "not to judge where you
+are the rest of the day" line predates the audit pings and should be revisited.
