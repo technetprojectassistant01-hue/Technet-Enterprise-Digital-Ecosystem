@@ -1718,7 +1718,7 @@ export const fr: Dict = {
           {
             q: "Pourquoi l'application demande-t-elle ma position ?",
             a: [
-              "Chaque arrivée et chaque départ enregistrent votre position avec l'heure, et vos responsables peuvent la voir. Le pointage ne fonctionne pas sans elle.",
+              "Chaque arrivée et chaque départ enregistrent votre position avec l'heure, et vos responsables peuvent la voir. Tant que vous êtes pointé, elle est aussi enregistrée toutes les 15 minutes lorsque l'application est ouverte à l'écran, et quand vous répondez à un contrôle de conformité. Elle n'est jamais enregistrée quand l'application est fermée ou que vous n'êtes pas pointé. Le pointage ne fonctionne pas sans elle.",
               'Si vous avez refusé la demande de localisation par erreur, autorisez la localisation pour ce site dans les réglages de votre téléphone ou de votre navigateur, puis réessayez.',
             ],
           },
@@ -1825,9 +1825,9 @@ export const fr: Dict = {
         {
           title: 'Localisation',
           paragraphs: [
-            "La position n'est enregistrée qu'au moment où vous pointez votre arrivée ou votre départ — l'application ne vous suit pas entre les deux, ni lorsqu'elle est fermée.",
+            "Votre position est enregistrée à l'arrivée et au départ, et à d'autres moments tant que vous êtes pointé : toutes les 15 minutes lorsque l'application est ouverte à l'écran, et quand vous répondez à une notification de contrôle de conformité (elles arrivent à des moments aléatoires pendant le service). L'application ne peut pas enregistrer votre position lorsqu'elle est fermée ou que le téléphone est verrouillé, et ne l'enregistre jamais lorsque vous n'êtes pas pointé.",
             'Votre navigateur ou téléphone vous demande l\'autorisation avant de partager la position. Le pointage ne peut pas fonctionner sans elle.',
-            "Les administrateurs et les responsables des opérations voient la position enregistrée, les heures, et si le lieu saisi est proche de votre position GPS. Cela sert à confirmer les visites sur site, pas à juger où vous êtes le reste de la journée.",
+            "Les administrateurs, les responsables des opérations et les RH voient ces relevés de position, les heures, et si le lieu saisi est proche de votre position GPS. L'application signale aussi ce qui mérite une vérification, par exemple un pointage loin du chantier ou d'un lieu de travail connu, un relevé loin de l'endroit du pointage, ou une longue période sans relevé. Un responsable examine chaque signalement et consigne sa conclusion ; un signalement seul ne signifie pas que vous avez fait quelque chose de mal.",
           ],
         },
         {
@@ -1842,7 +1842,7 @@ export const fr: Dict = {
           title: 'Qui peut les voir',
           paragraphs: [
             "Chez Technet, ce que chacun voit dépend de son rôle. Par exemple, les techniciens voient leurs propres travaux et pointages ; les RH voient les dossiers employés et la paie ; les responsables voient la présence de l'équipe. Les clients ne voient que les documents et travaux de leur société, jamais la position du personnel ni le nom des techniciens.",
-            "Les prestataires qui font fonctionner l'application : Cloudflare (diffuse l'application), Render (fait tourner le serveur), Neon (héberge la base de données), OpenStreetMap Nominatim (recherche les lieux que vous saisissez pour les comparer à votre position GPS), le service push de votre navigateur comme Google ou Apple (envoie les rappels) et Resend (envoie les e-mails de réinitialisation aux administrateurs). Certains peuvent traiter des données hors de Maurice.",
+            "Les prestataires qui font fonctionner l'application : Cloudflare (diffuse l'application), Render (fait tourner le serveur), Neon (héberge la base de données), OpenStreetMap (recherche les lieux que vous saisissez, transforme les positions GPS en noms de lieux et fournit les cartes affichées aux responsables), le service push de votre navigateur comme Google ou Apple (envoie les rappels) et Resend (envoie les e-mails de réinitialisation aux administrateurs). Certains peuvent traiter des données hors de Maurice.",
             'Nous ne communiquons des informations aux autorités que lorsque la loi l\'exige.',
           ],
         },
@@ -1857,7 +1857,7 @@ export const fr: Dict = {
         {
           title: 'Durée de conservation',
           paragraphs: [
-            "Les données sont conservées aussi longtemps que Technet en a besoin pour son activité, l'emploi et ses obligations légales. Il n'existe actuellement aucune suppression automatique — les données restent jusqu'à ce qu'un administrateur les supprime.",
+            "Les données sont conservées aussi longtemps que Technet en a besoin pour son activité, l'emploi et ses obligations légales. Les photos d'arrivée sont supprimées automatiquement après 90 jours ; les autres données, y compris les relevés de position, restent jusqu'à ce qu'un administrateur les supprime.",
           ],
         },
         {
