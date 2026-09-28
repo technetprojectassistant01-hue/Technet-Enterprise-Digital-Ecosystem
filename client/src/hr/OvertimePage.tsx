@@ -8,6 +8,7 @@ import { useToast } from '../dashboard/ToastContext'
 import { useAuth } from '../context/AuthContext'
 import { hasRole, HR_ROLES } from '../lib/permissions'
 import { useT } from '../i18n'
+import AttendanceDataIssuesPanel from './AttendanceDataIssuesPanel'
 
 const STATUSES: OvertimeItemStatus[] = ['PENDING', 'APPROVED', 'REJECTED']
 const statusTone = { PENDING: 'warning', APPROVED: 'success', REJECTED: 'danger' } as const
@@ -236,6 +237,8 @@ function OvertimePage() {
         )}
         <p className="mt-3 text-xs text-ink-400">{t.workforce.overtime.rulesNote}</p>
       </Panel>
+
+      <AttendanceDataIssuesPanel />
 
       {rejecting && (
         <Modal title={t.workforce.overtime.rejectTitle(personOf(rejecting))} onClose={() => setRejecting(null)}>
