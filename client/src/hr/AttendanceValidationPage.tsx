@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { AlertTriangle, Check, CheckCheck, ChevronLeft, ChevronRight, FileCheck2, FileText, Lock, RotateCcw, Users } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import * as api from '../lib/api'
 import type { MonthValidationItem } from '../lib/api'
 import { Panel, StatCard, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
@@ -93,8 +94,9 @@ function AttendanceValidationPage() {
   async function validateAll() {
     setValidatingAll(true)
     try {
-      const { validated } = await api.validateWholeMonth(month)
+      const { validated, blocked } = await api.validateWholeMonth(month)
       toast.success(t.workforce.validations.validatedAll(validated))
+      if (blocked) toast.error(t.workforce.validations.blockedAll(blocked))
       load()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t.workforce.validations.actionFailed)
@@ -196,6 +198,15 @@ function AttendanceValidationPage() {
                             {t.workforce.validations.validatedBy(i.validatedBy.name || i.validatedBy.email, dateFormat.format(new Date(i.validatedAt)))}
                           </div>
                         )}
+                        {/* Spec section 6: the server refuses validation while any of these are open. */}
+                        {(i.openHighAnomalies ?? 0) > 0 && (
+                          <Link
+                            to={`/dashboard/operations/anomalies?employeeId=${i.employee.id}&status=OPEN&severity=HIGH`}
+                            className="mt-1 block max-w-xs text-xs font-medium text-red-400 hover:underline"
+                          >
+                            ⚠ {t.workforce.validations.anomaliesBlock(i.openHighAnomalies!)}
+                          </Link>
+                        )}
                       </td>
                       <td className="px-3 py-3">
                         <div className="flex flex-wrap justify-end gap-2">
@@ -211,7 +222,7 @@ function AttendanceValidationPage() {
                           {i.state !== 'VALIDATED' && (
                             <button
                               type="button"
-                              disabled={busy || !monthEnded}
+                              disabled={busy || !monthEnded || (i.openHighAnomalies ?? 0) > 0}
                               onClick={() => run(i.employee.id, () => api.validateMonth(i.employee.id, month), t.workforce.validations.validated(personOf(i)))}
                               className={`${smallButton} hover:border-emerald-400 hover:text-emerald-400 disabled:opacity-50`}
                             >
