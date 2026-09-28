@@ -496,8 +496,20 @@ router.post("/check-in", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
       where: { employeeId: employee.id, checkOutAt: null },
     });
     if (openVisit) {
+      // Usually a stale screen - checked in from another phone, or an offline check-in that has
+      // since synced. The code and the open session let the app offer "check out of that one"
+      // instead of a dead end.
       await releaseRequest(clientRequestId);
-      return res.status(400).json({ error: "You are already checked in" });
+      return res.status(409).json({
+        error: "You are already checked in. Check out of your open visit first.",
+        code: "ALREADY_CHECKED_IN",
+        openSession: {
+          id: openVisit.id,
+          checkInAt: openVisit.checkInAt,
+          checkInSite: openVisit.checkInSite,
+          checkInNote: openVisit.checkInNote,
+        },
+      });
     }
 
     // The technician optionally picks which job they're on. It must be one assigned to them and
