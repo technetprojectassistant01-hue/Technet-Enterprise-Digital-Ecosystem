@@ -1971,8 +1971,25 @@ states that positions only move while a technician has the app open (§30g).
   FAR_FROM_JOB against those coordinates is MEDIUM, not HIGH (`details.siteSource`). A manager
   setting the site on the work order detail page clears the flag.
 
-### 30j. Still to do from this spec
+### 30j. Section 3 - Employee home location (2026-09-28)
 
-Done: sections 1, 2, 4, 5, 6, 7, 8 (§30a-§30i). Not built: **section 3** employee home location
-(activates CHECKIN_NEAR_HOME, already written in `anomalyRules.ts`). The privacy page's "not to judge
-where you are the rest of the day" line predates the audit pings and should be revisited.
+- `EmployeeHome` (migration `20260928190000_employee_home`), 1:1 with Employee: address, lat/lng
+  (null if it couldn't be located), `updatedById`. **Deliberately its own table**: `GET /api/employees`
+  and `GET /api/employees/:id` return every Employee column to all NON_FIELD_ROLES, so a home column
+  on Employee would have leaked. Only `GET/PUT/DELETE /api/employees/:id/home` (HR_ROLES) touch it;
+  nothing else includes the `home` relation - keep it that way.
+- PUT geocodes the address (main island, 8 s); a failed lookup still saves the address and returns
+  `located: false` (HR sees "couldn't be found, try street and town") - never a blocked save.
+- HR edits it on the employee profile (`hr/HomeLocationPanel.tsx`, HR_ROLES only).
+- CHECKIN_NEAR_HOME (HIGH) now runs in `findingsForVisit`: check-in within 300 m of home, unless one
+  of the employee's jobs scheduled that Mauritius day (or the visit's own job) has its site within
+  300 m of home. Anomaly details carry only the distance, never the address/coordinates.
+- The privacy page's attendance line says HR may record a home address for this check, visible to HR
+  only (all three languages).
+
+### 30k. Spec status
+
+**All nine sections are done** (§30a-§30j). Open items: the privacy page's "not to judge where you are
+the rest of the day" line predates the audit pings and should be reworded by whoever owns the policy;
+the GPS attendance policy has still not had legal/DPA review (§28); nothing here has been clicked
+through in a browser on this machine or tested on real phones.
