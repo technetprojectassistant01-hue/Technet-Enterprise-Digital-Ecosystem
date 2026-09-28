@@ -50,19 +50,19 @@ export type VerificationState = 'VERIFIED' | 'UNVERIFIED' | 'FLAGGED'
  * The register's per-visit badge (spec section 6):
  * - FLAGGED: an open or confirmed-violation anomaly of medium or high severity. Low-severity ones
  *   (e.g. low GPS accuracy) are informational and don't flag a visit on their own.
- * - VERIFIED: nothing flagged, and either the visit is linked to a job with a site location (so
- *   the far-from-job rule could check it) or a reviewer confirmed one of its anomalies as genuine.
- * - UNVERIFIED: nothing flagged, but nothing to verify it against either. Most visits today, until
- *   known places (spec section 2) give check-ins something to match.
+ * - VERIFIED: nothing flagged, and the check-in matched a known place, or the visit is linked to
+ *   a job with a site location (so the far-from-job rule could check it), or a reviewer confirmed
+ *   one of its anomalies as genuine.
+ * - UNVERIFIED: nothing flagged, but nothing to verify it against either.
  */
-export function verificationState(v: Pick<SiteAttendance, 'workOrder' | 'anomalies'>): VerificationState {
+export function verificationState(v: Pick<SiteAttendance, 'workOrder' | 'anomalies' | 'knownPlace'>): VerificationState {
   const anomalies = v.anomalies ?? []
   const flagged = anomalies.some(
     (a) => (a.status === 'OPEN' || a.status === 'CONFIRMED_VIOLATION') && a.severity !== 'LOW',
   )
   if (flagged) return 'FLAGGED'
   const jobWithSite = !!v.workOrder && v.workOrder.siteLat !== null && v.workOrder.siteLng !== null
-  if (jobWithSite || anomalies.some((a) => a.status === 'GENUINE')) return 'VERIFIED'
+  if (v.knownPlace || jobWithSite || anomalies.some((a) => a.status === 'GENUINE')) return 'VERIFIED'
   return 'UNVERIFIED'
 }
 
