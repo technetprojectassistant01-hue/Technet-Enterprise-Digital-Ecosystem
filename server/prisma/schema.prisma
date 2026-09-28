@@ -1085,6 +1085,19 @@ model SiteAttendance {
   checkInLat                    Decimal        @db.Decimal(9, 6)
   checkInLng                    Decimal        @db.Decimal(9, 6)
   /**
+   * The phone's reported GPS accuracy radius for the check-in fix, in metres (coords.accuracy).
+   * Null for rows from before this was recorded. A large value means the fix is a rough, network-
+   * based guess rather than satellite GPS - read the position with that in mind.
+   */
+  checkInAccuracyMeters         Int?
+  /**
+   * When the phone took the check-in GPS fix, by the phone's own clock (GeolocationPosition
+   * .timestamp). Informational only - checkInAt (server receive time) stays the official time for
+   * late/overtime/hours. The gap between the two shows an offline check-in synced later, or a
+   * phone clock that's wrong.
+   */
+  checkInDeviceAt               DateTime?
+  /**
    * A human-readable place name for checkInLat/Lng, resolved once at check-in time via
    * reverseGeocodeCached() - never live on an admin page view (CLAUDE.md, reverse-geocoding
    * note). Null means the lookup failed or hasn't run (e.g. a row from before this existed);
@@ -1129,6 +1142,10 @@ model SiteAttendance {
   checkOutAt                     DateTime?
   checkOutLat                    Decimal?       @db.Decimal(9, 6)
   checkOutLng                    Decimal?       @db.Decimal(9, 6)
+  /** Mirrors checkInAccuracyMeters. */
+  checkOutAccuracyMeters         Int?
+  /** Mirrors checkInDeviceAt - informational, checkOutAt stays official. */
+  checkOutDeviceAt               DateTime?
   /** Mirrors checkInPlace - resolved once at check-out time. */
   checkOutPlace                  String?
   /**
