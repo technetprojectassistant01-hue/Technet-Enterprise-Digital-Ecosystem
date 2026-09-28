@@ -16,6 +16,7 @@ import { generateStaffAttendancePdf } from "../lib/pdf/staffAttendancePdf";
 import { isPhotoRequired, parseAttendancePhoto } from "../lib/attendancePhoto";
 import { evaluateVisit, parseClientSentAt } from "../lib/anomalies";
 import { liveStatus } from "../lib/liveMap";
+import { findKnownPlaceFor } from "../lib/knownPlaces";
 
 const router = Router();
 
@@ -32,6 +33,7 @@ const AUDITS_INCLUDE = { orderBy: { scheduledAt: "asc" as const } };
 const PHOTO_SUMMARY_SELECT = { select: { id: true, createdAt: true } } as const;
 /** Enough of each anomaly for the register's Verified / Unverified / Flagged badge. */
 const ANOMALY_SUMMARY_SELECT = { select: { id: true, type: true, severity: true, status: true } } as const;
+const KNOWN_PLACE_SUMMARY_SELECT = { select: { id: true, name: true } } as const;
 
 const EXIT_REASONS = ["MATERIALS", "ANOTHER_SITE", "SUPERVISOR_INSTRUCTION", "EMERGENCY", "OTHER"] as const;
 type ExitReason = (typeof EXIT_REASONS)[number];
@@ -161,12 +163,12 @@ router.get("/", requireRole(...ATTENDANCE_VIEW_ROLES), async (req, res) => {
   const [current, history] = await Promise.all([
     prisma.siteAttendance.findMany({
       where: { checkOutAt: null, ...employeeFilter, ...activeFilter },
-      include: { employee: { select: EMPLOYEE_SELECT }, workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE, audits: AUDITS_INCLUDE, checkInPhoto: PHOTO_SUMMARY_SELECT, anomalies: ANOMALY_SUMMARY_SELECT },
+      include: { employee: { select: EMPLOYEE_SELECT }, workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE, audits: AUDITS_INCLUDE, checkInPhoto: PHOTO_SUMMARY_SELECT, anomalies: ANOMALY_SUMMARY_SELECT, knownPlace: KNOWN_PLACE_SUMMARY_SELECT },
       orderBy: { checkInAt: "desc" },
     }),
     prisma.siteAttendance.findMany({
       where: { checkInAt: { gte: start, lt: end }, ...employeeFilter, ...activeFilter },
-      include: { employee: { select: EMPLOYEE_SELECT }, workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE, audits: AUDITS_INCLUDE, checkInPhoto: PHOTO_SUMMARY_SELECT, anomalies: ANOMALY_SUMMARY_SELECT },
+      include: { employee: { select: EMPLOYEE_SELECT }, workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE, audits: AUDITS_INCLUDE, checkInPhoto: PHOTO_SUMMARY_SELECT, anomalies: ANOMALY_SUMMARY_SELECT, knownPlace: KNOWN_PLACE_SUMMARY_SELECT },
       orderBy: { checkInAt: "desc" },
     }),
   ]);
@@ -248,6 +250,7 @@ router.get("/live", requireRole(...ATTENDANCE_VIEW_ROLES), async (req, res) => {
       checkInPlace: true,
       checkInSite: true,
       checkInNote: true,
+      knownPlace: { select: { id: true, name: true } },
       employee: { select: { id: true, firstName: true, lastName: true } },
       workOrder: { select: { id: true, workOrderNumber: true, title: true } },
       pings: { orderBy: { createdAt: "desc" }, take: 1, select: { createdAt: true, lat: true, lng: true, accuracyMeters: true } },
@@ -280,6 +283,7 @@ router.get("/live", requireRole(...ATTENDANCE_VIEW_ROLES), async (req, res) => {
       employee: v.employee,
       workOrder: v.workOrder,
       checkIn: { at: v.checkInAt, ...anchor, place: v.checkInPlace, site: v.checkInSite, note: v.checkInNote },
+      knownPlace: v.knownPlace,
       latest,
       distanceFromCheckInMeters: distance,
       lastSeenAt,
@@ -630,9 +634,11 @@ router.post("/check-in", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
     // reverseGeocodeCached resolves once here rather than live on every admin page view later
     // (CLAUDE.md, reverse-geocoding note) - a cache hit is instant, a miss costs one Nominatim
     // round trip that every future check-in at the same site skips entirely.
-    const [locationCheck, checkInPlace] = await Promise.all([
+    // The known place (spec section 2) is a local lookup against learned places - no network.
+    const [locationCheck, checkInPlace, knownPlaceId] = await Promise.all([
       checkLocationAgainstGps(note, coords),
       reverseGeocodeCached(coords.lat, coords.lng),
+      findKnownPlaceFor(coords.lat, coords.lng),
     ]);
 
     const siteAttendance = await prisma.siteAttendance.create({
@@ -644,6 +650,7 @@ router.post("/check-in", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
         checkInAccuracyMeters: fix.accuracyMeters,
         checkInDeviceAt: fix.deviceAt,
         checkInPlace,
+        knownPlaceId,
         checkInNote: note,
         checkInSite: parseSite(req.body),
         checkInDeclaredTime: declaredTime.value,
