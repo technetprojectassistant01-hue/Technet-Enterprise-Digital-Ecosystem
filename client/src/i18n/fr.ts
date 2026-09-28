@@ -1559,7 +1559,7 @@ export const fr: Dict = {
           {
             q: 'Comment pointer mon arrivée et mon départ ?',
             a: [
-              "Utilisez la carte « Ma présence » sur la page Présence. Vérifiez l'heure d'arrivée (elle est remplie pour vous), saisissez vos frais de transport (0 si vous n'en avez pas), indiquez si vous le souhaitez le site (par exemple le client ou le bâtiment) et le lieu, puis touchez « Pointer l'arrivée ».",
+              "Utilisez la carte « Ma présence » sur la page Présence. Vérifiez l'heure d'arrivée (elle est remplie pour vous), saisissez vos frais de transport (0 si vous n'en avez pas), indiquez si vous le souhaitez le site (par exemple le client ou le bâtiment) et le lieu. Si vous avez un seul travail prévu aujourd'hui, le site et le lieu sont remplis à partir de celui-ci. Touchez « Prendre une photo » pour prendre une photo d'arrivée avec l'appareil photo, puis touchez « Pointer l'arrivée ».",
               'En partant, faites de même avec « Pointer le départ ». Vous pouvez pointer plusieurs fois par jour si vous passez sur plusieurs sites.',
             ],
           },
