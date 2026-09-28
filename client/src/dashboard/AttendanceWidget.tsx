@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { BellOff, BellRing, Briefcase, LogIn, LogOut, MapPin, MapPinOff, X } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { BellOff, BellRing, Briefcase, Camera, LogIn, LogOut, MapPin, MapPinOff, X } from 'lucide-react'
 import * as api from '../lib/api'
 import type { MyDayWorkOrder, SiteAttendance } from '../lib/api'
 import { ApiError } from '../lib/api'
@@ -9,6 +9,7 @@ import { Panel, Modal } from './ui'
 import { useToast } from './ToastContext'
 import { disablePushReminders, enablePushReminders, pushSupport } from '../lib/pushNotifications'
 import { listOutbox, submitOrQueue, subscribeOutbox } from '../lib/outbox'
+import { shrinkImageTo } from '../lib/imageResize'
 import { useT } from '../i18n'
 
 const inputClass =
@@ -184,12 +185,24 @@ function AttendanceWidget() {
    * (2026-09-14) and is not coming back through this.
    */
   const [todaysJob, setTodaysJob] = useState<MyDayWorkOrder | null>(null)
+  /**
+   * Whether check-in must carry a camera photo (server env ATTENDANCE_PHOTO_REQUIRED, reported by
+   * /me). Assumed on until /me says otherwise: a check-in queued offline without a required photo
+   * would be refused on sync, after the technician already believed they were checked in.
+   */
+  const [photoRequired, setPhotoRequired] = useState(true)
+  /** The shrunk check-in photo as a data URL, sent inline with the check-in. */
+  const [photo, setPhoto] = useState<string | null>(null)
+  const photoInput = useRef<HTMLInputElement>(null)
 
   function load() {
     setLoading(true)
     api
       .getMyAttendance()
-      .then(({ current }) => setCurrent(current))
+      .then(({ current, photoRequired }) => {
+        setCurrent(current)
+        setPhotoRequired(photoRequired !== false)
+      })
       .catch(() => setCurrent(null))
       .finally(() => setLoading(false))
   }
@@ -250,6 +263,7 @@ function AttendanceWidget() {
     setTransportNote('')
     setDeclaredTime(currentClockTime())
     setDeclaredTimeEdited(false)
+    setPhoto(null)
   }
 
   /** Transport cost is required — a technician with no travel enters 0. */
@@ -317,6 +331,10 @@ function AttendanceWidget() {
       toast.error(transport.error)
       return
     }
+    if (photoRequired && !photo) {
+      toast.error(t.attendance.photoRequired)
+      return
+    }
     await withLocation(async (pos) => {
       let queued: boolean
       try {
@@ -332,6 +350,7 @@ function AttendanceWidget() {
             accuracy: pos.coords.accuracy,
             deviceTime: pos.timestamp,
             workOrderId: todaysJob?.id,
+            photo: photo ?? undefined,
             note: note.trim() || undefined,
             site: site.trim() || undefined,
             timeIn: declaredTimeEdited ? declaredTime : currentClockTime(),
@@ -583,10 +602,59 @@ function AttendanceWidget() {
                 />
               </div>
 
+              {photoRequired && (
+                <div className="flex flex-col gap-1">
+                  <span className={fieldLabelClass}>{t.attendance.checkInPhoto}</span>
+                  {/*
+                    capture="user" opens the front camera directly on phones instead of offering the
+                    gallery. It is a strong nudge, not a guarantee: a desktop browser (and some
+                    Android browsers) still show a file picker, and no web page can prove a file came
+                    from the camera. The server stamps its own time and the GPS fix on the photo.
+                  */}
+                  <input
+                    ref={photoInput}
+                    type="file"
+                    accept="image/*"
+                    capture="user"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      e.target.value = ''
+                      if (!file) return
+                      shrinkImageTo(file, 640, 0.6)
+                        .then(({ fileData }) => setPhoto(fileData))
+                        .catch(() => toast.error(t.attendance.photoFailed))
+                    }}
+                  />
+                  {photo ? (
+                    <div className="flex items-center gap-3">
+                      <img src={photo} alt="" className="h-16 w-16 rounded-lg object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => photoInput.current?.click()}
+                        className="rounded-lg border border-ink-600 px-3 py-2 text-sm font-semibold text-ink-200 transition hover:bg-ink-800"
+                      >
+                        {t.attendance.retakePhoto}
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => photoInput.current?.click()}
+                      className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-ink-600 px-4 py-3 text-sm font-semibold text-ink-200 transition hover:bg-ink-800"
+                    >
+                      <Camera className="h-4 w-4" />
+                      {t.attendance.takePhoto}
+                    </button>
+                  )}
+                </div>
+              )}
+
               <button type="button" onClick={handleCheckIn} disabled={actioning} className={primaryButton}>
                 <LogIn className="h-5 w-5" />
                 {actioning ? t.attendance.checkingIn : t.attendance.checkIn}
               </button>
+              <p className="text-center text-xs text-ink-400">{t.attendance.trackingNotice(photoRequired)}</p>
             </div>
           )
         })()}
