@@ -157,7 +157,10 @@ async function post(url: string, body: unknown): Promise<RawResult> {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      // clientSentAt: the phone's clock at the moment of *sending*, stamped per attempt (not stored
+      // in the queue) - the server compares it with its own clock to spot a wrong phone clock
+      // (CLOCK_SKEW) without mistaking a check-in that waited offline for one.
+      body: JSON.stringify({ ...(body as Record<string, unknown>), clientSentAt: Date.now() }),
     })
     const data = (await res.json().catch(() => null)) as RawResult['data']
     return { ok: res.ok, status: res.status, data, networkError: false }
