@@ -295,6 +295,10 @@ function AttendanceWidget() {
         body: {
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
+          // Stored beside the server's own timestamp, never instead of it: the fix time survives an
+          // offline queue, so a check-in synced hours later still shows when it really happened.
+          accuracy: pos.coords.accuracy,
+          deviceTime: pos.timestamp,
           note: note.trim() || undefined,
           site: site.trim() || undefined,
           timeIn: declaredTimeEdited ? declaredTime : currentClockTime(),
@@ -327,6 +331,10 @@ function AttendanceWidget() {
         body: {
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
+          // Stored beside the server's own timestamp, never instead of it: the fix time survives an
+          // offline queue, so a check-in synced hours later still shows when it really happened.
+          accuracy: pos.coords.accuracy,
+          deviceTime: pos.timestamp,
           note: note || undefined,
           site: site.trim() || undefined,
           timeOut: declaredTimeEdited ? declaredTime : currentClockTime(),
