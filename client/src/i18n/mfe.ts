@@ -232,6 +232,8 @@ export const mfe: Dict = {
     alreadyCheckedInBody: (since: string, where: string | null) =>
       `Ou finn pointe lariver a ${since}${where ? ` (${where})` : ''} me ou pa ankor pointe depar. Pointe depar sa vizit la avan, apre pointe ankor.`,
     goToCheckOut: 'Al pointe depar',
+    todaysJob: 'TRAVAY ZORDI',
+    notThisJob: 'Pa sa travay la',
     title: 'Mo Prezans',
     currentStatus: 'STATI AKTIEL',
     checkedIn: 'PREZAN',
