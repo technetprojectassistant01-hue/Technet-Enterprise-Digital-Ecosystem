@@ -235,6 +235,8 @@ export const fr: Dict = {
     retakePhoto: 'Reprendre',
     photoRequired: "Prenez d'abord une photo d'arrivée",
     photoFailed: 'Impossible de lire la photo. Veuillez réessayer.',
+    pingNotice:
+      "Tant que vous êtes pointé, votre position est aussi relevée toutes les 15 minutes lorsque l'application est ouverte à l'écran. Elle ne peut pas l'être quand l'application est fermée ou le téléphone verrouillé.",
     trackingNotice: (withPhoto: boolean) =>
       withPhoto
         ? "Votre position est enregistrée à l'arrivée, au départ et pendant votre journée, et une photo est prise à l'arrivée. Cela confirme votre présence sur les sites visités."
@@ -1057,7 +1059,9 @@ export const fr: Dict = {
       reasonZeroAccuracy: 'le téléphone a indiqué une précision de exactement 0 m',
       reasonIdentical: (n: number) => `${n} relevés de suite exactement au même endroit`,
       reasonJump: 'un saut aller-retour en quelques minutes',
-      mapLegend: 'Bleu : arrivée · Orange : contrôles de conformité · Gris : départ · Cercle vert : chantier',
+      mapLegend: 'Bleu : arrivée · Orange : contrôles de conformité · Violet : relevés toutes les 15 min · Gris : départ · Cercle vert : chantier',
+      missedPing: (minutes: number) =>
+        `aucune position pendant ${minutes} min (application fermée, téléphone verrouillé ou pas de réseau ; l'application ne peut pas relever la position en arrière-plan)`,
       badgeVerified: 'Vérifié',
       badgeUnverified: 'Non vérifié',
       badgeFlagged: 'Signalé',
