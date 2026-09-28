@@ -14,6 +14,7 @@ import { buildAttendanceReport, parseRange } from "../lib/attendanceReport";
 import { computeLateByVisit, computeOvertimeDays, dayToDate, mauritiusDay, MAURITIUS_OFFSET_MINUTES } from "../lib/overtime";
 import { generateStaffAttendancePdf } from "../lib/pdf/staffAttendancePdf";
 import { isPhotoRequired, parseAttendancePhoto } from "../lib/attendancePhoto";
+import { evaluateVisit, parseClientSentAt } from "../lib/anomalies";
 
 const router = Router();
 
@@ -28,6 +29,8 @@ const VERIFICATIONS_INCLUDE = { orderBy: { checkedAt: "desc" as const } };
 const AUDITS_INCLUDE = { orderBy: { scheduledAt: "asc" as const } };
 /** Whether a visit has a check-in photo - never the bytes, which only GET /:id/photo serves. */
 const PHOTO_SUMMARY_SELECT = { select: { id: true, createdAt: true } } as const;
+/** Enough of each anomaly for the register's Verified / Unverified / Flagged badge. */
+const ANOMALY_SUMMARY_SELECT = { select: { id: true, type: true, severity: true, status: true } } as const;
 
 const EXIT_REASONS = ["MATERIALS", "ANOTHER_SITE", "SUPERVISOR_INSTRUCTION", "EMERGENCY", "OTHER"] as const;
 type ExitReason = (typeof EXIT_REASONS)[number];
@@ -157,12 +160,12 @@ router.get("/", requireRole(...ATTENDANCE_VIEW_ROLES), async (req, res) => {
   const [current, history] = await Promise.all([
     prisma.siteAttendance.findMany({
       where: { checkOutAt: null, ...employeeFilter, ...activeFilter },
-      include: { employee: { select: EMPLOYEE_SELECT }, workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE, audits: AUDITS_INCLUDE, checkInPhoto: PHOTO_SUMMARY_SELECT },
+      include: { employee: { select: EMPLOYEE_SELECT }, workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE, audits: AUDITS_INCLUDE, checkInPhoto: PHOTO_SUMMARY_SELECT, anomalies: ANOMALY_SUMMARY_SELECT },
       orderBy: { checkInAt: "desc" },
     }),
     prisma.siteAttendance.findMany({
       where: { checkInAt: { gte: start, lt: end }, ...employeeFilter, ...activeFilter },
-      include: { employee: { select: EMPLOYEE_SELECT }, workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE, audits: AUDITS_INCLUDE, checkInPhoto: PHOTO_SUMMARY_SELECT },
+      include: { employee: { select: EMPLOYEE_SELECT }, workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE, audits: AUDITS_INCLUDE, checkInPhoto: PHOTO_SUMMARY_SELECT, anomalies: ANOMALY_SUMMARY_SELECT },
       orderBy: { checkInAt: "desc" },
     }),
   ]);
@@ -608,6 +611,14 @@ router.post("/check-in", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
       })),
     });
 
+    // Anomaly rules (lib/anomalies.ts). Not awaited: the technician's check-in must not wait on
+    // them, and evaluateVisit never throws. Re-run on every later event of the visit anyway.
+    void evaluateVisit(siteAttendance.id, {
+      leg: "CHECK_IN",
+      clientSentAt: parseClientSentAt(req.body),
+      serverAt: siteAttendance.checkInAt,
+    });
+
     // Only a genuinely new check-in reaches here - the deduped-replay branch above already
     // returned. Scoped to OPS_MANAGE_ROLES (not HR): Team Attendance/Field Operations, the screens
     // this links to, are already OPS_MANAGE_ROLES-gated, so notifying HR would point at a page
@@ -704,6 +715,7 @@ router.post("/check-out", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => 
     await notifyHrOfOvertime(siteAttendance.employeeId, siteAttendance.checkInAt);
     // Nothing should ping after the shift has ended - cancel whatever audits were still pending.
     await cancelPendingAudits(siteAttendance.id);
+    void evaluateVisit(siteAttendance.id, { leg: "CHECK_OUT", clientSentAt: parseClientSentAt(req.body), serverAt: checkOutAt });
     res.json({ siteAttendance });
   } catch (err) {
     await releaseRequest(clientRequestId);
