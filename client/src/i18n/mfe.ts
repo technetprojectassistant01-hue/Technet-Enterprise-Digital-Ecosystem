@@ -1730,7 +1730,7 @@ export const mfe: Dict = {
           paragraphs: [
             'Kont: ou nom, ou ladres imel, ou rol, ou lang ek enn version melanze (hash) ou mo de pas. Nou pa zame gard ou mo de pas limem.',
             'Dosie anplwaye, ki RH ranpli: detay kontak, pos, departman, nimero kart idantite, dat nesans, ladres, kontak ki pou apele an ka irzans, kontra, lapey ek detay labank pou lapey, konze, sertifika ek formasion.',
-            'Prezans: sak fwa ou pointe lariver ouswa depar, ler ki ou rantre, ler ki server la resevwar li, sit ek landrwa ki ou ekrir, ou fre transpor, travay ki lie ar li si ena, ek landrwa (GPS) ou aparey ek so presizion sa moman la. Kan ou pointe lariver, enn foto pran ar kamera ou telefonn (kan konpayi la exiz li); bann foto efase apre 90 zour.',
+            'Prezans: sak fwa ou pointe lariver ouswa depar, ler ki ou rantre, ler ki server la resevwar li, sit ek landrwa ki ou ekrir, ou fre transpor, travay ki lie ar li si ena, ek landrwa (GPS) ou aparey ek so presizion sa moman la. Kan ou pointe lariver, enn foto pran ar kamera ou telefonn (kan konpayi la exiz li); bann foto efase apre 90 zour. Pandan ki ou pointe, ou pozision sak 15 minit kan aplikasion la ouver lor ou ekran (zame kan li ferme ouswa ou telefonn blok).',
             'Travay: bon travay, rapor zournalie, rapor mintenans ek rapor intervansion, avek foto, materyel servi ek sinyatir klian.',
             'Zouti ek lekipman: zouti ki ou demande, ki zouti finn donn ou ek kan, ek kan ek dan ki leta zot finn retourne.',
             'Portay Klian: detay ou konpani, imel koneksion ki finn kre pou ou, ou bann devi, eta travay ek bann demann devi ki ou avoye.',
