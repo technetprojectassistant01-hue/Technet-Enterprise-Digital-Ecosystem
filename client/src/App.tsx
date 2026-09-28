@@ -45,6 +45,7 @@ import InterventionReportDetailPage from './operations/InterventionReportDetailP
 import TeamAttendancePage from './operations/TeamAttendancePage'
 import FieldOperationsPage from './operations/FieldOperationsPage'
 import AttendanceAnomaliesPage from './operations/AttendanceAnomaliesPage'
+import LiveMapPage from './operations/LiveMapPage'
 import AuditCheckPage from './operations/AuditCheckPage'
 import StoreLayout from './store/StoreLayout'
 import ToolsPage from './store/ToolsPage'
@@ -204,6 +205,7 @@ function App() {
             <Route path="team-attendance" element={<TeamAttendancePage />} />
             <Route path="field-tracking" element={<FieldOperationsPage />} />
             <Route path="anomalies" element={<AttendanceAnomaliesPage />} />
+            <Route path="live-map" element={<LiveMapPage />} />
           </Route>
           <Route path="audit-check" element={<AuditCheckPage />} />
           {/* Technet HR: the people work that used to be split between ERP > HR and Technet
