@@ -15,6 +15,7 @@ import { computeLateByVisit, computeOvertimeDays, dayToDate, mauritiusDay, MAURI
 import { generateStaffAttendancePdf } from "../lib/pdf/staffAttendancePdf";
 import { isPhotoRequired, parseAttendancePhoto } from "../lib/attendancePhoto";
 import { evaluateVisit, parseClientSentAt } from "../lib/anomalies";
+import { liveStatus } from "../lib/liveMap";
 
 const router = Router();
 
@@ -222,6 +223,73 @@ router.get("/", requireRole(...ATTENDANCE_VIEW_ROLES), async (req, res) => {
     .sort((a, b) => b.daysPresent - a.daysPresent);
 
   res.json({ current, history, summary });
+});
+
+/**
+ * The Live Map (spec section 7): everyone on shift now, each with their check-in point, their
+ * latest location reading (a 15-minute ping or an answered compliance check - whichever is
+ * newer), the distance between the two, minutes since they were last seen, and a colour
+ * (lib/liveMap.ts). The page polls this every 15 s. Shifts open longer than 36 h are left out -
+ * those are forgotten check-outs (Team Attendance flags them), not people in the field.
+ */
+router.get("/live", requireRole(...ATTENDANCE_VIEW_ROLES), async (req, res) => {
+  const now = new Date();
+  const visits = await prisma.siteAttendance.findMany({
+    where: {
+      checkOutAt: null,
+      checkInAt: { gte: new Date(now.getTime() - 36 * 3_600_000) },
+      employee: { employmentStatus: { not: "TERMINATED" } },
+    },
+    select: {
+      id: true,
+      checkInAt: true,
+      checkInLat: true,
+      checkInLng: true,
+      checkInPlace: true,
+      checkInSite: true,
+      checkInNote: true,
+      employee: { select: { id: true, firstName: true, lastName: true } },
+      workOrder: { select: { id: true, workOrderNumber: true, title: true } },
+      pings: { orderBy: { createdAt: "desc" }, take: 1, select: { createdAt: true, lat: true, lng: true, accuracyMeters: true } },
+      audits: {
+        where: { lat: { not: null }, respondedAt: { not: null } },
+        orderBy: { respondedAt: "desc" },
+        take: 1,
+        select: { respondedAt: true, lat: true, lng: true, place: true },
+      },
+      anomalies: { where: { status: "OPEN" }, select: { severity: true } },
+    },
+    orderBy: { checkInAt: "asc" },
+  });
+
+  const shifts = visits.map((v) => {
+    const ping = v.pings[0];
+    const audit = v.audits[0];
+    const latest =
+      ping && (!audit || ping.createdAt >= audit.respondedAt!)
+        ? { kind: "PING" as const, at: ping.createdAt, lat: Number(ping.lat), lng: Number(ping.lng), accuracyMeters: ping.accuracyMeters }
+        : audit
+          ? { kind: "AUDIT" as const, at: audit.respondedAt!, lat: Number(audit.lat), lng: Number(audit.lng), accuracyMeters: null }
+          : null;
+    const anchor = { lat: Number(v.checkInLat), lng: Number(v.checkInLng) };
+    const distance = latest ? Math.round(distanceMeters(anchor.lat, anchor.lng, latest.lat, latest.lng)) : null;
+    const lastSeenAt = latest?.at ?? v.checkInAt;
+    const minutesSinceLastFix = Math.round((now.getTime() - lastSeenAt.getTime()) / 60_000);
+    return {
+      id: v.id,
+      employee: v.employee,
+      workOrder: v.workOrder,
+      checkIn: { at: v.checkInAt, ...anchor, place: v.checkInPlace, site: v.checkInSite, note: v.checkInNote },
+      latest,
+      distanceFromCheckInMeters: distance,
+      lastSeenAt,
+      minutesSinceLastFix,
+      openAnomalies: v.anomalies.length,
+      status: liveStatus({ openSeverities: v.anomalies.map((a) => a.severity), distanceFromCheckInMeters: distance, minutesSinceLastFix }),
+    };
+  });
+
+  res.json({ generatedAt: now, shifts });
 });
 
 /**
