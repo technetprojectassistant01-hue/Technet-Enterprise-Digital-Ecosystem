@@ -289,6 +289,7 @@ model User {
   employeeDocumentsUploaded EmployeeDocument[] @relation("EmployeeDocumentUploader")
   attendanceAnomaliesResolved AttendanceAnomaly[] @relation("AttendanceAnomalyResolver")
   knownPlacesCreated          KnownPlace[]        @relation("KnownPlaceCreator")
+  employeeHomesUpdated        EmployeeHome[]      @relation("EmployeeHomeUpdater")
 
   quotationsCreated Quotation[] @relation("QuotationCreator")
 
@@ -443,6 +444,28 @@ model Employee {
 
   attendanceAudits    AttendanceAudit[]
   attendanceAnomalies AttendanceAnomaly[]
+  home                EmployeeHome?
+}
+
+/**
+ * An employee's home location, set by HR (spec 2026-09-26, section 3), used only to flag a
+ * check-in within 300 m of home (CHECKIN_NEAR_HOME) unless that day's job is at the same address.
+ *
+ * Its own table on purpose: the employee list and profile endpoints return every Employee column
+ * to all office roles (NON_FIELD_ROLES), and a home address must not ride along with them. Read and
+ * written only through /api/employees/:id/home (HR_ROLES). Anomaly details carry the distance,
+ * never the address or coordinates.
+ */
+model EmployeeHome {
+  employeeId  String    @id
+  employee    Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  address     String
+  /** Null when the address could not be located - then the near-home rule can't run for them. */
+  lat         Decimal?  @db.Decimal(9, 6)
+  lng         Decimal?  @db.Decimal(9, 6)
+  updatedById String?
+  updatedBy   User?     @relation("EmployeeHomeUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+  updatedAt   DateTime  @updatedAt
 }
 
 model Certification {
