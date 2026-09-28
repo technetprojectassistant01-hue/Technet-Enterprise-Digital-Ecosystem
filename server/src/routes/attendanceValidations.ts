@@ -89,6 +89,7 @@ router.get("/month", async (req, res) => {
     orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
   });
 
+  const blocking = await openHighAnomalyCounts(month);
   const items = await Promise.all(
     employees.map(async (employee) => {
       const validation = await findMonthValidation(employee.id, month);
@@ -101,6 +102,7 @@ router.get("/month", async (req, res) => {
         state: !validation ? "NOT_VALIDATED" : stale ? "CHANGED" : "VALIDATED",
         validatedAt: validation?.decidedAt ?? null,
         validatedBy: validation?.decidedBy ?? null,
+        openHighAnomalies: blocking.get(employee.id) ?? 0,
       };
     }),
   );
@@ -148,6 +150,29 @@ async function validateMonth(employeeId: string, month: string, userId: string) 
   return { changed: true };
 }
 
+/**
+ * Open HIGH-severity anomalies per employee for the month (spec section 6: a month cannot be
+ * validated while it has any). An anomaly counts toward the month of its visit's check-in; an old
+ * audit-strike row with no visit counts toward the month it was raised.
+ */
+async function openHighAnomalyCounts(month: string): Promise<Map<string, number>> {
+  const { start, end } = mauritiusMonthRange(month);
+  const rows = await prisma.attendanceAnomaly.findMany({
+    where: {
+      status: "OPEN",
+      severity: "HIGH",
+      OR: [{ siteAttendance: { checkInAt: { gte: start, lt: end } } }, { siteAttendanceId: null, createdAt: { gte: start, lt: end } }],
+    },
+    select: { employeeId: true },
+  });
+  const counts = new Map<string, number>();
+  for (const r of rows) counts.set(r.employeeId, (counts.get(r.employeeId) ?? 0) + 1);
+  return counts;
+}
+
+const blockedMessage = (count: number) =>
+  `This month has ${count} open high-severity attendance anomal${count === 1 ? "y" : "ies"}. Review ${count === 1 ? "it" : "them"} on Operations → Attendance Anomalies before validating.`;
+
 function monthNotOver(month: string) {
   return monthDays(month).to > todayInMauritius();
 }
@@ -158,6 +183,8 @@ router.post("/month/validate", async (req, res) => {
   if (monthNotOver(month)) return res.status(400).json({ error: "A month can be validated from its last day" });
   const employee = await prisma.employee.findUnique({ where: { id: employeeId }, select: { id: true } });
   if (!employee) return res.status(404).json({ error: "Employee not found" });
+  const blocking = (await openHighAnomalyCounts(month)).get(employeeId) ?? 0;
+  if (blocking > 0) return res.status(409).json({ error: blockedMessage(blocking), code: "OPEN_HIGH_ANOMALIES", count: blocking });
   res.json(await validateMonth(employeeId, month, req.user!.sub));
 });
 
@@ -170,11 +197,18 @@ router.post("/month/validate-all", async (req, res) => {
   const employeeIds = (
     await prisma.siteAttendance.findMany({ where: { checkInAt: { gte: start, lt: end } }, select: { employeeId: true }, distinct: ["employeeId"] })
   ).map((v) => v.employeeId);
+  // Anyone with open high-severity anomalies is skipped, not validated - reported back as `blocked`.
+  const blocking = await openHighAnomalyCounts(month);
   let validated = 0;
+  let blocked = 0;
   for (const employeeId of employeeIds) {
+    if ((blocking.get(employeeId) ?? 0) > 0) {
+      blocked += 1;
+      continue;
+    }
     if ((await validateMonth(employeeId, month, req.user!.sub)).changed) validated += 1;
   }
-  res.json({ validated });
+  res.json({ validated, blocked });
 });
 
 /** Removes a month's validation, so the employee's PDF is DRAFT again. */
