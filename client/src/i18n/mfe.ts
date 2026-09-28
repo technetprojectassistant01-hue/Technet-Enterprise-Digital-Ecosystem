@@ -228,6 +228,10 @@ export const mfe: Dict = {
     allowLocation: 'Permet landrwa',
     notNow: 'Pa aster',
     tryAgain: 'Reseye',
+    alreadyCheckedInTitle: 'Ou finn deza pointe',
+    alreadyCheckedInBody: (since: string, where: string | null) =>
+      `Ou finn pointe lariver a ${since}${where ? ` (${where})` : ''} me ou pa ankor pointe depar. Pointe depar sa vizit la avan, apre pointe ankor.`,
+    goToCheckOut: 'Al pointe depar',
     title: 'Mo Prezans',
     currentStatus: 'STATI AKTIEL',
     checkedIn: 'PREZAN',
