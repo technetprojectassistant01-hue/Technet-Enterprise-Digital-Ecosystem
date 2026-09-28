@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Download, Lock, MapPin, Users } from 'lucide-react'
+import { Camera, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Download, Lock, MapPin, Users } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import * as api from '../lib/api'
 import type { SiteAttendanceWithEmployee, TechnicianAttendanceSummary } from '../lib/api'
@@ -661,6 +661,18 @@ function TeamAttendancePage() {
                               <span className="mt-0.5 block text-[11px] text-ink-400" title={`${v.checkInLat}, ${v.checkInLng}`}>
                                 {v.checkInPlace}
                               </span>
+                            )}
+                            {v.checkInPhoto && (
+                              // Same-origin since the Worker proxy (CLAUDE.md §3), so a plain link carries the cookie.
+                              <a
+                                href={api.siteAttendancePhotoUrl(v.id)}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-medium text-cyan-accent hover:underline"
+                              >
+                                <Camera className="h-3 w-3" />
+                                {t.ops.team.checkInPhoto}
+                              </a>
                             )}
                             {locationMismatchLabel(v.checkInLocationMatch, v.checkInLocationDistanceMeters) && (
                               <span className="mt-0.5 block text-[11px] font-medium text-amber-400">
