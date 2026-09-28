@@ -1989,7 +1989,11 @@ states that positions only move while a technician has the app open (§30g).
 
 ### 30k. Spec status
 
-**All nine sections are done** (§30a-§30j). Open items: the privacy page's "not to judge where you are
-the rest of the day" line predates the audit pings and should be reworded by whoever owns the policy;
-the GPS attendance policy has still not had legal/DPA review (§28); nothing here has been clicked
+**All nine sections are done** (§30a-§30j). The privacy page and the "Why does the app ask for my
+location?" help answer were rewritten 2026-09-28 in all three languages to match: location is recorded
+at check-in/out, every 15 min while the app is open, and on answered compliance checks; never while
+closed or when not checked in; Admin/Ops/HR see it; flags are reviewed and are not findings of
+wrongdoing; check-in photos auto-delete after 90 days; OpenStreetMap also reverse-geocodes GPS and
+serves the managers' maps. Keep that text in step with any future change. Open items: the GPS
+attendance policy has still not had legal/DPA review (§28); nothing here has been clicked
 through in a browser on this machine or tested on real phones.
