@@ -13,7 +13,7 @@ import { Panel, Modal, Badge, EmptyState, TableSkeleton, Avatar } from '../dashb
 import { secondaryButtonClass } from '../dashboard/buttonStyles'
 import { useToast } from '../dashboard/ToastContext'
 import { useAuth } from '../context/AuthContext'
-import { hasRole, PERSONAL_DOCUMENT_ROLES } from '../lib/permissions'
+import { hasRole, HR_ROLES, PERSONAL_DOCUMENT_ROLES } from '../lib/permissions'
 import { employmentStatusTone, projectStatusTone, leaveRequestStatusTone } from '../erp/statusTones'
 import { formatMoney } from '../lib/format'
 import EmployeeForm, {
@@ -28,6 +28,7 @@ import {
   certificationStateTone,
 } from './certificationStatus'
 import EmployeeDocumentsPanel from './EmployeeDocumentsPanel'
+import HomeLocationPanel from './HomeLocationPanel'
 
 function formatDate(value: string | null): string {
   if (!value) return '—'
@@ -78,6 +79,7 @@ function EmployeeDetailPage() {
   // Uploaded ID cards, passports and medical notes are HR's alone — an admin runs the platform and
   // does not need them (PERSONAL_DOCUMENT_ROLES; the API refuses them too, not just this panel).
   const canSeePersonalDocuments = hasRole(user?.role, PERSONAL_DOCUMENT_ROLES)
+  const canSetHome = hasRole(user?.role, HR_ROLES)
 
   const [employee, setEmployee] = useState<EmployeeDetail | null>(null)
   const [balances, setBalances] = useState<LeaveBalance[]>([])
@@ -390,6 +392,8 @@ function EmployeeDetailPage() {
         )}
 
         {canSeePersonalDocuments && id && <EmployeeDocumentsPanel employeeId={id} />}
+        {/* HR only (the API refuses everyone else): used just for the check-in-near-home flag. */}
+        {canSetHome && id && <HomeLocationPanel employeeId={id} />}
 
         <Panel title="Project Involvement" icon={FolderKanban}>
           {employee.managedProjects.length === 0 && employee.projectAssignments.length === 0 ? (
