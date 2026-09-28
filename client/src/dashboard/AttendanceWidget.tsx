@@ -553,6 +553,8 @@ function AttendanceWidget() {
                 <LogOut className="h-5 w-5" />
                 {actioning ? t.attendance.checkingOut : t.attendance.checkOut}
               </button>
+              {/* Disclosure of the 15-minute shift pings (lib/useShiftPings.ts), including the honest limit. */}
+              <p className="text-center text-xs text-ink-400">{t.attendance.pingNotice}</p>
             </div>
           ) : (
             <div className="flex flex-col gap-3">
