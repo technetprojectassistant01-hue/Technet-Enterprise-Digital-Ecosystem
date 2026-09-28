@@ -299,7 +299,13 @@ function AttendanceWidget() {
   /** Check-in and check-out both need location: go straight ahead if allowed, otherwise ask first. */
   async function withLocation(action: (pos: GeolocationPosition) => Promise<void>) {
     const state = await locationPermission()
-    if (state === 'granted' || (state === 'unknown' && readFlag(LOCATION_ASKED_KEY) && !readFlag(LOCATION_DECLINED_KEY))) {
+    // Once the technician has said Allow on our dialog, never show it again - go straight to the
+    // phone. Many phones report 'prompt' again on every visit even after a grant ("Allow once",
+    // and iPhones often don't keep it for a home-screen app), and treating that as "never asked"
+    // made our dialog reappear on every single check-in (reported 2026-09-28). The phone may still
+    // show its own prompt; that one is outside our control.
+    const allowedBefore = readFlag(LOCATION_ASKED_KEY) && !readFlag(LOCATION_DECLINED_KEY)
+    if (state === 'granted' || ((state === 'unknown' || state === 'prompt') && allowedBefore)) {
       return runWithLocation(action)
     }
     setPendingAction(() => action)
