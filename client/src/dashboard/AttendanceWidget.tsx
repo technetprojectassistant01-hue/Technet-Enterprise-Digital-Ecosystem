@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { BellOff, BellRing, Briefcase, LogIn, LogOut, MapPin, MapPinOff } from 'lucide-react'
+import { BellOff, BellRing, Briefcase, LogIn, LogOut, MapPin, MapPinOff, X } from 'lucide-react'
 import * as api from '../lib/api'
-import type { SiteAttendance } from '../lib/api'
+import type { MyDayWorkOrder, SiteAttendance } from '../lib/api'
 import { ApiError } from '../lib/api'
 import { getPosition, locationPermission, LocationDeniedError } from '../lib/geolocation'
 import { clockOf, currentClockTime, statedTimeSuffix, ATTENDANCE_CHANGED_EVENT } from '../lib/siteAttendance'
@@ -44,6 +44,10 @@ function writeFlag(key: string, on: boolean) {
  * - blocked: the phone/browser has location blocked — how to turn it back on, and Try again.
  */
 type LocationDialogMode = 'ask' | 'needed' | 'blocked'
+
+/** What today's job pre-fills into Site and Location on the check-in form. */
+const jobSite = (job: MyDayWorkOrder) => job.customer.company || job.customer.name
+const jobLocation = (job: MyDayWorkOrder) => job.siteAddress || job.customer.address || ''
 
 /** "2h 14m" since an ISO timestamp, or `justNow` under a minute. */
 function durationSince(iso: string, now: number, justNow: string): string {
@@ -173,6 +177,13 @@ function AttendanceWidget() {
   const [pendingAction, setPendingAction] = useState<((pos: GeolocationPosition) => Promise<void>) | null>(null)
   /** Set when the server refuses a check-in because a visit is still open - usually a stale screen. */
   const [alreadyOpen, setAlreadyOpen] = useState<{ checkInAt: string; where: string | null } | null>(null)
+  /**
+   * The one open job an admin scheduled for this technician today, if there is exactly one. It
+   * pre-fills Site and Location and links the check-in to the job. With none or several we can't
+   * know which job they are at, so nothing is filled - the picker was removed on request
+   * (2026-09-14) and is not coming back through this.
+   */
+  const [todaysJob, setTodaysJob] = useState<MyDayWorkOrder | null>(null)
 
   function load() {
     setLoading(true)
@@ -184,6 +195,22 @@ function AttendanceWidget() {
   }
 
   useEffect(load, [])
+  useEffect(() => {
+    api
+      .getMyDayWorkOrders()
+      .then(({ today }) => {
+        const open = today.filter((w) => w.status !== 'COMPLETED' && w.status !== 'CANCELLED')
+        if (open.length !== 1) return
+        const job = open[0]
+        setTodaysJob(job)
+        // Only fill what the technician hasn't already typed.
+        setSite((v) => v || jobSite(job))
+        setNote((v) => v || jobLocation(job))
+      })
+      .catch(() => {
+        // No job info (offline with nothing cached, or no employee link) - check-in works without it.
+      })
+  }, [])
   useEffect(() => {
     if (readFlag(LOCATION_ASKED_KEY) || readFlag(LOCATION_DECLINED_KEY)) return
     locationPermission().then((state) => {
@@ -304,6 +331,7 @@ function AttendanceWidget() {
             // offline queue, so a check-in synced hours later still shows when it really happened.
             accuracy: pos.coords.accuracy,
             deviceTime: pos.timestamp,
+            workOrderId: todaysJob?.id,
             note: note.trim() || undefined,
             site: site.trim() || undefined,
             timeIn: declaredTimeEdited ? declaredTime : currentClockTime(),
@@ -321,6 +349,8 @@ function AttendanceWidget() {
       }
       toast.success(queued ? t.attendance.queued : t.attendance.checkedInToast)
       window.dispatchEvent(new Event(ATTENDANCE_CHANGED_EVENT))
+      // Used up: the next check-in today is most likely somewhere else.
+      setTodaysJob(null)
       resetForm()
       load()
     })
@@ -511,6 +541,31 @@ function AttendanceWidget() {
                 {time}
                 {transport}
               </div>
+
+              {todaysJob && (
+                <div className="flex items-center gap-2 rounded-lg bg-ink-800 px-3 py-2 text-xs text-ink-200">
+                  <Briefcase className="h-3.5 w-3.5 shrink-0 text-cyan-accent" />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[10px] font-semibold tracking-widest text-ink-400">{t.attendance.todaysJob}</div>
+                    <div className="truncate">
+                      {todaysJob.workOrderNumber} — {todaysJob.title}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // Take back what the job filled in, but never what the technician typed over it.
+                      setSite((v) => (v === jobSite(todaysJob) ? '' : v))
+                      setNote((v) => (v === jobLocation(todaysJob) ? '' : v))
+                      setTodaysJob(null)
+                    }}
+                    className="flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-ink-400 hover:bg-ink-700 hover:text-ink-100"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                    {t.attendance.notThisJob}
+                  </button>
+                </div>
+              )}
 
               {siteField}
 
