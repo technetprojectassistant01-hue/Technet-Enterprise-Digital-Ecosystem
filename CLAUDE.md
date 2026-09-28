@@ -1697,7 +1697,13 @@ smaller than they looked:
   `SiteAttendance`/`AttendanceAudit` row with coordinates but no place name at the time
   (38 check-ins, 36 check-outs, 2 audit confirms) was resolved via the same
   `reverseGeocodeCached()` real code path. A brand-new row from here on is geocoded automatically
-  at write time (§28/§29 above) - no recurring backfill job exists or is needed.
+  at write time (§28/§29 above). **Correction 2026-09-28: a recurring retry *is* needed.** The
+  write-time lookup is best-effort and does fail now and then (two visits on 26 and 28 Sep came
+  back null and showed bare coordinates, which the user reported as "gone back to coordinates");
+  the same coordinates resolved fine minutes later, so the failures are transient. `fillMissingPlaces()`
+  in `reverseGeocode.ts` now re-resolves up to 6 null check-in/check-out/audit places per run of
+  the attendance poller (`placesFilled` in its response), and failed lookups log a warning with the
+  reason.
 - **Item D (long-open-shift reminder)**: the existing checkout reminder (§27f) only fires once
   daily at a fixed 17:15 Mauritius - nothing reminded someone whose shift ran unusually long
   intra-day. Extended the existing, already-frequently-polled `run-attendance-audits` endpoint
