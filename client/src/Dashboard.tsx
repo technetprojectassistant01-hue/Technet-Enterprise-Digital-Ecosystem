@@ -13,6 +13,8 @@ import { InstallAppPrompt } from './dashboard/InstallAppDialog'
 import { setOutboxDropHandler, startOutbox } from './lib/outbox'
 import { useOnline } from './lib/useOnline'
 import { watchForAppUpdate } from './lib/appUpdate'
+import { useShiftPings } from './lib/useShiftPings'
+import { hasRole, ADMINISTRATIVE_ROLES } from './lib/permissions'
 import { useT } from './i18n'
 import { MAIN_NAV, type NavItem, visibleNav } from './dashboard/nav'
 
@@ -25,6 +27,9 @@ function Dashboard() {
   const t = useT()
   const toast = useToast()
   const { user } = useAuth()
+  // Shift pings on every page, not just the landing page: the spec's "while the app is open".
+  // Same people who get the check-in card (DashboardHome) - admin/HR/storekeeper don't clock in.
+  useShiftPings(!!user?.employeeId && !hasRole(user?.role, ADMINISTRATIVE_ROLES))
   const navigate = useNavigate()
   const toastRef = useRef(toast)
   toastRef.current = toast
