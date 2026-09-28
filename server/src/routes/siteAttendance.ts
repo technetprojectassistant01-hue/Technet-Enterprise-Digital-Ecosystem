@@ -13,6 +13,7 @@ import { notifyHrOfOvertime } from "../lib/overtimeQueue";
 import { buildAttendanceReport, parseRange } from "../lib/attendanceReport";
 import { computeLateByVisit, computeOvertimeDays, dayToDate, mauritiusDay, MAURITIUS_OFFSET_MINUTES } from "../lib/overtime";
 import { generateStaffAttendancePdf } from "../lib/pdf/staffAttendancePdf";
+import { isPhotoRequired, parseAttendancePhoto } from "../lib/attendancePhoto";
 
 const router = Router();
 
@@ -25,6 +26,8 @@ const WORK_ORDER_SUMMARY_SELECT = {
 const VERIFICATIONS_INCLUDE = { orderBy: { checkedAt: "desc" as const } };
 /** Compliance-check history for a session, oldest first - so a manager reads it as a timeline. */
 const AUDITS_INCLUDE = { orderBy: { scheduledAt: "asc" as const } };
+/** Whether a visit has a check-in photo - never the bytes, which only GET /:id/photo serves. */
+const PHOTO_SUMMARY_SELECT = { select: { id: true, createdAt: true } } as const;
 
 const EXIT_REASONS = ["MATERIALS", "ANOTHER_SITE", "SUPERVISOR_INSTRUCTION", "EMERGENCY", "OTHER"] as const;
 type ExitReason = (typeof EXIT_REASONS)[number];
@@ -154,12 +157,12 @@ router.get("/", requireRole(...ATTENDANCE_VIEW_ROLES), async (req, res) => {
   const [current, history] = await Promise.all([
     prisma.siteAttendance.findMany({
       where: { checkOutAt: null, ...employeeFilter, ...activeFilter },
-      include: { employee: { select: EMPLOYEE_SELECT }, workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE, audits: AUDITS_INCLUDE },
+      include: { employee: { select: EMPLOYEE_SELECT }, workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE, audits: AUDITS_INCLUDE, checkInPhoto: PHOTO_SUMMARY_SELECT },
       orderBy: { checkInAt: "desc" },
     }),
     prisma.siteAttendance.findMany({
       where: { checkInAt: { gte: start, lt: end }, ...employeeFilter, ...activeFilter },
-      include: { employee: { select: EMPLOYEE_SELECT }, workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE, audits: AUDITS_INCLUDE },
+      include: { employee: { select: EMPLOYEE_SELECT }, workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE, audits: AUDITS_INCLUDE, checkInPhoto: PHOTO_SUMMARY_SELECT },
       orderBy: { checkInAt: "desc" },
     }),
   ]);
@@ -284,6 +287,19 @@ router.get("/report/pdf", requireRole(...ATTENDANCE_VIEW_ROLES), async (req, res
   doc.pipe(res);
 });
 
+/**
+ * A visit's check-in photo, for the people who can read the attendance register. 404 when there
+ * never was one or it has passed the 90-day retention (lib/attendancePhoto.ts) - the visit's times
+ * and GPS outlive the photo.
+ */
+router.get("/:id/photo", requireRole(...ATTENDANCE_VIEW_ROLES), async (req, res) => {
+  const photo = await prisma.siteAttendancePhoto.findUnique({ where: { siteAttendanceId: req.params.id as string } });
+  if (!photo) return res.status(404).json({ error: "No check-in photo for this visit" });
+  res.setHeader("Content-Type", photo.mimeType);
+  res.setHeader("Cache-Control", "private, max-age=3600");
+  res.send(Buffer.from(photo.data));
+});
+
 // A supervisor-triggered nudge, not a live remote GPS ping: it asks the technician to open the
 // app, and the widget then verifies on mount. True push-to-device would need new infrastructure
 // (a push subscription); this reuses the existing notification system for a cheap, honest version.
@@ -371,7 +387,8 @@ router.get("/me", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
     }),
   ]);
 
-  res.json({ current, history });
+  // photoRequired rides along so the check-in card knows whether to ask for the camera.
+  res.json({ current, history, photoRequired: isPhotoRequired() });
 });
 
 /**
@@ -473,6 +490,11 @@ router.post("/check-in", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
   if (transportCost.value === 0 && !transportNote) {
     return res.status(400).json({ error: "Explain why transport cost is zero" });
   }
+  const photo = parseAttendancePhoto((req.body as { photo?: unknown })?.photo);
+  if ("error" in photo) return res.status(400).json({ error: photo.error });
+  if (!photo.photo && isPhotoRequired()) {
+    return res.status(400).json({ error: "Take a check-in photo first", code: "PHOTO_REQUIRED" });
+  }
 
   // A check-in queued offline is replayed on reconnect; if the first attempt actually landed
   // before the signal dropped, hand back the open session rather than creating a second one.
@@ -558,6 +580,18 @@ router.post("/check-in", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
         checkInTransportNote: transportNote,
         checkInLocationMatch: locationCheck.match,
         checkInLocationDistanceMeters: locationCheck.distanceMeters,
+        // Created with the visit, in the same write, so a check-in never lands without its photo.
+        checkInPhoto: photo.photo
+          ? {
+              create: {
+                // Same cast as daily report photos: a Node Buffer is a Uint8Array, Prisma's Bytes type just narrows its backing store.
+                data: photo.photo.buffer as unknown as Uint8Array<ArrayBuffer>,
+                mimeType: photo.photo.mimeType,
+                lat: coords.lat,
+                lng: coords.lng,
+              },
+            }
+          : undefined,
       },
       include: { workOrder: WORK_ORDER_SUMMARY_SELECT, verifications: VERIFICATIONS_INCLUDE, audits: AUDITS_INCLUDE },
     });
