@@ -1709,7 +1709,7 @@ export const mfe: Dict = {
           {
             q: 'Kifer aplikasion la demann mo landrwa?',
             a: [
-              'Sak lariver ek sak depar anrezistre kot ou ete ansam ek ler la, e ou bann manazer kapav trouv sa. Pointaz pa kapav marse san sa.',
+              'Sak lariver ek sak depar anrezistre kot ou ete ansam ek ler la, e ou bann manazer kapav trouv sa. Pandan ki ou pointe, li osi anrezistre sak 15 minit kan aplikasion la ouver lor ou ekran, ek kan ou reponn enn kontrol konformite. Li zame anrezistre kan aplikasion la ferme ouswa kan ou pa pointe. Pointaz pa kapav marse san sa.',
               'Si ou finn refiz landrwa par erer, permet landrwa pou sa sit la dan paramet ou telefonn ouswa ou navigater, apre reseye.',
             ],
           },
@@ -1814,9 +1814,9 @@ export const mfe: Dict = {
         {
           title: 'Landrwa',
           paragraphs: [
-            'Landrwa anrezistre zis kan ou pointe lariver ouswa depar — aplikasion la pa swiv ou ant de, e li pa swiv ou kan li ferme.',
+            'Ou pozision anrezistre kan ou pointe lariver ek depar, ek lot moman pandan ki ou pointe: sak 15 minit kan aplikasion la ouver lor ou ekran, ek kan ou reponn enn notifikasion kontrol konformite (zot vini a ler o azar pandan enn sift). Aplikasion la pa kapav anrezistre ou pozision kan li ferme ouswa ou telefonn blok, e li zame anrezistre li kan ou pa pointe.',
             'Ou navigater ouswa ou telefonn demann ou permision avan partaz landrwa. Pointaz pa kapav marse san sa.',
-            'Administrater ek Manazer Operasion kapav trouv landrwa ki anrezistre, bann ler, ek si landrwa ki ou finn ekrir pre ar ou pozision GPS. Sa servi pou konfirm vizit lor sit, pa pou ziz kot ou ete rest lazourne.',
+            'Administrater, Manazer Operasion ek RH kapav trouv sa bann pozision la, bann ler, ek si landrwa ki ou finn ekrir pre ar ou pozision GPS. Aplikasion la osi signal bann zafer ki bizin get pli pre, par egzanp enn pointaz lwin ar travay la ouswa ar enn plas travay koni, enn pozision lwin ar kot ou finn pointe, ouswa enn long letan san pozision. Enn manazer get sak signal ek not so konkluzion; enn signal tousel pa vedir ou finn fer nanye mal.',
           ],
         },
         {
@@ -1831,7 +1831,7 @@ export const mfe: Dict = {
           title: 'Kisannla kapav trouv li',
           paragraphs: [
             'Dan Technet, seki sakenn trouv depann lor so rol. Par egzanp, teknisien trouv zot prop travay ek pointaz; RH trouv dosie anplwaye ek lapey; manazer trouv prezans lekip. Klian trouv zis dokiman ek travay zot prop konpani, zame landrwa personel ni nom teknisien.',
-            'Bann prestater ki fer aplikasion la marse: Cloudflare (livre aplikasion la), Render (fer server la marse), Neon (gard baz done), OpenStreetMap Nominatim (rod bann landrwa ki ou ekrir pou konpar zot ar ou pozision GPS), servis push ou navigater kouma Google ouswa Apple (avoy rapel), ek Resend (avoy imel reinisializasion bann administrater). Serten ladan kapav trete done andeor Moris.',
+            'Bann prestater ki fer aplikasion la marse: Cloudflare (livre aplikasion la), Render (fer server la marse), Neon (gard baz done), OpenStreetMap (rod bann landrwa ki ou ekrir, sanz bann pozision GPS an non landrwa, ek donn bann kart ki manazer trouve), servis push ou navigater kouma Google ouswa Apple (avoy rapel), ek Resend (avoy imel reinisializasion bann administrater). Serten ladan kapav trete done andeor Moris.',
             'Nou partaz linformasion ar lotorite zis kan lalwa oblize.',
           ],
         },
@@ -1846,7 +1846,7 @@ export const mfe: Dict = {
         {
           title: 'Konbien letan nou gard li',
           paragraphs: [
-            'Bann dosie res garde otan ki Technet bizin zot pou so travay, lanplwa ek so obligasion legal. Pena okenn efasman otomatik pou lemoman — bann dosie res ziska enn administrater tir zot.',
+            'Bann dosie res garde otan ki Technet bizin zot pou so travay, lanplwa ek so obligasion legal. Bann foto lariver efase otomatikman apre 90 zour; lezot dosie, ansam ar bann pozision, res ziska enn administrater tir zot.',
           ],
         },
         {
