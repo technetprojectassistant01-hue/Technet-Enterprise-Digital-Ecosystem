@@ -1764,13 +1764,29 @@ assert the fix, plus a new case pinning "a typed on-time check-in cannot erase a
 one." `npm run test -w server` (overtime, payroll, siteAttendance, workOrders suites - the ones
 that touch this code) passes.
 
-### 30c. Still to do from this spec
+### 30c. Historical attendance data-issues report for HR (2026-09-28)
 
-Not yet built: the historical-entries admin report (out-before-in, overlapping sessions, >12h
-overtime days) for HR, the two remaining bug-fix items, and everything in the new-feature sections
-(verified check-in/photo, learned places, home-location flag, shift pings, the full anomaly-rule
-engine, admin review page, live map). One open architectural question hasn't been surfaced to the
-business owner yet: the spec's new "ping every 15 minutes during a shift, flag LEFT_WORK_AREA/
-MISSED_PING" design covers the same ground as the already-shipped random 2-4-pings-per-shift audit
-system (§28/§29) - whether these are meant to replace, sit alongside, or merge with each other
-needs an answer before either is touched further.
+Pure detectors in `server/src/lib/attendanceDataIssues.ts` (tested in its `.test.ts`) find
+check-outs before check-ins, overlapping closed sessions per employee, and overtime days over 12h.
+`GET /api/overtime/data-issues` (HR_ROLES, same router as overtime approval) runs them over all
+`SiteAttendance` rows and returns them with employee names. Read-only by design: it never edits a
+session and never touches an `OvertimeDecision`, even an approved one on an excessive day - HR
+reads it and corrects by hand. Shown as `client/src/hr/AttendanceDataIssuesPanel.tsx` below the
+queue on HR's Overtime page (no new nav entry), times rendered in `Indian/Mauritius`. First run
+against production data: 41 sessions, 0 inverted, 1 overlapping pair, 13 of 23 overtime days over
+12h (one at 9,751 min) - i.e. forgotten check-outs are common, which the long-shift reminder (§29)
+and the spec's MISSED_PING rule are meant to reduce going forward.
+
+### 30d. Still to do from this spec
+
+Section 8 is done except replacing the "X km from stated" check with the spec's
+STATED_LOCATION_MISMATCH anomaly, which belongs with the anomaly-rule engine (section 5). Not yet
+built: everything in the new-feature sections (verified check-in/photo, learned places,
+home-location flag, shift pings, the full anomaly-rule engine, admin review page, live map). Open
+architectural question: the existing `AttendanceAnomaly` model is audit-pair based
+(`firstAuditId`/`secondAuditId`, STANDARD/HIGH, no `type`) while the spec wants typed per-shift
+anomalies with low/medium/high severity and an occurrence count. Recommended: extend the existing
+table rather than add a parallel one, so the one Anomalies queue serves both. Likewise the spec's
+"ping every 15 minutes during a shift, flag LEFT_WORK_AREA/MISSED_PING" design covers the same
+ground as the already-shipped random 2-4-pings-per-shift audit system (§28/§29) - whether these
+replace, sit alongside, or merge needs an answer from the business owner before either is touched.
