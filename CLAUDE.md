@@ -1893,12 +1893,44 @@ migration); statuses gained GENUINE ("Confirm genuine").
   the centroid false positives §7a predicted ("Ebene" 6.4 km, "Moka" 9-13 km).
 - Not verified in a browser (no browser automation on this machine).
 
-### 30g. Still to do from this spec
+### 30g. Section 4 - 15-minute shift pings (2026-09-28)
 
-Done: sections 1, 5, 6, 8 (§30a-§30f). Not built: **section 2** known places (table, match on
+**Decision:** the pings run **alongside** the random push compliance checks (§28/§29), not instead
+of them - the user asked for the pings without settling the replace-or-coexist question, and the two
+don't overlap: push checks reach a closed app, pings only exist while it is open.
+
+- `AttendancePing` (migration `20260928150000_attendance_pings`): visit, lat/lng, accuracy, deviceAt,
+  createdAt = server time. `POST /api/site-attendance/ping` (OPS_SUBMIT_ROLES) stores one for the
+  caller's open visit (409 `NO_OPEN_SHIFT` otherwise; ignored within 2 min of the last), then runs
+  `evaluateVisit`; no verdict in the response (§7a).
+- Client: `lib/useShiftPings.ts`, mounted in `Dashboard.tsx` for the same people who get the check-in
+  card (linked employee, not ADMINISTRATIVE_ROLES) so it runs on every page. Pings on open, every
+  15 min, and on return to the foreground; the check-in itself resets the clock. **Foreground only -
+  a web app cannot read location in the background**, and the code, the widget line under Check Out
+  (`attendance.pingNotice`), the missed-ping text and the privacy page all say so. It never triggers a
+  permission prompt (pings only when permission is already granted, or on browsers that can't say,
+  when the widget's "asked and not declined" flags are set). Failures are silent. Offline pings are
+  dropped, not queued - the gap is what MISSED_PING records.
+- Rules: pings are `PING` fixes - they feed LEFT_WORK_AREA, IMPOSSIBLE_TRAVEL and MOCK. New
+  `missedPings()` (LOW): gaps > 45 min from check-in through every ping/answered audit to check-out
+  (or now), keyed by gap start so a growing gap counts once. LOW on purpose - a locked phone produces
+  exactly this without wrongdoing. Only for shifts from `PINGS_LIVE_SINCE` (2026-09-28 12:00Z) on, so
+  pre-feature shifts aren't all flagged. Checked on each ping, at check-out, and by
+  `evaluateOpenShifts()` (shifts opened in the last 36 h) on every run of the cron-job.org attendance
+  poller (`shiftsChecked` in its response) - the spec's "Worker cron" is that existing scheduler.
+- **Roaming jobs:** Render env `ROAMING_JOB_CATEGORIES`, comma-separated `JobCategory` values (e.g.
+  `SURVEY,OUTDOOR_REPAIR`), empty by default; those jobs skip LEFT_WORK_AREA.
+- **Guard added to the fake-GPS rule:** readings coarser than 50 m don't count toward "5 identical
+  fixes" - Wi-Fi positioning honestly repeats the same point indoors, and a day of pings would
+  otherwise flag it HIGH.
+- Mini map shows pings in violet, merged in time order with the compliance checks.
+- Not verified on a real phone. Worth checking on an installed iPhone that no permission prompt
+  appears every 15 minutes.
+
+### 30h. Still to do from this spec
+
+Done: sections 1, 4, 5, 6, 8 (§30a-§30g). Not built: **section 2** known places (table, match on
 check-in, admin page with map, geocoding job addresses once, "Save as known place" on the review card,
 and the UNVERIFIED_LOCATION rule), **section 3** employee home location (activates CHECKIN_NEAR_HOME),
-**section 4** the every-15-minutes foreground pings, MISSED_PING, the roaming-job exemption and the Worker
-cron, **section 7** the Live Map. Open question for the business owner: whether section 4's pings
-replace or sit beside the live random audit pings (§28/§29). The privacy page's "not to judge where you
+**section 7** the Live Map (it can now draw each technician's latest ping). The privacy page's "not to judge where you
 are the rest of the day" line predates the audit pings and should be revisited.
