@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { BellOff, BellRing, Briefcase, LogIn, LogOut, MapPin, MapPinOff } from 'lucide-react'
 import * as api from '../lib/api'
 import type { SiteAttendance } from '../lib/api'
+import { ApiError } from '../lib/api'
 import { getPosition, locationPermission, LocationDeniedError } from '../lib/geolocation'
 import { clockOf, currentClockTime, statedTimeSuffix, ATTENDANCE_CHANGED_EVENT } from '../lib/siteAttendance'
 import { Panel, Modal } from './ui'
@@ -170,6 +171,8 @@ function AttendanceWidget() {
   const [locationDialog, setLocationDialog] = useState<LocationDialogMode | null>(null)
   /** What to do once location is available: submit the check-in/out, or nothing (asked on page load). */
   const [pendingAction, setPendingAction] = useState<((pos: GeolocationPosition) => Promise<void>) | null>(null)
+  /** Set when the server refuses a check-in because a visit is still open - usually a stale screen. */
+  const [alreadyOpen, setAlreadyOpen] = useState<{ checkInAt: string; where: string | null } | null>(null)
 
   function load() {
     setLoading(true)
@@ -288,24 +291,34 @@ function AttendanceWidget() {
       return
     }
     await withLocation(async (pos) => {
-      const { queued } = await submitOrQueue({
-        kind: 'check-in',
-        label: t.attendance.outboxCheckIn(site.trim() || note.trim()),
-        endpoint: '/api/site-attendance/check-in',
-        body: {
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-          // Stored beside the server's own timestamp, never instead of it: the fix time survives an
-          // offline queue, so a check-in synced hours later still shows when it really happened.
-          accuracy: pos.coords.accuracy,
-          deviceTime: pos.timestamp,
-          note: note.trim() || undefined,
-          site: site.trim() || undefined,
-          timeIn: declaredTimeEdited ? declaredTime : currentClockTime(),
-          transportCost: transport.value,
-          transportNote: transport.note,
-        },
-      })
+      let queued: boolean
+      try {
+        ;({ queued } = await submitOrQueue({
+          kind: 'check-in',
+          label: t.attendance.outboxCheckIn(site.trim() || note.trim()),
+          endpoint: '/api/site-attendance/check-in',
+          body: {
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            // Stored beside the server's own timestamp, never instead of it: the fix time survives an
+            // offline queue, so a check-in synced hours later still shows when it really happened.
+            accuracy: pos.coords.accuracy,
+            deviceTime: pos.timestamp,
+            note: note.trim() || undefined,
+            site: site.trim() || undefined,
+            timeIn: declaredTimeEdited ? declaredTime : currentClockTime(),
+            transportCost: transport.value,
+            transportNote: transport.note,
+          },
+        }))
+      } catch (err) {
+        const open = err instanceof ApiError && err.data?.code === 'ALREADY_CHECKED_IN'
+          ? (err.data.openSession as { checkInAt: string; checkInSite: string | null; checkInNote: string | null } | undefined)
+          : undefined
+        if (!open) throw err
+        setAlreadyOpen({ checkInAt: open.checkInAt, where: open.checkInSite || open.checkInNote })
+        return
+      }
       toast.success(queued ? t.attendance.queued : t.attendance.checkedInToast)
       window.dispatchEvent(new Event(ATTENDANCE_CHANGED_EVENT))
       resetForm()
@@ -525,6 +538,29 @@ function AttendanceWidget() {
 
       </div>
     </Panel>
+
+    {alreadyOpen && (
+      <Modal title={t.attendance.alreadyCheckedInTitle} onClose={() => setAlreadyOpen(null)}>
+        <div className="flex flex-col gap-5">
+          <p className="text-sm text-ink-200">
+            {t.attendance.alreadyCheckedInBody(clockOf(new Date(alreadyOpen.checkInAt)), alreadyOpen.where)}
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              // Reloading flips the card to its check-out form for the open visit.
+              setAlreadyOpen(null)
+              window.dispatchEvent(new Event(ATTENDANCE_CHANGED_EVENT))
+              load()
+            }}
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-cyan-accent px-4 py-3 text-sm font-semibold text-ink-950 transition hover:bg-cyan-accent-dark"
+          >
+            <LogOut className="h-4 w-4" />
+            {t.attendance.goToCheckOut}
+          </button>
+        </div>
+      </Modal>
+    )}
 
     {locationDialog && (
       <Modal
