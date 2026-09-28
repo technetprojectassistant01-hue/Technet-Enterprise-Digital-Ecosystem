@@ -1788,6 +1788,7 @@ export type AnomalyType =
 /** The types the server raises today, for the filter (the rest are reserved for later sections). */
 export const ACTIVE_ANOMALY_TYPES: AnomalyType[] = [
   'FAR_FROM_JOB',
+  'CHECKIN_NEAR_HOME',
   'UNVERIFIED_LOCATION',
   'LEFT_WORK_AREA',
   'IMPOSSIBLE_TRAVEL',
@@ -1996,6 +1997,27 @@ export function listAttendanceAnomalies(filters: AnomalyFilters = {}) {
   for (const [key, value] of Object.entries(filters)) if (value) params.set(key, value)
   const query = params.toString() ? `?${params}` : ''
   return request<{ anomalies: AttendanceAnomaly[] }>(`/api/attendance-audits/anomalies${query}`)
+}
+
+/** An employee's home location - HR only (spec section 3). lat/lng null when it couldn't be located. */
+export interface EmployeeHome {
+  address: string
+  lat: string | null
+  lng: string | null
+  updatedAt: string
+  updatedBy: { id: string; name: string } | null
+}
+
+export function getEmployeeHome(employeeId: string) {
+  return request<{ home: EmployeeHome | null }>(`/api/employees/${employeeId}/home`)
+}
+
+export function setEmployeeHome(employeeId: string, address: string) {
+  return request<{ home: EmployeeHome; located: boolean }>(`/api/employees/${employeeId}/home`, { method: 'PUT', body: JSON.stringify({ address }) })
+}
+
+export function clearEmployeeHome(employeeId: string) {
+  return request<void>(`/api/employees/${employeeId}/home`, { method: 'DELETE' })
 }
 
 /** A place technicians genuinely work at, learned from confirmed check-ins (spec section 2). */
