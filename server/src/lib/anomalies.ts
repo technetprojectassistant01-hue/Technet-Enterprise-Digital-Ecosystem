@@ -1,7 +1,7 @@
 import { prisma } from "./prisma";
 import { notifyRoles } from "./notifications";
 import { OPS_MANAGE_ROLES } from "./roles";
-import { mauritiusDay } from "./overtime";
+import { dayToDate, mauritiusDay } from "./overtime";
 import {
   checkInNearHome,
   clockSkew,
@@ -160,6 +160,7 @@ const VISIT_SELECT = {
   checkOutDeclaredTime: true,
   checkOutLocationDistanceMeters: true,
   knownPlaceId: true,
+  employee: { select: { home: { select: { lat: true, lng: true } } } },
   workOrder: { select: { id: true, siteLat: true, siteLng: true, jobCategory: true, siteFromCustomerAddress: true } },
   audits: { where: { lat: { not: null } }, select: { id: true, respondedAt: true, scheduledAt: true, lat: true, lng: true } },
   pings: { select: { id: true, createdAt: true, lat: true, lng: true, accuracyMeters: true } },
@@ -223,6 +224,20 @@ function fixesOf(v: Visit): Fix[] {
   return fixes;
 }
 
+/**
+ * Sites of the employee's jobs scheduled that Mauritius day (plus the visit's own job), for the
+ * near-home exception: a check-in near home is expected when the job itself is at that address.
+ * scheduledDate is stored at UTC midnight of the chosen day (routes/workOrders.ts).
+ */
+async function jobSitesThatDay(employeeId: string, day: string, visitJob: { lat: number; lng: number } | null) {
+  const jobs = await prisma.workOrder.findMany({
+    where: { technicians: { some: { employeeId } }, scheduledDate: dayToDate(day), siteLat: { not: null }, siteLng: { not: null } },
+    select: { siteLat: true, siteLng: true },
+  });
+  const sites = jobs.map((j) => ({ lat: Number(j.siteLat), lng: Number(j.siteLng) }));
+  return visitJob ? [...sites, visitJob] : sites;
+}
+
 /** Does this finding's key point at one of the given fixes? For day-wide rules, the finding belongs to the visit of its later fix. */
 function belongsTo(finding: Finding, visitKeys: Set<string>): boolean {
   const key = finding.key.includes(">") ? finding.key.split(">")[1] : finding.key.replace(/^(zero-accuracy|identical|jump):/, "");
@@ -265,13 +280,16 @@ export async function findingsForVisit(siteAttendanceId: string, event?: VisitEv
         }
       : null;
 
+  // Home coordinates (spec section 3) - null when HR hasn't set one or it couldn't be located.
+  const homeRow = visit.employee.home;
+  const home = homeRow && homeRow.lat !== null && homeRow.lng !== null ? { lat: Number(homeRow.lat), lng: Number(homeRow.lng) } : null;
+
   const findings: Finding[] = [
     ...farFromJob(checkIn, job),
     ...(visit.checkInAt >= KNOWN_PLACES_LIVE_SINCE
       ? unverifiedLocation(checkIn, { hasJob: !!visit.workOrder, knownPlaceId: visit.knownPlaceId })
       : []),
-    // Home coordinates arrive with spec section 3; until then this rule has nothing to compare.
-    ...checkInNearHome(checkIn, null, []),
+    ...checkInNearHome(checkIn, home, await jobSitesThatDay(visit.employeeId, day, job)),
     ...(visit.workOrder && roamingJobCategories().has(visit.workOrder.jobCategory) ? [] : leftWorkArea(checkIn, fixes)),
     ...(visit.checkInAt >= PINGS_LIVE_SINCE
       ? missedPings(
