@@ -1184,9 +1184,32 @@ model SiteAttendance {
   audits        AttendanceAudit[]
   checkInPhoto  SiteAttendancePhoto?
   anomalies     AttendanceAnomaly[]
+  pings         AttendancePing[]
 
   @@index([workOrderId])
   @@index([employeeId])
+}
+
+/**
+ * A location reading taken during an open shift (spec 2026-09-26, section 4): every 15 minutes
+ * and whenever the app returns to the foreground - **only while the app is open**. A web app
+ * cannot read the location in the background; when the phone is locked or the app closed there
+ * are no pings, which is what the MISSED_PING anomaly records. Separate from AttendanceAudit (the
+ * random push-driven compliance checks, §28), which runs alongside this.
+ *
+ * createdAt is the server receive time; deviceAt the phone's own fix time.
+ */
+model AttendancePing {
+  id               String         @id @default(uuid())
+  siteAttendanceId String
+  siteAttendance   SiteAttendance @relation(fields: [siteAttendanceId], references: [id], onDelete: Cascade)
+  lat              Decimal        @db.Decimal(9, 6)
+  lng              Decimal        @db.Decimal(9, 6)
+  accuracyMeters   Int?
+  deviceAt         DateTime?
+  createdAt        DateTime       @default(now())
+
+  @@index([siteAttendanceId, createdAt])
 }
 
 /**
