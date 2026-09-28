@@ -36,6 +36,35 @@ function parseCoords(body: unknown): { lat: number; lng: number } | null {
   return { lat, lng };
 }
 
+/** Beyond this the "accuracy" is meaningless (a whole-country guess) - stored capped, never rejected. */
+const MAX_ACCURACY_METERS = 100_000;
+/** A device clock further off than this from the server is junk rather than skew - not stored. */
+const MAX_DEVICE_CLOCK_DRIFT_MS = 30 * 24 * 60 * 60 * 1000;
+
+/**
+ * The phone's accuracy radius and fix time that come with a GPS reading. Both are advisory context
+ * for reviewers - neither is ever a reason to refuse a check-in, so junk just becomes null. The
+ * device time is never used for late/overtime/hours; the server receive time is the official one.
+ */
+export function parseFixMeta(body: unknown, now = new Date()): { accuracyMeters: number | null; deviceAt: Date | null } {
+  const { accuracy, deviceTime } = (body as { accuracy?: unknown; deviceTime?: unknown }) ?? {};
+
+  const accuracyMeters =
+    typeof accuracy === "number" && Number.isFinite(accuracy) && accuracy >= 0
+      ? Math.min(Math.round(accuracy), MAX_ACCURACY_METERS)
+      : null;
+
+  let deviceAt: Date | null = null;
+  if (typeof deviceTime === "number" || typeof deviceTime === "string") {
+    const parsed = new Date(deviceTime);
+    if (!Number.isNaN(parsed.getTime()) && Math.abs(parsed.getTime() - now.getTime()) <= MAX_DEVICE_CLOCK_DRIFT_MS) {
+      deviceAt = parsed;
+    }
+  }
+
+  return { accuracyMeters, deviceAt };
+}
+
 function parseNote(body: unknown): string | null {
   const note = (body as { note?: unknown } | null)?.note;
   return typeof note === "string" && note.trim() ? note.trim().slice(0, 200) : null;
@@ -432,6 +461,7 @@ router.get("/my-work-orders", requireRole(...OPS_SUBMIT_ROLES), async (req, res)
 router.post("/check-in", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
   const coords = parseCoords(req.body);
   if (!coords) return res.status(400).json({ error: "A valid lat and lng are required" });
+  const fix = parseFixMeta(req.body);
   // The typed location is optional (user request, 2026-09-14); the GPS fix is still required.
   const note = parseNote(req.body);
 
@@ -506,6 +536,8 @@ router.post("/check-in", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
         workOrderId,
         checkInLat: coords.lat,
         checkInLng: coords.lng,
+        checkInAccuracyMeters: fix.accuracyMeters,
+        checkInDeviceAt: fix.deviceAt,
         checkInPlace,
         checkInNote: note,
         checkInSite: parseSite(req.body),
@@ -551,6 +583,7 @@ router.post("/check-in", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
 router.post("/check-out", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
   const coords = parseCoords(req.body);
   if (!coords) return res.status(400).json({ error: "A valid lat and lng are required" });
+  const fix = parseFixMeta(req.body);
 
   const declaredTime = parseDeclaredTime((req.body as { timeOut?: unknown })?.timeOut);
   if ("error" in declaredTime) return res.status(400).json({ error: declaredTime.error });
@@ -600,6 +633,8 @@ router.post("/check-out", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => 
         checkOutAt: new Date(),
         checkOutLat: coords.lat,
         checkOutLng: coords.lng,
+        checkOutAccuracyMeters: fix.accuracyMeters,
+        checkOutDeviceAt: fix.deviceAt,
         checkOutPlace,
         checkOutNote,
         checkOutSite: parseSite(req.body),
