@@ -1183,6 +1183,7 @@ model SiteAttendance {
   verifications SiteVerification[]
   audits        AttendanceAudit[]
   checkInPhoto  SiteAttendancePhoto?
+  anomalies     AttendanceAnomaly[]
 
   @@index([workOrderId])
   @@index([employeeId])
@@ -1296,13 +1297,16 @@ model AttendanceAudit {
 }
 
 /**
- * HIGH when both flagged audits were MISSED outright (no response at all - device off, or the app
- * closed deliberately); STANDARD when at least one was a CONFIRMED-but-too-far response. A simple,
- * tunable v1 rule, not a scored risk model.
+ * LOW/MEDIUM/HIGH per the verified-attendance spec (2026-09-26, section 5). STANDARD is the
+ * original two-level scale's lower value, kept because existing rows use it; it reads as MEDIUM
+ * and nothing new is written with it. (Postgres can't use an enum value added in the same
+ * migration, which is also why the column default below stays STANDARD - code always sets it.)
  */
 enum AnomalySeverity {
   STANDARD
   HIGH
+  LOW
+  MEDIUM
 }
 
 enum AnomalyStatus {
@@ -1310,31 +1314,68 @@ enum AnomalyStatus {
   CONFIRMED_VIOLATION
   FALSE_POSITIVE
   DISMISSED
+  /** Reviewed and the location/time was legitimate - "Confirm genuine" on the review page. */
+  GENUINE
 }
 
 /**
- * Created once an employee racks up two consecutive audit strikes (missed or out-of-radius) -
- * never on a single one. Reviewed by Operations on the Attendance Anomalies queue; HR can see it
- * (same access split as Team Attendance) but only Operations decides it.
+ * What an anomaly is about. AUDIT_STRIKES is the original rule (two consecutive random audit
+ * strikes, lib/attendanceAudit.ts); the rest are the spec's per-visit rules in
+ * lib/anomalyRules.ts. UNVERIFIED_LOCATION, MISSED_PING and NO_GPS exist for the spec's full list
+ * but are not raised yet: the first needs known places (section 2), the second the shift pings
+ * (section 4), and the third cannot happen while the API refuses a check-in without GPS.
+ */
+enum AnomalyType {
+  AUDIT_STRIKES
+  FAR_FROM_JOB
+  UNVERIFIED_LOCATION
+  CHECKIN_NEAR_HOME
+  LEFT_WORK_AREA
+  MISSED_PING
+  IMPOSSIBLE_TRAVEL
+  MOCK_LOCATION_SUSPECTED
+  NO_GPS
+  LOW_ACCURACY
+  CLOCK_SKEW
+  TIME_MISMATCH
+  STATED_LOCATION_MISMATCH
+}
+
+/**
+ * One reviewable finding about a visit. At most one OPEN anomaly per type per visit: a repeat of
+ * the same finding updates `details` and bumps `occurrenceCount` rather than adding a row (the
+ * occurrence keys in details make re-evaluation idempotent - lib/anomalies.ts). Reviewed by
+ * Operations on the Attendance Anomalies page; HR can see it (same access split as Team
+ * Attendance) but only Operations decides it.
+ *
+ * AUDIT_STRIKES rows keep their audit pair; every other type leaves both audit ids null.
  */
 model AttendanceAnomaly {
-  id             String          @id @default(uuid())
-  employeeId     String
-  employee       Employee        @relation(fields: [employeeId], references: [id])
-  firstAuditId   String          @unique
-  firstAudit     AttendanceAudit @relation("AnomalyFirstAudit", fields: [firstAuditId], references: [id])
-  secondAuditId  String          @unique
-  secondAudit    AttendanceAudit @relation("AnomalySecondAudit", fields: [secondAuditId], references: [id])
-  severity       AnomalySeverity @default(STANDARD)
-  status         AnomalyStatus   @default(OPEN)
-  resolvedById   String?
-  resolvedBy     User?           @relation("AttendanceAnomalyResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
-  resolvedAt     DateTime?
-  resolutionNote String?
-  createdAt      DateTime        @default(now())
+  id               String           @id @default(uuid())
+  employeeId       String
+  employee         Employee         @relation(fields: [employeeId], references: [id])
+  type             AnomalyType      @default(AUDIT_STRIKES)
+  siteAttendanceId String?
+  siteAttendance   SiteAttendance?  @relation(fields: [siteAttendanceId], references: [id], onDelete: Cascade)
+  firstAuditId     String?          @unique
+  firstAudit       AttendanceAudit? @relation("AnomalyFirstAudit", fields: [firstAuditId], references: [id])
+  secondAuditId    String?          @unique
+  secondAudit      AttendanceAudit? @relation("AnomalySecondAudit", fields: [secondAuditId], references: [id])
+  severity         AnomalySeverity  @default(STANDARD)
+  status           AnomalyStatus    @default(OPEN)
+  /** Latest finding plus the occurrence keys already counted - see lib/anomalies.ts. */
+  details          Json?
+  occurrenceCount  Int              @default(1)
+  resolvedById     String?
+  resolvedBy       User?            @relation("AttendanceAnomalyResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+  resolvedAt       DateTime?
+  resolutionNote   String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @default(now()) @updatedAt
 
   @@index([employeeId])
   @@index([status])
+  @@index([siteAttendanceId, type])
 }
 
 /**
