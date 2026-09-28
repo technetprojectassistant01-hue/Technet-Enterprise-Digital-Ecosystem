@@ -1550,7 +1550,7 @@ export const mfe: Dict = {
           {
             q: 'Kouma pou pointe mo lariver ek mo depar?',
             a: [
-              'Servi kart "Mo Prezans" lor paz Prezans. Verifie ler lariver (li deza ranpli pou ou), rant ou fre transpor (met 0 si pena), si ou anvi ekrir sit kot ou ete (par egzanp kliyan-la ouswa batiman-la) ek landrwa, apre tap "Pointe lariver".',
+              'Servi kart "Mo Prezans" lor paz Prezans. Verifie ler lariver (li deza ranpli pou ou), rant ou fre transpor (met 0 si pena), si ou anvi ekrir sit kot ou ete (par egzanp kliyan-la ouswa batiman-la) ek landrwa. Si ou ena enn sel travay prevwar zordi, sit ek landrwa ranpli depi sa travay la. Tap "Pran enn foto" pou pran enn foto lariver ar ou kamera, apre tap "Pointe lariver".',
               'Kan ou pe ale, fer parey avek "Pointe depar". Ou kapav pointe plizier fwa dan enn zour si ou al lor plis ki enn sit.',
             ],
           },
