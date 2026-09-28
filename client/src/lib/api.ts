@@ -1994,6 +1994,27 @@ export function listAttendanceAnomalies(filters: AnomalyFilters = {}) {
   return request<{ anomalies: AttendanceAnomaly[] }>(`/api/attendance-audits/anomalies${query}`)
 }
 
+export type LiveStatus = 'GREEN' | 'AMBER' | 'RED'
+
+/** One technician on shift, for the Live Map (server/src/lib/liveMap.ts has the colour rule). */
+export interface LiveShift {
+  id: string
+  employee: { id: string; firstName: string; lastName: string }
+  workOrder: { id: string; workOrderNumber: string; title: string } | null
+  checkIn: { at: string; lat: number; lng: number; place: string | null; site: string | null; note: string | null }
+  /** Newest 15-minute ping or answered compliance check; null if none since check-in. */
+  latest: { kind: 'PING' | 'AUDIT'; at: string; lat: number; lng: number; accuracyMeters: number | null } | null
+  distanceFromCheckInMeters: number | null
+  lastSeenAt: string
+  minutesSinceLastFix: number
+  openAnomalies: number
+  status: LiveStatus
+}
+
+export function getLiveShifts() {
+  return request<{ generatedAt: string; shifts: LiveShift[] }>('/api/site-attendance/live')
+}
+
 /**
  * A location reading during an open shift (see lib/useShiftPings.ts). 409 NO_OPEN_SHIFT when the
  * caller isn't checked in. The response carries no verdict on purpose (CLAUDE.md §7a).
