@@ -50,10 +50,16 @@ export async function reverseGeocodeCached(lat: number, lng: number): Promise<st
       headers: { "User-Agent": USER_AGENT },
       signal: AbortSignal.timeout(4000),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.warn(`reverseGeocode: Nominatim answered ${res.status} for ${lat},${lng}`);
+      return null;
+    }
 
     const result = (await res.json()) as { display_name?: string };
-    if (!result.display_name) return null;
+    if (!result.display_name) {
+      console.warn(`reverseGeocode: no place found for ${lat},${lng}`);
+      return null;
+    }
 
     // A race between two near-simultaneous first-time lookups of the same rounded coordinate is
     // possible but harmless - upsert just overwrites with the same (or equally valid) name rather
@@ -64,7 +70,65 @@ export async function reverseGeocodeCached(lat: number, lng: number): Promise<st
       update: { placeName: result.display_name },
     });
     return result.display_name;
-  } catch {
+  } catch (err) {
+    console.warn(`reverseGeocode: lookup failed for ${lat},${lng}:`, err instanceof Error ? err.message : err);
     return null;
   }
+}
+
+/**
+ * Retries the place name for fixes whose lookup failed at write time. reverseGeocodeCached() is
+ * best-effort, and Nominatim does fail now and then (slow, rate-limited, or the check-in's own
+ * forward lookup landing at the same moment) - without this, a failed row kept showing bare
+ * coordinates forever. Called from the attendance poller every few minutes; `limit` keeps each
+ * run to a few Nominatim calls (the throttle spaces them ~1.1s apart), newest first so today's
+ * visits are fixed before old ones. Returns how many place names were filled in.
+ */
+export async function fillMissingPlaces(limit = 6): Promise<number> {
+  const [checkIns, checkOuts, audits] = await Promise.all([
+    prisma.siteAttendance.findMany({
+      where: { checkInPlace: null },
+      select: { id: true, checkInLat: true, checkInLng: true },
+      orderBy: { checkInAt: "desc" },
+      take: limit,
+    }),
+    prisma.siteAttendance.findMany({
+      // A manager's close records no coordinates (checkOutByManager) - nothing to look up there.
+      where: { checkOutPlace: null, checkOutLat: { not: null }, checkOutLng: { not: null } },
+      select: { id: true, checkOutLat: true, checkOutLng: true },
+      orderBy: { checkOutAt: "desc" },
+      take: limit,
+    }),
+    prisma.attendanceAudit.findMany({
+      where: { place: null, lat: { not: null }, lng: { not: null } },
+      select: { id: true, lat: true, lng: true },
+      orderBy: { respondedAt: "desc" },
+      take: limit,
+    }),
+  ]);
+
+  const jobs: (() => Promise<boolean>)[] = [
+    ...checkIns.map((r) => async () => {
+      const place = await reverseGeocodeCached(Number(r.checkInLat), Number(r.checkInLng));
+      if (place) await prisma.siteAttendance.update({ where: { id: r.id }, data: { checkInPlace: place } });
+      return !!place;
+    }),
+    ...checkOuts.map((r) => async () => {
+      const place = await reverseGeocodeCached(Number(r.checkOutLat), Number(r.checkOutLng));
+      if (place) await prisma.siteAttendance.update({ where: { id: r.id }, data: { checkOutPlace: place } });
+      return !!place;
+    }),
+    ...audits.map((r) => async () => {
+      const place = await reverseGeocodeCached(Number(r.lat), Number(r.lng));
+      if (place) await prisma.attendanceAudit.update({ where: { id: r.id }, data: { place } });
+      return !!place;
+    }),
+  ];
+
+  let filled = 0;
+  // Sequential on purpose: the throttle is what keeps this inside Nominatim's usage policy.
+  for (const job of jobs.slice(0, limit)) {
+    if (await job()) filled += 1;
+  }
+  return filled;
 }
