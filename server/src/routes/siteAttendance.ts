@@ -633,6 +633,15 @@ router.post("/check-out", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => 
       return res.status(404).json({ error: "You are not currently checked in" });
     }
 
+    // checkInAt is stamped by the database clock and this by the app server's, so in principle
+    // the two can disagree. A check-out at or before its check-in is impossible - refuse it rather
+    // than store a session with negative hours.
+    const checkOutAt = new Date();
+    if (checkOutAt.getTime() <= openVisit.checkInAt.getTime()) {
+      await releaseRequest(clientRequestId);
+      return res.status(400).json({ error: "Check-out must be after the check-in. Wait a moment and try again." });
+    }
+
     const checkOutNote = parseNote(req.body);
     const [locationCheck, checkOutPlace] = await Promise.all([
       checkLocationAgainstGps(checkOutNote, coords),
@@ -642,7 +651,7 @@ router.post("/check-out", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => 
     const siteAttendance = await prisma.siteAttendance.update({
       where: { id: openVisit.id },
       data: {
-        checkOutAt: new Date(),
+        checkOutAt,
         checkOutLat: coords.lat,
         checkOutLng: coords.lng,
         checkOutAccuracyMeters: fix.accuracyMeters,
