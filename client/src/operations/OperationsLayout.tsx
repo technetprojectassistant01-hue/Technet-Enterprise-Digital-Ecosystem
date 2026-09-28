@@ -11,6 +11,7 @@ const TABS = [
   { label: 'Team Attendance', to: '/dashboard/operations/team-attendance' },
   { label: 'Field Operations', to: '/dashboard/operations/field-tracking' },
   { label: 'Attendance Anomalies', to: '/dashboard/operations/anomalies' },
+  { label: 'Live Map', to: '/dashboard/operations/live-map' },
 ]
 
 function OperationsLayout() {
