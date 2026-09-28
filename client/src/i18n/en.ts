@@ -237,6 +237,8 @@ export const en = {
     retakePhoto: 'Retake',
     photoRequired: 'Take a check-in photo first',
     photoFailed: 'Could not read the photo. Please try again.',
+    pingNotice:
+      'While you are checked in, your location is also checked every 15 minutes when this app is open on your screen. It cannot be checked while the app is closed or your phone is locked.',
     trackingNotice: (withPhoto: boolean): string =>
       withPhoto
         ? 'Your location is recorded when you check in, when you check out and during your shift, and a photo is taken at check-in. This confirms attendance at the sites you visit.'
@@ -1060,7 +1062,9 @@ export const en = {
       reasonZeroAccuracy: 'phone reported an accuracy of exactly 0 m',
       reasonIdentical: (n: number) => `${n} readings in a row at exactly the same spot`,
       reasonJump: 'jumped away and straight back within minutes',
-      mapLegend: 'Blue: check-in · Amber: compliance checks · Grey: check-out · Green ring: job site',
+      mapLegend: 'Blue: check-in · Amber: compliance checks · Violet: 15-minute pings · Grey: check-out · Green ring: job site',
+      missedPing: (minutes: number) =>
+        `no location for ${minutes} min (the app was closed, the phone locked, or no signal; the app can't check location in the background)`,
       badgeVerified: 'Verified',
       badgeUnverified: 'Unverified',
       badgeFlagged: 'Flagged',
