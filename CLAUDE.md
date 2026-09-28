@@ -1927,10 +1927,23 @@ don't overlap: push checks reach a closed app, pings only exist while it is open
 - Not verified on a real phone. Worth checking on an installed iPhone that no permission prompt
   appears every 15 minutes.
 
-### 30h. Still to do from this spec
+### 30h. Section 7 - Live Map (2026-09-28)
 
-Done: sections 1, 4, 5, 6, 8 (§30a-§30g). Not built: **section 2** known places (table, match on
+`/dashboard/operations/live-map` (`operations/LiveMapPage.tsx`; menu + Operations tab, same
+visibility as Attendance Anomalies). `GET /api/site-attendance/live` (ATTENDANCE_VIEW_ROLES) returns
+each open shift from the last 36 h (older open ones are forgotten check-outs, not people in the field;
+terminated staff excluded): check-in point, latest reading (newest shift ping or answered compliance
+check), distance between them, minutes since last seen, open anomaly count and a colour from
+`liveStatus()` in `lib/liveMap.ts` (tested): RED = open HIGH anomaly or latest reading > 500 m from
+the check-in; AMBER = open MEDIUM anomaly or not seen for > 45 min; else GREEN; LOW anomalies don't
+colour. The page polls every 15 s while visible, fits the view only on first load (so a manager's
+panning survives refreshes), draws check-in hollow + latest filled + a line in the status colour,
+and lists on-shift staff beside the map (click to centre; open anomalies link to the queue). It
+states that positions only move while a technician has the app open (§30g).
+
+### 30i. Still to do from this spec
+
+Done: sections 1, 4, 5, 6, 7, 8 (§30a-§30h). Not built: **section 2** known places (table, match on
 check-in, admin page with map, geocoding job addresses once, "Save as known place" on the review card,
-and the UNVERIFIED_LOCATION rule), **section 3** employee home location (activates CHECKIN_NEAR_HOME),
-**section 7** the Live Map (it can now draw each technician's latest ping). The privacy page's "not to judge where you
+and the UNVERIFIED_LOCATION rule), and **section 3** employee home location (activates CHECKIN_NEAR_HOME). The privacy page's "not to judge where you
 are the rest of the day" line predates the audit pings and should be revisited.
