@@ -234,6 +234,15 @@ export const mfe: Dict = {
     goToCheckOut: 'Al pointe depar',
     todaysJob: 'TRAVAY ZORDI',
     notThisJob: 'Pa sa travay la',
+    checkInPhoto: 'FOTO LARIVER',
+    takePhoto: 'Pran enn foto',
+    retakePhoto: 'Repran',
+    photoRequired: 'Pran enn foto lariver avan',
+    photoFailed: 'Pa finn kapav lir foto la. Reseye.',
+    trackingNotice: (withPhoto: boolean) =>
+      withPhoto
+        ? 'Ou pozision anrezistre kan ou pointe lariver, kan ou pointe depar ek pandan ou zourne, ek enn foto pran kan ou pointe lariver. Sa konfirm ou prezans lor bann sit ou vizite.'
+        : 'Ou pozision anrezistre kan ou pointe lariver, kan ou pointe depar ek pandan ou zourne. Sa konfirm ou prezans lor bann sit ou vizite.',
     title: 'Mo Prezans',
     currentStatus: 'STATI AKTIEL',
     checkedIn: 'PREZAN',
@@ -923,6 +932,7 @@ export const mfe: Dict = {
       loadFailed: 'Pa finn kapav sarz prezans',
       currentlyIn: 'Pointe la minitt la',
       since: (when: string) => `Depi ${when}`,
+      checkInPhoto: 'Foto lariver',
       openDays: (days: number) => `ouver depi ${days} zour — kitfwa finn bliye`,
       openHours: (hours: number) => `ouver depi ${hours}è — kitfwa finn bliye`,
       viewLocation: 'Get plas la',
@@ -1648,7 +1658,7 @@ export const mfe: Dict = {
           paragraphs: [
             'Kont: ou nom, ou ladres imel, ou rol, ou lang ek enn version melanze (hash) ou mo de pas. Nou pa zame gard ou mo de pas limem.',
             'Dosie anplwaye, ki RH ranpli: detay kontak, pos, departman, nimero kart idantite, dat nesans, ladres, kontak ki pou apele an ka irzans, kontra, lapey ek detay labank pou lapey, konze, sertifika ek formasion.',
-            'Prezans: sak fwa ou pointe lariver ouswa depar, ler ki ou rantre, ler ki server la resevwar li, sit ek landrwa ki ou ekrir, ou fre transpor, travay ki ou swazir si ena, ek landrwa (GPS) ou aparey sa moman la.',
+            'Prezans: sak fwa ou pointe lariver ouswa depar, ler ki ou rantre, ler ki server la resevwar li, sit ek landrwa ki ou ekrir, ou fre transpor, travay ki lie ar li si ena, ek landrwa (GPS) ou aparey ek so presizion sa moman la. Kan ou pointe lariver, enn foto pran ar kamera ou telefonn (kan konpayi la exiz li); bann foto efase apre 90 zour.',
             'Travay: bon travay, rapor zournalie, rapor mintenans ek rapor intervansion, avek foto, materyel servi ek sinyatir klian.',
             'Zouti ek lekipman: zouti ki ou demande, ki zouti finn donn ou ek kan, ek kan ek dan ki leta zot finn retourne.',
             'Portay Klian: detay ou konpani, imel koneksion ki finn kre pou ou, ou bann devi, eta travay ek bann demann devi ki ou avoye.',
