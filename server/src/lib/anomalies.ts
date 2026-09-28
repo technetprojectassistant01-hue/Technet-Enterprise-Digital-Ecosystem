@@ -9,13 +9,14 @@ import {
   impossibleTravel,
   leftWorkArea,
   lowAccuracy,
+  missedPings,
   mockLocation,
   statedLocationMismatch,
   timeMismatch,
   type Finding,
   type Fix,
 } from "./anomalyRules";
-import type { AnomalySeverity, AnomalyStatus, AnomalyType, Prisma } from "../generated/prisma/client";
+import type { AnomalySeverity, AnomalyStatus, AnomalyType, JobCategory, Prisma } from "../generated/prisma/client";
 
 /**
  * Evaluates a visit against the anomaly rules (lib/anomalyRules.ts) and records what they find,
@@ -157,9 +158,31 @@ const VISIT_SELECT = {
   checkOutNote: true,
   checkOutDeclaredTime: true,
   checkOutLocationDistanceMeters: true,
-  workOrder: { select: { id: true, siteLat: true, siteLng: true } },
+  workOrder: { select: { id: true, siteLat: true, siteLng: true, jobCategory: true } },
   audits: { where: { lat: { not: null } }, select: { id: true, respondedAt: true, scheduledAt: true, lat: true, lng: true } },
+  pings: { select: { id: true, createdAt: true, lat: true, lng: true, accuracyMeters: true } },
 } as const;
+
+/**
+ * Shift pings went live on 2026-09-28. A shift that began before then had no way to ping, so the
+ * missed-ping rule would flag every one of them for nothing - it only applies from this point on.
+ */
+export const PINGS_LIVE_SINCE = new Date("2026-09-28T12:00:00Z");
+
+/**
+ * Job categories whose work moves around (spec section 4: "a setting for roaming jobs"), exempt
+ * from LEFT_WORK_AREA. A Render env var, comma-separated JobCategory values - e.g.
+ * `ROAMING_JOB_CATEGORIES=SURVEY,OUTDOOR_REPAIR` - empty by default, like the other attendance
+ * switches (ATTENDANCE_PHOTO_REQUIRED, ATTENDANCE_AUDIT_ENABLED).
+ */
+export function roamingJobCategories(env: NodeJS.ProcessEnv = process.env): Set<JobCategory> {
+  return new Set(
+    (env.ROAMING_JOB_CATEGORIES ?? "")
+      .split(",")
+      .map((c) => c.trim().toUpperCase())
+      .filter(Boolean) as JobCategory[],
+  );
+}
 
 type Visit = Prisma.SiteAttendanceGetPayload<{ select: typeof VISIT_SELECT }>;
 
@@ -176,6 +199,10 @@ function fixesOf(v: Visit): Fix[] {
   ];
   for (const a of v.audits) {
     fixes.push({ key: `audit:${a.id}`, kind: "AUDIT", at: a.respondedAt ?? a.scheduledAt, lat: Number(a.lat), lng: Number(a.lng), accuracyMeters: null });
+  }
+  for (const p of v.pings) {
+    // Server receive time, like every other fix here - the phone's own time is kept on the row.
+    fixes.push({ key: `ping:${p.id}`, kind: "PING", at: p.createdAt, lat: Number(p.lat), lng: Number(p.lng), accuracyMeters: p.accuracyMeters });
   }
   // A manager's close has no coordinates (CLAUDE.md §7a) - nothing to evaluate for that leg.
   if (v.checkOutAt && v.checkOutLat !== null && v.checkOutLng !== null) {
@@ -232,7 +259,14 @@ export async function findingsForVisit(siteAttendanceId: string, event?: VisitEv
     ...farFromJob(checkIn, job),
     // Home coordinates arrive with spec section 3; until then this rule has nothing to compare.
     ...checkInNearHome(checkIn, null, []),
-    ...leftWorkArea(checkIn, fixes),
+    ...(visit.workOrder && roamingJobCategories().has(visit.workOrder.jobCategory) ? [] : leftWorkArea(checkIn, fixes)),
+    ...(visit.checkInAt >= PINGS_LIVE_SINCE
+      ? missedPings(
+          visit.checkInAt,
+          fixes.filter((f) => f.kind !== "CHECK_IN").map((f) => f.at),
+          visit.checkOutAt ?? new Date(),
+        )
+      : []),
     ...lowAccuracy(checkIn),
     ...(checkOut ? lowAccuracy(checkOut) : []),
     ...statedLocationMismatch(checkIn.key, visit.checkInNote, visit.checkInLocationDistanceMeters),
@@ -271,4 +305,19 @@ export function parseClientSentAt(body: unknown): Date | null {
   if (typeof value !== "number" && typeof value !== "string") return null;
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+/**
+ * Re-evaluates shifts that are still open, so a gap in pings is noticed while it is happening
+ * rather than only at the next ping or at check-out. Called by the attendance poller every few
+ * minutes. Limited to shifts opened in the last 36 hours - an older open shift is a forgotten
+ * check-out (Team Attendance flags those), and its single long gap was already recorded.
+ */
+export async function evaluateOpenShifts(): Promise<number> {
+  const open = await prisma.siteAttendance.findMany({
+    where: { checkOutAt: null, checkInAt: { gte: new Date(Date.now() - 36 * 3_600_000) } },
+    select: { id: true },
+  });
+  for (const v of open) await evaluateVisit(v.id);
+  return open.length;
 }
