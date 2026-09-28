@@ -230,6 +230,8 @@ export const en = {
     alreadyCheckedInBody: (since: string, where: string | null) =>
       `You checked in at ${since}${where ? ` (${where})` : ''} and haven't checked out yet. Check out of that visit first, then check in again.`,
     goToCheckOut: 'Go to check-out',
+    todaysJob: "TODAY'S JOB",
+    notThisJob: 'Not this job',
     title: 'My Attendance',
     currentStatus: 'CURRENT STATUS',
     checkedIn: 'CHECKED IN',
