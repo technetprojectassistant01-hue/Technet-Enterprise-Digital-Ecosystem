@@ -10,6 +10,7 @@ import {
   mauritiusMonthRange,
 } from "../lib/overtime";
 import { overtimeForDay } from "../lib/overtimeQueue";
+import { findExcessiveOvertimeDays, findInvertedSessions, findOverlappingSessions } from "../lib/attendanceDataIssues";
 
 /**
  * Overtime approval for HR (and Admin). Overtime is calculated from site attendance against the
@@ -28,6 +29,7 @@ const VISIT_SELECT = {
   checkOutAt: true,
   checkOutDeclaredTime: true,
 } as const;
+const SESSION_SELECT = { id: true, employeeId: true, checkInAt: true, checkOutAt: true } as const;
 
 function currentMauritiusMonth(): string {
   return new Date(Date.now() + MAURITIUS_OFFSET_MINUTES * 60_000).toISOString().slice(0, 7);
@@ -80,6 +82,45 @@ router.get("/", async (req, res) => {
   items.sort((a, b) => (a.date === b.date ? 0 : b.date.localeCompare(a.date)));
 
   res.json({ month, items });
+});
+
+/**
+ * All-time data-integrity report: sessions with an impossible check-out, sessions that overlap
+ * for the same employee, and overtime days over 12 hours - almost always a missed check-out or
+ * a data-entry mistake, never a real attendance state. Read-only: nothing here is changed
+ * automatically, and an already-approved OvertimeDecision is untouched even if its day also shows
+ * up as excessive. HR reads this and corrects records by hand if they judge it necessary.
+ */
+router.get("/data-issues", async (req, res) => {
+  const [sessions, overtimeVisits] = await Promise.all([
+    prisma.siteAttendance.findMany({ select: SESSION_SELECT, orderBy: { checkInAt: "asc" } }),
+    prisma.siteAttendance.findMany({ select: VISIT_SELECT }),
+  ]);
+
+  const inverted = findInvertedSessions(sessions);
+  const overlapping = findOverlappingSessions(sessions);
+  const excessiveOvertime = findExcessiveOvertimeDays(computeOvertimeDays(overtimeVisits));
+
+  const employeeIds = [
+    ...new Set([
+      ...inverted.map((s) => s.employeeId),
+      ...overlapping.map((p) => p.first.employeeId),
+      ...excessiveOvertime.map((d) => d.employeeId),
+    ]),
+  ];
+  const employees = await prisma.employee.findMany({ where: { id: { in: employeeIds } }, select: EMPLOYEE_SELECT });
+  const employeeById = new Map(employees.map((e) => [e.id, e]));
+
+  res.json({
+    inverted: inverted.map((s) => ({ ...s, employee: employeeById.get(s.employeeId) ?? null })),
+    overlapping: overlapping.map((p) => ({
+      employeeId: p.first.employeeId,
+      employee: employeeById.get(p.first.employeeId) ?? null,
+      first: p.first,
+      second: p.second,
+    })),
+    excessiveOvertime: excessiveOvertime.map((d) => ({ ...d, employee: employeeById.get(d.employeeId) ?? null })),
+  });
 });
 
 /** Approves or rejects one employee's overtime for one day. Minutes are recalculated here, not trusted from the client. */
