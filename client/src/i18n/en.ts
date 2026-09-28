@@ -226,6 +226,10 @@ export const en = {
     allowLocation: 'Allow location',
     notNow: 'Not now',
     tryAgain: 'Try again',
+    alreadyCheckedInTitle: 'You are already checked in',
+    alreadyCheckedInBody: (since: string, where: string | null) =>
+      `You checked in at ${since}${where ? ` (${where})` : ''} and haven't checked out yet. Check out of that visit first, then check in again.`,
+    goToCheckOut: 'Go to check-out',
     title: 'My Attendance',
     currentStatus: 'CURRENT STATUS',
     checkedIn: 'CHECKED IN',
