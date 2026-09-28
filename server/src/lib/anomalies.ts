@@ -13,6 +13,7 @@ import {
   mockLocation,
   statedLocationMismatch,
   timeMismatch,
+  unverifiedLocation,
   type Finding,
   type Fix,
 } from "./anomalyRules";
@@ -158,7 +159,8 @@ const VISIT_SELECT = {
   checkOutNote: true,
   checkOutDeclaredTime: true,
   checkOutLocationDistanceMeters: true,
-  workOrder: { select: { id: true, siteLat: true, siteLng: true, jobCategory: true } },
+  knownPlaceId: true,
+  workOrder: { select: { id: true, siteLat: true, siteLng: true, jobCategory: true, siteFromCustomerAddress: true } },
   audits: { where: { lat: { not: null } }, select: { id: true, respondedAt: true, scheduledAt: true, lat: true, lng: true } },
   pings: { select: { id: true, createdAt: true, lat: true, lng: true, accuracyMeters: true } },
 } as const;
@@ -168,6 +170,9 @@ const VISIT_SELECT = {
  * missed-ping rule would flag every one of them for nothing - it only applies from this point on.
  */
 export const PINGS_LIVE_SINCE = new Date("2026-09-28T12:00:00Z");
+
+/** Likewise for UNVERIFIED_LOCATION: before known places existed, nothing could have matched one. */
+export const KNOWN_PLACES_LIVE_SINCE = new Date("2026-09-28T14:00:00Z");
 
 /**
  * Job categories whose work moves around (spec section 4: "a setting for roaming jobs"), exempt
@@ -252,11 +257,19 @@ export async function findingsForVisit(siteAttendanceId: string, event?: VisitEv
   const checkOut = fixes.find((f) => f.kind === "CHECK_OUT") ?? null;
   const job =
     visit.workOrder && visit.workOrder.siteLat !== null && visit.workOrder.siteLng !== null
-      ? { id: visit.workOrder.id, lat: Number(visit.workOrder.siteLat), lng: Number(visit.workOrder.siteLng) }
+      ? {
+          id: visit.workOrder.id,
+          lat: Number(visit.workOrder.siteLat),
+          lng: Number(visit.workOrder.siteLng),
+          fromCustomerAddress: visit.workOrder.siteFromCustomerAddress,
+        }
       : null;
 
   const findings: Finding[] = [
     ...farFromJob(checkIn, job),
+    ...(visit.checkInAt >= KNOWN_PLACES_LIVE_SINCE
+      ? unverifiedLocation(checkIn, { hasJob: !!visit.workOrder, knownPlaceId: visit.knownPlaceId })
+      : []),
     // Home coordinates arrive with spec section 3; until then this rule has nothing to compare.
     ...checkInNearHome(checkIn, null, []),
     ...(visit.workOrder && roamingJobCategories().has(visit.workOrder.jobCategory) ? [] : leftWorkArea(checkIn, fixes)),
