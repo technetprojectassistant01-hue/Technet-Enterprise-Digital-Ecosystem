@@ -1941,9 +1941,38 @@ panning survives refreshes), draws check-in hollow + latest filled + a line in t
 and lists on-shift staff beside the map (click to centre; open anomalies link to the queue). It
 states that positions only move while a technician has the app open (§30g).
 
-### 30i. Still to do from this spec
+### 30i. Section 2 - Known places (2026-09-28)
 
-Done: sections 1, 4, 5, 6, 7, 8 (§30a-§30h). Not built: **section 2** known places (table, match on
-check-in, admin page with map, geocoding job addresses once, "Save as known place" on the review card,
-and the UNVERIFIED_LOCATION rule), and **section 3** employee home location (activates CHECKIN_NEAR_HOME). The privacy page's "not to judge where you
-are the rest of the day" line predates the audit pings and should be revisited.
+- `KnownPlace` (migration `20260928170000_known_places`): name, optional `customerId`, address (the
+  check-in's reverse-geocoded place), lat/lng, `radiusMeters` (default 250, clamped 50-2000),
+  `timesConfirmed`, `createdById`. `SiteAttendance.knownPlaceId` (SetNull on delete).
+- **Places are learned, never typed in**: created only from a real confirmed check-in. On
+  Attendance Anomalies, "Confirm Genuine" on a visit's anomaly opens `SavePlaceDialog.tsx`: match
+  to an existing place within 250 m (nearest preselected; `GET /api/known-places/near`), save a new
+  one (name prefilled from site/location, optional client, radius), or don't save.
+  `POST /api/known-places/confirm-visit` links the visit, bumps `timesConfirmed`, and
+  `relinkVisitsToPlace()` links other unlinked visits from the last 30 days inside the radius and
+  closes their OPEN UNVERIFIED_LOCATION anomalies as GENUINE (note "Matched to known place ...").
+- Matching: `findKnownPlaceFor()` at check-in (nearest place whose own radius contains the fix; local,
+  no network) sets `knownPlaceId`. A match makes the register badge **Verified · <place name>**
+  (`verificationState`), shows on the review card and the Live Map list.
+- **UNVERIFIED_LOCATION** (LOW) is now raised: no job linked and no known place matched, for
+  check-ins from `KNOWN_PLACES_LIVE_SINCE` (2026-09-28 14:00Z) on. Expect one on nearly every
+  check-in at first - that is the bootstrapping loop: confirm + save once, and later check-ins there
+  match automatically.
+- Known Places page (`/dashboard/operations/known-places`, `KnownPlacesPage.tsx`, menu + tab): Leaflet
+  map of places with radius circles; rename, client, radius (a bigger radius re-links recent
+  visits), merge duplicates (visits move, confirmations add, source deleted), delete (visits keep
+  times/GPS, just unmatched). View ATTENDANCE_VIEW_ROLES, edit OPS_MANAGE_ROLES.
+- **Job sites from the customer's address**: `lib/jobSiteGeocode.ts`, 2 open jobs per poller run
+  (`jobSitesLocated`), only jobs with no site and never tried (`WorkOrder.siteGeocodeAttemptedAt`),
+  geocoded confined to the main island, stored with `siteFromCustomerAddress = true`. Never on the
+  save path (it once blocked saves, §27). Because one customer can have several sites (§7b),
+  FAR_FROM_JOB against those coordinates is MEDIUM, not HIGH (`details.siteSource`). A manager
+  setting the site on the work order detail page clears the flag.
+
+### 30j. Still to do from this spec
+
+Done: sections 1, 2, 4, 5, 6, 7, 8 (§30a-§30i). Not built: **section 3** employee home location
+(activates CHECKIN_NEAR_HOME, already written in `anomalyRules.ts`). The privacy page's "not to judge
+where you are the rest of the day" line predates the audit pings and should be revisited.
