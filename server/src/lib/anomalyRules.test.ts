@@ -7,6 +7,7 @@ import {
   impossibleTravel,
   leftWorkArea,
   lowAccuracy,
+  missedPings,
   mockLocation,
   statedLocationMismatch,
   timeMismatch,
@@ -93,6 +94,10 @@ describe("leftWorkArea", () => {
     expect(out[0].key).toBe("audit:1");
   });
 
+  it("counts shift pings as well as audit pings", () => {
+    expect(leftWorkArea(anchor, [fix("ping:1", "PING", "2026-09-28T05:00:00Z", 0.006)])[0]?.key).toBe("ping:1");
+  });
+
   it("ignores fixes within 500 m, and non-audit fixes", () => {
     expect(leftWorkArea(anchor, [fix("audit:1", "AUDIT", "2026-09-28T06:00:00Z", 0.003)])).toEqual([]);
     expect(leftWorkArea(anchor, [fix("checkout", "CHECK_OUT", "2026-09-28T09:00:00Z", 0.05)])).toEqual([]);
@@ -147,6 +152,11 @@ describe("mockLocation", () => {
     const five = [0, 1, 2, 3, 4].map((i) => fix(`f${i}`, "AUDIT", `2026-09-28T0${4 + i}:00:00Z`));
     expect(mockLocation(five).map((f) => f.details.reason)).toEqual(["IDENTICAL_FIXES"]);
     expect(mockLocation(five.slice(0, 4))).toEqual([]);
+  });
+
+  it("does not count coarse Wi-Fi readings that honestly repeat the same point", () => {
+    const five = [0, 1, 2, 3, 4].map((i) => fix(`p${i}`, "PING", `2026-09-28T0${4 + i}:00:00Z`, 0, 120));
+    expect(mockLocation(five)).toEqual([]);
   });
 
   it("flags a jump away and back within minutes", () => {
@@ -231,5 +241,32 @@ describe("statedLocationMismatch", () => {
     expect(statedLocationMismatch("checkin", "Pailles", 1100)).toEqual([]);
     expect(statedLocationMismatch("checkin", null, 9000)).toEqual([]);
     expect(statedLocationMismatch("checkin", "Office", null)).toEqual([]);
+  });
+});
+
+describe("missedPings", () => {
+  const checkIn = at("2026-09-28T04:00:00Z");
+
+  it("is quiet when readings are never more than 45 minutes apart", () => {
+    const pings = ["04:15", "04:30", "05:10", "05:50"].map((t) => at(`2026-09-28T${t}:00Z`));
+    expect(missedPings(checkIn, pings, at("2026-09-28T06:30:00Z"))).toEqual([]);
+  });
+
+  it("flags each gap over 45 minutes, keyed by when it started", () => {
+    const out = missedPings(checkIn, [at("2026-09-28T04:15:00Z"), at("2026-09-28T06:00:00Z")], at("2026-09-28T06:10:00Z"));
+    expect(out).toHaveLength(1);
+    expect(out[0].severity).toBe("LOW");
+    expect(out[0].key).toBe("gap:2026-09-28T04:15:00.000Z");
+    expect(out[0].details.minutes).toBe(105);
+  });
+
+  it("counts a still-open shift up to now, with a key that stays the same as the gap grows", () => {
+    const early = missedPings(checkIn, [at("2026-09-28T04:10:00Z")], at("2026-09-28T05:00:00Z"));
+    const later = missedPings(checkIn, [at("2026-09-28T04:10:00Z")], at("2026-09-28T07:00:00Z"));
+    expect(early[0].key).toBe(later[0].key);
+  });
+
+  it("ignores readings outside the shift", () => {
+    expect(missedPings(checkIn, [at("2026-09-28T02:00:00Z")], at("2026-09-28T04:30:00Z"))).toEqual([]);
   });
 });
