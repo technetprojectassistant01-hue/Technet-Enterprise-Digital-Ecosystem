@@ -109,11 +109,15 @@ export async function evaluateStrike(auditId: string): Promise<void> {
   });
   if (!previous || !isStrike(previous)) return;
 
-  const severity = audit.status === "MISSED" && previous.status === "MISSED" ? "HIGH" : "STANDARD";
+  // MEDIUM rather than the old STANDARD - same level on the spec's LOW/MEDIUM/HIGH scale.
+  const severity = audit.status === "MISSED" && previous.status === "MISSED" ? "HIGH" : "MEDIUM";
 
   const anomaly = await prisma.attendanceAnomaly.create({
     data: {
       employeeId: audit.employeeId,
+      type: "AUDIT_STRIKES",
+      // The visit of the later strike - what the register badge and review card hang it on.
+      siteAttendanceId: audit.siteAttendanceId,
       firstAuditId: previous.id,
       secondAuditId: audit.id,
       severity,
