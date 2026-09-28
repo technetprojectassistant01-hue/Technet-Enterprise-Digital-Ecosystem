@@ -2069,6 +2069,33 @@ export function undoOvertimeDecision(employeeId: string, date: string) {
   return request<void>(`/api/overtime/${employeeId}/${date}`, { method: 'DELETE' })
 }
 
+type DataIssueEmployee = { id: string; firstName: string; lastName: string; employeeCode: string } | null
+
+export interface DataIssueSession {
+  id: string
+  employeeId: string
+  checkInAt: string
+  checkOutAt: string | null
+}
+
+/** All-time report of attendance records that look wrong - read-only, for HR to correct by hand. */
+export interface AttendanceDataIssues {
+  inverted: (DataIssueSession & { employee: DataIssueEmployee })[]
+  overlapping: { employeeId: string; employee: DataIssueEmployee; first: DataIssueSession; second: DataIssueSession }[]
+  excessiveOvertime: {
+    employeeId: string
+    employee: DataIssueEmployee
+    date: string
+    minutes: number
+    firstIn: string
+    lastOut: string
+  }[]
+}
+
+export function getAttendanceDataIssues() {
+  return request<AttendanceDataIssues>('/api/overtime/data-issues')
+}
+
 /**
  * Closes a session the technician forgot to check out of. `checkOutAt` is an ISO string for when
  * they actually left - omit it and "now" is used, which is usually wrong for a session that has
