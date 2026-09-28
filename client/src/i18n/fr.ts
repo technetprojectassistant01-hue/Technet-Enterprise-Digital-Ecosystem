@@ -230,6 +230,15 @@ export const fr: Dict = {
     goToCheckOut: 'Aller au départ',
     todaysJob: 'TRAVAIL DU JOUR',
     notThisJob: 'Pas ce travail',
+    checkInPhoto: "PHOTO D'ARRIVÉE",
+    takePhoto: 'Prendre une photo',
+    retakePhoto: 'Reprendre',
+    photoRequired: "Prenez d'abord une photo d'arrivée",
+    photoFailed: 'Impossible de lire la photo. Veuillez réessayer.',
+    trackingNotice: (withPhoto: boolean) =>
+      withPhoto
+        ? "Votre position est enregistrée à l'arrivée, au départ et pendant votre journée, et une photo est prise à l'arrivée. Cela confirme votre présence sur les sites visités."
+        : "Votre position est enregistrée à l'arrivée, au départ et pendant votre journée. Cela confirme votre présence sur les sites visités.",
     title: 'Ma présence',
     currentStatus: 'STATUT ACTUEL',
     checkedIn: 'PRÉSENT',
@@ -926,6 +935,7 @@ export const fr: Dict = {
       loadFailed: 'Impossible de charger les présences',
       currentlyIn: 'Actuellement pointés',
       since: (when: string) => `Depuis le ${when}`,
+      checkInPhoto: "Photo d'arrivée",
       openDays: (days: number) => `ouverte depuis ${days} j — probablement oubliée`,
       openHours: (hours: number) => `ouverte depuis ${hours} h — probablement oubliée`,
       viewLocation: 'Voir le lieu',
@@ -1659,7 +1669,7 @@ export const fr: Dict = {
           paragraphs: [
             "Compte : votre nom, votre adresse e-mail, votre rôle, votre langue et une version brouillée (hachée) de votre mot de passe. Votre mot de passe lui-même n'est jamais conservé.",
             "Dossier employé, saisi par les RH : coordonnées, poste, département, numéro d'identité nationale, date de naissance, adresse, contact d'urgence, contrat, salaire et coordonnées bancaires pour la paie, congés, certifications et formations.",
-            "Présence : à chaque pointage d'arrivée ou de départ, l'heure que vous saisissez, l'heure de réception par le serveur, le site et le lieu que vous tapez, vos frais de transport, le travail choisi le cas échéant, et la position (GPS) de votre appareil à ce moment-là.",
+            "Présence : à chaque pointage d'arrivée ou de départ, l'heure que vous saisissez, l'heure de réception par le serveur, le site et le lieu que vous tapez, vos frais de transport, le travail associé le cas échéant, et la position (GPS) de votre appareil avec sa précision à ce moment-là. À l'arrivée, une photo prise avec l'appareil photo de votre téléphone (lorsque l'entreprise l'exige) ; les photos sont supprimées après 90 jours.",
             "Travaux : bons de travail, rapports journaliers, rapports de maintenance et d'intervention, y compris photos, matériel utilisé et signatures des clients.",
             "Outils et équipements : les outils que vous demandez, ceux qui vous ont été remis et quand, et quand et dans quel état ils ont été rendus.",
             'Portail Client : les informations de votre société, l\'e-mail de connexion créé pour vous, vos devis, l\'état des travaux et vos demandes de devis.',
