@@ -1793,6 +1793,7 @@ export const ACTIVE_ANOMALY_TYPES: AnomalyType[] = [
   'CLOCK_SKEW',
   'TIME_MISMATCH',
   'STATED_LOCATION_MISMATCH',
+  'MISSED_PING',
   'AUDIT_STRIKES',
 ]
 
@@ -1817,6 +1818,8 @@ export interface AnomalyVisit {
   workOrder: { id: string; workOrderNumber: string; title: string; siteAddress: string | null; siteLat: string | null; siteLng: string | null } | null
   checkInPhoto: { id: string } | null
   audits: { id: string; respondedAt: string | null; lat: string; lng: string; place: string | null; distanceMeters: number | null }[]
+  /** Shift pings (every 15 min while the app is open). Optional so an older server response still types. */
+  pings?: { id: string; createdAt: string; lat: string; lng: string; accuracyMeters: number | null }[]
 }
 
 export interface AttendanceAnomaly {
@@ -1989,6 +1992,14 @@ export function listAttendanceAnomalies(filters: AnomalyFilters = {}) {
   for (const [key, value] of Object.entries(filters)) if (value) params.set(key, value)
   const query = params.toString() ? `?${params}` : ''
   return request<{ anomalies: AttendanceAnomaly[] }>(`/api/attendance-audits/anomalies${query}`)
+}
+
+/**
+ * A location reading during an open shift (see lib/useShiftPings.ts). 409 NO_OPEN_SHIFT when the
+ * caller isn't checked in. The response carries no verdict on purpose (CLAUDE.md §7a).
+ */
+export function sendShiftPing(input: { lat: number; lng: number; accuracy: number; deviceTime: number }) {
+  return request<{ ok: true; skipped?: boolean }>('/api/site-attendance/ping', { method: 'POST', body: JSON.stringify(input) })
 }
 
 /** Undo a decision - the anomaly goes back to OPEN. */
