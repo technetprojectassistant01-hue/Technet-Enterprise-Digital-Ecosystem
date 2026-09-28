@@ -77,6 +77,10 @@ const ANOMALY_INCLUDE = {
         select: { id: true, respondedAt: true, lat: true, lng: true, place: true, distanceMeters: true },
         orderBy: { respondedAt: "asc" as const },
       },
+      pings: {
+        select: { id: true, createdAt: true, lat: true, lng: true, accuracyMeters: true },
+        orderBy: { createdAt: "asc" as const },
+      },
     },
   },
 } as const;
