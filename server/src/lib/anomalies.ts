@@ -197,62 +197,69 @@ function belongsTo(finding: Finding, visitKeys: Set<string>): boolean {
   return visitKeys.has(key);
 }
 
+type VisitEvent = { leg: "CHECK_IN" | "CHECK_OUT"; clientSentAt: Date | null; serverAt: Date };
+
 /**
- * Runs every rule over a visit and records the findings. `event` carries what only exists during
- * the request itself - the phone's clock at send time (clock skew) - for the leg just recorded.
+ * Every rule's findings for one visit, without recording anything - evaluateVisit() records them,
+ * and a dry run can inspect them. `event` carries what only exists during the request itself (the
+ * phone's clock at send time, for clock skew) for the leg just recorded.
+ */
+export async function findingsForVisit(siteAttendanceId: string, event?: VisitEvent): Promise<{ employeeId: string; findings: Finding[] } | null> {
+  const visit = await prisma.siteAttendance.findUnique({ where: { id: siteAttendanceId }, select: VISIT_SELECT });
+  if (!visit) return null;
+
+  // The whole Mauritius day's fixes, for the rules that look across visits (travel, fake GPS).
+  const day = mauritiusDay(visit.checkInAt);
+  const around = await prisma.siteAttendance.findMany({
+    where: {
+      employeeId: visit.employeeId,
+      checkInAt: { gte: new Date(visit.checkInAt.getTime() - 36 * 3_600_000), lte: new Date(visit.checkInAt.getTime() + 36 * 3_600_000) },
+    },
+    select: VISIT_SELECT,
+  });
+  const dayFixes = around.filter((v) => mauritiusDay(v.checkInAt) === day).flatMap(fixesOf);
+
+  const fixes = fixesOf(visit);
+  const visitKeys = new Set(fixes.map((f) => f.key));
+  const checkIn = fixes[0];
+  const checkOut = fixes.find((f) => f.kind === "CHECK_OUT") ?? null;
+  const job =
+    visit.workOrder && visit.workOrder.siteLat !== null && visit.workOrder.siteLng !== null
+      ? { id: visit.workOrder.id, lat: Number(visit.workOrder.siteLat), lng: Number(visit.workOrder.siteLng) }
+      : null;
+
+  const findings: Finding[] = [
+    ...farFromJob(checkIn, job),
+    // Home coordinates arrive with spec section 3; until then this rule has nothing to compare.
+    ...checkInNearHome(checkIn, null, []),
+    ...leftWorkArea(checkIn, fixes),
+    ...lowAccuracy(checkIn),
+    ...(checkOut ? lowAccuracy(checkOut) : []),
+    ...statedLocationMismatch(checkIn.key, visit.checkInNote, visit.checkInLocationDistanceMeters),
+    ...timeMismatch(checkIn.key, visit.checkInDeclaredTime, visit.checkInAt, visit.checkInDeviceAt),
+    ...(visit.checkOutAt
+      ? [
+          ...statedLocationMismatch(`checkout:${visit.id}`, visit.checkOutNote, visit.checkOutLocationDistanceMeters),
+          ...timeMismatch(`checkout:${visit.id}`, visit.checkOutDeclaredTime, visit.checkOutAt, visit.checkOutDeviceAt),
+        ]
+      : []),
+    ...impossibleTravel(dayFixes).filter((f) => belongsTo(f, visitKeys)),
+    ...mockLocation(dayFixes).filter((f) => belongsTo(f, visitKeys)),
+    ...(event ? clockSkew(event.leg === "CHECK_IN" ? checkIn.key : `checkout:${visit.id}`, event.clientSentAt, event.serverAt) : []),
+  ];
+  return { employeeId: visit.employeeId, findings };
+}
+
+/**
+ * Runs every rule over a visit and records the findings.
  *
  * Never throws: an evaluation failure must not fail the check-in, check-out or audit answer that
  * triggered it. It is logged and the visit is re-evaluated on its next event anyway.
  */
-export async function evaluateVisit(
-  siteAttendanceId: string,
-  event?: { leg: "CHECK_IN" | "CHECK_OUT"; clientSentAt: Date | null; serverAt: Date },
-): Promise<void> {
+export async function evaluateVisit(siteAttendanceId: string, event?: VisitEvent): Promise<void> {
   try {
-    const visit = await prisma.siteAttendance.findUnique({ where: { id: siteAttendanceId }, select: VISIT_SELECT });
-    if (!visit) return;
-
-    // The whole Mauritius day's fixes, for the rules that look across visits (travel, fake GPS).
-    const day = mauritiusDay(visit.checkInAt);
-    const around = await prisma.siteAttendance.findMany({
-      where: {
-        employeeId: visit.employeeId,
-        checkInAt: { gte: new Date(visit.checkInAt.getTime() - 36 * 3_600_000), lte: new Date(visit.checkInAt.getTime() + 36 * 3_600_000) },
-      },
-      select: VISIT_SELECT,
-    });
-    const dayFixes = around.filter((v) => mauritiusDay(v.checkInAt) === day).flatMap(fixesOf);
-
-    const fixes = fixesOf(visit);
-    const visitKeys = new Set(fixes.map((f) => f.key));
-    const checkIn = fixes[0];
-    const checkOut = fixes.find((f) => f.kind === "CHECK_OUT") ?? null;
-    const job =
-      visit.workOrder && visit.workOrder.siteLat !== null && visit.workOrder.siteLng !== null
-        ? { id: visit.workOrder.id, lat: Number(visit.workOrder.siteLat), lng: Number(visit.workOrder.siteLng) }
-        : null;
-
-    const findings: Finding[] = [
-      ...farFromJob(checkIn, job),
-      // Home coordinates arrive with spec section 3; until then this rule has nothing to compare.
-      ...checkInNearHome(checkIn, null, []),
-      ...leftWorkArea(checkIn, fixes),
-      ...lowAccuracy(checkIn),
-      ...(checkOut ? lowAccuracy(checkOut) : []),
-      ...statedLocationMismatch(checkIn.key, visit.checkInNote, visit.checkInLocationDistanceMeters),
-      ...timeMismatch(checkIn.key, visit.checkInDeclaredTime, visit.checkInAt, visit.checkInDeviceAt),
-      ...(visit.checkOutAt
-        ? [
-            ...statedLocationMismatch(`checkout:${visit.id}`, visit.checkOutNote, visit.checkOutLocationDistanceMeters),
-            ...timeMismatch(`checkout:${visit.id}`, visit.checkOutDeclaredTime, visit.checkOutAt, visit.checkOutDeviceAt),
-          ]
-        : []),
-      ...impossibleTravel(dayFixes).filter((f) => belongsTo(f, visitKeys)),
-      ...mockLocation(dayFixes).filter((f) => belongsTo(f, visitKeys)),
-      ...(event ? clockSkew(event.leg === "CHECK_IN" ? checkIn.key : `checkout:${visit.id}`, event.clientSentAt, event.serverAt) : []),
-    ];
-
-    await recordFindings(visit.employeeId, visit.id, findings);
+    const result = await findingsForVisit(siteAttendanceId, event);
+    if (result) await recordFindings(result.employeeId, siteAttendanceId, result.findings);
   } catch (err) {
     console.error(`evaluateVisit(${siteAttendanceId}) failed:`, err);
   }
