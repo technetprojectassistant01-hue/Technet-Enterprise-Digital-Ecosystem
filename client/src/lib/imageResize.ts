@@ -26,18 +26,27 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   })
 }
 
-export async function shrinkImage(file: File): Promise<{ fileData: string; fileName: string }> {
+/** Report-photo settings. Takes only the file, so it can be passed straight to `files.map()`. */
+export function shrinkImage(file: File): Promise<{ fileData: string; fileName: string }> {
+  return shrinkImageTo(file, MAX_SIDE, QUALITY)
+}
+
+/**
+ * Explicit size and quality. The check-in photo uses much smaller values (~50 KB) since it proves
+ * presence, not detail, and is kept in the database.
+ */
+export async function shrinkImageTo(file: File, maxSide: number, quality: number): Promise<{ fileData: string; fileName: string }> {
   const original = await readAsDataUrl(file)
   try {
     const img = await loadImage(original)
-    const scale = Math.min(1, MAX_SIDE / Math.max(img.naturalWidth, img.naturalHeight))
+    const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight))
     const canvas = document.createElement('canvas')
     canvas.width = Math.round(img.naturalWidth * scale)
     canvas.height = Math.round(img.naturalHeight * scale)
     const ctx = canvas.getContext('2d')
     if (!ctx) throw new Error('No canvas')
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-    const shrunk = canvas.toDataURL('image/jpeg', QUALITY)
+    const shrunk = canvas.toDataURL('image/jpeg', quality)
     // Keep the original if re-encoding somehow made it bigger (a tiny PNG, say).
     if (shrunk.length >= original.length) return { fileData: original, fileName: file.name }
     const base = file.name.replace(/\.[^.]+$/, '') || 'photo'
