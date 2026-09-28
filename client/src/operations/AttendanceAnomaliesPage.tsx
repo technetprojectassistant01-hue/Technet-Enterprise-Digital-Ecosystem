@@ -34,7 +34,8 @@ function AttendanceAnomaliesPage() {
     setError(null)
     api
       .listAttendanceAnomalies('OPEN')
-      .then(({ anomalies }) => setAnomalies(anomalies))
+      // Only the audit-pair kind for now - the new per-visit rules have no audit pair to show.
+      .then(({ anomalies }) => setAnomalies(anomalies.filter((a) => a.firstAudit && a.secondAudit)))
       .catch((err) => setError(err instanceof Error ? err.message : t.ops.anomalies.loadFailed))
       .finally(() => setLoading(false))
   }
