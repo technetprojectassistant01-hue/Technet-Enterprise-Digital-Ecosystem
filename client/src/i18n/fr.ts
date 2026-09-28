@@ -228,6 +228,8 @@ export const fr: Dict = {
     alreadyCheckedInBody: (since: string, where: string | null) =>
       `Vous avez pointé votre arrivée à ${since}${where ? ` (${where})` : ''} sans pointer votre départ. Pointez d'abord le départ de cette visite, puis pointez de nouveau.`,
     goToCheckOut: 'Aller au départ',
+    todaysJob: 'TRAVAIL DU JOUR',
+    notThisJob: 'Pas ce travail',
     title: 'Ma présence',
     currentStatus: 'STATUT ACTUEL',
     checkedIn: 'PRÉSENT',
