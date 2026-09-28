@@ -5,6 +5,7 @@ import { requireAuth, requireRole } from "../middleware/auth";
 import { HR_ROLES } from "../lib/roles";
 import { isUniqueConstraintError, isForeignKeyConstraintError, isNotFoundError } from "../lib/prismaErrors";
 import { generateEmployeeCode } from "../lib/employeeCode";
+import { geocodeAddress, MAIN_ISLAND_VIEWBOX } from "../lib/geocode";
 
 const router = Router();
 
@@ -289,6 +290,51 @@ router.patch("/:id", requireRole(...HR_ROLES), async (req, res) => {
     }
     throw err;
   }
+});
+
+// ---- Home location (spec section 3) ---------------------------------------------------------
+// HR only, and its own table (EmployeeHome) so it never appears in the employee list or profile
+// responses that every office role can read. Used solely for the CHECKIN_NEAR_HOME anomaly.
+
+const HOME_SELECT = { address: true, lat: true, lng: true, updatedAt: true, updatedBy: { select: { id: true, name: true } } } as const;
+
+router.get("/:id/home", requireRole(...HR_ROLES), async (req, res) => {
+  const home = await prisma.employeeHome.findUnique({ where: { employeeId: req.params.id as string }, select: HOME_SELECT });
+  res.json({ home });
+});
+
+/**
+ * Sets the address and locates it (main island only, like every other lookup here). A failed
+ * lookup still saves the address - HR is told it couldn't be located and can reword it - rather
+ * than refusing the save; without coordinates the near-home rule simply can't run for them.
+ */
+router.put("/:id/home", requireRole(...HR_ROLES), async (req, res) => {
+  const employeeId = req.params.id as string;
+  const address = typeof req.body?.address === "string" ? req.body.address.trim().slice(0, 300) : "";
+  if (!address) return res.status(400).json({ error: "Enter the home address" });
+  const employee = await prisma.employee.findUnique({ where: { id: employeeId }, select: { id: true } });
+  if (!employee) return res.status(404).json({ error: "Employee not found" });
+
+  let located: { lat: number; lng: number } | null = null;
+  try {
+    located = await geocodeAddress(address, { countryCode: "mu", timeoutMs: 8000, viewbox: MAIN_ISLAND_VIEWBOX });
+  } catch {
+    located = null;
+  }
+
+  const data = { address, lat: located?.lat ?? null, lng: located?.lng ?? null, updatedById: req.user!.sub };
+  const home = await prisma.employeeHome.upsert({
+    where: { employeeId },
+    create: { employeeId, ...data },
+    update: data,
+    select: HOME_SELECT,
+  });
+  res.json({ home, located: !!located });
+});
+
+router.delete("/:id/home", requireRole(...HR_ROLES), async (req, res) => {
+  await prisma.employeeHome.deleteMany({ where: { employeeId: req.params.id as string } });
+  res.status(204).end();
 });
 
 router.delete("/:id", requireRole(...HR_ROLES), async (req, res) => {
