@@ -1737,6 +1737,8 @@ export interface SiteAttendance {
   checkInPhoto?: { id: string; createdAt: string } | null
   /** Present on the team register only: the visit's anomalies, for the Verified/Unverified/Flagged badge. */
   anomalies?: AnomalySummary[]
+  /** Present on the team register only: the known place the check-in matched, if any. */
+  knownPlace?: { id: string; name: string } | null
 }
 
 /** Endpoints that return a whole team's visits always include the technician. */
@@ -1786,6 +1788,7 @@ export type AnomalyType =
 /** The types the server raises today, for the filter (the rest are reserved for later sections). */
 export const ACTIVE_ANOMALY_TYPES: AnomalyType[] = [
   'FAR_FROM_JOB',
+  'UNVERIFIED_LOCATION',
   'LEFT_WORK_AREA',
   'IMPOSSIBLE_TRAVEL',
   'MOCK_LOCATION_SUSPECTED',
@@ -1817,6 +1820,7 @@ export interface AnomalyVisit {
   checkOutDeclaredTime: string | null
   workOrder: { id: string; workOrderNumber: string; title: string; siteAddress: string | null; siteLat: string | null; siteLng: string | null } | null
   checkInPhoto: { id: string } | null
+  knownPlace?: { id: string; name: string } | null
   audits: { id: string; respondedAt: string | null; lat: string; lng: string; place: string | null; distanceMeters: number | null }[]
   /** Shift pings (every 15 min while the app is open). Optional so an older server response still types. */
   pings?: { id: string; createdAt: string; lat: string; lng: string; accuracyMeters: number | null }[]
@@ -1994,6 +1998,49 @@ export function listAttendanceAnomalies(filters: AnomalyFilters = {}) {
   return request<{ anomalies: AttendanceAnomaly[] }>(`/api/attendance-audits/anomalies${query}`)
 }
 
+/** A place technicians genuinely work at, learned from confirmed check-ins (spec section 2). */
+export interface KnownPlace {
+  id: string
+  name: string
+  customerId: string | null
+  customer: { id: string; name: string; company: string | null } | null
+  address: string | null
+  lat: string
+  lng: string
+  radiusMeters: number
+  timesConfirmed: number
+  createdBy: { id: string; name: string } | null
+  createdAt: string
+  _count: { visits: number }
+}
+
+export function listKnownPlaces() {
+  return request<{ places: KnownPlace[] }>('/api/known-places')
+}
+
+/** Places within 250 m of a point - the "match to an existing place" choices. */
+export function knownPlacesNear(lat: string | number, lng: string | number) {
+  return request<{ places: { id: string; name: string; distanceMeters: number }[] }>(`/api/known-places/near?lat=${lat}&lng=${lng}`)
+}
+
+/** Confirm a visit's location: match it to `knownPlaceId`, or save a new place with `name`. */
+export function confirmVisitPlace(input: { siteAttendanceId: string; knownPlaceId?: string; name?: string; customerId?: string; radiusMeters?: number }) {
+  return request<{ place: KnownPlace; linked: number }>('/api/known-places/confirm-visit', { method: 'POST', body: JSON.stringify(input) })
+}
+
+export function updateKnownPlace(id: string, input: { name?: string; customerId?: string | null; radiusMeters?: number }) {
+  return request<{ place: KnownPlace }>(`/api/known-places/${id}`, { method: 'PATCH', body: JSON.stringify(input) })
+}
+
+/** Merge place `id` into `intoId` - its visits move over and it is deleted. */
+export function mergeKnownPlace(id: string, intoId: string) {
+  return request<{ place: KnownPlace }>(`/api/known-places/${id}/merge`, { method: 'POST', body: JSON.stringify({ intoId }) })
+}
+
+export function deleteKnownPlace(id: string) {
+  return request<void>(`/api/known-places/${id}`, { method: 'DELETE' })
+}
+
 export type LiveStatus = 'GREEN' | 'AMBER' | 'RED'
 
 /** One technician on shift, for the Live Map (server/src/lib/liveMap.ts has the colour rule). */
@@ -2004,6 +2051,7 @@ export interface LiveShift {
   checkIn: { at: string; lat: number; lng: number; place: string | null; site: string | null; note: string | null }
   /** Newest 15-minute ping or answered compliance check; null if none since check-in. */
   latest: { kind: 'PING' | 'AUDIT'; at: string; lat: number; lng: number; accuracyMeters: number | null } | null
+  knownPlace?: { id: string; name: string } | null
   distanceFromCheckInMeters: number | null
   lastSeenAt: string
   minutesSinceLastFix: number
