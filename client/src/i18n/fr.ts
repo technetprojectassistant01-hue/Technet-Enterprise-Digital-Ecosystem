@@ -224,6 +224,10 @@ export const fr: Dict = {
     allowLocation: 'Autoriser la localisation',
     notNow: 'Plus tard',
     tryAgain: 'Réessayer',
+    alreadyCheckedInTitle: 'Vous êtes déjà pointé',
+    alreadyCheckedInBody: (since: string, where: string | null) =>
+      `Vous avez pointé votre arrivée à ${since}${where ? ` (${where})` : ''} sans pointer votre départ. Pointez d'abord le départ de cette visite, puis pointez de nouveau.`,
+    goToCheckOut: 'Aller au départ',
     title: 'Ma présence',
     currentStatus: 'STATUT ACTUEL',
     checkedIn: 'PRÉSENT',
