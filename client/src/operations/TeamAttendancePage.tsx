@@ -8,13 +8,13 @@ import { useAuth } from '../context/AuthContext'
 import { hasRole, ATTENDANCE_VIEW_ROLES } from '../lib/permissions'
 import { mapLink } from '../lib/geolocation'
 import {
-  hasLocationMismatch,
   hasStatedTimeGap,
-  locationMismatchLabel,
   statedTimeGapLabel,
   statedTimeSuffix,
   totalTransportCost,
+  verificationState,
 } from '../lib/siteAttendance'
+import VerificationBadge from '../dashboard/VerificationBadge'
 import { formatMoney } from '../lib/format'
 import { downloadCsv } from '../lib/csv'
 import { primaryButtonClass, secondaryButtonClass } from '../dashboard/buttonStyles'
@@ -300,14 +300,9 @@ function TeamAttendancePage() {
             totalTransportCost(v) > 0 ? totalTransportCost(v).toFixed(2) : '',
         },
         {
-          header: 'Location Flag',
+          header: 'Verification',
           accessor: (v: SiteAttendanceWithEmployee) =>
-            [
-              locationMismatchLabel(v.checkInLocationMatch, v.checkInLocationDistanceMeters),
-              locationMismatchLabel(v.checkOutLocationMatch, v.checkOutLocationDistanceMeters),
-            ]
-              .filter(Boolean)
-              .join('; '),
+            ({ VERIFIED: 'Verified', UNVERIFIED: 'Unverified', FLAGGED: 'Flagged' })[verificationState(v)],
         },
         {
           header: 'Time Flag',
@@ -635,11 +630,16 @@ function TeamAttendancePage() {
                         <tr
                           key={v.id}
                           className={`border-b border-ink-800 last:border-0 ${
-                            hasLocationMismatch(v) || hasStatedTimeGap(v) ? 'bg-amber-400/5' : ''
+                            verificationState(v) === 'FLAGGED' || hasStatedTimeGap(v) ? 'bg-amber-400/5' : ''
                           }`}
                         >
                           <td className="px-3 py-2 text-ink-100">
                             {v.employee?.firstName} {v.employee?.lastName}
+                            {/* Replaces the old "X km from stated" line - that check is now the
+                                STATED_LOCATION_MISMATCH anomaly, reached through this badge. */}
+                            <span className="mt-1 block">
+                              <VerificationBadge visit={v} />
+                            </span>
                           </td>
                           <td className="px-3 py-2 text-ink-300">
                             <WorkOrderLink v={v} />
@@ -674,11 +674,6 @@ function TeamAttendancePage() {
                                 {t.ops.team.checkInPhoto}
                               </a>
                             )}
-                            {locationMismatchLabel(v.checkInLocationMatch, v.checkInLocationDistanceMeters) && (
-                              <span className="mt-0.5 block text-[11px] font-medium text-amber-400">
-                                ⚠ {locationMismatchLabel(v.checkInLocationMatch, v.checkInLocationDistanceMeters)}
-                              </span>
-                            )}
                             {statedTimeGapLabel(v.checkInDeclaredTime, v.checkInAt) && (
                               <span className="mt-0.5 block text-[11px] font-medium text-amber-400">
                                 ⚠ {t.ops.team.statedTimeOffBy(statedTimeGapLabel(v.checkInDeclaredTime, v.checkInAt)!)}
@@ -709,11 +704,6 @@ function TeamAttendancePage() {
                             )}
                             {v.checkOutByManager && (
                               <span className="mt-0.5 block text-[11px] text-ink-400">{t.ops.team.closedByManagement}</span>
-                            )}
-                            {locationMismatchLabel(v.checkOutLocationMatch, v.checkOutLocationDistanceMeters) && (
-                              <span className="mt-0.5 block text-[11px] font-medium text-amber-400">
-                                ⚠ {locationMismatchLabel(v.checkOutLocationMatch, v.checkOutLocationDistanceMeters)}
-                              </span>
                             )}
                             {statedTimeGapLabel(v.checkOutDeclaredTime, v.checkOutAt) && (
                               <span className="mt-0.5 block text-[11px] font-medium text-amber-400">
