@@ -1182,9 +1182,31 @@ model SiteAttendance {
 
   verifications SiteVerification[]
   audits        AttendanceAudit[]
+  checkInPhoto  SiteAttendancePhoto?
 
   @@index([workOrderId])
   @@index([employeeId])
+}
+
+/**
+ * The camera photo taken at check-in (spec 2026-09-26, section 1), required unless the
+ * ATTENDANCE_PHOTO_REQUIRED env var is "false". Its own table so the bytes never load with
+ * attendance lists, and so retention can delete a photo without touching the attendance record:
+ * photos are deleted after PHOTO_RETENTION_DAYS (90, chosen with the user 2026-09-28 to keep Neon
+ * storage flat), while the visit's times and GPS stay. createdAt is the server receive time and
+ * lat/lng copy the check-in fix - the "server timestamp and GPS" the spec asks the photo to carry.
+ */
+model SiteAttendancePhoto {
+  id               String         @id @default(uuid())
+  siteAttendanceId String         @unique
+  siteAttendance   SiteAttendance @relation(fields: [siteAttendanceId], references: [id], onDelete: Cascade)
+  data             Bytes
+  mimeType         String
+  lat              Decimal        @db.Decimal(9, 6)
+  lng              Decimal        @db.Decimal(9, 6)
+  createdAt        DateTime       @default(now())
+
+  @@index([createdAt])
 }
 
 enum SiteVerificationStatus {
