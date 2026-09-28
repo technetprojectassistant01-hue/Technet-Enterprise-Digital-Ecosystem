@@ -72,6 +72,7 @@ const ANOMALY_INCLUDE = {
       checkOutDeclaredTime: true,
       workOrder: { select: { id: true, workOrderNumber: true, title: true, siteAddress: true, siteLat: true, siteLng: true } },
       checkInPhoto: { select: { id: true } },
+      knownPlace: { select: { id: true, name: true } },
       audits: {
         where: { lat: { not: null } },
         select: { id: true, respondedAt: true, lat: true, lng: true, place: true, distanceMeters: true },
