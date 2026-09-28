@@ -239,6 +239,8 @@ export const mfe: Dict = {
     retakePhoto: 'Repran',
     photoRequired: 'Pran enn foto lariver avan',
     photoFailed: 'Pa finn kapav lir foto la. Reseye.',
+    pingNotice:
+      'Pandan ki ou pointe, ou pozision osi pran sak 15 minit kan aplikasion la ouver lor ou ekran. Li pa kapav pran kan aplikasion la ferme ouswa ou telefonn blok.',
     trackingNotice: (withPhoto: boolean) =>
       withPhoto
         ? 'Ou pozision anrezistre kan ou pointe lariver, kan ou pointe depar ek pandan ou zourne, ek enn foto pran kan ou pointe lariver. Sa konfirm ou prezans lor bann sit ou vizite.'
@@ -1054,7 +1056,9 @@ export const mfe: Dict = {
       reasonZeroAccuracy: 'telefonn la finn dir enn presizion egzakteman 0 m',
       reasonIdentical: (n: number) => `${n} pozision ki swiv, egzakteman mem plas`,
       reasonJump: 'finn sot lwin ek retourn dan enn de minit',
-      mapLegend: 'Ble: lariver · Oranz: kontrol konformite · Gri: depar · Ron ver: sit travay',
+      mapLegend: 'Ble: lariver · Oranz: kontrol konformite · Violet: pozision sak 15 min · Gri: depar · Ron ver: sit travay',
+      missedPing: (minutes: number) =>
+        `pena pozision pandan ${minutes} min (aplikasion ferme, telefonn blok ouswa pena rezo; aplikasion la pa kapav pran pozision an aryer-plan)`,
       badgeVerified: 'Verifie',
       badgeUnverified: 'Pa verifie',
       badgeFlagged: 'Signale',
