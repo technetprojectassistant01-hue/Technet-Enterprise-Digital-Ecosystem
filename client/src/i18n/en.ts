@@ -1710,7 +1710,7 @@ export const en = {
           {
             q: 'Why does the app ask for my location?',
             a: [
-              "Each check-in and check-out records your location along with the time, and your managers can see it. Check-in can't work without it.",
+              "Each check-in and check-out records your location along with the time, and your managers can see it. While you are checked in, it is also recorded every 15 minutes when the app is open on your screen, and when you answer a compliance check. It is never recorded while the app is closed or when you are not checked in. Check-in can't work without it.",
               'If you declined the location request by mistake, allow location for this site in your phone or browser settings, then try again.',
             ],
           },
@@ -1820,9 +1820,9 @@ export const en = {
         {
           title: 'Location',
           paragraphs: [
-            'Location is recorded only at the moment you check in or check out — the app does not follow you in between, and does not track you when it is closed.',
+            'Your location is recorded when you check in and check out, and at other moments while you are checked in: every 15 minutes while the app is open on your screen, and when you answer a compliance check notification (these arrive at random times during a shift). The app cannot record your location while it is closed or your phone is locked, and it never records it when you are not checked in.',
             'Your browser or phone asks your permission before sharing location. Check-in cannot work without it.',
-            'Administrators and Operations Managers can see the recorded location, the times and whether the place you typed is near your GPS position. This is used to confirm site visits, not to judge where you are the rest of the day.',
+            'Administrators, Operations Managers and HR can see these location readings, the times, and whether the place you typed is near your GPS position. The app also flags things that need a closer look, for example a check-in far from the job or from a known work site, a reading far from where you checked in, or a long stretch with no reading. A manager reviews each flag and records the outcome; a flag on its own is not a finding that you did anything wrong.',
           ],
         },
         {
@@ -1837,7 +1837,7 @@ export const en = {
           title: 'Who can see it',
           paragraphs: [
             'Inside Technet, what each person sees depends on their role. For example, technicians see their own jobs and attendance; HR sees employee records and payroll; managers see team attendance. Clients only see their own company\'s documents and jobs, never staff locations or technician names.',
-            'Service providers that run the app for us: Cloudflare (delivers the app), Render (runs the server), Neon (stores the database), OpenStreetMap Nominatim (looks up the place names you type to compare them with your GPS position), your browser\'s push service such as Google or Apple (delivers reminders), and Resend (sends password-reset emails to administrators). Some of these providers may process data outside Mauritius.',
+            'Service providers that run the app for us: Cloudflare (delivers the app), Render (runs the server), Neon (stores the database), OpenStreetMap (looks up the place names you type, turns GPS positions into place names, and supplies the maps managers see), your browser\'s push service such as Google or Apple (delivers reminders), and Resend (sends password-reset emails to administrators). Some of these providers may process data outside Mauritius.',
             'We share information with authorities only where the law requires it.',
           ],
         },
@@ -1852,7 +1852,7 @@ export const en = {
         {
           title: 'How long we keep it',
           paragraphs: [
-            'Records are kept for as long as Technet needs them for its work, employment and legal obligations. There is currently no automatic deletion — records stay until an administrator removes them.',
+            'Records are kept for as long as Technet needs them for its work, employment and legal obligations. Check-in photos are deleted automatically after 90 days; other records, including location readings, stay until an administrator removes them.',
           ],
         },
         {
