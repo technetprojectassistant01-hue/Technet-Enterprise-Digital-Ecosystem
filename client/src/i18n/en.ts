@@ -1551,7 +1551,7 @@ export const en = {
           {
             q: 'How do I check in and check out?',
             a: [
-              'Use the "My Attendance" card on the Attendance page. Check the arrival time (it\'s filled in for you), enter your transport cost (enter 0 if you had none), and if you want, type the site you are at (for example the client or building) and your location, then tap "Check In".',
+              'Use the "My Attendance" card on the Attendance page. Check the arrival time (it\'s filled in for you), enter your transport cost (enter 0 if you had none), and if you want, type the site you are at (for example the client or building) and your location. If you have one job scheduled today, the site and location are filled in from it. Tap "Take photo" to take a check-in photo with your camera, then tap "Check In".',
               'When you leave, do the same with "Check Out". You can check in and out several times a day if you visit more than one site.',
             ],
           },
