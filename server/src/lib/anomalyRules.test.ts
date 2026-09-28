@@ -10,6 +10,7 @@ import {
   missedPings,
   mockLocation,
   statedLocationMismatch,
+  unverifiedLocation,
   timeMismatch,
   type Fix,
 } from "./anomalyRules";
@@ -53,6 +54,12 @@ describe("farFromJob", () => {
 
   it("is quiet within 500 m", () => {
     expect(farFromJob(checkIn, { id: "wo", lat: BASE.lat + 0.004, lng: BASE.lng })).toEqual([]);
+  });
+
+  it("is only medium when the job's site came from the customer's address", () => {
+    const [f] = farFromJob(checkIn, { id: "wo", lat: BASE.lat + 0.006, lng: BASE.lng, fromCustomerAddress: true });
+    expect(f.severity).toBe("MEDIUM");
+    expect(f.details.siteSource).toBe("CUSTOMER_ADDRESS");
   });
 
   it("flags high beyond 500 m", () => {
@@ -268,5 +275,20 @@ describe("missedPings", () => {
 
   it("ignores readings outside the shift", () => {
     expect(missedPings(checkIn, [at("2026-09-28T02:00:00Z")], at("2026-09-28T04:30:00Z"))).toEqual([]);
+  });
+});
+
+describe("unverifiedLocation", () => {
+  const checkIn = fix("checkin:v1", "CHECK_IN", "2026-09-28T04:00:00Z");
+
+  it("flags low when there is neither a job nor a known place", () => {
+    const [f] = unverifiedLocation(checkIn, { hasJob: false, knownPlaceId: null });
+    expect(f.type).toBe("UNVERIFIED_LOCATION");
+    expect(f.severity).toBe("LOW");
+  });
+
+  it("is quiet with a linked job or a matched known place", () => {
+    expect(unverifiedLocation(checkIn, { hasJob: true, knownPlaceId: null })).toEqual([]);
+    expect(unverifiedLocation(checkIn, { hasJob: false, knownPlaceId: "kp1" })).toEqual([]);
   });
 });
