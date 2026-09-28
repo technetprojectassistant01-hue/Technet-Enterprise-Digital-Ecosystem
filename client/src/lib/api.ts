@@ -1730,6 +1730,11 @@ export interface SiteAttendance {
   verifications: SiteVerification[]
   /** This session's random compliance-check history, oldest first - see AttendanceAudit above. */
   audits: AttendanceAudit[]
+  /**
+   * Present on the team register only: whether the visit has a check-in photo (never the bytes -
+   * see siteAttendancePhotoUrl). Null when none was taken or it passed the 90-day retention.
+   */
+  checkInPhoto?: { id: string; createdAt: string } | null
 }
 
 /** Endpoints that return a whole team's visits always include the technician. */
@@ -1923,7 +1928,8 @@ export function getSiteTracking() {
 }
 
 export function getMyAttendance() {
-  return request<{ current: SiteAttendance | null; history: SiteAttendance[] }>('/api/site-attendance/me')
+  // photoRequired: whether check-in must carry a camera photo (ATTENDANCE_PHOTO_REQUIRED on the server).
+  return request<{ current: SiteAttendance | null; history: SiteAttendance[]; photoRequired?: boolean }>('/api/site-attendance/me')
 }
 
 /** One row of the signed-in user's own attendance history — no coordinates or location flags. */
@@ -1957,6 +1963,11 @@ export function myAttendanceReportPdfUrl(from: string, to: string) {
 }
 
 /** The whole team's attendance register for a range, as a PDF — the admin's Staff Attendance export. */
+/** A visit's check-in photo. An <img src> is a same-origin subresource, so the auth cookie is sent. */
+export function siteAttendancePhotoUrl(siteAttendanceId: string) {
+  return `${API_URL}/api/site-attendance/${siteAttendanceId}/photo`
+}
+
 export function staffAttendanceReportPdfUrl(from: string, to: string, includePast = false) {
   return `${API_URL}/api/site-attendance/report/pdf?from=${from}&to=${to}${includePast ? '&includePast=true' : ''}`
 }
