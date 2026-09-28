@@ -6,6 +6,7 @@ import { todayUtc } from "../lib/leaveRequests";
 import { AUDIT_NUDGE_DELAY_MS, AUDIT_RESPONSE_WINDOW_MS, evaluateStrike } from "../lib/attendanceAudit";
 import { purgeExpiredAttendancePhotos } from "../lib/attendancePhoto";
 import { fillMissingPlaces } from "../lib/reverseGeocode";
+import { evaluateOpenShifts } from "../lib/anomalies";
 
 const router = Router();
 
@@ -217,9 +218,12 @@ router.post("/run-attendance-audits", async (req, res) => {
   // Retry place names whose lookup failed at check-in/out, so no visit stays coordinates-only.
   // Also independent of the audit-ping switch - this is display data, not monitoring.
   const placesFilled = await fillMissingPlaces();
+  // Spec section 4's cron check: a gap in shift pings is flagged while it is happening, not only at
+  // the next ping or check-out. Independent of the audit-ping switch, like the two sweeps above.
+  const shiftsChecked = await evaluateOpenShifts();
 
   if (process.env.ATTENDANCE_AUDIT_ENABLED !== "true") {
-    return res.json({ enabled: false, pushed: 0, missed: 0, longShiftReminders, photosPurged, placesFilled });
+    return res.json({ enabled: false, pushed: 0, missed: 0, longShiftReminders, photosPurged, placesFilled, shiftsChecked });
   }
 
   const due = await prisma.attendanceAudit.findMany({
@@ -295,7 +299,7 @@ router.post("/run-attendance-audits", async (req, res) => {
     await evaluateStrike(audit.id);
   }
 
-  res.json({ enabled: true, pushed, skipped, nudged, missed: overdue.length, longShiftReminders, photosPurged, placesFilled });
+  res.json({ enabled: true, pushed, skipped, nudged, missed: overdue.length, longShiftReminders, photosPurged, placesFilled, shiftsChecked });
 });
 
 export default router;
