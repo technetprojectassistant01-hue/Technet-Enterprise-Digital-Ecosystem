@@ -288,6 +288,7 @@ model User {
   attendanceValidationsDecided AttendanceValidation[] @relation("AttendanceValidationDecider")
   employeeDocumentsUploaded EmployeeDocument[] @relation("EmployeeDocumentUploader")
   attendanceAnomaliesResolved AttendanceAnomaly[] @relation("AttendanceAnomalyResolver")
+  knownPlacesCreated          KnownPlace[]        @relation("KnownPlaceCreator")
 
   quotationsCreated Quotation[] @relation("QuotationCreator")
 
@@ -603,6 +604,7 @@ model Customer {
   updatedAt DateTime @updatedAt
 
   contracts           Contract[]
+  knownPlaces         KnownPlace[]
   quotations          Quotation[]
   invoices            Invoice[]
   projects            Project[]
@@ -1049,6 +1051,15 @@ model WorkOrder {
   siteLat         Decimal?        @db.Decimal(9, 6)
   siteLng         Decimal?        @db.Decimal(9, 6)
   siteAddress     String?
+  /**
+   * True when siteLat/siteLng were filled in automatically by geocoding the *customer's* address
+   * (spec section 2, lib/jobSiteGeocode.ts) rather than set by a manager for this job. One customer
+   * often has several sites (CLAUDE.md §7b), so these coordinates may be the office, not the job:
+   * FAR_FROM_JOB against them is MEDIUM rather than HIGH. A manager setting the site clears it.
+   */
+  siteFromCustomerAddress Boolean   @default(false)
+  /** Set when the background geocoder tried this job, so a failed lookup isn't retried forever. */
+  siteGeocodeAttemptedAt  DateTime?
   createdById     String
   createdBy       User            @relation("WorkOrderCreator", fields: [createdById], references: [id])
   createdAt       DateTime        @default(now())
@@ -1185,9 +1196,41 @@ model SiteAttendance {
   checkInPhoto  SiteAttendancePhoto?
   anomalies     AttendanceAnomaly[]
   pings         AttendancePing[]
+  /**
+   * The known place the check-in matched (nearest within its radius), set at check-in or when a
+   * reviewer saves/matches the place afterwards. A match makes the visit "Verified" and suppresses
+   * UNVERIFIED_LOCATION.
+   */
+  knownPlaceId  String?
+  knownPlace    KnownPlace?         @relation(fields: [knownPlaceId], references: [id], onDelete: SetNull)
 
   @@index([workOrderId])
   @@index([employeeId])
+  @@index([knownPlaceId])
+}
+
+/**
+ * A place technicians genuinely work at, learned over time rather than set up in advance (spec
+ * 2026-09-26, section 2): there is no fixed list of sites. A reviewer confirming a check-in as
+ * genuine can save its location as a known place (or match it to one nearby); later check-ins
+ * within `radiusMeters` match it and show as verified. Managed on Operations -> Known Places
+ * (rename, merge duplicates, adjust radius, delete).
+ */
+model KnownPlace {
+  id             String           @id @default(uuid())
+  name           String
+  customerId     String?
+  customer       Customer?        @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  address        String?
+  lat            Decimal          @db.Decimal(9, 6)
+  lng            Decimal          @db.Decimal(9, 6)
+  radiusMeters   Int              @default(250)
+  timesConfirmed Int              @default(0)
+  createdById    String?
+  createdBy      User?            @relation("KnownPlaceCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  visits         SiteAttendance[]
 }
 
 /**
