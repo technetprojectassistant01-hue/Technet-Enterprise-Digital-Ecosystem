@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Check, ChevronLeft, ChevronRight, Clock, Lock, RotateCcw, X } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import * as api from '../lib/api'
 import type { OvertimeItem, OvertimeItemStatus } from '../lib/api'
 import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
@@ -188,6 +189,15 @@ function OvertimePage() {
                       <td className="px-3 py-3">
                         <Badge tone={statusTone[i.status]}>{t.workforce.overtime.status[i.status]}</Badge>
                         {i.decision?.note && <div className="mt-1 max-w-xs text-xs text-ink-300">{i.decision.note}</div>}
+                        {/* Spec section 6: a warning when the day has open or confirmed anomalies - never a block. */}
+                        {(i.anomalyCount ?? 0) > 0 && (
+                          <Link
+                            to={`/dashboard/operations/anomalies?employeeId=${i.employeeId}&from=${i.date}&to=${i.date}`}
+                            className="mt-1 block max-w-xs text-xs font-medium text-amber-400 hover:underline"
+                          >
+                            ⚠ {t.workforce.overtime.anomalyWarning(i.anomalyCount!)}
+                          </Link>
+                        )}
                       </td>
                       <td className="px-3 py-3">
                         <div className="flex flex-wrap justify-end gap-2">
