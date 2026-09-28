@@ -4,6 +4,7 @@ import { requireAuth } from "../middleware/auth";
 import { pushConfigured, sendPushToUser } from "../lib/push";
 import { todayUtc } from "../lib/leaveRequests";
 import { AUDIT_NUDGE_DELAY_MS, AUDIT_RESPONSE_WINDOW_MS, evaluateStrike } from "../lib/attendanceAudit";
+import { purgeExpiredAttendancePhotos } from "../lib/attendancePhoto";
 
 const router = Router();
 
@@ -208,9 +209,13 @@ router.post("/run-attendance-audits", async (req, res) => {
   if (!secret || provided !== secret) return res.status(404).json({ error: "Not found" });
 
   const longShiftReminders = await sendLongShiftReminders();
+  // Check-in photo retention (90 days). Piggybacks on this already-frequent poller rather than a
+  // job of its own; a single indexed delete, so running it every few minutes costs nothing. Like
+  // the long-shift reminder it is independent of the audit-ping switch below.
+  const photosPurged = await purgeExpiredAttendancePhotos();
 
   if (process.env.ATTENDANCE_AUDIT_ENABLED !== "true") {
-    return res.json({ enabled: false, pushed: 0, missed: 0, longShiftReminders });
+    return res.json({ enabled: false, pushed: 0, missed: 0, longShiftReminders, photosPurged });
   }
 
   const due = await prisma.attendanceAudit.findMany({
@@ -286,7 +291,7 @@ router.post("/run-attendance-audits", async (req, res) => {
     await evaluateStrike(audit.id);
   }
 
-  res.json({ enabled: true, pushed, skipped, nudged, missed: overdue.length, longShiftReminders });
+  res.json({ enabled: true, pushed, skipped, nudged, missed: overdue.length, longShiftReminders, photosPurged });
 });
 
 export default router;
