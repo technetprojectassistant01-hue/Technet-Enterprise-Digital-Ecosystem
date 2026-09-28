@@ -168,7 +168,9 @@ function LiveMapPage() {
                       </div>
                       <div className="mt-1 text-xs text-ink-400">
                         {t.ops.liveMap.since(new Date(s.checkIn.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))}
-                        {(s.checkIn.site || s.checkIn.place) && ` · ${s.checkIn.site ?? s.checkIn.place}`}
+                        {s.knownPlace
+                          ? ` · ✓ ${s.knownPlace.name}`
+                          : (s.checkIn.site || s.checkIn.place) && ` · ${s.checkIn.site ?? s.checkIn.place}`}
                       </div>
                       <div className="text-xs text-ink-400">
                         {s.latest ? t.ops.liveMap.lastSeen(s.minutesSinceLastFix) : t.ops.liveMap.notSeenSinceCheckIn}
