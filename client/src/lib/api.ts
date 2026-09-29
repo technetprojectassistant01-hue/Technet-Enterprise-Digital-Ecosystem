@@ -3409,7 +3409,13 @@ export function getPushPublicKey() {
 }
 
 export function getPushStatus() {
-  return request<{ enabled: boolean; devices: number }>('/api/push/status')
+  // remindersEnabled: the optional 08:15/17:15 reminders. devices: what compliance checks need.
+  return request<{ enabled: boolean; devices: number; remindersEnabled?: boolean }>('/api/push/status')
+}
+
+/** Turns the 08:15/17:15 reminders on or off. Keeps the device registered - compliance checks still need it. */
+export function setRemindersEnabled(enabled: boolean) {
+  return request<{ remindersEnabled: boolean }>('/api/push/reminders', { method: 'PUT', body: JSON.stringify({ enabled }) })
 }
 
 export function savePushSubscription(payload: {
