@@ -206,29 +206,20 @@ async function sendLongShiftReminders(): Promise<number> {
   return reminded;
 }
 
-router.post("/run-attendance-audits", async (req, res) => {
-  const secret = process.env.REMINDER_TRIGGER_SECRET;
-  const provided = req.get("x-reminder-secret");
-  if (!secret || provided !== secret) return res.status(404).json({ error: "Not found" });
-
-  const longShiftReminders = await sendLongShiftReminders();
-  // Check-in photo retention (90 days). Piggybacks on this already-frequent poller rather than a
-  // job of its own; a single indexed delete, so running it every few minutes costs nothing. Like
-  // the long-shift reminder it is independent of the audit-ping switch below.
-  const photosPurged = await purgeExpiredAttendancePhotos();
-  // Retry place names whose lookup failed at check-in/out, so no visit stays coordinates-only.
-  // Also independent of the audit-ping switch - this is display data, not monitoring.
-  const placesFilled = await fillMissingPlaces();
-  // Spec section 4's cron check: a gap in shift pings is flagged while it is happening, not only at
-  // the next ping or check-out. Independent of the audit-ping switch, like the two sweeps above.
-  const shiftsChecked = await evaluateOpenShifts();
-  // Spec section 2: locate open jobs from their customer's address, a couple per run.
-  const jobSitesLocated = await geocodeMissingJobSites();
-
-  if (process.env.ATTENDANCE_AUDIT_ENABLED !== "true") {
-    return res.json({ enabled: false, pushed: 0, missed: 0, longShiftReminders, photosPurged, placesFilled, shiftsChecked, jobSitesLocated });
+/** Runs one step of the poller on its own: a failure is logged and counted, never fatal to the rest. */
+async function step<T>(name: string, run: () => Promise<T>, fallback: T, errors: string[]): Promise<T> {
+  try {
+    return await run();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`attendance poller: ${name} failed:`, message);
+    errors.push(`${name}: ${message}`);
+    return fallback;
   }
+}
 
+/** Sends due compliance checks, nudges the unanswered, and marks the overdue MISSED. */
+async function processAudits() {
   const due = await prisma.attendanceAudit.findMany({
     where: { status: "PENDING", scheduledAt: { lte: new Date() }, pushSentAt: null },
     include: { employee: { select: { userId: true } } },
@@ -259,9 +250,9 @@ router.post("/run-attendance-audits", async (req, res) => {
   }
 
   // A second, re-alerting push for anyone who hasn't responded yet, partway through the window -
-  // same tag as the first (see sendPushToUser's caller below), so it re-vibrates/re-sounds on the
-  // device rather than stacking a duplicate. Excludes anything already past the full response
-  // window - that's handled by the overdue sweep below instead, not nudged first.
+  // same tag as the first, so it re-vibrates/re-sounds on the device rather than stacking a
+  // duplicate. Excludes anything already past the full response window - that's handled by the
+  // overdue sweep below instead, not nudged first.
   const dueForNudge = await prisma.attendanceAudit.findMany({
     where: {
       status: "PENDING",
@@ -284,25 +275,72 @@ router.post("/run-attendance-audits", async (req, res) => {
       url: `/dashboard/audit-check?id=${audit.id}`,
       tag: `audit-${audit.id}`,
     });
-    // Sent regardless of delivery count: a delivery failure here doesn't change anything about
-    // the audit's own fate (still resolves via the poller's own MISSED sweep either way), so
-    // there's nothing useful gained by distinguishing it from a successful nudge.
+    // Sent regardless of delivery count: the audit still resolves via the MISSED sweep either way.
     await prisma.attendanceAudit.update({ where: { id: audit.id }, data: { nudgedAt: new Date() } });
     nudged += 1;
   }
 
   const overdue = await prisma.attendanceAudit.findMany({
-    where: {
-      status: "PENDING",
-      pushSentAt: { lte: new Date(Date.now() - AUDIT_RESPONSE_WINDOW_MS) },
-    },
+    where: { status: "PENDING", pushSentAt: { lte: new Date(Date.now() - AUDIT_RESPONSE_WINDOW_MS) } },
   });
   for (const audit of overdue) {
     await prisma.attendanceAudit.update({ where: { id: audit.id }, data: { status: "MISSED" } });
     await evaluateStrike(audit.id);
   }
 
-  res.json({ enabled: true, pushed, skipped, nudged, missed: overdue.length, longShiftReminders, photosPurged, placesFilled, shiftsChecked, jobSitesLocated });
+  return { pushed, skipped, nudged, missed: overdue.length };
+}
+
+/**
+ * Everything the cron-job.org poller does, each step isolated by step(): one failing step is
+ * logged and the rest still run. Audit pushes go first - they are time-critical (a 5-minute
+ * window); the housekeeping sweeps (place names, job geocoding - several seconds of Nominatim
+ * each) come after.
+ */
+async function runAttendancePoller() {
+  const errors: string[] = [];
+  const audits =
+    process.env.ATTENDANCE_AUDIT_ENABLED === "true"
+      ? await step("audits", processAudits, { pushed: 0, skipped: 0, nudged: 0, missed: 0 }, errors)
+      : null;
+  const longShiftReminders = await step("long-shift reminders", sendLongShiftReminders, 0, errors);
+  // Check-in photo retention (90 days) - a single indexed delete.
+  const photosPurged = await step("photo purge", () => purgeExpiredAttendancePhotos(), 0, errors);
+  // Spec section 4's cron check: a gap in shift pings is flagged while it is happening.
+  const shiftsChecked = await step("open shifts", evaluateOpenShifts, 0, errors);
+  // Place names whose lookup failed at check-in/out (also retried on every check-in/out).
+  const placesFilled = await step("place names", () => fillMissingPlaces(), 0, errors);
+  // Spec section 2: locate open jobs from their customer's address, a couple per run.
+  const jobSitesLocated = await step("job sites", geocodeMissingJobSites, 0, errors);
+  return { enabled: audits !== null, ...(audits ?? {}), longShiftReminders, photosPurged, shiftsChecked, placesFilled, jobSitesLocated, errors };
+}
+
+let pollerRunning = false;
+
+/**
+ * The attendance poller, called every few minutes by cron-job.org (07:00-18:59 Mauritius,
+ * Mon-Sat). **It answers at once and does the work afterwards.** It used to do everything before
+ * replying, so one throwing step made the whole call a 500, and a slow run (a Render cold start of
+ * 30-60 s plus Nominatim lookups) blew cron-job.org's 30-second timeout - after enough failures in
+ * a row cron-job.org disabled the job by itself, and from 2026-09-26 08:36 nothing on this poller
+ * ran for three days (compliance checks, reminders, place-name retries). A run still in progress
+ * when the next call arrives is not doubled up. Results are logged; see Render's logs.
+ */
+router.post("/run-attendance-audits", async (req, res) => {
+  const secret = process.env.REMINDER_TRIGGER_SECRET;
+  const provided = req.get("x-reminder-secret");
+  if (!secret || provided !== secret) return res.status(404).json({ error: "Not found" });
+
+  if (pollerRunning) return res.status(202).json({ accepted: false, reason: "previous run still in progress" });
+  pollerRunning = true;
+  res.status(202).json({ accepted: true });
+
+  runAttendancePoller()
+    .then((summary) => console.log("attendance poller:", JSON.stringify(summary)))
+    .catch((err) => console.error("attendance poller crashed:", err))
+    .finally(() => {
+      pollerRunning = false;
+    });
 });
 
 export default router;
