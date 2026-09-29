@@ -74,10 +74,27 @@ router.post("/unsubscribe-all", requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
-/** Whether this user has any device registered - drives the toggle's state in the UI. */
+/**
+ * This user's devices and reminder choice - drives the "Remind me" toggle. `devices` is what
+ * compliance checks need; `remindersEnabled` only governs the 08:15 / 17:15 reminders.
+ */
 router.get("/status", requireAuth, async (req, res) => {
-  const count = await prisma.pushSubscription.count({ where: { userId: req.user!.sub } });
-  res.json({ enabled: pushConfigured, devices: count });
+  const [count, user] = await Promise.all([
+    prisma.pushSubscription.count({ where: { userId: req.user!.sub } }),
+    prisma.user.findUnique({ where: { id: req.user!.sub }, select: { remindersEnabled: true } }),
+  ]);
+  res.json({ enabled: pushConfigured, devices: count, remindersEnabled: user?.remindersEnabled ?? true });
+});
+
+/**
+ * Turns the 08:15 / 17:15 reminders on or off. Deliberately leaves the device registration alone:
+ * compliance checks are not optional and still need it.
+ */
+router.put("/reminders", requireAuth, async (req, res) => {
+  const enabled = (req.body ?? {}).enabled;
+  if (typeof enabled !== "boolean") return res.status(400).json({ error: "enabled must be true or false" });
+  await prisma.user.update({ where: { id: req.user!.sub }, data: { remindersEnabled: enabled } });
+  res.json({ remindersEnabled: enabled });
 });
 
 router.post("/test", requireAuth, async (req, res) => {
@@ -121,6 +138,8 @@ async function sendAttendanceReminders(kind: "check-in" | "check-out", req: Requ
     where: {
       employmentStatus: { not: "TERMINATED" },
       userId: { not: null },
+      // Reminders are optional; compliance checks (processAudits) ignore this setting.
+      user: { remindersEnabled: true },
       siteAttendance: kind === "check-in" ? { none: { checkOutAt: null } } : { some: { checkOutAt: null } },
       // On approved leave covering today.
       leaveRequests: { none: { status: "APPROVED", startDate: { lte: today }, endDate: { gte: today } } },
