@@ -14,15 +14,21 @@ const visit = (day: string, inT: string, outT: string | null, extra: Partial<Ove
 });
 
 describe("computeOvertimeDays", () => {
-  it("counts a weekday check-out past 17:00, on the day's last visit", () => {
+  it("counts a weekday check-out past 17:30, on the day's last visit", () => {
     // 2026-09-14 is a Monday
     const days = computeOvertimeDays([visit("2026-09-14", "08:00", "12:00"), visit("2026-09-14", "13:00", "17:45")]);
-    expect(days).toEqual([{ employeeId: "e1", date: "2026-09-14", minutes: 45, firstIn: "08:00", lastOut: "17:45" }]);
+    expect(days).toEqual([{ employeeId: "e1", date: "2026-09-14", minutes: 15, firstIn: "08:00", lastOut: "17:45" }]);
   });
 
-  it("uses 13:00 on Saturday", () => {
+  it("does not count the half hour between 17:00 and 17:30", () => {
+    expect(computeOvertimeDays([visit("2026-09-15", "08:00", "17:25")])).toEqual([]);
+    expect(computeOvertimeDays([visit("2026-09-15", "08:00", "17:30")])).toEqual([]);
+  });
+
+  it("counts from 13:30 on Saturday", () => {
     const days = computeOvertimeDays([visit("2026-09-19", "08:00", "14:30")]);
-    expect(days[0].minutes).toBe(90);
+    expect(days[0].minutes).toBe(60);
+    expect(computeOvertimeDays([visit("2026-09-19", "08:00", "13:25")])).toEqual([]);
   });
 
   it("counts every minute on a Sunday", () => {
@@ -30,16 +36,35 @@ describe("computeOvertimeDays", () => {
     expect(days[0].minutes).toBe(135);
   });
 
-  it("ignores days that finish on time or are still open", () => {
-    expect(computeOvertimeDays([visit("2026-09-15", "07:55", "17:00")])).toEqual([]);
+  it("ignores days that are still open", () => {
     expect(computeOvertimeDays([visit("2026-09-16", "08:00", null)])).toEqual([]);
   });
 
-  it("ignores the typed time and uses the recorded time, even when they disagree", () => {
-    // Typed check-out is 18:00, but the GPS timestamp says 17:10 - overtime must come from 17:10.
+  it("uses the typed check-out time, not the recorded one", () => {
+    // Typed 18:00, recorded 17:10: overtime runs from the typed time (management, 2026-09-29).
     const days = computeOvertimeDays([visit("2026-09-17", "08:00", "17:10", { checkOutDeclaredTime: "18:00" })]);
-    expect(days[0].minutes).toBe(10);
-    expect(days[0].lastOut).toBe("17:10");
+    expect(days[0].minutes).toBe(30);
+    expect(days[0].lastOut).toBe("18:00");
+  });
+
+  it("falls back to the recorded check-out when nothing was typed", () => {
+    const days = computeOvertimeDays([visit("2026-09-17", "08:00", "18:10")]);
+    expect(days[0].minutes).toBe(40);
+  });
+
+  it("reads a typed time on a forgotten check-out as that evening, not a day-long shift", () => {
+    // Checked out by the app the next morning, but typed 17:50.
+    const days = computeOvertimeDays([
+      { ...visit("2026-09-17", "08:00", null), checkOutAt: mu("2026-09-18", "08:05"), checkOutDeclaredTime: "17:50" },
+    ]);
+    expect(days[0].minutes).toBe(20);
+  });
+
+  it("reads a typed time earlier than the check-in as after midnight", () => {
+    const days = computeOvertimeDays([
+      { ...visit("2026-09-17", "14:00", null), checkOutAt: mu("2026-09-18", "00:40"), checkOutDeclaredTime: "00:30" },
+    ]);
+    expect(days[0].minutes).toBe(24 * 60 + 30 - 17 * 60 - 30);
   });
 
   it("groups by the Mauritius day, not the UTC day", () => {
