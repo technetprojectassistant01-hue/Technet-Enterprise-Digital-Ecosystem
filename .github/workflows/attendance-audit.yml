@@ -44,7 +44,9 @@ jobs:
           echo "HTTP $status"
           echo "$body"
 
-          if [ "$status" != "200" ]; then
+          # 202 = accepted: the server answers at once and runs the poller in the background
+          # (results in Render's logs), so cron-job.org's 30-second timeout can't fail it.
+          if [ "$status" != "200" ] && [ "$status" != "202" ]; then
             echo "Attendance audit trigger failed."
             exit 1
           fi
