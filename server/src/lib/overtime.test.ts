@@ -84,22 +84,28 @@ describe("mauritiusMonthRange", () => {
 });
 
 describe("computeLateByVisit", () => {
-  it("flags only the day's first check-in, by the recorded time, and never on Sunday", () => {
+  it("flags only the day's first check-in, from 08:30 by the recorded time, and never on Sunday", () => {
     const late = computeLateByVisit([
-      { id: "a", ...visit("2026-09-14", "08:20", "12:00") },
+      { id: "a", ...visit("2026-09-14", "08:50", "12:00") },
       { id: "b", ...visit("2026-09-14", "13:30", "17:00") },
       { id: "c", ...visit("2026-09-15", "08:40", "17:00", { checkInDeclaredTime: "08:00" }) },
       { id: "d", ...visit("2026-09-20", "10:00", "11:00") },
     ]);
     expect([...late.entries()]).toEqual([
       ["a", 20],
-      ["c", 40],
+      ["c", 10],
     ]);
   });
 
+  it("is not late up to 08:30, on weekdays and Saturday", () => {
+    expect(computeLateByVisit([{ id: "a", ...visit("2026-09-14", "08:20", "17:00") }]).size).toBe(0);
+    expect(computeLateByVisit([{ id: "a", ...visit("2026-09-14", "08:30", "17:00") }]).size).toBe(0);
+    expect(computeLateByVisit([{ id: "s", ...visit("2026-09-19", "08:45", "13:00") }]).get("s")).toBe(15);
+  });
+
   it("ignores a typed time-in that would erase lateness", () => {
-    // Typed 08:00 (on time), but the GPS timestamp says 08:40 - the recorded time must win.
+    // Typed 08:00 (on time), but the app recorded 08:40 - the recorded time wins.
     const late = computeLateByVisit([{ id: "a", ...visit("2026-09-14", "08:40", "17:00", { checkInDeclaredTime: "08:00" }) }]);
-    expect(late.get("a")).toBe(40);
+    expect(late.get("a")).toBe(10);
   });
 });
