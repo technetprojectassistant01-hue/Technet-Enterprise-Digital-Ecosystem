@@ -1,6 +1,8 @@
 /**
  * Overtime from site attendance, against Technet's standard hours (given by management,
  * 2026-09-14): Monday–Friday 08:00–17:00, Saturday 08:00–13:00, Sunday not a working day.
+ * Overtime starts half an hour after closing (management, 2026-09-29): 17:30 on weekdays, 13:30 on
+ * Saturday - that half hour is not counted.
  * Mirrors client/src/lib/workSchedule.ts — keep the two in step.
  *
  * Mauritius is UTC+4 all year (no daylight saving), so local wall-clock time is a fixed offset
@@ -9,14 +11,15 @@
 
 export const MAURITIUS_OFFSET_MINUTES = 4 * 60;
 
-const SCHEDULE: Record<number, { start: number; end: number } | null> = {
+/** start/end = working hours; overtimeFrom = when overtime starts counting (minutes of the day). */
+const SCHEDULE: Record<number, { start: number; end: number; overtimeFrom: number } | null> = {
   0: null,
-  1: { start: 480, end: 1020 },
-  2: { start: 480, end: 1020 },
-  3: { start: 480, end: 1020 },
-  4: { start: 480, end: 1020 },
-  5: { start: 480, end: 1020 },
-  6: { start: 480, end: 780 },
+  1: { start: 480, end: 1020, overtimeFrom: 1050 },
+  2: { start: 480, end: 1020, overtimeFrom: 1050 },
+  3: { start: 480, end: 1020, overtimeFrom: 1050 },
+  4: { start: 480, end: 1020, overtimeFrom: 1050 },
+  5: { start: 480, end: 1020, overtimeFrom: 1050 },
+  6: { start: 480, end: 780, overtimeFrom: 810 },
 };
 
 export interface OvertimeVisit {
@@ -32,7 +35,7 @@ export interface OvertimeDay {
   /** Mauritius calendar day, "YYYY-MM-DD". */
   date: string;
   minutes: number;
-  /** First time in and last time out that day, "HH:MM" from the server-recorded GPS timestamp. */
+  /** First time in (recorded) and last time out (as typed, else recorded) that day, "HH:MM". */
   firstIn: string;
   lastOut: string;
 }
@@ -52,11 +55,13 @@ function hhmm(minutes: number): string {
 }
 
 /**
- * Minutes-of-day from the server-recorded GPS timestamp. Late/overtime/hours must never be
- * computed from the technician's typed time-in/time-out: that field is self-reported and edits
- * the very numbers used for payroll and discipline decisions. The typed value stays visible
- * elsewhere (e.g. the "entered" vs "app" columns in the export) for comparison, but never feeds
- * a calculation.
+ * Minutes-of-day from the server-recorded GPS timestamp - used for lateness and Sunday hours.
+ *
+ * Overtime is the one exception, by management's decision (2026-09-29): it runs from the
+ * technician's *typed* check-out time (see typedOutMinutes), reversing the spec's 2026-09-26 rule
+ * that it use the recorded time. The safeguard is the TIME_MISMATCH anomaly: a typed time more than
+ * 15 minutes from the recorded one is flagged, and the overtime approval shows a warning for that
+ * day before HR approves it.
  */
 function recordedMinutes(recorded: Date): number {
   return local(recorded).minutes;
@@ -110,6 +115,19 @@ export function computeLateByVisit(visits: (OvertimeVisit & { id: string })[]): 
  * every minute worked counts. Days with a session still open are skipped (not finished yet).
  * Days are grouped by the Mauritius date of the check-in.
  */
+/**
+ * The typed check-out as minutes from the start of the check-in's day, or null when nothing (or
+ * nothing valid) was typed. A typed "HH:MM" is taken as that day's evening: a check-out recorded
+ * the next morning with "17:40" typed (a forgotten check-out) counts as 17:40, not a day-long
+ * shift. Only a typed time earlier than the check-in itself is read as past midnight.
+ */
+function typedOutMinutes(v: OvertimeVisit): number | null {
+  const m = v.checkOutDeclaredTime ? /^(\d{1,2}):(\d{2})$/.exec(v.checkOutDeclaredTime) : null;
+  if (!m) return null;
+  const typed = Number(m[1]) * 60 + Number(m[2]);
+  return typed < recordedMinutes(v.checkInAt) ? typed + 1440 : typed;
+}
+
 export function computeOvertimeDays(visits: OvertimeVisit[]): OvertimeDay[] {
   const groups = new Map<string, OvertimeVisit[]>();
   for (const v of visits) {
@@ -125,16 +143,19 @@ export function computeOvertimeDays(visits: OvertimeVisit[]): OvertimeDay[] {
     const first = sorted[0];
     const schedule = SCHEDULE[local(first.checkInAt).weekday];
 
-    // A check-out on a later calendar day counts the extra days in full.
-    const outMinutes = (v: OvertimeVisit) => {
+    // Recorded check-out; one on a later calendar day counts the extra days in full.
+    const recordedOut = (v: OvertimeVisit) => {
       const dayGap = Math.round((dayToDate(local(v.checkOutAt!).day).getTime() - dayToDate(local(v.checkInAt).day).getTime()) / 86_400_000);
       return recordedMinutes(v.checkOutAt!) + dayGap * 1440;
     };
+    // Overtime uses the typed check-out when there is one (management, 2026-09-29).
+    const outMinutes = (v: OvertimeVisit) => typedOutMinutes(v) ?? recordedOut(v);
     const lastOut = Math.max(...sorted.map(outMinutes));
 
+    // Sunday isn't a working day; every minute counts, from the recorded times as before.
     const minutes = schedule
-      ? lastOut - schedule.end
-      : sorted.reduce((sum, v) => sum + Math.max(0, outMinutes(v) - recordedMinutes(v.checkInAt)), 0);
+      ? lastOut - schedule.overtimeFrom
+      : sorted.reduce((sum, v) => sum + Math.max(0, recordedOut(v) - recordedMinutes(v.checkInAt)), 0);
 
     if (minutes > 0) {
       result.push({
