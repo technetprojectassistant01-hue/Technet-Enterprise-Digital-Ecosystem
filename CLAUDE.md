@@ -1780,6 +1780,14 @@ assert the fix, plus a new case pinning "a typed on-time check-in cannot erase a
 one." `npm run test -w server` (overtime, payroll, siteAttendance, workOrders suites - the ones
 that touch this code) passes.
 
+**Partly reversed 2026-09-29 by management:** overtime now runs from the technician's **typed**
+check-out time (recorded time only when nothing was typed), and starts at **17:30 on weekdays and
+13:30 on Saturday** (`overtimeFrom` in `SCHEDULE`); lateness and Sunday hours still use recorded
+times. A typed "HH:MM" is read as that day's evening (past midnight only if earlier than the check-in),
+so a forgotten check-out with "17:40" typed counts as 17:40. The safeguard is the TIME_MISMATCH anomaly
+(typed vs recorded > 15 min) surfacing as the overtime approval warning. `client/src/lib/workSchedule.ts`
+mirrors both rules. Already-approved `OvertimeDecision` minutes are stored, so they don't change.
+
 ### 30c. Historical attendance data-issues report for HR (2026-09-28)
 
 Pure detectors in `server/src/lib/attendanceDataIssues.ts` (tested in its `.test.ts`) find
