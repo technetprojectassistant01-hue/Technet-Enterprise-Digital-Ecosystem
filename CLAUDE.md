@@ -1786,7 +1786,7 @@ check-out time (recorded time only when nothing was typed), and starts at **17:3
 times. A typed "HH:MM" is read as that day's evening (past midnight only if earlier than the check-in),
 so a forgotten check-out with "17:40" typed counts as 17:40. The safeguard is the TIME_MISMATCH anomaly
 (typed vs recorded > 15 min) surfacing as the overtime approval warning. `client/src/lib/workSchedule.ts`
-mirrors both rules. Already-approved `OvertimeDecision` minutes are stored, so they don't change.
+mirrors both rules. Already-approved `OvertimeDecision` minutes are stored, so they don't change. **Lateness** (same day, management): counted from **08:30** (`lateFrom`, weekdays and Saturday), always from the recorded check-in time - the client's `computeDayFlags` used the typed time before and was switched to the recorded one to match.
 
 ### 30c. Historical attendance data-issues report for HR (2026-09-28)
 
