@@ -381,7 +381,7 @@ export const en = {
     statOvertime: 'OVERTIME',
     lateBy: (time: string) => `Late ${time}`,
     overtimeBy: (time: string) => `Overtime ${time}`,
-    scheduleNote: 'Work hours: Monday–Friday 08:00–17:00, Saturday 08:00–13:00. Late is counted from your first check-in of the day. Overtime shows here once HR has approved it.',
+    scheduleNote: 'Work hours: Monday–Friday 08:00–17:00, Saturday 08:00–13:00. You are late if your first check-in of the day, as recorded by the app, is after 08:30. Overtime shows here once HR has approved it.',
     colDate: 'DATE',
     colIn: 'TIME IN',
     colOut: 'TIME OUT',
