@@ -2,19 +2,20 @@
  * Technet's standard working hours, as given by management (2026-09-14):
  * Monday–Friday 08:00–17:00, Saturday 08:00–13:00, Sunday not a working day.
  * Overtime starts half an hour after closing (2026-09-29): 17:30 weekdays, 13:30 Saturday.
+ * Lateness counts from 08:30, from the app's recorded check-in time, never the typed one.
  * Mirrors server/src/lib/overtime.ts - keep the two in step.
  *
  * Used for the Late / Overtime badges on My Attendance. Public holidays aren't treated specially
  * yet. Times are the phone's local wall clock (Mauritius), minutes since midnight.
  */
-export const WORK_SCHEDULE: Record<number, { start: number; end: number; overtimeFrom: number } | null> = {
+export const WORK_SCHEDULE: Record<number, { start: number; end: number; lateFrom: number; overtimeFrom: number } | null> = {
   0: null, // Sunday
-  1: { start: 8 * 60, end: 17 * 60, overtimeFrom: 17 * 60 + 30 },
-  2: { start: 8 * 60, end: 17 * 60, overtimeFrom: 17 * 60 + 30 },
-  3: { start: 8 * 60, end: 17 * 60, overtimeFrom: 17 * 60 + 30 },
-  4: { start: 8 * 60, end: 17 * 60, overtimeFrom: 17 * 60 + 30 },
-  5: { start: 8 * 60, end: 17 * 60, overtimeFrom: 17 * 60 + 30 },
-  6: { start: 8 * 60, end: 13 * 60, overtimeFrom: 13 * 60 + 30 }, // Saturday
+  1: { start: 8 * 60, end: 17 * 60, lateFrom: 8 * 60 + 30, overtimeFrom: 17 * 60 + 30 },
+  2: { start: 8 * 60, end: 17 * 60, lateFrom: 8 * 60 + 30, overtimeFrom: 17 * 60 + 30 },
+  3: { start: 8 * 60, end: 17 * 60, lateFrom: 8 * 60 + 30, overtimeFrom: 17 * 60 + 30 },
+  4: { start: 8 * 60, end: 17 * 60, lateFrom: 8 * 60 + 30, overtimeFrom: 17 * 60 + 30 },
+  5: { start: 8 * 60, end: 17 * 60, lateFrom: 8 * 60 + 30, overtimeFrom: 17 * 60 + 30 },
+  6: { start: 8 * 60, end: 13 * 60, lateFrom: 8 * 60 + 30, overtimeFrom: 13 * 60 + 30 }, // Saturday
 }
 
 /** A check-in/out as far as the schedule cares: when it started and ended, on the clock shown. */
@@ -65,7 +66,8 @@ export function computeDayFlags(visits: ScheduleVisit[]): DayFlags {
     const schedule = WORK_SCHEDULE[new Date(first.checkInAt).getDay()]
 
     if (schedule) {
-      const lateBy = shownMinutes(first.checkInDeclaredTime, first.checkInAt) - schedule.start
+      // The app's recorded check-in time, never the typed one (management, 2026-09-29).
+      const lateBy = minutesOf(new Date(first.checkInAt)) - schedule.lateFrom
       if (lateBy > 0) late.set(first.id, lateBy)
     }
 
