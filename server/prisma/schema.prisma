@@ -249,6 +249,12 @@ model User {
   /// made on the sign-in page is saved here on login. Validated in routes/auth.ts, not an enum,
   /// so adding a language doesn't need a migration.
   language     String?
+  /**
+   * The 08:15 check-in / 17:15 check-out reminder pushes - optional (2026-09-29). Compliance checks
+   * are not: they go to every registered device regardless of this, which is why turning reminders
+   * off no longer removes the device's PushSubscription.
+   */
+  remindersEnabled Boolean @default(true)
 
   employee                 Employee?
   stockMovements           StockMovement[]
