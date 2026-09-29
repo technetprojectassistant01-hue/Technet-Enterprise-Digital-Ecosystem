@@ -1520,7 +1520,7 @@ export const fr: Dict = {
       undone: 'Décision annulée — de nouveau en attente',
       rejectTitle: (person: string) => `Refuser les heures sup. — ${person}`,
       reason: 'MOTIF (FACULTATIF)',
-      rulesNote: "Horaires standard : lundi–vendredi 08:00–17:00, samedi 08:00–13:00. Les heures supplémentaires comptent après la fermeture, au dernier départ de la journée ; tout le travail du dimanche compte. Les journées encore pointées n'apparaissent qu'une fois terminées.",
+      rulesNote: "Horaires standard : lundi–vendredi 08:00–17:00, samedi 08:00–13:00. Les heures supplémentaires comptent à partir de 17:30 en semaine et 13:30 le samedi, jusqu'à l'heure de départ saisie par le technicien au dernier départ de la journée (l'heure de l'application si rien n'a été saisi). Une heure saisie très différente de celle de l'application affiche un avertissement. Tout le travail du dimanche compte. Les journées encore pointées n'apparaissent qu'une fois terminées.",
       status: { PENDING: 'En attente', APPROVED: 'Validées', REJECTED: 'Refusées' },
       anomalyWarning: (n: number) => `${n} anomalie${n === 1 ? '' : 's'} de présence ce jour-là. À vérifier avant de valider.`,
       dataIssues: {
