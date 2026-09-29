@@ -377,7 +377,7 @@ export const fr: Dict = {
     statOvertime: 'HEURES SUP.',
     lateBy: (time: string) => `Retard ${time}`,
     overtimeBy: (time: string) => `Heures sup. ${time}`,
-    scheduleNote: 'Horaires : lundi–vendredi 08:00–17:00, samedi 08:00–13:00. Le retard se calcule sur votre premier pointage de la journée. Les heures supplémentaires apparaissent ici une fois validées par les RH.',
+    scheduleNote: 'Horaires : lundi–vendredi 08:00–17:00, samedi 08:00–13:00. Vous êtes en retard si votre premier pointage de la journée, enregistré par l\'application, est après 08:30. Les heures supplémentaires apparaissent ici une fois validées par les RH.',
     colDate: 'DATE',
     colIn: "HEURE D'ARRIVÉE",
     colOut: 'HEURE DE DÉPART',
