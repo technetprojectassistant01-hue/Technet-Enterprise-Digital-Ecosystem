@@ -237,6 +237,11 @@ export const fr: Dict = {
     retakePhoto: 'Reprendre',
     photoRequired: "Prenez d'abord une photo d'arrivée",
     photoFailed: 'Impossible de lire la photo. Veuillez réessayer.',
+    notificationsOff: "Les notifications sont désactivées sur ce téléphone. Les contrôles de conformité arrivent par notification : activez-les.",
+    notificationsBlocked: "Les notifications sont bloquées pour cette application, les contrôles de conformité ne peuvent donc pas vous parvenir. Autorisez les notifications pour ce site dans les réglages du téléphone ou du navigateur.",
+    notificationsNeedHomeScreen: "Sur iPhone, les contrôles de conformité n'arrivent qu'une fois l'application sur l'écran d'accueil : touchez Partager, puis Sur l'écran d'accueil, et ouvrez-la depuis là.",
+    notificationsUnsupported: 'Ce navigateur ne peut pas recevoir de notifications, les contrôles de conformité ne peuvent donc pas vous parvenir ici. Utilisez l\'application sur votre téléphone.',
+    turnOnNotifications: 'Activer les notifications',
     pingNotice:
       "Tant que vous êtes pointé, votre position est aussi relevée toutes les 15 minutes lorsque l'application est ouverte à l'écran. Elle ne peut pas l'être quand l'application est fermée ou le téléphone verrouillé.",
     trackingNotice: (withPhoto: boolean) =>
