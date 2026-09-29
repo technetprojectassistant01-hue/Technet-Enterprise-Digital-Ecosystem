@@ -2,7 +2,8 @@
  * Overtime from site attendance, against Technet's standard hours (given by management,
  * 2026-09-14): Monday–Friday 08:00–17:00, Saturday 08:00–13:00, Sunday not a working day.
  * Overtime starts half an hour after closing (management, 2026-09-29): 17:30 on weekdays, 13:30 on
- * Saturday - that half hour is not counted.
+ * Saturday - that half hour is not counted. Likewise lateness counts from 08:30, not 08:00, and from
+ * the recorded (app) check-in time.
  * Mirrors client/src/lib/workSchedule.ts — keep the two in step.
  *
  * Mauritius is UTC+4 all year (no daylight saving), so local wall-clock time is a fixed offset
@@ -11,15 +12,18 @@
 
 export const MAURITIUS_OFFSET_MINUTES = 4 * 60;
 
-/** start/end = working hours; overtimeFrom = when overtime starts counting (minutes of the day). */
-const SCHEDULE: Record<number, { start: number; end: number; overtimeFrom: number } | null> = {
+/**
+ * start/end = working hours; lateFrom = when lateness starts counting; overtimeFrom = when overtime
+ * starts counting (all minutes of the day).
+ */
+const SCHEDULE: Record<number, { start: number; end: number; lateFrom: number; overtimeFrom: number } | null> = {
   0: null,
-  1: { start: 480, end: 1020, overtimeFrom: 1050 },
-  2: { start: 480, end: 1020, overtimeFrom: 1050 },
-  3: { start: 480, end: 1020, overtimeFrom: 1050 },
-  4: { start: 480, end: 1020, overtimeFrom: 1050 },
-  5: { start: 480, end: 1020, overtimeFrom: 1050 },
-  6: { start: 480, end: 780, overtimeFrom: 810 },
+  1: { start: 480, end: 1020, lateFrom: 510, overtimeFrom: 1050 },
+  2: { start: 480, end: 1020, lateFrom: 510, overtimeFrom: 1050 },
+  3: { start: 480, end: 1020, lateFrom: 510, overtimeFrom: 1050 },
+  4: { start: 480, end: 1020, lateFrom: 510, overtimeFrom: 1050 },
+  5: { start: 480, end: 1020, lateFrom: 510, overtimeFrom: 1050 },
+  6: { start: 480, end: 780, lateFrom: 510, overtimeFrom: 810 },
 };
 
 export interface OvertimeVisit {
@@ -104,7 +108,8 @@ export function computeLateByVisit(visits: (OvertimeVisit & { id: string })[]): 
   for (const v of firstByDay.values()) {
     const schedule = SCHEDULE[local(v.checkInAt).weekday];
     if (!schedule) continue;
-    const by = recordedMinutes(v.checkInAt) - schedule.start;
+    // From 08:30, by the recorded check-in time - the typed arrival never decides lateness.
+    const by = recordedMinutes(v.checkInAt) - schedule.lateFrom;
     if (by > 0) late.set(v.id, by);
   }
   return late;
