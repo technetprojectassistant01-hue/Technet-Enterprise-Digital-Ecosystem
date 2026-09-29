@@ -1708,7 +1708,12 @@ smaller than they looked:
   calls with a wrong secret), so that sweep never ran and Alan's 28 Sep check-out stayed as
   coordinates. `fillMissingPlaces(2)` now also runs after every check-in and check-out. Everything
   else on the poller (audit pushes, long-shift reminders, missed pings, photo purge, job geocoding)
-  still depends on cron-job.org - check its execution history first when any of them goes quiet.
+  still depends on cron-job.org - check its execution history first when any of them goes quiet. The job had been **auto-disabled by cron-job.org** after repeated failures (confirmed by the user;
+  last failure 2026-09-28 07:26). The handler now replies **202 at once** and runs the work in the
+  background (`runAttendancePoller()`, audits first, each step isolated by `step()` so one throw is
+  logged, never a 500; overlapping runs skipped). Results/errors go to Render's logs, not the HTTP
+  response. A Render cold start at the 07:00 first call can still time out once a day - a single
+  failure doesn't trip cron-job.org's disable threshold.
 - **Item D (long-open-shift reminder)**: the existing checkout reminder (§27f) only fires once
   daily at a fixed 17:15 Mauritius - nothing reminded someone whose shift ran unusually long
   intra-day. Extended the existing, already-frequently-polled `run-attendance-audits` endpoint
