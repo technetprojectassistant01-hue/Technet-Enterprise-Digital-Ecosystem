@@ -1515,7 +1515,7 @@ export const en = {
       undone: 'Decision undone — back to pending',
       rejectTitle: (person: string) => `Reject overtime — ${person}`,
       reason: 'REASON (OPTIONAL)',
-      rulesNote: 'Standard hours: Monday–Friday 08:00–17:00, Saturday 08:00–13:00. Overtime is time after closing on the day\'s last check-out; all time worked on a Sunday counts. Days still checked in don\'t appear until they finish.',
+      rulesNote: 'Standard hours: Monday–Friday 08:00–17:00, Saturday 08:00–13:00. Overtime counts from 17:30 on weekdays and 13:30 on Saturday, up to the check-out time the technician typed on the day\'s last check-out (the app\'s own time if nothing was typed). A typed time far from the app\'s shows a warning. All time worked on a Sunday counts. Days still checked in don\'t appear until they finish.',
       status: { PENDING: 'Pending', APPROVED: 'Approved', REJECTED: 'Rejected' },
       anomalyWarning: (n: number) => `${n} attendance anomal${n === 1 ? 'y' : 'ies'} this day. Check before approving.`,
       dataIssues: {
