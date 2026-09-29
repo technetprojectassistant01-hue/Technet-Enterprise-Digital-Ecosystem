@@ -1514,7 +1514,7 @@ export const mfe: Dict = {
       undone: 'Desizion defer — retourn pe atann',
       rejectTitle: (person: string) => `Refiz ler sip. — ${person}`,
       reason: 'RAIZON (SI OU ANVI)',
-      rulesNote: 'Ler standar: lindi–vandredi 08:00–17:00, sanmdi 08:00–13:00. Ler siplemanter se letan apre ler fermeti lor dernie depar lazourne; tou travay dimans konte. Bann zour ki ankor pointe pa paret ziska zot fini.',
+      rulesNote: 'Ler standar: lindi–vandredi 08:00–17:00, sanmdi 08:00–13:00. Ler siplemanter konte depi 17:30 lasemenn ek 13:30 sanmdi, ziska ler depar ki teknisien la finn ekrir lor dernie depar lazourne (ler aplikasion la si li pa finn ekrir nanye). Enn ler ekrir ki lwin ar ler aplikasion la montre enn avertisman. Tou travay dimans konte. Bann zour ki ankor pointe pa paret ziska zot fini.',
       status: { PENDING: 'Pe atann', APPROVED: 'Aprouve', REJECTED: 'Refize' },
       anomalyWarning: (n: number) => `${n} anomali prezans sa zour la. Get sa avan aprouve.`,
       dataIssues: {
