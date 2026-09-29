@@ -241,6 +241,11 @@ export const mfe: Dict = {
     retakePhoto: 'Repran',
     photoRequired: 'Pran enn foto lariver avan',
     photoFailed: 'Pa finn kapav lir foto la. Reseye.',
+    notificationsOff: 'Notifikasion ferme lor sa telefonn la. Kontrol konformite vini par notifikasion, alor ouver zot.',
+    notificationsBlocked: 'Notifikasion blok pou sa aplikasion la, alor kontrol konformite pa kapav ariv ou. Permet notifikasion pou sa sit la dan paramet ou telefonn ouswa navigater.',
+    notificationsNeedHomeScreen: 'Lor iPhone, kontrol konformite ariv zis kan aplikasion la lor ou ekran dakey: tap Share, apre Add to Home Screen, ek ouver li depi la.',
+    notificationsUnsupported: 'Sa navigater la pa kapav resevwar notifikasion, alor kontrol konformite pa kapav ariv ou isi. Servi aplikasion la lor ou telefonn.',
+    turnOnNotifications: 'Ouver notifikasion',
     pingNotice:
       'Pandan ki ou pointe, ou pozision osi pran sak 15 minit kan aplikasion la ouver lor ou ekran. Li pa kapav pran kan aplikasion la ferme ouswa ou telefonn blok.',
     trackingNotice: (withPhoto: boolean) =>
