@@ -380,7 +380,7 @@ export const mfe: Dict = {
     statOvertime: 'LER SIPLEMANTER',
     lateBy: (time: string) => `An reta ${time}`,
     overtimeBy: (time: string) => `Ler sip. ${time}`,
-    scheduleNote: 'Ler travay: lindi–vandredi 08:00–17:00, sanmdi 08:00–13:00. Reta kalkile lor ou premie pointaz lazourne. Ler siplemanter paret isi kan RH finn aprouv li.',
+    scheduleNote: 'Ler travay: lindi–vandredi 08:00–17:00, sanmdi 08:00–13:00. Ou an reta si ou premie pointaz lazourne, dapre ler aplikasion la, apre 08:30. Ler siplemanter paret isi kan RH finn aprouv li.',
     colDate: 'DAT',
     colIn: 'LER LARIVER',
     colOut: 'LER DEPAR',
