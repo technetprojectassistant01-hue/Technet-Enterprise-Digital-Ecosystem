@@ -2,6 +2,34 @@
 
 This file is a full handoff/onboarding summary for a new Claude session picking up work on this project. It covers what the project is, what's been built, why, and how work here is expected to be done. Read this before starting any task in this repo.
 
+## 0. Latest state (2026-09-29) - read this first
+
+The newest work is the **verified-attendance overhaul, §30** - all nine sections of the spec are built
+and live. In short:
+
+- **Check-in** (`AttendanceWidget.tsx`): GPS + accuracy + phone fix time, camera photo (90-day delete,
+  `ATTENDANCE_PHOTO_REQUIRED`), today's single job pre-filled and linked, "already checked in" dialog,
+  location/photo disclosure notice. Server receive time is official.
+- **During a shift:** 15-minute foreground pings (`AttendancePing`, `lib/useShiftPings.ts`) alongside the
+  random push compliance checks (§28). No background tracking is possible from a web app - say so.
+- **Anomaly engine** (`lib/anomalyRules.ts` + `lib/anomalies.ts`): 11 rules, one open anomaly per type
+  per visit; reviewed on Operations -> Attendance Anomalies (map card, Confirm Genuine / False positive /
+  Violation / Dismiss / Undo). Verified / Unverified / Flagged badge on the registers.
+- **Known Places** (learned from confirmed check-ins), **Live Map** (15 s refresh), **employee home
+  location** (HR-only `EmployeeHome` table, CHECKIN_NEAR_HOME).
+- **Pay rules now (management, 2026-09-29):** lateness from **08:30** by the **recorded** check-in time;
+  overtime from **17:30** weekdays / **13:30** Saturday up to the **typed** check-out time (recorded if
+  none typed). TIME_MISMATCH flags a typed vs recorded gap > 15 min and warns on overtime approval.
+- **Notifications:** every technician's phone is registered at Check In; the app asks with its own
+  dialog after check-in and re-asks until allowed; 08:15/17:15 reminders are optional
+  (`User.remindersEnabled`), compliance checks are not.
+- **Scheduler:** cron-job.org calls `POST /api/push/run-attendance-audits`; it had silently stopped
+  (auto-disabled) 26-29 Sep. The handler now answers 202 at once and runs isolated steps in the
+  background. If audits, reminders, missed pings or place-name retries go quiet, check cron-job.org's
+  execution history first.
+- **Not yet done:** no browser or real-phone testing from this machine; the GPS attendance policy has had
+  no legal / Data Protection Act review.
+
 ## 1. What this project is
 
 **Technet Engineering** is a Mauritius-based multi-service engineering firm (10+ years old) doing electrical, ELV/security, mechanical, plumbing, and safety work for commercial customers. **TEDE (Technet Enterprise Digital Ecosystem)**, internally also called "Technet Digital," is a from-scratch internal web platform being built to digitize and unify their operations: sales, finance, procurement, HR/payroll, project/work-order management, field technician tracking, asset maintenance, and (eventually) customer self-service and marketing/analytics.
@@ -16,7 +44,7 @@ There is a formal **SDD (Software Design Document)**, the actual source of truth
 - **Client**: React 19 + TypeScript + Vite. Routing via `react-router-dom` v7. Styling: Tailwind CSS v4. Icons: `lucide-react`. No UI component library — hand-built components in `client/src/dashboard/ui.tsx` (Panel, Badge, Modal, EmptyState, TableSkeleton, StatCard, etc.) reused everywhere.
 - **Server**: Node.js + Express 5 + TypeScript, run via `tsx`. Auth via JWT in an httpOnly cookie (not bearer tokens) — see `server/src/routes/auth.ts`.
 - **Database**: PostgreSQL via **Prisma ORM 7.x** using the `@prisma/adapter-pg` driver adapter (not Prisma's default engine). Hosted on **Neon** (serverless Postgres — has a cold-start delay of ~2.5–9s after idle; don't mistake this for a bug when a page looks stuck loading right after a period of inactivity).
-- **Testing**: `vitest` on the server (`npm run test -w server`), currently 112 tests across 18 files — lib helpers plus route-level validator/transition tests. No client automated test suite — client changes are verified via `tsc -b` (typecheck) and manual/Playwright browser checks.
+- **Testing**: `vitest` on the server (`npm run test -w server`), 248 tests across 29 files as of 2026-09-29 — lib helpers plus route-level validator/transition tests. No client automated test suite — client changes are verified via `tsc -b` (typecheck) and manual/Playwright browser checks.
 - **Email**: Resend (password reset emails).
 - **PDF generation**: `pdfkit` (quotations/invoices/purchase order documents).
 
@@ -68,7 +96,7 @@ Everyone lands on **Overview** (`/dashboard`) — as of 2026-08-19 this is real,
 | — Projects | Built | Project registry, assignments, status history |
 | — Documents | Built | File storage (DB `Bytes` column, not S3/cloud storage), categorized by Contract/Invoice/HR/Project/General/Quotation |
 | **Technet Store** (was Technet Maintenance) | **Rebuilt as Tools & Equipment** (2026-09-14) | See §21. Two tabs: **Tools & Equipment** (`/dashboard/store/tools`, the individually-tracked tool register with who holds what) and **Tool Requests** (`/dashboard/store/requests`). It used to be customer-equipment maintenance (Assets/Contracts/Requests/Schedule + maintenance visit reports) — those **screens were removed at the user's request**, but the tables, data and `/api/maintenance-*` routes were deliberately kept (see §21). |
-| **Technet Operations** | Built | Work Orders (now with a `WAITING_FOR_PARTS`/`REOPENED` lifecycle, added 2026-08-19), Daily Reports, Intervention Reports, Team Attendance (reverse-geocoded place names, past-employee filter, PDF export, §29), Field Operations, Attendance Anomalies (§28/§29, random GPS audit pings + nudge push — **live in production**, `ATTENDANCE_AUDIT_ENABLED=true`) — see §7, this is where most recent work has concentrated |
+| **Technet Operations** | Built | Work Orders (now with a `WAITING_FOR_PARTS`/`REOPENED` lifecycle, added 2026-08-19), Daily Reports, Intervention Reports, Team Attendance (reverse-geocoded place names, past-employee filter, PDF export, §29), Field Operations, Attendance Anomalies (§28/§29 audit pings + nudge push, **live**, `ATTENDANCE_AUDIT_ENABLED=true`; since §30 the full anomaly-rule review page with map cards), Live Map and Known Places (§30) — see §7, this is where most recent work has concentrated |
 | **Technet Workforce** | Built | Restructured 2026-08-20 per manager/stakeholder discussion, to stop ERP HR and Workforce covering the same ground. Three tabs: **Availability** (`/dashboard/workforce/availability`, default landing page) — read-only "who's available today" grouped into Available/On Leave/Absent, built on the existing manual attendance register (no real biometric attendance-machine integration exists — see §11), visible to HR **and Operations Managers** (`WORKFORCE_VIEW_ROLES`) since Operations consults it before assigning jobs, though job assignment itself stays in Operations, not Workforce. **Attendance** (moved from ERP HR — daily register + timesheets, HR-only edit rights). **Payroll** (run creation, per-employee line breakdown, net pay computation, HR-only). |
 | **Technet Connect** | **Built** (2026-08-24) | Customer self-service portal at `/portal/*` — a fully separate auth domain from staff, not the internal `Role` enum (see §6). Customers view their own quotations/invoices (SENT+ only, drafts hidden) with PDF download, track job/work-order status (customer-safe field subset — no GPS, no technician names), and submit quote requests. Staff grants/resets/revokes portal access from the Customers page (`/dashboard/erp/finance/customers`), and manages incoming requests from a new "Quote Requests" tab on the Quotations page, converting one into a real draft `Quotation`. No self-registration — staff-granted only. |
 | **Technet Digital Marketing** | **Built — Phase 1 only** (2026-08-26) | `/dashboard/marketing` — Campaigns (`MarketingCampaign`) and a flat, filterable Content Calendar across all campaigns' `MarketingPost`s (title/platform/copy/scheduled date/status). Deliberately no AI, no auto-publish, no real platform integrations (Phases 2/3 of a 3-phase scoping plan — see §10a) — Marketing plans posts here and marks them Posted by hand after publishing elsewhere themselves. Gated to `MARKETING_ROLES` (ADMIN + SALES_OFFICER — no confirmed real owner yet, see §6). |
@@ -76,7 +104,7 @@ Everyone lands on **Overview** (`/dashboard`) — as of 2026-08-19 this is real,
 | **Security** (System nav) | **Built** (2026-08-24) | `/dashboard/security` — "My Account" tab (any authenticated user: their own recent login history, `SecurityEvent` model) + "Audit Log" tab (ADMIN-only: company-wide, filterable by event type/date, paginated). Scoped to genuinely security-relevant events only (login success/fail, password change/reset, user create/role-change/delete) — deliberately not a general change-history log across every ERP record. Also added a "Reset Password" action to User Management (`/dashboard/users`), which was already a supported API capability but never exposed in the UI. |
 | Settings, User Management | Built | Admin-only user management (`/dashboard/users`). **Logins are admin-managed — see §20. There is deliberately no self-service password change.** |
 | **Help Center** | **Built** (2026-09-11) | `client/src/HelpCenterPage.tsx` — support line **5885 1000** (tap-to-call `tel:+23058851000`) plus a searchable FAQ. One content component served twice: inside the shell at `/dashboard/help` (sidebar "Help Center", footer "Contact Support" → `#contact`; every role, outside the `FIELD_ONLY_ROLES` gate) and as a public page at `/help` (the sign-in / forgot / reset pages' "Help Center" + "Contact Support" links, previously dead `href="#"`). Static, so it opens offline. **Every FAQ answer describes real current behaviour — when a feature it mentions changes (attendance fields, offline sync, leave, install), update the answer too.** No support hours or email were given, so none are shown. |
-| **Privacy / Terms / Security pages** | **Built** (2026-09-14) | `client/src/LegalPage.tsx`, text in `legal.*` of all three dictionaries. Public at `/privacy`, `/terms`, `/security` (sign-in/forgot/reset footers); in the shell at `/dashboard/privacy` and `/dashboard/terms`, while the shell's "Security Audit" footer link goes to the real `/dashboard/security` log. **Drafted by Claude, not reviewed by a lawyer or management.** Like the Help Center, every statement describes real behaviour (data collected, GPS only at check-in/out, providers Cloudflare/Render/Neon/Nominatim/push/Resend, no analytics, no automatic deletion) — update it when any of that changes. |
+| **Privacy / Terms / Security pages** | **Built** (2026-09-14) | `client/src/LegalPage.tsx`, text in `legal.*` of all three dictionaries. Public at `/privacy`, `/terms`, `/security` (sign-in/forgot/reset footers); in the shell at `/dashboard/privacy` and `/dashboard/terms`, while the shell's "Security Audit" footer link goes to the real `/dashboard/security` log. **Drafted by Claude, not reviewed by a lawyer or management.** Like the Help Center, every statement describes real behaviour (data collected; location at check-in/out, every 15 min while the app is open, and on answered compliance checks; flags reviewed by managers; check-in photos deleted after 90 days; HR-only home address; providers Cloudflare/Render/Neon/OpenStreetMap/push/Resend; no analytics - rewritten 2026-09-28, §30k) — update it when any of that changes. |
 | **Notifications** | **Built** (2026-08-19), in-app only | `server/src/lib/notifications.ts` (`notifyUser`/`notifyEmployee`/`notifyRoles`), `/api/notifications`, bell icon in `Dashboard.tsx` header (`NotificationBell.tsx`) + Overview's Recent Activity panel. Triggers, as of 2026-09-11 (grep `notifyUser(`/`notifyEmployee(`/`notifyRoles(` under `server/src/routes/` for the live list — this one has gone stale before): leave approve/reject, self-service leave submit → HR, requisition approve/reject, work order technician assignment, work order status change, quotation accept/reject, portal quote request submit → Sales, daily report submit+review, intervention report submit+review, maintenance request schedule/cancel, maintenance report submit+review+completion, project assignment, supervisor-requested location check (§13 item 2), technician check-in → Admin/Operations (§18). **In-app only — no email/SMS**, 60s polling. Separately, Web Push *does* exist but only for the 08:15 check-in reminder (§18), on its own `PushSubscription` table — it is not wired to this notification system, so adding a `NotificationType` does not send a device notification. |
 
 **Offline field capture + sync is built** (2026-09-09, §14): the five technician submissions (check-in, check-out, daily report, maintenance report, intervention report) save to the device on a signal drop and auto-upload on reconnect, and the technician's own job info is cached for offline viewing.
@@ -201,10 +229,13 @@ Grouped by domain (not exhaustive on fields — read the schema for that):
 
 ## 9. Working conventions (important — established through explicit user correction)
 
-- **Commit granularity**: commit and push **every single file change individually**, immediately after it's verified working (a passing `tsc`/build), not batched by feature or held until a todo list is "done." This was corrected twice by the user (once early on, once again on a ~15-file RBAC pass) — don't let "commit" become a single final step.
+- **Commit granularity**: commit **and push** every single file change individually - one file per commit, one push per commit, immediately after it's verified (a passing `tsc`/build). Not batched by feature, not held locally. Corrected by the user several times (early on, a ~15-file RBAC pass, 2026-09-24, and 2026-09-28); §23's 2026-09-14 "per finished menu" rule is superseded. Order pushes so a migration lands before code that reads it, and client support before a server rule that requires it (e.g. the check-in photo).
+- **No Claude attribution**: no `Co-Authored-By: Claude` or `Claude-Session:` lines in commits or PRs - only Nadia shows as contributor. On 2026-09-28 the history of `main` and `user-manual` was rewritten to strip them from Nadia's commits only (Deborah606-byte's commits were restored byte-identical), so every commit hash from before that date changed; hashes quoted in older sections of this file no longer resolve. A pre-rewrite backup bundle is at `Desktop/Technet TEDE/TEDE-history-backup-2026-09-28.bundle`.
+- **Migrations reach the live DB by deploy**: `server/.env` points at the live Neon database, and running `prisma migrate deploy` from this machine is blocked by the Claude Code safety check. Write the migration file, `prisma generate` locally, and push - Render runs `migrate deploy` on start. Keep migrations additive, and don't use an enum value in the same migration that adds it (Postgres refuses).
+- **Editing from the shell**: complex multi-line edits go in a Python script file run with `python`, not an inline heredoc - the Bash tool has dropped backslashes and mangled quotes. In the i18n dictionaries watch apostrophes inside single-quoted strings (`day\'s`, `l\'application`); `tsc -b` catches them.
 - **Verification pattern**: for server logic, write a disposable `server/scratch-*.ts` script (dotenv + tsx + real Prisma calls + real `fetch` against the running dev server, cookie-based auth via parsing `Set-Cookie`), run it, confirm PASS/FAIL output, then delete it. For visual/UI confirmation, write a disposable script in the sibling `pw-check/` directory using Playwright, screenshot key states, read the screenshots, then delete the script.
 - **Neon cold starts**: a screenshot taken immediately after an action can catch a stale/loading intermediate render (2.5–9s delay after DB idle). Don't conclude a regression from a single quick screenshot — reload with a longer wait and/or check the database directly before concluding something's broken. A 4-min keep-warm ping (§3, `server/src/lib/keepWarm.ts`) mitigates this in prod once the server's up, but doesn't eliminate the very-first-request-after-idle case, and does nothing in local dev (it still runs, but the dev server restarts constantly).
-- **Honesty constraints** (a recurring theme — don't fake capabilities that don't exist): no embedded interactive map anywhere (no Google Maps API key configured; every location is a plain `mapLink()` → `google.com/maps?q=lat,lng` URL); GPS "periodic" tracking is inherently foreground-tab-only in a browser SPA (no service worker); geocoding is a free best-effort service, not pinpoint-accurate. These limitations are meant to be surfaced explicitly to the user, not hidden.
+- **Honesty constraints** (a recurring theme — don't fake capabilities that don't exist): maps are Leaflet + free OpenStreetMap tiles (no Google key) on the Anomalies cards, Live Map and Known Places only - registers still use plain `mapLink()` links; location pings are foreground-only in a web app (none while the app is closed or the phone locked) and every screen that shows them says so; geocoding is a free best-effort service, not pinpoint-accurate. These limitations are meant to be surfaced explicitly to the user, not hidden.
 - **Keep the interface simple** — many of Technet's technicians are not highly technical. Prefer extending existing UI surfaces over adding new ones (see §7a — the two-check-in mistake is the cautionary example).
 - Prisma migrations: `prisma migrate dev` can hang indefinitely in this non-interactive shell environment (it waits on an interactive prompt with no stdin attached). If it hangs, kill it and instead hand-write the migration SQL file under `prisma/migrations/<timestamp>_<name>/migration.sql` following the existing folder convention, then apply with `prisma migrate deploy` (non-interactive), then `prisma generate`.
 - **Client typecheck**: `client/tsconfig.json` is a TypeScript project-references root (`"files":
@@ -591,7 +622,7 @@ If a future task references something from the SDD (a specific API path like `/a
 
 ## 12. Where to look for more history
 
-- `git log --oneline` in the repo root — 173+ commits from 2026-07-20 to present, one logical change per commit with descriptive messages (per the convention above), effectively a full changelog.
+- `git log --oneline` in the repo root — about 1,100 commits from 2026-07-20 to present, one file per commit with descriptive messages, effectively a full changelog. Commit hashes changed in the 2026-09-28 history rewrite (§9), so hashes quoted in older sections of this file are stale; search by message instead.
 - The auto-memory system (Claude-side, not in this repo) tracks: commit-granularity feedback, the GPS-attendance feature's evolving architecture, the deliberate geocoding-provider choice, the SDD's location and divergences from actual implementation (§11), and — as of 2026-08-19 — a manager-meeting brief covering intervention report search/breakdown, field-entry friction, attendance-trust confirmation, and offline/PWA scoping, actively being worked through starting 2026-08-20. This document folds their content in where practical, but they may have been updated further since this file was last written — check memory for anything time-sensitive.
 
 ## 13. Active work as of 2026-08-20 — manager-meeting follow-ups
@@ -1073,11 +1104,11 @@ data the only assigned work order was scheduled 14 August and still SCHEDULED, s
 was considered and left out as a separate decision.
 
 **Work hours** live in `client/src/lib/workSchedule.ts` (given by management): Mon–Fri 08:00–17:00,
-Sat 08:00–13:00, Sunday not a working day. My Attendance shows a **Late** badge when the day's first
-check-in is after the start, and **Overtime** for the day's last check-out past closing (all of a Sunday
-counts; a day with an open session gets none yet). Calculated from the times as shown in the table (the
-typed time if any, else the recorded one) so a badge always matches its row — so a technician's typed time
-decides it, not the GPS timestamp. Public holidays are not treated specially yet. The export is a PDF,
+Sat 08:00–13:00, Sunday not a working day. **Current rules (2026-09-29, superseding what was here):**
+**Late** when the day's first check-in, by the **recorded** time, is after **08:30**; **Overtime** from
+**17:30** weekdays / **13:30** Saturday to the day's last **typed** check-out (recorded if none typed; all
+of a Sunday counts; an open day gets none yet). Mirrored on the server in `lib/overtime.ts` (`lateFrom`,
+`overtimeFrom`) - keep both in step. See §30b. Public holidays are not treated specially yet. The export is a PDF,
 not CSV (user request) — see "Attendance PDF + validation" below.
 
 **Overtime needs HR approval** (added the same day, user request). Overtime is calculated on the
@@ -1121,8 +1152,8 @@ disposable scratch scripts against the real DB plus rendered PDFs; the dialog an
 
 ## 23. Technician-side tidy-up and My Documents (2026-09-14)
 
-- **Commits are now per finished menu, not per file** — the user's explicit instruction this day,
-  replacing §9's per-file rule. Batch a menu's changes, verify, then commit and push together.
+- ~~Commits per finished menu~~ - **superseded**: the user went back to one file per commit, pushed
+  individually (§9).
 - **Module headers can be tabs-only**: `ModuleHeader` title/subtitle are optional. Technet Store and
   Technet Operations show just their tab buttons (user request).
 - **Menu items can be hidden at any depth**: `visibleNav()` in `dashboard/nav.ts` (used by the sidebar
