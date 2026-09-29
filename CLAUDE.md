@@ -1703,7 +1703,12 @@ smaller than they looked:
   the same coordinates resolved fine minutes later, so the failures are transient. `fillMissingPlaces()`
   in `reverseGeocode.ts` now re-resolves up to 6 null check-in/check-out/audit places per run of
   the attendance poller (`placesFilled` in its response), and failed lookups log a warning with the
-  reason.
+  reason. **Correction 2026-09-29:** the poller itself had silently stopped on 2026-09-26 08:36 (last
+  audit push / MISSED mark in the DB; server and route were up, so cron-job.org stopped calling or
+  calls with a wrong secret), so that sweep never ran and Alan's 28 Sep check-out stayed as
+  coordinates. `fillMissingPlaces(2)` now also runs after every check-in and check-out. Everything
+  else on the poller (audit pushes, long-shift reminders, missed pings, photo purge, job geocoding)
+  still depends on cron-job.org - check its execution history first when any of them goes quiet.
 - **Item D (long-open-shift reminder)**: the existing checkout reminder (§27f) only fires once
   daily at a fixed 17:15 Mauritius - nothing reminded someone whose shift ran unusually long
   intra-day. Extended the existing, already-frequently-polled `run-attendance-audits` endpoint
