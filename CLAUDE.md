@@ -1794,8 +1794,19 @@ every check SKIPPED. Now `ensurePushRegistered({ ask: true })` (`lib/pushNotific
 start of the Check In tap (the permission prompt must directly follow the tap for iOS) and registers
 the phone; with permission already granted it registers silently. The check-in card shows an amber
 banner when notifications are off (with "Turn on notifications"), blocked, need the iPhone Home
-Screen install, or are unsupported. Caveat: reminders and compliance checks share one subscription,
-so turning "Reminders on" off also stops compliance checks until the next check-in re-registers.
+Screen install, or are unsupported.
+
+**Reworked the same day (user request):** (1) *Reminders optional, checks not* - `User.remindersEnabled`
+(migration `20260929090000_user_reminders_enabled`, default true), `PUT /api/push/reminders`; the
+08:15/17:15 senders filter on it, compliance checks ignore it, and the "Remind me" toggle now only flips
+that setting - it never removes the `PushSubscription`. The 14-hour "still checked in?" push stays
+mandatory (it catches forgotten check-outs that would inflate typed-time overtime). (2) *Asking again* -
+no website can re-show a phone's permission prompt after "Don't allow". So the Check In tap only
+registers silently when permission is already granted; after a successful check-in the widget shows
+the app's own "Allow notifications?" dialog while permission is undecided (its "Not now" leaves it
+undecided, so it asks again next check-in), and for a phone that has blocked it (or an iPhone without
+the Home Screen install) a how-to-fix dialog with Try again, at most once a day
+(`technet-notif-help-shown` in localStorage).
 
 ### 30c. Historical attendance data-issues report for HR (2026-09-28)
 
