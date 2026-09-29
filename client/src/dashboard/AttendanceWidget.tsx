@@ -7,7 +7,14 @@ import { getPosition, locationPermission, LocationDeniedError } from '../lib/geo
 import { clockOf, currentClockTime, statedTimeSuffix, ATTENDANCE_CHANGED_EVENT } from '../lib/siteAttendance'
 import { Panel, Modal } from './ui'
 import { useToast } from './ToastContext'
-import { disablePushReminders, enablePushReminders, pushSupport } from '../lib/pushNotifications'
+import {
+  disablePushReminders,
+  enablePushReminders,
+  ensurePushRegistered,
+  pushReadiness,
+  pushSupport,
+  type PushReadiness,
+} from '../lib/pushNotifications'
 import { listOutbox, submitOrQueue, subscribeOutbox } from '../lib/outbox'
 import { shrinkImageTo } from '../lib/imageResize'
 import { useT } from '../i18n'
@@ -191,6 +198,8 @@ function AttendanceWidget() {
    * would be refused on sync, after the technician already believed they were checked in.
    */
   const [photoRequired, setPhotoRequired] = useState(true)
+  /** Whether this phone can receive compliance checks; drives the notifications banner. */
+  const [pushState, setPushState] = useState<PushReadiness | null>(() => pushReadiness())
   /** The shrunk check-in photo as a data URL, sent inline with the check-in. */
   const [photo, setPhoto] = useState<string | null>(null)
   const photoInput = useRef<HTMLInputElement>(null)
@@ -341,6 +350,10 @@ function AttendanceWidget() {
       toast.error(t.attendance.photoRequired)
       return
     }
+    // Register this phone for compliance checks (every technician, 2026-09-29). Called here, with
+    // nothing awaited before it in this tap, because iOS only shows a permission prompt that
+    // follows the tap directly. Never blocks the check-in; the result just updates the banner.
+    void ensurePushRegistered({ ask: true }).then(setPushState)
     await withLocation(async (pos) => {
       let queued: boolean
       try {
@@ -460,6 +473,32 @@ function AttendanceWidget() {
             </span>
             {(awaitingSync || (checkedIn && !current)) && (
               <span className="text-xs font-normal text-amber-300">{t.attendance.waitingToSync}</span>
+            )}
+          </div>
+        )}
+
+        {/* Compliance checks arrive as notifications - say plainly when this phone can't get them. */}
+        {pushState && pushState !== 'ready' && (
+          <div className="flex flex-col gap-2 rounded-lg border border-amber-400/40 bg-amber-400/5 px-3 py-2.5 text-xs text-amber-200">
+            <span>
+              {pushState === 'off'
+                ? t.attendance.notificationsOff
+                : pushState === 'blocked'
+                  ? t.attendance.notificationsBlocked
+                  : pushState === 'needs-home-screen'
+                    ? t.attendance.notificationsNeedHomeScreen
+                    : t.attendance.notificationsUnsupported}
+            </span>
+            {pushState === 'off' && (
+              <button
+                type="button"
+                onClick={() => {
+                  void ensurePushRegistered({ ask: true }).then(setPushState)
+                }}
+                className="self-start rounded-md bg-amber-400 px-3 py-1.5 text-xs font-semibold text-ink-950 hover:bg-amber-300"
+              >
+                {t.attendance.turnOnNotifications}
+              </button>
             )}
           </div>
         )}
