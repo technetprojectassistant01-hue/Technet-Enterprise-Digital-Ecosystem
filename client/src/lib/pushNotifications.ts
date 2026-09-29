@@ -2,7 +2,9 @@ import * as api from './api'
 import { isIos, isStandalone } from './platform'
 
 /**
- * Web Push opt-in for the 08:15 check-in reminder.
+ * Web Push for the 08:15 / 17:15 reminders and the random compliance checks. Since 2026-09-29 a
+ * technician's phone is registered at Check In (ensurePushRegistered), not only via "Remind me",
+ * so compliance checks reach every technician - a phone with no registration gets none (SKIPPED).
  *
  * Two things make this awkward and are worth stating rather than rediscovering:
  *
@@ -85,6 +87,42 @@ export async function enablePushReminders(): Promise<void> {
     keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
     userAgent: navigator.userAgent,
   })
+}
+
+export type PushReadiness = 'ready' | 'off' | 'blocked' | 'needs-home-screen' | 'unsupported'
+
+/** Can this phone receive compliance checks and reminders right now, as far as the browser says? */
+export function pushReadiness(): PushReadiness {
+  const support = pushSupport()
+  if (support !== 'supported') return support
+  if (Notification.permission === 'denied') return 'blocked'
+  return Notification.permission === 'granted' ? 'ready' : 'off'
+}
+
+/**
+ * Makes sure this phone is registered for push, so compliance checks reach the technician
+ * (2026-09-29: they are for every technician, not only those who tapped "Remind me").
+ *
+ * With `ask`, and permission not yet decided, it asks - and the prompt is the FIRST thing it
+ * does, before any network wait: iOS only honours a permission request that follows the tap
+ * directly, so callers invoke this at the very start of a click handler (Check In, Turn on).
+ * Without `ask` it never prompts; with permission already granted it registers silently, which
+ * needs no tap. Never throws - returns what it could achieve.
+ */
+export async function ensurePushRegistered({ ask }: { ask: boolean }): Promise<PushReadiness> {
+  const readiness = pushReadiness()
+  if (readiness === 'blocked' || readiness === 'needs-home-screen' || readiness === 'unsupported') return readiness
+  if (readiness === 'off') {
+    if (!ask) return 'off'
+    const permission = await Notification.requestPermission()
+    if (permission !== 'granted') return permission === 'denied' ? 'blocked' : 'off'
+  }
+  try {
+    await enablePushReminders()
+    return 'ready'
+  } catch {
+    return 'off'
+  }
 }
 
 export async function disablePushReminders(): Promise<void> {
