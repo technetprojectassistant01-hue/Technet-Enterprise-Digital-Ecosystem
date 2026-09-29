@@ -1788,6 +1788,15 @@ so a forgotten check-out with "17:40" typed counts as 17:40. The safeguard is th
 (typed vs recorded > 15 min) surfacing as the overtime approval warning. `client/src/lib/workSchedule.ts`
 mirrors both rules. Already-approved `OvertimeDecision` minutes are stored, so they don't change. **Lateness** (same day, management): counted from **08:30** (`lateFrom`, weekdays and Saturday), always from the recorded check-in time - the client's `computeDayFlags` used the typed time before and was switched to the recorded one to match.
 
+**Compliance checks for every technician (2026-09-29):** a check only reaches a phone with a
+`PushSubscription`, and those were created only by the "Remind me" toggle - so Aly (no device) had
+every check SKIPPED. Now `ensurePushRegistered({ ask: true })` (`lib/pushNotifications.ts`) runs at the
+start of the Check In tap (the permission prompt must directly follow the tap for iOS) and registers
+the phone; with permission already granted it registers silently. The check-in card shows an amber
+banner when notifications are off (with "Turn on notifications"), blocked, need the iPhone Home
+Screen install, or are unsupported. Caveat: reminders and compliance checks share one subscription,
+so turning "Reminders on" off also stops compliance checks until the next check-in re-registers.
+
 ### 30c. Historical attendance data-issues report for HR (2026-09-28)
 
 Pure detectors in `server/src/lib/attendanceDataIssues.ts` (tested in its `.test.ts`) find
