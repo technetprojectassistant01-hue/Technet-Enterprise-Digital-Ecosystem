@@ -239,6 +239,11 @@ export const en = {
     retakePhoto: 'Retake',
     photoRequired: 'Take a check-in photo first',
     photoFailed: 'Could not read the photo. Please try again.',
+    notificationsOff: 'Notifications are off on this phone. Compliance checks arrive as notifications, so turn them on.',
+    notificationsBlocked: 'Notifications are blocked for this app, so compliance checks cannot reach you. Allow notifications for this site in your phone or browser settings.',
+    notificationsNeedHomeScreen: 'On iPhone, compliance checks only arrive once the app is on your Home Screen: tap Share, then Add to Home Screen, and open it from there.',
+    notificationsUnsupported: 'This browser cannot receive notifications, so compliance checks cannot reach you here. Use the app on your phone.',
+    turnOnNotifications: 'Turn on notifications',
     pingNotice:
       'While you are checked in, your location is also checked every 15 minutes when this app is open on your screen. It cannot be checked while the app is closed or your phone is locked.',
     trackingNotice: (withPhoto: boolean): string =>
