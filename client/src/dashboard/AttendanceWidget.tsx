@@ -8,7 +8,6 @@ import { clockOf, currentClockTime, statedTimeSuffix, ATTENDANCE_CHANGED_EVENT }
 import { Panel, Modal } from './ui'
 import { useToast } from './ToastContext'
 import {
-  disablePushReminders,
   enablePushReminders,
   ensurePushRegistered,
   pushReadiness,
@@ -25,6 +24,8 @@ const fieldLabelClass = 'text-xs font-semibold tracking-widest text-ink-400'
 
 /** Remembered on the device: the person tapped "Don't allow" on our location dialog. */
 const LOCATION_DECLINED_KEY = 'technet-location-declined'
+/** The day the "notifications are blocked / install to Home Screen" help was last shown. */
+const NOTIF_HELP_SHOWN_KEY = 'technet-notif-help-shown'
 /** Remembered on the device: our first "Allow location?" dialog has been shown. */
 const LOCATION_ASKED_KEY = 'technet-location-asked'
 
@@ -67,28 +68,35 @@ function durationSince(iso: string, now: number, justNow: string): string {
 }
 
 /**
- * Opt-in for the 08:15 weekday check-in reminder. Deliberately a button, not something that fires
- * on load — browsers penalise (and Chrome can block) a site that asks for notification permission
- * without a user gesture. iPhone users must add the app to the Home Screen first (Safari hides
- * PushManager in an ordinary tab), and saying so beats a button that fails invisibly.
+ * The optional 08:15 / 17:15 reminders (2026-09-29: optional; compliance checks are not). Turning
+ * reminders off only changes the setting on the server - the device stays registered, because
+ * compliance checks reach it through the same registration. Turning them on registers the device
+ * first if needed, from this tap (browsers only allow the permission prompt after a gesture).
+ * iPhone users must add the app to the Home Screen first (Safari hides PushManager in a tab).
  */
 function ReminderToggle() {
   const toast = useToast()
   const t = useT()
   const [devices, setDevices] = useState<number | null>(null)
+  const [remindersOn, setRemindersOn] = useState(true)
   const [available, setAvailable] = useState(false)
   const [busy, setBusy] = useState(false)
   const [testBusy, setTestBusy] = useState(false)
   const support = pushSupport()
 
-  useEffect(() => {
-    api
+  function refresh() {
+    return api
       .getPushStatus()
-      .then(({ enabled, devices }) => {
+      .then(({ enabled, devices, remindersEnabled }) => {
         setAvailable(enabled)
         setDevices(devices)
+        setRemindersOn(remindersEnabled !== false)
       })
       .catch(() => setAvailable(false))
+  }
+
+  useEffect(() => {
+    refresh()
   }, [])
 
   if (!available || devices === null || support === 'unsupported') return null
@@ -96,18 +104,20 @@ function ReminderToggle() {
     return <span className="text-xs text-ink-400">{t.attendance.remindersNeedHomeScreen}</span>
   }
 
+  const on = devices > 0 && remindersOn
+
   async function toggle() {
     setBusy(true)
     try {
-      if (devices && devices > 0) {
-        await disablePushReminders()
+      if (on) {
+        await api.setRemindersEnabled(false)
         toast.success(t.attendance.remindersOffToast)
       } else {
-        await enablePushReminders()
+        if (!devices) await enablePushReminders()
+        await api.setRemindersEnabled(true)
         toast.success(t.attendance.remindersOnToast)
       }
-      const status = await api.getPushStatus()
-      setDevices(status.devices)
+      await refresh()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t.attendance.reminderFailed)
     } finally {
@@ -135,8 +145,8 @@ function ReminderToggle() {
         disabled={busy || testBusy}
         className="flex items-center gap-1.5 text-xs text-ink-400 hover:text-cyan-accent disabled:opacity-50"
       >
-        {devices > 0 ? <BellRing className="h-3.5 w-3.5 text-cyan-accent" /> : <BellOff className="h-3.5 w-3.5" />}
-        {devices > 0 ? t.attendance.remindersOn : t.attendance.remindMe}
+        {on ? <BellRing className="h-3.5 w-3.5 text-cyan-accent" /> : <BellOff className="h-3.5 w-3.5" />}
+        {on ? t.attendance.remindersOn : t.attendance.remindMe}
       </button>
       {devices > 0 && (
         <button type="button" onClick={sendTest} disabled={busy || testBusy} className="text-xs text-ink-400 hover:text-cyan-accent disabled:opacity-50">
@@ -200,6 +210,31 @@ function AttendanceWidget() {
   const [photoRequired, setPhotoRequired] = useState(true)
   /** Whether this phone can receive compliance checks; drives the notifications banner. */
   const [pushState, setPushState] = useState<PushReadiness | null>(() => pushReadiness())
+  /**
+   * The app's own notifications dialog after a check-in: 'ask' before the phone's prompt (tapping
+   * "Not now" there leaves the phone's permission undecided, so it can ask again next check-in),
+   * or how to fix a phone that has already blocked notifications / an iPhone without the Home
+   * Screen install - those at most once a day. A phone's own "Don't allow" can't be re-prompted
+   * by any website; only the phone's settings undo it.
+   */
+  const [notifDialog, setNotifDialog] = useState<'ask' | 'blocked' | 'home' | null>(null)
+
+  function offerNotifications() {
+    const readiness = pushReadiness()
+    if (readiness === 'off') {
+      setNotifDialog('ask')
+      return
+    }
+    if (readiness !== 'blocked' && readiness !== 'needs-home-screen') return
+    const today = new Date().toDateString()
+    try {
+      if (localStorage.getItem(NOTIF_HELP_SHOWN_KEY) === today) return
+      localStorage.setItem(NOTIF_HELP_SHOWN_KEY, today)
+    } catch {
+      // Storage blocked: show it anyway.
+    }
+    setNotifDialog(readiness === 'blocked' ? 'blocked' : 'home')
+  }
   /** The shrunk check-in photo as a data URL, sent inline with the check-in. */
   const [photo, setPhoto] = useState<string | null>(null)
   const photoInput = useRef<HTMLInputElement>(null)
@@ -350,10 +385,10 @@ function AttendanceWidget() {
       toast.error(t.attendance.photoRequired)
       return
     }
-    // Register this phone for compliance checks (every technician, 2026-09-29). Called here, with
-    // nothing awaited before it in this tap, because iOS only shows a permission prompt that
-    // follows the tap directly. Never blocks the check-in; the result just updates the banner.
-    void ensurePushRegistered({ ask: true }).then(setPushState)
+    // Register this phone for compliance checks (every technician, 2026-09-29) when permission is
+    // already granted - silently, no prompt. If it isn't, the app's own dialog asks after the
+    // check-in (below), so a mistaken "Don't allow" on the phone's prompt is less likely.
+    void ensurePushRegistered({ ask: false }).then(setPushState)
     await withLocation(async (pos) => {
       let queued: boolean
       try {
@@ -386,6 +421,7 @@ function AttendanceWidget() {
         return
       }
       toast.success(queued ? t.attendance.queued : t.attendance.checkedInToast)
+      offerNotifications()
       window.dispatchEvent(new Event(ATTENDANCE_CHANGED_EVENT))
       // Used up: the next check-in today is most likely somewhere else.
       setTodaysJob(null)
@@ -708,6 +744,77 @@ function AttendanceWidget() {
 
       </div>
     </Panel>
+
+    {notifDialog && (
+      <Modal
+        title={
+          notifDialog === 'ask'
+            ? t.attendance.notifAskTitle
+            : notifDialog === 'blocked'
+              ? t.attendance.notifBlockedTitle
+              : t.attendance.notifHomeTitle
+        }
+        onClose={() => setNotifDialog(null)}
+      >
+        <div className="flex flex-col gap-5">
+          <p className="text-sm text-ink-200">
+            {notifDialog === 'ask'
+              ? t.attendance.notifAskBody
+              : notifDialog === 'blocked'
+                ? t.attendance.notificationsBlocked
+                : t.attendance.notificationsNeedHomeScreen}
+          </p>
+          {notifDialog === 'blocked' && (
+            <ol className="list-decimal space-y-1 pl-5 text-sm text-ink-300">
+              {t.attendance.notifBlockedSteps.map((step) => (
+                <li key={step}>{step}</li>
+              ))}
+            </ol>
+          )}
+          {notifDialog === 'home' ? (
+            <button
+              type="button"
+              onClick={() => setNotifDialog(null)}
+              className="rounded-lg bg-cyan-accent px-4 py-3 text-sm font-semibold text-ink-950 transition hover:bg-cyan-accent-dark"
+            >
+              {t.attendance.notifOk}
+            </button>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setNotifDialog(null)}
+                className="rounded-lg border border-ink-600 px-4 py-3 text-sm font-semibold text-ink-200 transition hover:bg-ink-800"
+              >
+                {t.attendance.notifNotNow}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  // A tap, so the phone's own prompt may follow (ask). For 'blocked' this only
+                  // re-checks: after the technician changed the setting it registers silently.
+                  void ensurePushRegistered({ ask: notifDialog === 'ask' }).then((r) => {
+                    setPushState(r)
+                    if (r === 'ready') {
+                      setNotifDialog(null)
+                      toast.success(t.attendance.notifOnToast)
+                    } else if (r === 'blocked') {
+                      if (notifDialog === 'blocked') toast.error(t.attendance.notifStillBlocked)
+                      setNotifDialog('blocked')
+                    } else {
+                      setNotifDialog(null)
+                    }
+                  })
+                }}
+                className="rounded-lg bg-cyan-accent px-4 py-3 text-sm font-semibold text-ink-950 transition hover:bg-cyan-accent-dark"
+              >
+                {notifDialog === 'ask' ? t.attendance.notifAllow : t.attendance.notifTryAgain}
+              </button>
+            </div>
+          )}
+        </div>
+      </Modal>
+    )}
 
     {alreadyOpen && (
       <Modal title={t.attendance.alreadyCheckedInTitle} onClose={() => setAlreadyOpen(null)}>
