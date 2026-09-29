@@ -6,7 +6,7 @@ import { distanceMeters, SITE_GEOFENCE_RADIUS_METERS } from "../lib/geo";
 import { notifyEmployee, notifyRoles } from "../lib/notifications";
 import { parseClockTime } from "../lib/clockTime";
 import { checkLocationAgainstGps } from "../lib/locationMatch";
-import { reverseGeocodeCached } from "../lib/reverseGeocode";
+import { fillMissingPlaces, reverseGeocodeCached } from "../lib/reverseGeocode";
 import { cancelPendingAudits, scheduleAuditTimes } from "../lib/attendanceAudit";
 import { claimRequest, releaseRequest } from "../lib/idempotency";
 import { notifyHrOfOvertime } from "../lib/overtimeQueue";
@@ -688,6 +688,10 @@ router.post("/check-in", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
 
     // Anomaly rules (lib/anomalies.ts). Not awaited: the technician's check-in must not wait on
     // them, and evaluateVisit never throws. Re-run on every later event of the visit anyway.
+    // Also retry any place names that failed earlier (2 at most, throttled). Not left to the
+    // cron-job.org poller alone: it silently stopped on 2026-09-26 and a failed name then stayed
+    // bare coordinates for good (Alan's 28 Sep check-out). Any check-in or check-out now heals them.
+    void fillMissingPlaces(2).catch(() => undefined);
     void evaluateVisit(siteAttendance.id, {
       leg: "CHECK_IN",
       clientSentAt: parseClientSentAt(req.body),
@@ -791,6 +795,7 @@ router.post("/check-out", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => 
     // Nothing should ping after the shift has ended - cancel whatever audits were still pending.
     await cancelPendingAudits(siteAttendance.id);
     void evaluateVisit(siteAttendance.id, { leg: "CHECK_OUT", clientSentAt: parseClientSentAt(req.body), serverAt: checkOutAt });
+    void fillMissingPlaces(2).catch(() => undefined);
     res.json({ siteAttendance });
   } catch (err) {
     await releaseRequest(clientRequestId);
