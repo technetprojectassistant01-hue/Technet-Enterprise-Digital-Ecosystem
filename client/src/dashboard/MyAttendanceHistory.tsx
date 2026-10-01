@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ChevronLeft, ChevronRight, Download, History } from 'lucide-react'
 import * as api from '../lib/api'
-import type { MyAttendanceVisit } from '../lib/api'
+import type { MyAbsence, MyAttendanceVisit } from '../lib/api'
 import { Panel, Badge, EmptyState, TableSkeleton } from './ui'
 import { ATTENDANCE_CHANGED_EVENT, clockOf, totalTransportCost } from '../lib/siteAttendance'
 import { computeDayFlags } from '../lib/workSchedule'
@@ -37,6 +37,8 @@ function MyAttendanceHistory() {
     return new Date(now.getFullYear(), now.getMonth(), 1)
   })
   const [visits, setVisits] = useState<MyAttendanceVisit[]>([])
+  /** Working days with no check-in - absent until they check in (server/src/lib/absences.ts). */
+  const [absences, setAbsences] = useState<MyAbsence[]>([])
   /** Overtime HR has approved, by day ("YYYY-MM-DD" → minutes). Nothing else is shown as overtime. */
   const [approvedOvertime, setApprovedOvertime] = useState<Map<string, number>>(new Map())
   const [loading, setLoading] = useState(true)
@@ -59,9 +61,10 @@ function MyAttendanceHistory() {
     setError(null)
     api
       .getMyAttendanceHistory(monthKey(cursor))
-      .then(({ visits, approvedOvertime }) => {
+      .then(({ visits, approvedOvertime, absences }) => {
         if (cancelled) return
         setVisits(visits)
+        setAbsences(absences ?? [])
         setApprovedOvertime(new Map(approvedOvertime.map((o) => [o.date, o.minutes])))
       })
       .catch((err) => {
@@ -112,6 +115,15 @@ function MyAttendanceHistory() {
   const totalTransport = visits.reduce((sum, v) => sum + totalTransportCost(v), 0)
   const hoursTotal = t.shared.hoursMinutes(Math.floor(totalMinutes / 60), Math.round(totalMinutes % 60))
 
+  const absentDays = absences.filter((a) => a.status === 'ABSENT').length
+  // Check-ins and absent days in one list, newest first. An absence's "YYYY-MM-DD" sorts with a
+  // visit's local day; within a day it can't collide, since a day with a check-in isn't absent.
+  type Row = { key: string; sort: string; visit?: MyAttendanceVisit; absence?: MyAbsence }
+  const rows: Row[] = [
+    ...visits.map((v) => ({ key: v.id, sort: `${dayKey(v.checkInAt)}T${new Date(v.checkInAt).toTimeString().slice(0, 8)}`, visit: v })),
+    ...absences.map((a) => ({ key: `absent-${a.date}`, sort: `${a.date}T00:00:00`, absence: a })),
+  ].sort((a, b) => (a.sort < b.sort ? 1 : a.sort > b.sort ? -1 : 0))
+
   const monthLabel = `${t.shared.months[cursor.getMonth()]} ${cursor.getFullYear()}`
   const dateFormat = new Intl.DateTimeFormat(t.shared.dateLocale, { weekday: 'short', day: 'numeric', month: 'short' })
 
@@ -148,10 +160,11 @@ function MyAttendanceHistory() {
 
   return (
     <Panel title={t.myAttendance.title} icon={History} action={monthPicker}>
-      {!loading && !error && visits.length > 0 && (
-        <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      {!loading && !error && rows.length > 0 && (
+        <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           {[
             { label: t.myAttendance.statDays, value: String(days) },
+            { label: t.myAttendance.statAbsent, value: String(absentDays) },
             { label: t.myAttendance.statHours, value: hoursTotal },
             { label: t.myAttendance.statLate, value: String(lateDays) },
             { label: t.myAttendance.statOvertime, value: span(overtimeMinutes) },
@@ -169,7 +182,7 @@ function MyAttendanceHistory() {
 
       {loading ? (
         <TableSkeleton rows={4} cols={5} />
-      ) : visits.length === 0 ? (
+      ) : rows.length === 0 ? (
         <EmptyState icon={History} message={t.myAttendance.empty} />
       ) : (
         <div className="overflow-x-auto">
@@ -184,8 +197,23 @@ function MyAttendanceHistory() {
               </tr>
             </thead>
             <tbody>
-              {visits.map((v) => (
-                <tr key={v.id} className="border-b border-ink-800 align-top last:border-0">
+              {rows.map(({ key, visit: v, absence }) =>
+                absence ? (
+                  <tr key={key} className="border-b border-ink-800 bg-red-500/5 align-top last:border-0">
+                    <td className="whitespace-nowrap px-3 py-3 text-ink-100">{dateFormat.format(new Date(`${absence.date}T12:00:00`))}</td>
+                    <td className="px-3 py-3" colSpan={4}>
+                      {absence.status === 'EXCUSED' ? (
+                        <>
+                          <Badge tone="neutral">{t.myAttendance.excused}</Badge>
+                          {absence.note && <span className="ml-2 text-xs text-ink-300">{absence.note}</span>}
+                        </>
+                      ) : (
+                        <Badge tone="danger">{t.myAttendance.absent}</Badge>
+                      )}
+                    </td>
+                  </tr>
+                ) : v ? (
+                <tr key={key} className="border-b border-ink-800 align-top last:border-0">
                   <td className="whitespace-nowrap px-3 py-3 text-ink-100">{dateFormat.format(new Date(v.checkInAt))}</td>
                   <td className="whitespace-nowrap px-3 py-3">
                     <span className="font-mono text-ink-100">{shownTime(v.checkInDeclaredTime, v.checkInAt)}</span>
@@ -229,7 +257,8 @@ function MyAttendanceHistory() {
                   </td>
                   <td className="whitespace-nowrap px-3 py-3 text-ink-100">{totalTransportCost(v).toFixed(2)}</td>
                 </tr>
-              ))}
+                ) : null,
+              )}
             </tbody>
           </table>
         </div>
