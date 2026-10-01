@@ -9,6 +9,7 @@ import VerificationBadge from './VerificationBadge'
 import { computeDayFlags } from '../lib/workSchedule'
 import { mapLink } from '../lib/geolocation'
 import StaffAttendanceExportDialog from './StaffAttendanceExportDialog'
+import AbsencesPanel from './AbsencesPanel'
 import { useT } from '../i18n'
 
 /** Local calendar day of a timestamp, "YYYY-MM-DD" — matches the server's Mauritius day. */
@@ -394,6 +395,8 @@ function StaffAttendancePanel() {
         </div>
       )}
       </Panel>
+      {/* Same month as the register above (2026-10-01: absent until they check in). */}
+      <AbsencesPanel month={cursor} />
     </>
   )
 }
