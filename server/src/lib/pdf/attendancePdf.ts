@@ -32,6 +32,8 @@ export interface AttendancePdfInput {
   late: Map<string, number>;
   /** HR-approved overtime minutes, keyed by visit id (the day's last check-in). */
   overtime: Map<string, number>;
+  /** Working days with no check-in (lib/absences.ts), "YYYY-MM-DD"; EXCUSED carries HR's note. */
+  absences?: { date: string; status: "ABSENT" | "EXCUSED"; note: string | null }[];
 }
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -173,8 +175,12 @@ export function generateAttendancePdf(input: AttendancePdfInput): PDFKit.PDFDocu
   const workedMinutes = visits.reduce((s, v) => (v.checkOutAt ? s + (v.checkOutAt.getTime() - v.checkInAt.getTime()) / 60000 : s), 0);
   const overtimeMinutes = [...input.overtime.values()].reduce((a, b) => a + b, 0);
   const totalTransport = visits.reduce((s, v) => s + transport(v), 0);
+  const absences = input.absences ?? [];
+  const absentCount = absences.filter((a) => a.status === "ABSENT").length;
+  const excusedCount = absences.length - absentCount;
   const summary: [string, string][] = [
     ["Days Present", String(days)],
+    ["Days Absent", excusedCount ? `${absentCount} (+${excusedCount} excused)` : String(absentCount)],
     ["Hours Recorded", span(workedMinutes)],
     ["Days Late", String(input.late.size)],
     ["Approved Overtime", span(overtimeMinutes)],
@@ -228,7 +234,7 @@ export function generateAttendancePdf(input: AttendancePdfInput): PDFKit.PDFDocu
 
   headerRow();
 
-  if (visits.length === 0) {
+  if (visits.length === 0 && absences.length === 0) {
     const y = doc.y;
     doc.font("Body-Italic").fontSize(10).fillColor("#555555").text("No check-ins recorded for this period.", left, y + 8, { width, align: "center" });
     doc.fillColor("#000000");
@@ -236,33 +242,18 @@ export function generateAttendancePdf(input: AttendancePdfInput): PDFKit.PDFDocu
     doc.y = y + 30;
   }
 
-  for (const v of visits) {
+  // Absent days sit among the check-ins in date order, as rows of their own.
+  type Row = { day: string; visit?: AttendancePdfVisit; absence?: (typeof absences)[number] };
+  const dayOfVisit = (v: AttendancePdfVisit) => {
     const l = local(v.checkInAt);
-    const date = `${WEEKDAYS[l.weekday]} ${String(l.day).padStart(2, "0")} ${MONTHS[l.month].slice(0, 3)}`;
-    const hours = v.checkOutAt ? span((v.checkOutAt.getTime() - v.checkInAt.getTime()) / 60000) : "—";
+    return `${l.year}-${String(l.month + 1).padStart(2, "0")}-${String(l.day).padStart(2, "0")}`;
+  };
+  const rows: Row[] = [
+    ...visits.map((v) => ({ day: dayOfVisit(v), visit: v })),
+    ...absences.map((a) => ({ day: a.date, absence: a })),
+  ].sort((a, b) => (a.day === b.day ? 0 : a.day < b.day ? -1 : 1));
 
-    const place: string[] = [];
-    const inPlace = [v.checkInSite, v.checkInNote].filter(Boolean).join(" — ");
-    if (inPlace) place.push(inPlace);
-    const outPlace = [v.checkOutSite, v.checkOutNote].filter(Boolean).join(" — ");
-    if (outPlace && outPlace !== inPlace && !v.checkOutByManager) place.push(`Left from: ${outPlace}`);
-
-    const remarks: string[] = [];
-    if (input.late.has(v.id)) remarks.push(`Late ${span(input.late.get(v.id)!)}`);
-    if (input.overtime.has(v.id)) remarks.push(`Overtime ${span(input.overtime.get(v.id)!)}`);
-    if (!v.checkOutAt) remarks.push("Not checked out");
-    if (v.checkOutByManager) remarks.push("Closed by manager");
-
-    const cells = [
-      date,
-      shownTime(v.checkInDeclaredTime, v.checkInAt),
-      v.checkOutAt ? shownTime(v.checkOutDeclaredTime, v.checkOutAt) : "—",
-      hours,
-      place.join("\n") || "—",
-      transport(v).toFixed(2),
-      remarks.join("\n"),
-    ];
-
+  function drawRow(cells: string[]) {
     doc.font("Body").fontSize(FONT);
     const rowH = Math.max(...cells.map((text, i) => doc.heightOfString(text, { width: colW[i] - 8 }))) + 8;
     if (doc.y + rowH > bottomLimit) {
@@ -282,10 +273,49 @@ export function generateAttendancePdf(input: AttendancePdfInput): PDFKit.PDFDocu
     doc.y = y + rowH;
   }
 
+  for (const row of rows) {
+    if (row.absence) {
+      const [yy, mm, dd] = row.day.split("-").map(Number);
+      const weekday = new Date(Date.UTC(yy, mm - 1, dd)).getUTCDay();
+      const date = `${WEEKDAYS[weekday]} ${String(dd).padStart(2, "0")} ${MONTHS[mm - 1].slice(0, 3)}`;
+      const remark = row.absence.status === "EXCUSED" ? `Excused${row.absence.note ? `: ${row.absence.note}` : ""}` : "Absent";
+      drawRow([date, "—", "—", "—", "—", "—", remark]);
+      continue;
+    }
+    const v = row.visit!;
+    const l = local(v.checkInAt);
+    const date = `${WEEKDAYS[l.weekday]} ${String(l.day).padStart(2, "0")} ${MONTHS[l.month].slice(0, 3)}`;
+    const hours = v.checkOutAt ? span((v.checkOutAt.getTime() - v.checkInAt.getTime()) / 60000) : "—";
+
+    const place: string[] = [];
+    const inPlace = [v.checkInSite, v.checkInNote].filter(Boolean).join(" — ");
+    if (inPlace) place.push(inPlace);
+    const outPlace = [v.checkOutSite, v.checkOutNote].filter(Boolean).join(" — ");
+    if (outPlace && outPlace !== inPlace && !v.checkOutByManager) place.push(`Left from: ${outPlace}`);
+
+    const remarks: string[] = [];
+    if (input.late.has(v.id)) remarks.push(`Late ${span(input.late.get(v.id)!)}`);
+    if (input.overtime.has(v.id)) remarks.push(`Overtime ${span(input.overtime.get(v.id)!)}`);
+    if (!v.checkOutAt) remarks.push("Not checked out");
+    if (v.checkOutByManager) remarks.push("Closed by manager");
+
+    drawRow([
+      date,
+      shownTime(v.checkInDeclaredTime, v.checkInAt),
+      v.checkOutAt ? shownTime(v.checkOutDeclaredTime, v.checkOutAt) : "—",
+      hours,
+      place.join("\n") || "—",
+      transport(v).toFixed(2),
+      remarks.join("\n"),
+    ]);
+  }
+
   // Notes and signatures
   const notes =
     "Times are as entered by the employee at check-in and check-out. Working hours: Monday–Friday 08:00–17:00, " +
-    "Saturday 08:00–13:00. Overtime is shown only once approved by HR.";
+    "Saturday 08:00–13:00. Late: first check-in after 08:30 by the app's recorded time. Overtime counts from 17:30 " +
+    "(Saturday 13:30) and is shown only once approved by HR. Absent: a working day with no check-in (from 1 October " +
+    "2026), excluding public holidays and approved leave; Excused: an absence HR has excused.";
   doc.font("Body-Italic").fontSize(8);
   const notesH = doc.heightOfString(notes, { width });
   if (doc.y + 14 + notesH + 90 > bottomLimit) {
