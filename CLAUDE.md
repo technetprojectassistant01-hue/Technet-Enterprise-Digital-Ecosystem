@@ -20,6 +20,14 @@ and live. In short:
 - **Pay rules now (management, 2026-09-29):** lateness from **08:30** by the **recorded** check-in time;
   overtime from **17:30** weekdays / **13:30** Saturday up to the **typed** check-out time (recorded if
   none typed). TIME_MISMATCH flags a typed vs recorded gap > 15 min and warns on overtime approval.
+- **Absence (2026-10-01):** a technician (FIELD_TECHNICIAN only) with no check-in on a working day is
+  **Absent until they check in** - including today. Computed, never stored (`lib/absences.ts`, tested):
+  Mon-Sat, minus public holidays, approved leave, days before hire date, and anything before
+  2026-10-01. HR/Admin can excuse a day with a note (`AbsenceExcuse`, `/api/absences`). Shown on the
+  Absences panel under the staff register, My Attendance, the attendance PDF (and in the validation
+  fingerprint when excuses exist), and the Live Map's "not checked in today" list. **No pay effect** -
+  payroll doesn't read it (the user didn't choose; a per-day deduction needs management's amount).
+  Not yet wired in: HR's Availability tab still reads the old manual `AttendanceRecord` register.
 - **Notifications:** every technician's phone is registered at Check In; the app asks with its own
   dialog after check-in and re-asks until allowed; 08:15/17:15 reminders are optional
   (`User.remindersEnabled`), compliance checks are not.
