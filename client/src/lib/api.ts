@@ -2123,6 +2123,37 @@ export function getMyAttendance() {
 }
 
 /** One row of the signed-in user's own attendance history — no coordinates or location flags. */
+/** A working day with no check-in (server/src/lib/absences.ts); EXCUSED carries HR's note. */
+export interface MyAbsence {
+  date: string
+  status: AbsenceStatus
+  note: string | null
+}
+
+export type AbsenceStatus = 'ABSENT' | 'EXCUSED'
+
+/** One technician-day of absence, for the registers. */
+export interface AbsenceEntry extends MyAbsence {
+  employeeId: string
+  employee: { id: string; firstName: string; lastName: string; employeeCode: string } | null
+}
+
+/** Absences in a range of Mauritius days ("YYYY-MM-DD", inclusive). */
+export function listAbsences(from: string, to: string, employeeId?: string) {
+  const qs = new URLSearchParams({ from, to, ...(employeeId ? { employeeId } : {}) })
+  return request<{ absences: AbsenceEntry[] }>(`/api/absences?${qs}`)
+}
+
+/** HR excuses one day of absence, with a note. */
+export function excuseAbsence(input: { employeeId: string; date: string; note: string }) {
+  return request<{ excuse: unknown }>('/api/absences/excuse', { method: 'POST', body: JSON.stringify(input) })
+}
+
+/** Undo an excuse - the day shows as Absent again. */
+export function unexcuseAbsence(employeeId: string, date: string) {
+  return request<void>(`/api/absences/excuse?${new URLSearchParams({ employeeId, date })}`, { method: 'DELETE' })
+}
+
 export interface MyAttendanceVisit {
   id: string
   checkInAt: string
@@ -2142,7 +2173,7 @@ export interface MyAttendanceVisit {
 /** `month` is "YYYY-MM"; omit for the current month. */
 export function getMyAttendanceHistory(month?: string) {
   const qs = month ? `?month=${month}` : ''
-  return request<{ visits: MyAttendanceVisit[]; approvedOvertime: { date: string; minutes: number }[] }>(
+  return request<{ visits: MyAttendanceVisit[]; approvedOvertime: { date: string; minutes: number }[]; absences?: MyAbsence[] }>(
     `/api/site-attendance/me/history${qs}`,
   )
 }
