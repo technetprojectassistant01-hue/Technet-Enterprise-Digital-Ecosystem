@@ -35,6 +35,8 @@ function LiveMapPage() {
   const [error, setError] = useState<string | null>(null)
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
+  /** Technicians not checked in today - absent until they check in (server/src/lib/absences.ts). */
+  const [absentToday, setAbsentToday] = useState<string[]>([])
 
   const mapBox = useRef<HTMLDivElement>(null)
   const map = useRef<L.Map | null>(null)
@@ -47,6 +49,20 @@ function LiveMapPage() {
     let cancelled = false
     const load = () => {
       if (document.visibilityState !== 'visible') return
+      const now = new Date()
+      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+      api
+        .listAbsences(today, today)
+        .then(({ absences }) => {
+          if (cancelled) return
+          setAbsentToday(
+            absences
+              .filter((a) => a.status === 'ABSENT')
+              .map((a) => (a.employee ? `${a.employee.firstName} ${a.employee.lastName}` : '—'))
+              .sort(),
+          )
+        })
+        .catch(() => undefined)
       api
         .getLiveShifts()
         .then(({ shifts }) => {
@@ -193,6 +209,16 @@ function LiveMapPage() {
                   </li>
                 ))}
               </ul>
+            )}
+            {absentToday.length > 0 && (
+              <div className="mt-2 rounded-lg border border-red-400/30 px-3 py-2.5">
+                <div className="text-[11px] font-semibold tracking-widest text-red-400">{t.ops.liveMap.notCheckedIn}</div>
+                <ul className="mt-1 text-sm text-ink-200">
+                  {absentToday.map((n) => (
+                    <li key={n}>{n}</li>
+                  ))}
+                </ul>
+              </div>
             )}
           </div>
         </div>
