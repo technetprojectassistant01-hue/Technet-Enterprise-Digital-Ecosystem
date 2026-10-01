@@ -296,6 +296,7 @@ model User {
   attendanceAnomaliesResolved AttendanceAnomaly[] @relation("AttendanceAnomalyResolver")
   knownPlacesCreated          KnownPlace[]        @relation("KnownPlaceCreator")
   employeeHomesUpdated        EmployeeHome[]      @relation("EmployeeHomeUpdater")
+  absencesExcused             AbsenceExcuse[]     @relation("AbsenceExcuser")
 
   quotationsCreated Quotation[] @relation("QuotationCreator")
 
@@ -451,6 +452,26 @@ model Employee {
   attendanceAudits    AttendanceAudit[]
   attendanceAnomalies AttendanceAnomaly[]
   home                EmployeeHome?
+  absenceExcuses      AbsenceExcuse[]
+}
+
+/**
+ * HR excusing one day of absence (2026-10-01). A technician with no check-in on a working day is
+ * Absent - computed, never stored (lib/absences.ts) - until they check in; this row turns a given
+ * day into "Excused" with HR's note (sick, sent elsewhere...). One per employee per day. `date` is
+ * UTC midnight of the Mauritius day, like OvertimeDecision.date.
+ */
+model AbsenceExcuse {
+  id          String   @id @default(uuid())
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  date        DateTime
+  note        String
+  excusedById String?
+  excusedBy   User?    @relation("AbsenceExcuser", fields: [excusedById], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+
+  @@unique([employeeId, date])
 }
 
 /**
