@@ -2,6 +2,7 @@ import { createHash } from "crypto";
 import { prisma } from "./prisma";
 import { MAURITIUS_OFFSET_MINUTES, computeLateByVisit, dayToDate, mauritiusDay } from "./overtime";
 import { generateAttendancePdf } from "./pdf/attendancePdf";
+import { loadAbsences } from "./absences";
 
 /**
  * The printable attendance report for one employee over a range of Mauritius days, and the
@@ -52,7 +53,7 @@ async function loadRange(employeeId: string, from: string, to: string) {
   const offset = MAURITIUS_OFFSET_MINUTES * 60_000;
   const start = new Date(dayToDate(from).getTime() - offset);
   const end = new Date(dayToDate(to).getTime() + 86_400_000 - offset);
-  const [visits, approved] = await Promise.all([
+  const [visits, approved, excuses] = await Promise.all([
     prisma.siteAttendance.findMany({
       where: { employeeId, checkInAt: { gte: start, lt: end } },
       select: VISIT_SELECT,
@@ -63,15 +64,20 @@ async function loadRange(employeeId: string, from: string, to: string) {
       select: { date: true, minutes: true },
       orderBy: { date: "asc" },
     }),
+    prisma.absenceExcuse.findMany({
+      where: { employeeId, date: { gte: dayToDate(from), lte: dayToDate(to) } },
+      select: { date: true, note: true },
+      orderBy: { date: "asc" },
+    }),
   ]);
-  return { visits, approved };
+  return { visits, approved, excuses };
 }
 
 /**
  * A hash of what the report shows for a range. Stored when HR validates; if a check-in, a manager
  * close or an overtime decision changes afterwards, it stops matching and the PDF is DRAFT again.
  */
-function fingerprintOf({ visits, approved }: Awaited<ReturnType<typeof loadRange>>): string {
+function fingerprintOf({ visits, approved, excuses }: Awaited<ReturnType<typeof loadRange>>): string {
   const hash = createHash("sha256");
   for (const v of visits) {
     hash.update(
@@ -94,6 +100,8 @@ function fingerprintOf({ visits, approved }: Awaited<ReturnType<typeof loadRange
     );
   }
   for (const d of approved) hash.update(JSON.stringify([d.date.toISOString(), d.minutes]));
+  // Only hashed when there are any, so ranges validated before excuses existed keep their fingerprint.
+  for (const x of excuses) hash.update(JSON.stringify(["excuse", x.date.toISOString(), x.note]));
   return hash.digest("hex");
 }
 
@@ -132,7 +140,11 @@ export async function buildAttendanceReport(employeeId: string, from: string, to
   });
   if (!employee) return null;
 
-  const [{ visits, approved }, validation] = await Promise.all([loadRange(employeeId, from, to), coveringValidation(employeeId, from, to)]);
+  const [{ visits, approved }, validation, absences] = await Promise.all([
+    loadRange(employeeId, from, to),
+    coveringValidation(employeeId, from, to),
+    loadAbsences(from, to, employeeId),
+  ]);
 
   // Approved overtime sits on the day's last check-in, as on the screen.
   const lastByDay = new Map<string, (typeof visits)[number]>();
@@ -150,6 +162,7 @@ export async function buildAttendanceReport(employeeId: string, from: string, to
     visits,
     late: computeLateByVisit(visits),
     overtime,
+    absences: absences.map(({ date, status, note }) => ({ date, status, note })),
     validation:
       validation && validation.decidedAt
         ? { by: validation.decidedBy?.name || validation.decidedBy?.email || "HR", at: validation.decidedAt }
