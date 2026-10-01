@@ -17,6 +17,7 @@ import { isPhotoRequired, parseAttendancePhoto } from "../lib/attendancePhoto";
 import { evaluateVisit, parseClientSentAt } from "../lib/anomalies";
 import { liveStatus } from "../lib/liveMap";
 import { findKnownPlaceFor } from "../lib/knownPlaces";
+import { loadAbsences } from "../lib/absences";
 
 const router = Router();
 
@@ -506,7 +507,10 @@ router.get("/me/history", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => 
   });
   const approvedOvertime = approved.map((d) => ({ date: d.date.toISOString().slice(0, 10), minutes: d.minutes }));
 
-  res.json({ visits, approvedOvertime });
+  // Days with no check-in, shown as Absent (or Excused) - technicians only (lib/absences.ts).
+  const absences = await loadAbsences(start.toISOString().slice(0, 10), new Date(end.getTime() - 86_400_000).toISOString().slice(0, 10), employee.id);
+
+  res.json({ visits, approvedOvertime, absences: absences.map(({ date, status, note }) => ({ date, status, note })) });
 });
 
 /**
