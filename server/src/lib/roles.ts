@@ -75,3 +75,17 @@ export const NON_FIELD_ROLES = [
 
 /** Executive-level, cross-module reporting (Technet Insight). No dedicated Managing Director role exists yet, so this is admin-only. */
 export const INSIGHT_ROLES = ["ADMIN"] as const;
+
+/**
+ * Roles with the same access as ADMIN (management, 2026-10-02: "give the operations manager role
+ * the same access as the admin"). Every check that allows ADMIN also allows these - in
+ * requireRole() and the few direct comparisons that go through isAdminLike() - so the role groups
+ * above don't each have to list them. Mirrored in client/src/lib/permissions.ts; keep in step.
+ * Two ADMIN-only things stay ADMIN-only on purpose: the forgot-password email (auth.ts
+ * SELF_RESET_ROLE) and the role label itself.
+ */
+export const ADMIN_EQUIVALENT_ROLES: readonly Role[] = ["ADMIN", "OPERATIONS_MANAGER"];
+
+export function isAdminLike(role: string | undefined | null): boolean {
+  return !!role && (ADMIN_EQUIVALENT_ROLES as readonly string[]).includes(role);
+}
