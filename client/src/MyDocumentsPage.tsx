@@ -10,6 +10,7 @@ import { useToast } from './dashboard/ToastContext'
 import { useConfirm } from './dashboard/ConfirmContext'
 import { useAuth } from './context/AuthContext'
 import { useT } from './i18n'
+import { isAdminLike } from './lib/permissions'
 
 export const EMPLOYEE_DOCUMENT_TYPES: EmployeeDocumentType[] = [
   'DRIVING_LICENCE',
@@ -85,7 +86,7 @@ function MyDocumentsPage() {
 
   // Admin and HR have no personal documents page of their own: they read everyone else's on the
   // HR employee profile. An old bookmark still lands somewhere useful.
-  if (user?.role === 'ADMIN' || user?.role === 'HR_OFFICER') {
+  if (isAdminLike(user?.role) || user?.role === 'HR_OFFICER') {
     return <Navigate to="/dashboard/hr/employees" replace />
   }
 
