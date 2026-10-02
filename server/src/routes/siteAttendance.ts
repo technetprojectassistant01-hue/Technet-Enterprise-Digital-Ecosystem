@@ -315,15 +315,17 @@ router.get("/report/pdf", requireRole(...ATTENDANCE_VIEW_ROLES), async (req, res
   // silently include departed employees the screen it was exported from was actively hiding.
   const activeFilter =
     req.query.includePast === "true" ? {} : { employee: { employmentStatus: { not: "TERMINATED" as const } } };
+  // ?employeeId= narrows it to one person - the Technician filter on Team Attendance.
+  const employeeId = typeof req.query.employeeId === "string" && req.query.employeeId ? req.query.employeeId : undefined;
 
   const [rows, decisions] = await Promise.all([
     prisma.siteAttendance.findMany({
-      where: { checkInAt: { gte: start, lt: end }, ...activeFilter },
+      where: { checkInAt: { gte: start, lt: end }, ...activeFilter, ...(employeeId ? { employeeId } : {}) },
       include: { employee: { select: { firstName: true, lastName: true } } },
       orderBy: { checkInAt: "asc" },
     }),
     prisma.overtimeDecision.findMany({
-      where: { status: "APPROVED", date: { gte: dayToDate(range.from), lte: dayToDate(range.to) } },
+      where: { status: "APPROVED", date: { gte: dayToDate(range.from), lte: dayToDate(range.to) }, ...(employeeId ? { employeeId } : {}) },
       select: { employeeId: true, date: true, minutes: true },
     }),
   ]);
