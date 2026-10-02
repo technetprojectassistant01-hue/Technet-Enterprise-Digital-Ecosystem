@@ -365,6 +365,7 @@ export const fr: Dict = {
     mapLabel: 'Carte',
     noGps: 'Pas de GPS',
     closedByManager: 'Clôturé par un responsable',
+    autoCheckedOut: 'Départ pointé automatiquement (aucun départ enregistré)',
     approve: 'Approuver',
     reject: 'Refuser',
     undo: 'Annuler',
@@ -424,6 +425,7 @@ export const fr: Dict = {
     colTransport: 'TRANSPORT',
     stillIn: 'Toujours pointé',
     closedByManager: 'Clôturé par un responsable',
+    autoCheckedOut: 'Départ pointé automatiquement (aucun départ enregistré)',
     leftFrom: (place: string) => `Parti de ${place}`,
     exportPdf: 'Exporter en PDF',
     exportTitle: 'Exporter les présences',
@@ -1013,6 +1015,7 @@ export const fr: Dict = {
       checkOutCol: 'DÉPART',
       stillCheckedIn: 'Toujours pointé',
       closedByManagement: 'clôturée par la direction',
+      autoCheckedOut: 'départ pointé automatiquement à l\'heure de fermeture',
       statedTimeOffBy: (gap: string) => `heure indiquée décalée de ${gap}`,
       closeTitle: 'Clôturer cette session',
       closeIntro: (name: string, when: string) =>
