@@ -28,6 +28,14 @@ and live. In short:
   fingerprint when excuses exist), and the Live Map's "not checked in today" list. **No pay effect** -
   payroll doesn't read it (the user didn't choose; a per-day deduction needs management's amount).
   Not yet wired in: HR's Availability tab still reads the old manual `AttendanceRecord` register.
+- **Automatic check-out (2026-10-02):** a shift still open after midnight is checked out at
+  closing time on its own day - **17:00, Saturday 13:00** (never before the check-in itself; an
+  evening call-out closes at its check-in time) - so a forgotten check-out can't become a day of
+  "overtime". `lib/autoCheckout.ts` (tested), `SiteAttendance.checkOutAutomatic`, no coordinates,
+  typed time set to the closing time, technician notified (`AUTO_CHECKED_OUT`). Runs lazily, not at
+  exactly 00:00: on that technician's next check-in or app load, and on every poller run - the
+  recorded time is the same. Labelled on Team Attendance, the staff register, My Attendance, the
+  CSV and the PDF; a manager can correct the time with Team Attendance's Close (§7a).
 - **Notifications:** every technician's phone is registered at Check In; the app asks with its own
   dialog after check-in and re-asks until allowed; 08:15/17:15 reminders are optional
   (`User.remindersEnabled`), compliance checks are not.
