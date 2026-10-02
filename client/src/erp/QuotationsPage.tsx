@@ -12,7 +12,7 @@ import { usePaymentTermLabels } from './usePaymentTermLabels'
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
-import { hasRole, SALES_ROLES, QUOTE_REQUEST_VIEW_ROLES } from '../lib/permissions'
+import { hasRole, isAdminLike, SALES_ROLES, QUOTE_REQUEST_VIEW_ROLES } from '../lib/permissions'
 import { quotationStatusTone as statusTone } from './statusTones'
 import { formatMoney } from '../lib/format'
 import SalesLineItemsEditor, { EMPTY_SALES_LINE_ITEM, type SalesLineItemRow } from './SalesLineItemsEditor'
@@ -30,7 +30,7 @@ function QuotationsPage() {
   const { user } = useAuth()
   const canWrite = hasRole(user?.role, SALES_ROLES)
   const canViewRequests = hasRole(user?.role, QUOTE_REQUEST_VIEW_ROLES)
-  const isAdmin = user?.role === 'ADMIN'
+  const isAdmin = isAdminLike(user?.role)
   const customers = useCustomers()
   const paymentTermLabels = usePaymentTermLabels()
   const [quotations, setQuotations] = useState<Quotation[]>([])
