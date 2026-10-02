@@ -36,6 +36,11 @@ and live. In short:
   exactly 00:00: on that technician's next check-in or app load, and on every poller run - the
   recorded time is the same. Labelled on Team Attendance, the staff register, My Attendance, the
   CSV and the PDF; a manager can correct the time with Team Attendance's Close (§7a).
+- **Operations Manager = Admin (2026-10-02, management):** OPERATIONS_MANAGER has exactly the
+  admin's access and, like the admin, no check-in card, shift pings or personal pages. One rule on
+  each side: `isAdminLike()` (server `lib/roles.ts`, used by `requireRole` - any route allowing ADMIN
+  allows it; client `lib/permissions.ts`, where `hasRole` checks it *as* ADMIN for allow and block
+  lists alike). Exception: the forgot-password email stays ADMIN-only (§20). See §6.
 - **Notifications:** every technician's phone is registered at Check In; the app asks with its own
   dialog after check-in and re-asks until allowed; 08:15/17:15 reminders are optional
   (`User.remindersEnabled`), compliance checks are not.
@@ -139,6 +144,18 @@ OPERATIONS_MANAGER, FIELD_TECHNICIAN, EMPLOYEE
 ```
 
 Note: this is narrower than the roles shown on the flowchart shared 2026-08-14 (which also listed Managing Director, Marketing Officer, and a Customer role) — those aren't implemented; don't assume they exist without checking.
+
+**OPERATIONS_MANAGER is admin-equivalent** (2026-10-02, management: "give the operation manager role
+the same access as the admin", and "she shouldn't be checking in and out like the admin").
+`ADMIN_EQUIVALENT_ROLES` / `isAdminLike()` exist on both sides. Server: `requireRole` lets an
+admin-equivalent role through wherever `"ADMIN"` is allowed, and the few literal `=== "ADMIN"` checks
+(employees' sensitive fields, users' self-role guard, quotations) use `isAdminLike`. Client: `hasRole`
+treats the role as ADMIN for every list, so it is hidden only from what the admin is hidden from
+(`NON_ADMIN_ROLES` no longer hides Insight/User Management from it; `ADMINISTRATIVE_ROLES` now removes
+its check-in card); `AdminRoute`, the admin menu and the literal admin checks use `isAdminLike`. The
+`Role` enum and the role groups are unchanged - so lists still name OPERATIONS_MANAGER where they
+always did, harmlessly. **Not extended:** forgot-password email recovery (`SELF_RESET_ROLE`, §20) stays
+ADMIN-only. Prefer `hasRole`/`isAdminLike` over a new `role === 'ADMIN'` comparison.
 
 Role groups used for gating (server `roles.ts` / client `permissions.ts`):
 - `OPS_MANAGE_ROLES` = ADMIN, OPERATIONS_MANAGER — create/edit/delete/approve on Operations records.
