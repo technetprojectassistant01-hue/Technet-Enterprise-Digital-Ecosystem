@@ -64,4 +64,25 @@ describe("requireRole", () => {
     expect(next).toHaveBeenCalledOnce();
     expect(res.status).not.toHaveBeenCalled();
   });
+
+  it("lets an Operations Manager through anything open to ADMIN (same access, 2026-10-02)", () => {
+    const { req, res, next } = mockReqRes();
+    req.user = { sub: "user-1", role: "OPERATIONS_MANAGER" };
+    requireRole("ADMIN")(req, res, next);
+    expect(next).toHaveBeenCalledOnce();
+  });
+
+  it("does not extend that to roles that aren't admin-equivalent", () => {
+    const { req, res, next } = mockReqRes();
+    req.user = { sub: "user-1", role: "HR_OFFICER" };
+    requireRole("ADMIN")(req, res, next);
+    expect(res.status).toHaveBeenCalledWith(403);
+  });
+
+  it("still refuses an Operations Manager where ADMIN isn't allowed either", () => {
+    const { req, res, next } = mockReqRes();
+    req.user = { sub: "user-1", role: "OPERATIONS_MANAGER" };
+    requireRole("HR_OFFICER")(req, res, next);
+    expect(res.status).toHaveBeenCalledWith(403);
+  });
 });
