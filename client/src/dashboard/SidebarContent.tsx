@@ -6,6 +6,7 @@ import { MAIN_NAV, SYSTEM_NAV, ADMIN_NAV, visibleNav } from './nav'
 import { Avatar } from './ui'
 import NavTree from './NavTree'
 import { navLabel, useT } from '../i18n'
+import { isAdminLike } from '../lib/permissions'
 
 /**
  * The navigation column shared by the always-on desktop sidebar and the slide-in drawer used at
@@ -15,7 +16,7 @@ function SidebarContent() {
   const { user, logout } = useAuth()
   const t = useT()
   const displayName = user?.name || user?.email || ''
-  const systemNav = user?.role === 'ADMIN' ? [...SYSTEM_NAV, ADMIN_NAV] : SYSTEM_NAV
+  const systemNav = isAdminLike(user?.role) ? [...SYSTEM_NAV, ADMIN_NAV] : SYSTEM_NAV
   const mainNav = visibleNav(MAIN_NAV, user?.role)
 
   return (
