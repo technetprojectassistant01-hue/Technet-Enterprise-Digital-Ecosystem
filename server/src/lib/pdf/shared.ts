@@ -7,6 +7,7 @@ import {
   CARLITO_ITALIC_BASE64,
   CARLITO_BOLDITALIC_BASE64,
 } from "./assets/fonts";
+import { woffToSfnt } from "./woff";
 
 const LOGO_BUFFER = Buffer.from(LOGO_LOCKUP_BASE64, "base64");
 /** Real aspect ratio of the logo PNG (645x645) - height = width * this. */
@@ -14,12 +15,14 @@ const LOGO_ASPECT = 645 / 645;
 const LOGO_WIDTH = 100;
 const LOGO_HEIGHT = LOGO_WIDTH * LOGO_ASPECT;
 
-// Decoded once at module load, same as LOGO_BUFFER above - registerBrandFonts() used to re-decode
-// all 4 base64 strings on every single PDF request, which is pure waste since the bytes never change.
-const CARLITO_REGULAR_BUFFER = Buffer.from(CARLITO_REGULAR_BASE64, "base64");
-const CARLITO_BOLD_BUFFER = Buffer.from(CARLITO_BOLD_BASE64, "base64");
-const CARLITO_ITALIC_BUFFER = Buffer.from(CARLITO_ITALIC_BASE64, "base64");
-const CARLITO_BOLDITALIC_BUFFER = Buffer.from(CARLITO_BOLDITALIC_BASE64, "base64");
+// Decoded and unpacked once at module load. The fonts are stored as WOFF; handing PDFKit the WOFF
+// made it re-inflate them in pure JavaScript on every PDF - ~8 s per PDF here and 40 s+ on Render,
+// enough for Render to fail other requests (2026-10-02). woffToSfnt() unpacks them with native
+// zlib, once, so each PDF builds in milliseconds.
+const CARLITO_REGULAR_BUFFER = woffToSfnt(Buffer.from(CARLITO_REGULAR_BASE64, "base64"));
+const CARLITO_BOLD_BUFFER = woffToSfnt(Buffer.from(CARLITO_BOLD_BASE64, "base64"));
+const CARLITO_ITALIC_BUFFER = woffToSfnt(Buffer.from(CARLITO_ITALIC_BASE64, "base64"));
+const CARLITO_BOLDITALIC_BUFFER = woffToSfnt(Buffer.from(CARLITO_BOLDITALIC_BASE64, "base64"));
 
 /** Carlito is metrically-compatible, openly-licensed stand-in for Calibri - the actual font
  * embedded in every real Technet-issued quotation/invoice (confirmed by inspecting the fonts
