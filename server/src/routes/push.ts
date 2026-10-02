@@ -8,6 +8,7 @@ import { purgeExpiredAttendancePhotos } from "../lib/attendancePhoto";
 import { fillMissingPlaces } from "../lib/reverseGeocode";
 import { evaluateOpenShifts } from "../lib/anomalies";
 import { geocodeMissingJobSites } from "../lib/jobSiteGeocode";
+import { closeForgottenSessions } from "../lib/autoCheckout";
 
 const router = Router();
 
@@ -318,6 +319,9 @@ async function processAudits() {
  */
 async function runAttendancePoller() {
   const errors: string[] = [];
+  // Forgotten check-outs from earlier days, closed at their closing time (lib/autoCheckout.ts) -
+  // first, so the audit and missed-ping steps below don't treat them as still open.
+  const autoCheckedOut = await step("auto check-out", () => closeForgottenSessions(), 0, errors);
   const audits =
     process.env.ATTENDANCE_AUDIT_ENABLED === "true"
       ? await step("audits", processAudits, { pushed: 0, skipped: 0, nudged: 0, missed: 0 }, errors)
@@ -331,7 +335,7 @@ async function runAttendancePoller() {
   const placesFilled = await step("place names", () => fillMissingPlaces(), 0, errors);
   // Spec section 2: locate open jobs from their customer's address, a couple per run.
   const jobSitesLocated = await step("job sites", geocodeMissingJobSites, 0, errors);
-  return { enabled: audits !== null, ...(audits ?? {}), longShiftReminders, photosPurged, shiftsChecked, placesFilled, jobSitesLocated, errors };
+  return { enabled: audits !== null, ...(audits ?? {}), autoCheckedOut, longShiftReminders, photosPurged, shiftsChecked, placesFilled, jobSitesLocated, errors };
 }
 
 let pollerRunning = false;
