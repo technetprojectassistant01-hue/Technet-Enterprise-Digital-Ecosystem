@@ -2193,8 +2193,9 @@ export function siteAttendancePhotoUrl(siteAttendanceId: string) {
   return `${API_URL}/api/site-attendance/${siteAttendanceId}/photo`
 }
 
-export function staffAttendanceReportPdfUrl(from: string, to: string, includePast = false) {
-  return `${API_URL}/api/site-attendance/report/pdf?from=${from}&to=${to}${includePast ? '&includePast=true' : ''}`
+/** The team register PDF; `employeeId` narrows it to one person (the Technician filter). */
+export function staffAttendanceReportPdfUrl(from: string, to: string, includePast = false, employeeId?: string) {
+  return `${API_URL}/api/site-attendance/report/pdf?from=${from}&to=${to}${includePast ? '&includePast=true' : ''}${employeeId ? `&employeeId=${employeeId}` : ''}`
 }
 
 /** A period of the signed-in user's attendance that HR has validated. */
