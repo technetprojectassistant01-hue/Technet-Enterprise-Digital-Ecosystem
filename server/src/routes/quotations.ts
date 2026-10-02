@@ -5,7 +5,7 @@ import { requireAuth, requireRole } from "../middleware/auth";
 import { isForeignKeyConstraintError, isNotFoundError, isUniqueConstraintError } from "../lib/prismaErrors";
 import { generateQuotationPdf } from "../lib/pdf/quotationPdf";
 import { generateQuotationNumber } from "../lib/quotationNumber";
-import { SALES_ROLES, QUOTE_REQUEST_VIEW_ROLES, NON_FIELD_ROLES } from "../lib/roles";
+import { SALES_ROLES, QUOTE_REQUEST_VIEW_ROLES, NON_FIELD_ROLES, isAdminLike } from "../lib/roles";
 import { notifyUser } from "../lib/notifications";
 
 const router = Router();
@@ -380,7 +380,7 @@ router.post("/quote-requests/:id/convert", requireRole(...SALES_ROLES), async (r
   if ("error" in itemsResult) return res.status(400).json({ error: itemsResult.error });
   const availability = parseAvailability({ availabilityStatus, orderDays });
   if ("error" in availability) return res.status(400).json({ error: availability.error });
-  const paymentResult = await parsePaymentTermsLines(paymentTermsLines, req.user!.role === "ADMIN");
+  const paymentResult = await parsePaymentTermsLines(paymentTermsLines, isAdminLike(req.user!.role));
   if ("error" in paymentResult) return res.status(400).json({ error: paymentResult.error });
   const validity = parseValidityDays(validityDays);
   if ("error" in validity) return res.status(400).json({ error: validity.error });
@@ -543,7 +543,7 @@ router.post("/", requireRole(...SALES_ROLES), async (req, res) => {
   if ("error" in itemsResult) return res.status(400).json({ error: itemsResult.error });
   const availability = parseAvailability({ availabilityStatus, orderDays });
   if ("error" in availability) return res.status(400).json({ error: availability.error });
-  const paymentResult = await parsePaymentTermsLines(paymentTermsLines, req.user!.role === "ADMIN");
+  const paymentResult = await parsePaymentTermsLines(paymentTermsLines, isAdminLike(req.user!.role));
   if ("error" in paymentResult) return res.status(400).json({ error: paymentResult.error });
   const validity = parseValidityDays(validityDays);
   if ("error" in validity) return res.status(400).json({ error: validity.error });
@@ -672,7 +672,7 @@ router.patch("/:id", requireRole(...SALES_ROLES), async (req, res) => {
   }
   let newPaymentTermsLines: PaymentTermsLineInput[] | undefined;
   if (paymentTermsLines !== undefined) {
-    const paymentResult = await parsePaymentTermsLines(paymentTermsLines, req.user!.role === "ADMIN");
+    const paymentResult = await parsePaymentTermsLines(paymentTermsLines, isAdminLike(req.user!.role));
     if ("error" in paymentResult) return res.status(400).json({ error: paymentResult.error });
     newPaymentTermsLines = paymentResult.lines;
     data.paymentTermsLines = {
