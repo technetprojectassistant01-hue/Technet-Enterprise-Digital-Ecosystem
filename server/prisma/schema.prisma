@@ -1237,6 +1237,13 @@ model SiteAttendance {
    * on. The distinction has to survive into reporting, hence a column rather than a note.
    */
   checkOutByManager              Boolean        @default(false)
+  /**
+   * True when the app closed a forgotten session itself (2026-10-02): a shift still open after
+   * midnight is checked out at closing time on its own day - 17:00, Saturday 13:00 - so a forgotten
+   * check-out can't become a day of "overtime". Like a manager close it records no coordinates.
+   * See lib/autoCheckout.ts.
+   */
+  checkOutAutomatic              Boolean        @default(false)
   /** Set once a "you've been checked in a long time" push has gone out for this open session, so
    * it fires exactly once rather than on every poller tick - see server/src/routes/push.ts. */
   longShiftReminderSentAt        DateTime?
@@ -1826,6 +1833,7 @@ enum NotificationType {
   ATTENDANCE_VALIDATED
   ATTENDANCE_VALIDATION_REJECTED
   ATTENDANCE_ANOMALY_DETECTED
+  AUTO_CHECKED_OUT
 }
 
 model Notification {
