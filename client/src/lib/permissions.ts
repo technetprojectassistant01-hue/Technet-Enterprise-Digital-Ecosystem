@@ -81,6 +81,23 @@ export const NON_ADMIN_ROLES: readonly Role[] = [
   'EMPLOYEE',
 ]
 
+/**
+ * Roles with exactly the administrator's access (management, 2026-10-02: the Operations Manager
+ * gets "the same access as the admin", and like the admin does not check in or out). Mirrors
+ * ADMIN_EQUIVALENT_ROLES in server/src/lib/roles.ts.
+ */
+export const ADMIN_EQUIVALENT_ROLES: readonly Role[] = ['ADMIN', 'OPERATIONS_MANAGER']
+
+export function isAdminLike(role: Role | undefined): boolean {
+  return !!role && ADMIN_EQUIVALENT_ROLES.includes(role)
+}
+
+/**
+ * Whether `role` is in `allowed`. An admin-equivalent role is checked as ADMIN, both for allow
+ * lists (it gets in wherever ADMIN does) and for block lists such as NON_ADMIN_ROLES (it is
+ * hidden only from what ADMIN is hidden from, e.g. the check-in card via ADMINISTRATIVE_ROLES).
+ */
 export function hasRole(role: Role | undefined, allowed: readonly Role[]): boolean {
-  return !!role && allowed.includes(role)
+  if (!role) return false
+  return allowed.includes(isAdminLike(role) ? 'ADMIN' : role)
 }
