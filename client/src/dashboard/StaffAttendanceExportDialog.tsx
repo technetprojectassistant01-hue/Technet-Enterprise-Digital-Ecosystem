@@ -85,6 +85,7 @@ function StaffAttendanceExportDialog({ month, onClose }: { month: Date; onClose:
           accessor: (v) => (Number(v.checkInTransportCost ?? 0) + Number(v.checkOutTransportCost ?? 0)).toFixed(2),
         },
         { header: 'Closed By Manager', accessor: (v) => (v.checkOutByManager ? 'Yes' : 'No') },
+        { header: 'Checked Out Automatically', accessor: (v) => (v.checkOutAutomatic ? 'Yes' : 'No') },
       ]
       downloadCsv(`staff-attendance-${from}-to-${to}.csv`, columns, rows)
       onClose()
