@@ -1,0 +1,3 @@
+ALTER TYPE "NotificationType" ADD VALUE 'AUTO_CHECKED_OUT';
+
+ALTER TABLE "SiteAttendance" ADD COLUMN "checkOutAutomatic" BOOLEAN NOT NULL DEFAULT false;
