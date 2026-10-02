@@ -368,6 +368,7 @@ export const en = {
     mapLabel: 'Map',
     noGps: 'No GPS',
     closedByManager: 'Closed by a manager',
+    autoCheckedOut: 'Checked out automatically (no check-out recorded)',
     approve: 'Approve',
     reject: 'Reject',
     undo: 'Undo',
@@ -428,6 +429,7 @@ export const en = {
     colTransport: 'TRANSPORT',
     stillIn: 'Still checked in',
     closedByManager: 'Closed by manager',
+    autoCheckedOut: 'Checked out automatically (no check-out recorded)',
     leftFrom: (place: string) => `Left from ${place}`,
     exportPdf: 'Export PDF',
     exportTitle: 'Export attendance',
@@ -1017,6 +1019,7 @@ export const en = {
       checkOutCol: 'CHECK-OUT',
       stillCheckedIn: 'Still checked in',
       closedByManagement: 'closed by management',
+      autoCheckedOut: 'checked out automatically at closing time',
       statedTimeOffBy: (gap: string) => `stated time off by ${gap}`,
       closeTitle: 'Close this session',
       closeIntro: (name: string, when: string) =>
