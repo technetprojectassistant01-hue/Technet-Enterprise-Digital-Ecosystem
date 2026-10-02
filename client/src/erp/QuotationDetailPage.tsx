@@ -16,7 +16,7 @@ import { primaryButtonClass, secondaryButtonClass, dangerButtonClass } from '../
 import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
-import { hasRole, SALES_ROLES } from '../lib/permissions'
+import { hasRole, isAdminLike, SALES_ROLES } from '../lib/permissions'
 import { quotationStatusTone } from './statusTones'
 import { formatMoney } from '../lib/format'
 import { useCustomers } from './useCustomers'
@@ -60,7 +60,7 @@ function QuotationDetailPage() {
   const confirm = useConfirm()
   const { user } = useAuth()
   const canWrite = hasRole(user?.role, SALES_ROLES)
-  const isAdmin = user?.role === 'ADMIN'
+  const isAdmin = isAdminLike(user?.role)
   const customers = useCustomers()
   const paymentTermLabels = usePaymentTermLabels()
 
