@@ -10,6 +10,7 @@ import { useConfirm } from './dashboard/ConfirmContext'
 import { useAuth } from './context/AuthContext'
 import { leaveRequestStatusTone } from './erp/statusTones'
 import { useT } from './i18n'
+import { isAdminLike } from './lib/permissions'
 import { CalendarDays as CalendarDaysIcon } from 'lucide-react'
 import PageTitle from './dashboard/PageTitle'
 
@@ -164,7 +165,7 @@ function MyLeavePage() {
 
   // Admin and HR approve leave rather than requesting it here; an old bookmark still lands
   // somewhere useful. HR goes to the full register, which is where they work.
-  if (user?.role === 'ADMIN') {
+  if (isAdminLike(user?.role)) {
     return <Navigate to="/dashboard/leave-approvals" replace />
   }
   if (user?.role === 'HR_OFFICER') {
