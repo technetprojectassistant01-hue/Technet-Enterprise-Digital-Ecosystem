@@ -40,6 +40,7 @@ import {
 import {
   ADMINISTRATIVE_ROLES,
   ERP_HIDDEN_ROLES,
+  hasRole,
   NON_ADMIN_ROLES,
   NON_COMMERCIAL_ROLES,
   NON_HR_ROLES,
@@ -153,7 +154,7 @@ export const MAIN_NAV: NavItem[] = [
 /** The menu as a given role sees it: drops items (at any depth) that are hidden from that role. */
 export function visibleNav(items: NavItem[], role: Role | undefined): NavItem[] {
   return items
-    .filter((item) => !role || !item.hiddenFrom?.includes(role))
+    .filter((item) => !role || !item.hiddenFrom || !hasRole(role, item.hiddenFrom))
     .map((item) => (item.children ? { ...item, children: visibleNav(item.children, role) } : item))
 }
 
