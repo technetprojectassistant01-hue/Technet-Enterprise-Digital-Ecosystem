@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import { verifyAuthToken, type AuthTokenPayload } from "../lib/jwt";
 import { issueAuthCookie } from "../lib/authCookie";
+import { isAdminLike } from "../lib/roles";
 
 declare global {
   namespace Express {
@@ -30,7 +31,9 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
 
 export function requireRole(...roles: AuthTokenPayload["role"][]) {
   return (req: Request, res: Response, next: NextFunction) => {
-    if (!req.user || !roles.includes(req.user.role)) {
+    // A route open to ADMIN is open to every admin-equivalent role too (lib/roles.ts).
+    const allowed = !!req.user && (roles.includes(req.user.role) || (roles.includes("ADMIN") && isAdminLike(req.user.role)));
+    if (!allowed) {
       return res.status(403).json({ error: "Insufficient permissions" });
     }
     next();
