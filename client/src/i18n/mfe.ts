@@ -368,6 +368,7 @@ export const mfe: Dict = {
     mapLabel: 'Kart',
     noGps: 'Pena GPS',
     closedByManager: 'Ferme par enn manazer',
+    autoCheckedOut: 'Depar pointe otomatikman (pa ti ena depar)',
     approve: 'Aprouve',
     reject: 'Refize',
     undo: 'Anile',
@@ -427,6 +428,7 @@ export const mfe: Dict = {
     colTransport: 'TRANSPOR',
     stillIn: 'Ankor pointe',
     closedByManager: 'Manazer finn ferm li',
+    autoCheckedOut: 'Depar pointe otomatikman (pa ti ena depar)',
     leftFrom: (place: string) => `Sorti depi ${place}`,
     exportPdf: 'Export PDF',
     exportTitle: 'Export prezans',
@@ -1010,6 +1012,7 @@ export const mfe: Dict = {
       checkOutCol: 'DEPAR',
       stillCheckedIn: 'Ankor pointe',
       closedByManagement: 'ferme par direksion',
+      autoCheckedOut: 'depar pointe otomatikman a ler fermtir',
       statedTimeOffBy: (gap: string) => `ler ki finn dir dekale par ${gap}`,
       closeTitle: 'Ferm sa sesion la',
       closeIntro: (name: string, when: string) =>
