@@ -705,6 +705,9 @@ function TeamAttendancePage() {
                             {v.checkOutByManager && (
                               <span className="mt-0.5 block text-[11px] text-ink-400">{t.ops.team.closedByManagement}</span>
                             )}
+                            {v.checkOutAutomatic && (
+                              <span className="mt-0.5 block text-[11px] text-amber-400">{t.ops.team.autoCheckedOut}</span>
+                            )}
                             {statedTimeGapLabel(v.checkOutDeclaredTime, v.checkOutAt) && (
                               <span className="mt-0.5 block text-[11px] font-medium text-amber-400">
                                 ⚠ {t.ops.team.statedTimeOffBy(statedTimeGapLabel(v.checkOutDeclaredTime, v.checkOutAt)!)}
