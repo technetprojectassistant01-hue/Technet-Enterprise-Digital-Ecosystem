@@ -18,6 +18,7 @@ import { evaluateVisit, parseClientSentAt } from "../lib/anomalies";
 import { liveStatus } from "../lib/liveMap";
 import { findKnownPlaceFor } from "../lib/knownPlaces";
 import { loadAbsences } from "../lib/absences";
+import { closeForgottenSessions } from "../lib/autoCheckout";
 
 const router = Router();
 
@@ -449,6 +450,8 @@ router.post("/:id/close", requireRole(...OPS_MANAGE_ROLES), async (req, res) => 
 router.get("/me", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
   const employee = await prisma.employee.findUnique({ where: { userId: req.user!.sub } });
   if (!employee) return res.status(403).json({ error: "No employee record is linked to your account" });
+  // Opening the app the morning after a forgotten check-out shows yesterday closed, not still open.
+  await closeForgottenSessions(employee.id);
 
   const [current, history] = await Promise.all([
     prisma.siteAttendance.findFirst({
@@ -593,6 +596,9 @@ router.post("/check-in", requireRole(...OPS_SUBMIT_ROLES), async (req, res) => {
       return res.status(403).json({ error: "No employee record is linked to your account" });
     }
 
+    // A shift left open from an earlier day is checked out at its closing time first
+    // (lib/autoCheckout.ts), so a forgotten check-out never blocks today's check-in.
+    await closeForgottenSessions(employee.id);
     const openVisit = await prisma.siteAttendance.findFirst({
       where: { employeeId: employee.id, checkOutAt: null },
     });
