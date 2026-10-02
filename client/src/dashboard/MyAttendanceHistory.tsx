@@ -235,6 +235,9 @@ function MyAttendanceHistory() {
                         {v.checkOutByManager && (
                           <div className="text-xs text-ink-400">{t.myAttendance.closedByManager}</div>
                         )}
+                        {v.checkOutAutomatic && (
+                          <div className="text-xs text-amber-400">{t.myAttendance.autoCheckedOut}</div>
+                        )}
                       </>
                     ) : (
                       <span className="text-xs font-semibold text-cyan-accent">{t.myAttendance.stillIn}</span>
