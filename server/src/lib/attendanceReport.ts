@@ -46,6 +46,7 @@ const VISIT_SELECT = {
   checkOutTransportCost: true,
   checkOutTransportNote: true,
   checkOutByManager: true,
+  checkOutAutomatic: true,
 } as const;
 
 /** Everything that goes into the report for a range: visits (by check-in day) and approved overtime. */
