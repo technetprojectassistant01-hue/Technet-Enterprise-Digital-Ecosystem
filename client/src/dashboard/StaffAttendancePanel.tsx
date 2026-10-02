@@ -325,6 +325,11 @@ function StaffAttendancePanel() {
                           {t.staffAttendance.closedByManager}
                         </div>
                       )}
+                      {v.checkOutAutomatic && (
+                        <div className="mt-1 font-sans text-[11px] text-amber-400">
+                          {t.staffAttendance.autoCheckedOut}
+                        </div>
+                      )}
                     </td>
                     <td className="px-3 py-3">{gpsCell(v.checkInLat, v.checkInLng, v.checkInPlace)}</td>
                     <td className="px-3 py-3">{gpsCell(v.checkOutLat, v.checkOutLng, v.checkOutPlace)}</td>
