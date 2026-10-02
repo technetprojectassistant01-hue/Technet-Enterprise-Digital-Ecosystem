@@ -4,7 +4,7 @@ import { Prisma } from "../generated/prisma/client";
 import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { isUniqueConstraintError, isForeignKeyConstraintError, isNotFoundError } from "../lib/prismaErrors";
-import { ALL_ROLES, type Role } from "../lib/roles";
+import { ALL_ROLES, isAdminLike, type Role } from "../lib/roles";
 import { logSecurityEvent } from "../lib/securityEvents";
 
 const router = Router();
@@ -135,7 +135,7 @@ router.patch("/:id", async (req, res) => {
   if (email !== undefined && (typeof email !== "string" || !looksLikeEmail(normalizeEmail(email)))) {
     return res.status(400).json({ error: "Enter a valid email address" });
   }
-  if (id === req.user!.sub && role !== undefined && role !== "ADMIN") {
+  if (id === req.user!.sub && role !== undefined && !isAdminLike(role)) {
     return res.status(400).json({ error: "You cannot change your own role" });
   }
   if (password !== undefined && (typeof password !== "string" || password.length < 8)) {
