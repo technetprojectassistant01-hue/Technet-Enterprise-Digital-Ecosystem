@@ -13,7 +13,7 @@ import { Panel, Modal, Badge, EmptyState, TableSkeleton, Avatar } from '../dashb
 import { secondaryButtonClass } from '../dashboard/buttonStyles'
 import { useToast } from '../dashboard/ToastContext'
 import { useAuth } from '../context/AuthContext'
-import { hasRole, HR_ROLES, PERSONAL_DOCUMENT_ROLES } from '../lib/permissions'
+import { hasRole, isAdminLike, HR_ROLES, PERSONAL_DOCUMENT_ROLES } from '../lib/permissions'
 import { employmentStatusTone, projectStatusTone, leaveRequestStatusTone } from '../erp/statusTones'
 import { formatMoney } from '../lib/format'
 import EmployeeForm, {
@@ -75,7 +75,7 @@ function EmployeeDetailPage() {
   const { id } = useParams<{ id: string }>()
   const toast = useToast()
   const { user } = useAuth()
-  const canSeeSensitive = user?.role === 'ADMIN' || user?.role === 'HR_OFFICER'
+  const canSeeSensitive = isAdminLike(user?.role) || user?.role === 'HR_OFFICER'
   // Uploaded ID cards, passports and medical notes are HR's alone — an admin runs the platform and
   // does not need them (PERSONAL_DOCUMENT_ROLES; the API refuses them too, not just this panel).
   const canSeePersonalDocuments = hasRole(user?.role, PERSONAL_DOCUMENT_ROLES)
