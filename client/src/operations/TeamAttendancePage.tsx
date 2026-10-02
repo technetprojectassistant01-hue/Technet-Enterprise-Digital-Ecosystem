@@ -325,7 +325,11 @@ function TeamAttendancePage() {
     const { from, to } = period === 'week' ? { from: weekStart, to: addDays(weekStart, 6) } : monthDayRange(month)
     setPdfDownloading(true)
     try {
-      await api.downloadPdf(api.staffAttendanceReportPdfUrl(from, to, includePast), `team-attendance-${from}-to-${to}.pdf`)
+      // Follows the Technician filter: one person's register when someone is selected.
+      await api.downloadPdf(
+        api.staffAttendanceReportPdfUrl(from, to, includePast, employeeFilter || undefined),
+        `team-attendance-${from}-to-${to}.pdf`,
+      )
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t.myAttendance.downloadFailed)
     } finally {
