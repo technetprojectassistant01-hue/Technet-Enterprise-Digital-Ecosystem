@@ -7,7 +7,7 @@ import { Panel, Modal, Badge, EmptyState, TableSkeleton, type BadgeTone } from '
 import { primaryButtonClass, secondaryButtonClass } from '../dashboard/buttonStyles'
 import { useToast } from '../dashboard/ToastContext'
 import { useAuth } from '../context/AuthContext'
-import { hasRole, SALES_ROLES } from '../lib/permissions'
+import { hasRole, isAdminLike, SALES_ROLES } from '../lib/permissions'
 import { useCustomers } from './useCustomers'
 import { usePaymentTermLabels } from './usePaymentTermLabels'
 import { formatMoney } from '../lib/format'
@@ -60,7 +60,7 @@ function QuoteRequestsTab() {
   const toast = useToast()
   const { user } = useAuth()
   const canManage = hasRole(user?.role, SALES_ROLES)
-  const isAdmin = user?.role === 'ADMIN'
+  const isAdmin = isAdminLike(user?.role)
   const customers = useCustomers()
   const paymentTermLabels = usePaymentTermLabels()
   const [requests, setRequests] = useState<QuotationRequest[]>([])
