@@ -9,6 +9,7 @@ import { inputClass, labelClass, primaryButtonClass } from './dashboard/buttonSt
 import { useToast } from './dashboard/ToastContext'
 import { useConfirm } from './dashboard/ConfirmContext'
 import { useT } from './i18n'
+import { isAdminLike } from './lib/permissions'
 
 /** A random temporary password for an admin-forced reset - the employee should change it on first login. */
 function generateTempPassword(): string {
@@ -30,7 +31,7 @@ const ROLES: Role[] = [
 
 /** Admin stands out; the rest are levelled, because no other role outranks another here. */
 function roleTone(role: Role) {
-  return role === 'ADMIN' ? 'accent' : 'neutral'
+  return isAdminLike(role) ? 'accent' : 'neutral'
 }
 
 const ghostButton =
@@ -94,7 +95,7 @@ function UsersPage() {
     })
   }, [users, search, roleFilter])
 
-  const unlinked = users.filter((u) => !u.employee && u.role !== 'ADMIN').length
+  const unlinked = users.filter((u) => !u.employee && !isAdminLike(u.role)).length
 
   function openCreate() {
     setEmail('')
@@ -381,7 +382,7 @@ function UsersPage() {
                           <span className="font-mono text-xs text-ink-400">{u.employee.employeeCode}</span>{' '}
                           {u.employee.firstName} {u.employee.lastName}
                         </Link>
-                      ) : u.role === 'ADMIN' ? (
+                      ) : isAdminLike(u.role) ? (
                         <span className="text-ink-500">—</span>
                       ) : (
                         <span className="text-xs text-amber-300">Not attached</span>
