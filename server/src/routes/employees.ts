@@ -2,7 +2,7 @@ import { Router } from "express";
 import { Prisma } from "../generated/prisma/client";
 import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
-import { HR_ROLES } from "../lib/roles";
+import { HR_ROLES, isAdminLike } from "../lib/roles";
 import { isUniqueConstraintError, isForeignKeyConstraintError, isNotFoundError } from "../lib/prismaErrors";
 import { generateEmployeeCode } from "../lib/employeeCode";
 import { geocodeAddress, MAIN_ISLAND_VIEWBOX } from "../lib/geocode";
@@ -62,7 +62,7 @@ export const SENSITIVE_FIELDS = [
 ] as const;
 
 function canSeeSensitiveData(req: { user?: { role: string } }): boolean {
-  return req.user?.role === "ADMIN" || req.user?.role === "HR_OFFICER";
+  return isAdminLike(req.user?.role) || req.user?.role === "HR_OFFICER";
 }
 
 export function redact<T extends Record<string, unknown>>(employee: T): T {
