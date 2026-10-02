@@ -18,6 +18,8 @@ export interface AttendancePdfVisit {
   checkOutSite: string | null;
   checkOutTransportCost: Money | null;
   checkOutByManager: boolean;
+  /** Closed by the app at closing time (lib/autoCheckout.ts) - optional for older callers. */
+  checkOutAutomatic?: boolean;
 }
 
 export interface AttendancePdfInput {
@@ -298,6 +300,7 @@ export function generateAttendancePdf(input: AttendancePdfInput): PDFKit.PDFDocu
     if (input.overtime.has(v.id)) remarks.push(`Overtime ${span(input.overtime.get(v.id)!)}`);
     if (!v.checkOutAt) remarks.push("Not checked out");
     if (v.checkOutByManager) remarks.push("Closed by manager");
+    if (v.checkOutAutomatic) remarks.push("Auto check-out (not checked out)");
 
     drawRow([
       date,
