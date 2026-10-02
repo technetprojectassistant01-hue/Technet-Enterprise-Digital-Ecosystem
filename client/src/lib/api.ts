@@ -1727,6 +1727,8 @@ export interface SiteAttendance {
   /** A manager closed a forgotten session rather than the technician checking out. Such a row
    * has no check-out coordinates, because nobody observed where they were. */
   checkOutByManager: boolean
+  /** The app closed a forgotten shift at closing time (server/src/lib/autoCheckout.ts). */
+  checkOutAutomatic?: boolean
   verifications: SiteVerification[]
   /** This session's random compliance-check history, oldest first - see AttendanceAudit above. */
   audits: AttendanceAudit[]
@@ -2167,6 +2169,8 @@ export interface MyAttendanceVisit {
   checkOutSite: string | null
   checkOutTransportCost: string | null
   checkOutByManager: boolean
+  /** The app closed a forgotten shift at closing time (server/src/lib/autoCheckout.ts). */
+  checkOutAutomatic?: boolean
   workOrder: { id: string; workOrderNumber: string; title: string } | null
 }
 
