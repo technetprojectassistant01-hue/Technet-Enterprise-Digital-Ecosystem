@@ -198,6 +198,12 @@ function OvertimePage() {
                             ⚠ {t.workforce.overtime.anomalyWarning(i.anomalyCount!)}
                           </Link>
                         )}
+                        {/* A visit open 12h+ (checked out late) makes the overtime look bigger than it was. */}
+                        {i.longVisitMinutes != null && (
+                          <div className="mt-1 max-w-xs text-xs font-medium text-red-400">
+                            ⚠ {t.workforce.overtime.longVisitWarning(span(i.longVisitMinutes))}
+                          </div>
+                        )}
                       </td>
                       <td className="px-3 py-3">
                         <div className="flex flex-wrap justify-end gap-2">
