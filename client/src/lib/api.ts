@@ -2297,6 +2297,8 @@ export interface OvertimeItem {
   } | null
   /** Open or confirmed-violation anomalies on this employee's visits that day - a warning, not a block. */
   anomalyCount?: number
+  /** Minutes the longest visit that day stayed open, when over 12 hours - a late check-out, so the overtime is likely overstated. */
+  longVisitMinutes?: number | null
 }
 
 export function listOvertime(month: string) {
