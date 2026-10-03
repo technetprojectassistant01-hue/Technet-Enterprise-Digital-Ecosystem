@@ -1,6 +1,7 @@
 import PDFDocument from "pdfkit";
 import { drawFooterBanner, drawLetterhead, registerBrandFonts, type Money } from "./shared";
 import { MAURITIUS_OFFSET_MINUTES } from "../overtime";
+import type { PayWarning, TechnicianSummary } from "../attendanceSummary";
 
 const GRID = "#5fb8c9";
 const PALE = "#daeef3";
@@ -31,6 +32,8 @@ export interface StaffAttendancePdfVisit {
   checkOutPlace: string | null;
   checkOutTransportCost: Money | null;
   checkOutByManager: boolean;
+  /** Closed by the app at closing time (lib/autoCheckout.ts). */
+  checkOutAutomatic?: boolean;
 }
 
 export interface StaffAttendancePdfInput {
@@ -44,6 +47,13 @@ export interface StaffAttendancePdfInput {
   approvedOvertime: Map<string, number>;
   /** Calculated overtime still awaiting a decision, keyed the same way. */
   pendingOvertime: Map<string, number>;
+  /**
+   * One row per person (2026-10-03): days checked in, working days with no check-in, hours, late,
+   * overtime - printed before the register so the report reads without counting rows. Optional.
+   */
+  technicians?: TechnicianSummary[];
+  /** Visits open over 12 hours, printed as "check before using these figures for pay". */
+  warnings?: (PayWarning & { name: string })[];
 }
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -162,6 +172,104 @@ export function generateStaffAttendancePdf(input: StaffAttendancePdfInput): PDFK
   });
   doc.y = sumY + 36 + 12;
 
+  const fullDay = (day: string) => {
+    const [y, m, d] = day.split("-").map(Number);
+    return `${WEEKDAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]} ${d} ${MONTHS[m - 1].slice(0, 3)}`;
+  };
+  const ensure = (h: number) => {
+    if (doc.y + h > bottomLimit) {
+      doc.addPage();
+      doc.y = doc.page.margins.top;
+    }
+  };
+  const sectionTitle = (text: string, color = "#0d5c70") => {
+    ensure(40);
+    doc.font("Body-Bold").fontSize(11).fillColor(color).text(text, left, doc.y, { width });
+    doc.fillColor("#000000");
+    doc.y += 4;
+  };
+  const labelled = (label: string, body: string) => {
+    doc.font("Body").fontSize(8.5);
+    ensure(doc.heightOfString(`${label} ${body}`, { width }) + 4);
+    doc.font("Body-Bold").fontSize(8.5).fillColor("#000000").text(`${label} `, left, doc.y, { width, continued: true }).font("Body").text(body);
+    doc.y += 3;
+  };
+
+  if (input.technicians?.length) {
+    sectionTitle("PER PERSON");
+    const sCols = [
+      { title: "Name", w: 0.17 },
+      { title: "Days checked in", w: 0.08 },
+      { title: "Working days with no check-in", w: 0.1 },
+      { title: "First / last check-in", w: 0.15 },
+      { title: "Hours recorded", w: 0.09 },
+      { title: "Late days (total)", w: 0.1 },
+      { title: "Overtime calculated", w: 0.1 },
+      { title: "Overtime approved", w: 0.1 },
+      { title: "Not checked out", w: 0.11 },
+    ];
+    const sW = sCols.map((c) => c.w * width);
+    const sX = sW.reduce<number[]>((xs, w, i) => [...xs, xs[i] + w], [left]);
+    const sRow = (cells: string[], header: boolean, fill?: string) => {
+      doc.font(header ? "Body-Bold" : "Body").fontSize(8);
+      const h = Math.max(...cells.map((c, i) => doc.heightOfString(c, { width: sW[i] - 6 }))) + 8;
+      ensure(h);
+      const y = doc.y;
+      cells.forEach((c, i) => {
+        doc.rect(sX[i], y, sW[i], h).fillAndStroke(header ? PALE : fill ?? "#ffffff", GRID);
+        doc.fillColor("#000000").font(header || i === 0 ? "Body-Bold" : "Body").fontSize(8)
+          .text(c, sX[i] + 3, y + 4, { width: sW[i] - 6, align: i === 0 ? "left" : "center" });
+      });
+      doc.y = y + h;
+    };
+    sRow(sCols.map((c) => c.title), true);
+    for (const t of input.technicians) {
+      sRow(
+        [
+          t.name,
+          String(t.daysCheckedIn),
+          t.noCheckInDays === null ? "—" : String(t.noCheckInDays.length),
+          t.firstCheckIn ? `${fullDay(t.firstCheckIn)} / ${fullDay(t.lastCheckIn!)}` : "—",
+          t.minutesRecorded ? span(t.minutesRecorded) : "—",
+          t.lateDays ? `${t.lateDays} (${span(t.lateMinutes)})` : "0",
+          t.overtimeMinutes ? span(t.overtimeMinutes) : "—",
+          t.approvedOvertimeMinutes ? span(t.approvedOvertimeMinutes) : "—",
+          String(t.openVisits),
+        ],
+        false,
+        t.daysCheckedIn === 0 && t.noCheckInDays !== null ? "#fdf1f1" : undefined,
+      );
+    }
+    doc.y += 10;
+
+    const withGaps = input.technicians.filter((t) => t.noCheckInDays?.length);
+    if (withGaps.length) {
+      sectionTitle("WORKING DAYS WITH NO CHECK-IN");
+      for (const t of withGaps) labelled(`${t.name}:`, t.noCheckInDays!.map(fullDay).join(", "));
+      doc.font("Body-Italic").fontSize(7.5).fillColor("#444444")
+        .text("Monday to Saturday, excluding public holidays, approved leave, days HR excused, and days before the person was hired or had a login. Staff Technicians only. Marked absent by the app from 1 October 2026.", left, doc.y, { width });
+      doc.fillColor("#000000");
+      doc.y += 10;
+    }
+  }
+
+  if (input.warnings?.length) {
+    sectionTitle("CHECK BEFORE USING THESE FIGURES FOR PAY", "#b42318");
+    doc.font("Body").fontSize(8.5).fillColor("#000000")
+      .text("These visits stayed open more than 12 hours, which usually means the check-out was done late (often the next morning). Their hours, and overtime calculated from them, are likely overstated.", left, doc.y, { width });
+    doc.y += 4;
+    for (const w of input.warnings) {
+      const ot = w.overtime ? ` — overtime ${span(w.overtime.minutes)} ${w.overtime.status === "APPROVED" ? "ALREADY APPROVED, review it" : "pending, check before approving"}` : "";
+      labelled(`${w.name}, ${fullDay(w.day)}:`, `open ${span(w.openMinutes)}${ot}`);
+    }
+    doc.y += 8;
+  }
+
+  if (input.technicians?.length || input.warnings?.length) {
+    doc.addPage();
+    doc.y = doc.page.margins.top;
+  }
+
   const cols = [
     { title: "Staff", w: 0.105, align: "left" as const },
     { title: "Date", w: 0.09, align: "left" as const },
@@ -243,6 +351,7 @@ export function generateStaffAttendancePdf(input: StaffAttendancePdfInput): PDFK
     else if (input.pendingOvertime.has(v.id)) remarks.push(`Overtime ${span(input.pendingOvertime.get(v.id)!)} (pending)`);
     if (!v.checkOutAt) remarks.push("Not checked out");
     if (v.checkOutByManager) remarks.push("Closed by manager");
+    if (v.checkOutAutomatic) remarks.push("Checked out automatically");
 
     // The name prints once per person, so a long register reads as blocks rather than repetition.
     const sameAsAbove = v.employeeName === previousName;
