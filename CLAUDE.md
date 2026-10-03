@@ -36,6 +36,18 @@ and live. In short:
   exactly 00:00: on that technician's next check-in or app load, and on every poller run - the
   recorded time is the same. Labelled on Team Attendance, the staff register, My Attendance, the
   CSV and the PDF; a manager can correct the time with Team Attendance's Close (§7a).
+- **Reports from the app (2026-10-03):** the team attendance PDF (`GET /api/site-attendance/report/pdf`,
+  Team Attendance's Download PDF and the Staff Attendance Export dialog) now opens with a **per-person
+  summary** (days checked in, working days with no check-in - counted from the later of hire date and
+  login creation, Staff Technicians only - hours, late, overtime calculated/approved, open visits) and a
+  **"check before using these figures for pay"** list of visits open > 12 h with the overtime on that
+  day (`lib/attendanceSummary.ts`, tested). `?from=all` = from the first check-in on file. The Export
+  dialog has Yesterday (the daily report) / This month / All records presets. HR's Overtime page warns
+  on a day built on a > 12 h visit (`longVisitMinutes`). Test accounts (Fab Fabrizio, Technet Admin) are
+  **not** excluded - the user chose not to build that. Also fixed: a typed check-out is now read
+  against the *typed* check-in (was the recorded one), so a visit opened late in the app no longer turns
+  into ~24 h of overtime (Aly, 26 Sep). September overtime HR already approved from overnight visits
+  (Aly 21/22 Sep, 24 h+ each) is still stored - HR has to review it.
 - **Operations Manager = Admin (2026-10-02, management):** OPERATIONS_MANAGER has exactly the
   admin's access and, like the admin, no check-in card, shift pings or personal pages. One rule on
   each side: `isAdminLike()` (server `lib/roles.ts`, used by `requireRole` - any route allowing ADMIN
