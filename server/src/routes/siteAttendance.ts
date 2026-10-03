@@ -10,7 +10,8 @@ import { fillMissingPlaces, reverseGeocodeCached } from "../lib/reverseGeocode";
 import { cancelPendingAudits, scheduleAuditTimes } from "../lib/attendanceAudit";
 import { claimRequest, releaseRequest } from "../lib/idempotency";
 import { notifyHrOfOvertime } from "../lib/overtimeQueue";
-import { buildAttendanceReport, parseRange } from "../lib/attendanceReport";
+import { buildAttendanceReport, parseRange, todayInMauritius } from "../lib/attendanceReport";
+import { payWarnings, summarizeTechnicians } from "../lib/attendanceSummary";
 import { computeLateByVisit, computeOvertimeDays, dayToDate, mauritiusDay, MAURITIUS_OFFSET_MINUTES } from "../lib/overtime";
 import { generateStaffAttendancePdf } from "../lib/pdf/staffAttendancePdf";
 import { isPhotoRequired, parseAttendancePhoto } from "../lib/attendancePhoto";
@@ -305,18 +306,29 @@ router.get("/live", requireRole(...ATTENDANCE_VIEW_ROLES), async (req, res) => {
  * it is an internal management listing, not an official per-employee sheet.
  */
 router.get("/report/pdf", requireRole(...ATTENDANCE_VIEW_ROLES), async (req, res) => {
-  const range = parseRange(req.query.from, req.query.to);
-  if ("error" in range) return res.status(400).json({ error: range.error });
-
-  const offset = MAURITIUS_OFFSET_MINUTES * 60_000;
-  const start = new Date(dayToDate(range.from).getTime() - offset);
-  const end = new Date(dayToDate(range.to).getTime() + 86_400_000 - offset);
   // Same includePast convention as the register endpoint above - without this, the PDF could
   // silently include departed employees the screen it was exported from was actively hiding.
   const activeFilter =
     req.query.includePast === "true" ? {} : { employee: { employmentStatus: { not: "TERMINATED" as const } } };
   // ?employeeId= narrows it to one person - the Technician filter on Team Attendance.
   const employeeId = typeof req.query.employeeId === "string" && req.query.employeeId ? req.query.employeeId : undefined;
+
+  // ?from=all = every record so far: from the first check-in (of the people in the report) to today.
+  let from = req.query.from;
+  if (from === "all") {
+    const first = await prisma.siteAttendance.findFirst({
+      where: { ...activeFilter, ...(employeeId ? { employeeId } : {}) },
+      orderBy: { checkInAt: "asc" },
+      select: { checkInAt: true },
+    });
+    from = first ? mauritiusDay(first.checkInAt) : todayInMauritius();
+  }
+  const range = parseRange(from, req.query.to);
+  if ("error" in range) return res.status(400).json({ error: range.error });
+
+  const offset = MAURITIUS_OFFSET_MINUTES * 60_000;
+  const start = new Date(dayToDate(range.from).getTime() - offset);
+  const end = new Date(dayToDate(range.to).getTime() + 86_400_000 - offset);
 
   const [rows, decisions] = await Promise.all([
     prisma.siteAttendance.findMany({
@@ -353,13 +365,67 @@ router.get("/report/pdf", requireRole(...ATTENDANCE_VIEW_ROLES), async (req, res
     if (v && day.minutes > 0 && !approvedOvertime.has(v.id)) pendingOvertime.set(v.id, day.minutes);
   }
 
+  // The front summary: everyone with a visit in the range, plus every current Staff Technician
+  // (expected to check in daily), so someone who never checked in still shows - with their days.
+  const technicians = await prisma.employee.findMany({
+    where: {
+      employmentStatus: { not: "TERMINATED" },
+      user: { role: "FIELD_TECHNICIAN" },
+      ...(employeeId ? { id: employeeId } : {}),
+    },
+    select: { id: true, firstName: true, lastName: true, hireDate: true, user: { select: { createdAt: true } } },
+  });
+  // Nobody can check in before they have a login, so "no check-in" days start at the later of the
+  // hire date and the day the login was created.
+  const people = new Map(
+    technicians.map((e) => {
+      const starts = [e.hireDate?.toISOString().slice(0, 10), e.user ? mauritiusDay(e.user.createdAt) : undefined].filter(Boolean) as string[];
+      return [e.id, { id: e.id, name: `${e.firstName} ${e.lastName}`, expectedFrom: starts.sort().at(-1) ?? null, expectedDaily: true }];
+    }),
+  );
+  for (const v of visits) {
+    if (!people.has(v.employeeId)) people.set(v.employeeId, { id: v.employeeId, name: v.employeeName, expectedFrom: null, expectedDaily: false });
+  }
+  const personIds = [...people.keys()];
+  const [leave, holidays, excuses] = await Promise.all([
+    prisma.leaveRequest.findMany({
+      where: { employeeId: { in: personIds }, status: "APPROVED", startDate: { lte: dayToDate(range.to) }, endDate: { gte: dayToDate(range.from) } },
+      select: { employeeId: true, startDate: true, endDate: true },
+    }),
+    prisma.publicHoliday.findMany({ where: { date: { gte: dayToDate(range.from), lte: dayToDate(range.to) } }, select: { date: true } }),
+    prisma.absenceExcuse.findMany({
+      where: { employeeId: { in: personIds }, date: { gte: dayToDate(range.from), lte: dayToDate(range.to) } },
+      select: { employeeId: true, date: true },
+    }),
+  ]);
+  const day = (d: Date) => d.toISOString().slice(0, 10);
+  const late = computeLateByVisit(visits);
+  const overtimeDays = computeOvertimeDays(visits);
+  const approved = decisions.map((d) => ({ employeeId: d.employeeId, date: day(d.date), minutes: d.minutes }));
+  const summary = summarizeTechnicians({
+    people: [...people.values()].sort((a, b) => a.name.localeCompare(b.name)),
+    from: range.from,
+    to: range.to,
+    today: todayInMauritius(),
+    visits,
+    leave: leave.map((l) => ({ employeeId: l.employeeId, from: day(l.startDate), to: day(l.endDate) })),
+    holidays: new Set(holidays.map((h) => day(h.date))),
+    excused: new Set(excuses.map((x) => `${x.employeeId}|${day(x.date)}`)),
+    late,
+    overtimeDays,
+    approved,
+  });
+  const warnings = payWarnings(visits, approved, overtimeDays).map((w) => ({ ...w, name: people.get(w.employeeId)?.name ?? "—" }));
+
   const doc = generateStaffAttendancePdf({
     from: range.from,
     to: range.to,
     visits,
-    late: computeLateByVisit(visits),
+    late,
     approvedOvertime,
     pendingOvertime,
+    technicians: summary,
+    warnings,
   });
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Disposition", `attachment; filename="staff-attendance-${range.from}-to-${range.to}.pdf"`);
