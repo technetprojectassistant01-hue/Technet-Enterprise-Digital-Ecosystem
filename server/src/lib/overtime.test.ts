@@ -67,6 +67,15 @@ describe("computeOvertimeDays", () => {
     expect(days[0].minutes).toBe(24 * 60 + 30 - 17 * 60 - 30);
   });
 
+  it("compares a typed check-out with the typed check-in, not a later recorded one", () => {
+    // Saturday 26 Sept: typed 07:50 -> 13:15, but the app was only opened at 13:52. Same day, no overtime.
+    const late = { ...visit("2026-09-26", "13:52", "13:53"), checkInDeclaredTime: "07:50", checkOutDeclaredTime: "13:15" };
+    expect(computeOvertimeDays([late])).toEqual([]);
+    // With nothing typed at check-in, the recorded check-in is still the reference.
+    const noTypedIn = { ...visit("2026-09-17", "14:00", null), checkOutAt: mu("2026-09-18", "00:40"), checkOutDeclaredTime: "00:30" };
+    expect(computeOvertimeDays([noTypedIn])[0].minutes).toBe(24 * 60 + 30 - 17 * 60 - 30);
+  });
+
   it("groups by the Mauritius day, not the UTC day", () => {
     // 01:30 Mauritius on a Sunday is still Saturday 21:30 UTC.
     const days = computeOvertimeDays([visit("2026-09-20", "01:30", "02:00")]);
