@@ -124,13 +124,18 @@ export function computeLateByVisit(visits: (OvertimeVisit & { id: string })[]): 
  * The typed check-out as minutes from the start of the check-in's day, or null when nothing (or
  * nothing valid) was typed. A typed "HH:MM" is taken as that day's evening: a check-out recorded
  * the next morning with "17:40" typed (a forgotten check-out) counts as 17:40, not a day-long
- * shift. Only a typed time earlier than the check-in itself is read as past midnight.
+ * shift. Only a typed time earlier than the check-in itself is read as past midnight - compared
+ * with the *typed* check-in when there is one, as the screens do (client workSchedule.ts). Comparing
+ * with the recorded check-in turned a same-day "07:50 -> 13:15" visit opened in the app at 13:52
+ * into 23h 45m of overtime (2026-09-26, found 2026-10-03).
  */
 function typedOutMinutes(v: OvertimeVisit): number | null {
   const m = v.checkOutDeclaredTime ? /^(\d{1,2}):(\d{2})$/.exec(v.checkOutDeclaredTime) : null;
   if (!m) return null;
   const typed = Number(m[1]) * 60 + Number(m[2]);
-  return typed < recordedMinutes(v.checkInAt) ? typed + 1440 : typed;
+  const typedIn = v.checkInDeclaredTime ? /^(\d{1,2}):(\d{2})$/.exec(v.checkInDeclaredTime) : null;
+  const inMinutes = typedIn ? Number(typedIn[1]) * 60 + Number(typedIn[2]) : recordedMinutes(v.checkInAt);
+  return typed < inMinutes ? typed + 1440 : typed;
 }
 
 export function computeOvertimeDays(visits: OvertimeVisit[]): OvertimeDay[] {
