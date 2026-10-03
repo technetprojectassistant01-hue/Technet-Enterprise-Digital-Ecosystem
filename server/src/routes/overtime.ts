@@ -12,6 +12,7 @@ import {
 } from "../lib/overtime";
 import { overtimeForDay } from "../lib/overtimeQueue";
 import { findExcessiveOvertimeDays, findInvertedSessions, findOverlappingSessions } from "../lib/attendanceDataIssues";
+import { payWarnings } from "../lib/attendanceSummary";
 
 /**
  * Overtime approval for HR (and Admin). Overtime is calculated from site attendance against the
@@ -24,6 +25,7 @@ router.use(requireRole(...HR_ROLES));
 
 const EMPLOYEE_SELECT = { id: true, firstName: true, lastName: true, employeeCode: true };
 const VISIT_SELECT = {
+  id: true,
   employeeId: true,
   checkInAt: true,
   checkInDeclaredTime: true,
@@ -73,6 +75,14 @@ router.get("/", async (req, res) => {
     anomalyCountByKey.set(key, (anomalyCountByKey.get(key) ?? 0) + 1);
   }
 
+  // A visit open over 12 hours (checked out late, often the next morning) overstates overtime -
+  // warn before approval, never block (2026-10-03: 24h+ days were approved this way in September).
+  const longVisitByKey = new Map<string, number>();
+  for (const w of payWarnings(visits, [], [])) {
+    const key = `${w.employeeId}|${w.day}`;
+    longVisitByKey.set(key, Math.max(longVisitByKey.get(key) ?? 0, w.openMinutes));
+  }
+
   const items = days.map((d) => {
     const key = `${d.employeeId}|${d.date}`;
     const decision = decisionByKey.get(key) ?? null;
@@ -83,6 +93,7 @@ router.get("/", async (req, res) => {
       status: decision?.status ?? "PENDING",
       decision,
       anomalyCount: anomalyCountByKey.get(key) ?? 0,
+      longVisitMinutes: longVisitByKey.get(key) ?? null,
     };
   });
   // A decision whose overtime no longer calculates (attendance was corrected) still shows, so HR can see it.
@@ -98,6 +109,7 @@ router.get("/", async (req, res) => {
       status: decision.status,
       decision,
       anomalyCount: anomalyCountByKey.get(`${decision.employeeId}|${date}`) ?? 0,
+      longVisitMinutes: longVisitByKey.get(`${decision.employeeId}|${date}`) ?? null,
     });
   }
   items.sort((a, b) => (a.date === b.date ? 0 : b.date.localeCompare(a.date)));
