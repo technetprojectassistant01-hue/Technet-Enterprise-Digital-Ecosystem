@@ -29,9 +29,33 @@ function StaffAttendanceExportDialog({ month, onClose }: { month: Date; onClose:
   const [from, setFrom] = useState(monthStart)
   const [to, setTo] = useState(monthEnd < today ? monthEnd : today)
   const [busy, setBusy] = useState<'pdf' | 'csv' | null>(null)
+  // "All records": the server starts the PDF at the first check-in on file (?from=all).
+  const [preset, setPreset] = useState<'yesterday' | 'month' | 'all' | null>(null)
+  const allRecords = preset === 'all'
 
-  const rangeError =
-    !from || !to || to < from ? t.myAttendance.rangeInvalid : to > today ? t.myAttendance.futureNotAllowed : null
+  const rangeError = allRecords
+    ? null
+    : !from || !to || to < from
+      ? t.myAttendance.rangeInvalid
+      : to > today
+        ? t.myAttendance.futureNotAllowed
+        : null
+
+  function quick(kind: 'yesterday' | 'month' | 'all') {
+    setPreset(kind)
+    if (kind === 'yesterday') {
+      const y = new Date()
+      y.setDate(y.getDate() - 1)
+      setFrom(dayKey(y))
+      setTo(dayKey(y))
+    } else if (kind === 'month') {
+      const now = new Date()
+      setFrom(dayKey(new Date(now.getFullYear(), now.getMonth(), 1)))
+      setTo(today)
+    } else {
+      setTo(today)
+    }
+  }
 
   function entered(declared: string | null, recordedIso: string | null): string {
     if (declared) return declared
@@ -42,7 +66,8 @@ function StaffAttendanceExportDialog({ month, onClose }: { month: Date; onClose:
     if (rangeError) return toast.error(rangeError)
     setBusy('pdf')
     try {
-      await api.downloadPdf(api.staffAttendanceReportPdfUrl(from, to), `staff-attendance-${from}-to-${to}.pdf`)
+      const pdfFrom = allRecords ? 'all' : from
+      await api.downloadPdf(api.staffAttendanceReportPdfUrl(pdfFrom, to), `staff-attendance-${allRecords ? 'all-records' : from}-to-${to}.pdf`)
       onClose()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t.myAttendance.downloadFailed)
@@ -101,6 +126,29 @@ function StaffAttendanceExportDialog({ month, onClose }: { month: Date; onClose:
       <div className="flex flex-col gap-4">
         <p className="text-sm text-ink-300">{t.staffAttendance.exportIntro}</p>
 
+        <div className="flex flex-wrap gap-2">
+          {(
+            [
+              ['yesterday', t.staffAttendance.quickYesterday],
+              ['month', t.staffAttendance.quickThisMonth],
+              ['all', t.staffAttendance.quickAllRecords],
+            ] as const
+          ).map(([kind, label]) => (
+            <button
+              key={kind}
+              type="button"
+              onClick={() => quick(kind)}
+              className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                preset === kind
+                  ? 'border-cyan-accent text-cyan-accent'
+                  : 'border-ink-600 text-ink-300 hover:border-cyan-accent hover:text-cyan-accent'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="flex flex-col gap-1">
             <label htmlFor="staff-export-from" className={labelClass}>
@@ -111,7 +159,11 @@ function StaffAttendanceExportDialog({ month, onClose }: { month: Date; onClose:
               type="date"
               value={from}
               max={today}
-              onChange={(e) => setFrom(e.target.value)}
+              disabled={allRecords}
+              onChange={(e) => {
+                setPreset(null)
+                setFrom(e.target.value)
+              }}
               className={inputClass}
             />
           </div>
@@ -124,13 +176,18 @@ function StaffAttendanceExportDialog({ month, onClose }: { month: Date; onClose:
               type="date"
               value={to}
               max={today}
-              onChange={(e) => setTo(e.target.value)}
+              onChange={(e) => {
+                setPreset(preset === 'all' ? 'all' : null)
+                setTo(e.target.value)
+              }}
               className={inputClass}
             />
           </div>
         </div>
 
+        {allRecords && <p className="text-xs text-ink-400">{t.staffAttendance.allRecordsNote}</p>}
         {rangeError && <p className="text-sm text-red-400">{rangeError}</p>}
+        <p className="text-xs text-ink-400">{t.staffAttendance.pdfContents}</p>
 
         <div className="flex flex-col gap-2 sm:flex-row">
           <button
@@ -145,7 +202,7 @@ function StaffAttendanceExportDialog({ month, onClose }: { month: Date; onClose:
           <button
             type="button"
             onClick={downloadSpreadsheet}
-            disabled={busy !== null || !!rangeError}
+            disabled={busy !== null || !!rangeError || allRecords}
             className="flex flex-1 items-center justify-center gap-2 rounded-md border border-ink-600 py-2.5 text-sm font-semibold text-ink-200 transition hover:border-cyan-accent hover:text-cyan-accent disabled:cursor-not-allowed disabled:opacity-50"
           >
             <FileSpreadsheet className="h-4 w-4" />
