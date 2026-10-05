@@ -384,11 +384,11 @@ export const en = {
     quickYesterday: 'Yesterday',
     quickThisMonth: 'This month',
     quickAllRecords: 'All records',
-    allRecordsNote: 'Every check-in from the first one to today. PDF only.',
+    allRecordsNote: 'Every check-in from the first one to today.',
     pdfContents: 'The PDF opens with a summary per person (days checked in, days with no check-in, hours, late, overtime) and a list of visits to check before pay.',
     downloadPdf: 'Download PDF',
     downloadExcel: 'Download Excel',
-    excelNote: 'The Excel file is a CSV — Excel and Google Sheets open it directly.',
+    excelNote: 'The Excel file has a Summary sheet and a Register sheet, with the company letterhead, and prints with a header, footer and page numbers.',
   },
 
   /** "My Jobs Today" under the check-in card: what the admin scheduled for this technician. */
