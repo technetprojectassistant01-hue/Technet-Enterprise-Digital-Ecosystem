@@ -48,6 +48,13 @@ and live. In short:
   against the *typed* check-in (was the recorded one), so a visit opened late in the app no longer turns
   into ~24 h of overtime (Aly, 26 Sep). September overtime HR already approved from overnight visits
   (Aly 21/22 Sep, 24 h+ each) is still stored - HR has to review it.
+  **Excel (2026-10-05):** the same report is also a real `.xlsx` (`GET /api/site-attendance/report/xlsx`,
+  `lib/xlsx/staffAttendanceXlsx.ts`, `exceljs`): Summary + Register sheets, logo/letterhead at the top,
+  landscape A4, header row repeated and a printed header/footer. Both routes share `loadTeamReport()`.
+  The Export dialog's Excel button now downloads it (was a client-side CSV). Team Attendance's own CSV
+  export is unchanged. The office attendance machine is an **AiFace11B** (cloud "Timmy",
+  global.yunatt.com/timy), not Hikvision; its report fields go into our attendance report/summary only,
+  and only once the manager picks which (asked 2026-10-05) - GPS/tracking all stays.
 - **Operations Manager = Admin (2026-10-02, management):** OPERATIONS_MANAGER has exactly the
   admin's access and, like the admin, no check-in card, shift pings or personal pages. One rule on
   each side: `isAdminLike()` (server `lib/roles.ts`, used by `requireRole` - any route allowing ADMIN
