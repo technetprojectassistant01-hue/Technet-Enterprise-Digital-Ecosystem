@@ -381,11 +381,11 @@ export const fr: Dict = {
     quickYesterday: 'Hier',
     quickThisMonth: 'Ce mois-ci',
     quickAllRecords: 'Tout l\'historique',
-    allRecordsNote: 'Tous les pointages, du premier à aujourd\'hui. PDF uniquement.',
+    allRecordsNote: 'Tous les pointages, du premier à aujourd\'hui.',
     pdfContents: 'Le PDF commence par un résumé par personne (jours pointés, jours sans pointage, heures, retards, heures supplémentaires) et une liste de visites à vérifier avant la paie.',
     downloadPdf: 'Télécharger le PDF',
     downloadExcel: 'Télécharger Excel',
-    excelNote: "Le fichier Excel est un CSV — Excel et Google Sheets l'ouvrent directement.",
+    excelNote: "Le fichier Excel contient une feuille Résumé et une feuille Registre, avec l'en-tête de l'entreprise, et s'imprime avec en-tête, pied de page et numéros de page.",
   },
 
   myJobs: {
