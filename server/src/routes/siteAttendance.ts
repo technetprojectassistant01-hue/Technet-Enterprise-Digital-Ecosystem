@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Request } from "express";
 import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { ATTENDANCE_VIEW_ROLES, OPS_MANAGE_ROLES, OPS_SUBMIT_ROLES } from "../lib/roles";
@@ -13,7 +13,8 @@ import { notifyHrOfOvertime } from "../lib/overtimeQueue";
 import { buildAttendanceReport, parseRange, todayInMauritius } from "../lib/attendanceReport";
 import { payWarnings, summarizeTechnicians } from "../lib/attendanceSummary";
 import { computeLateByVisit, computeOvertimeDays, dayToDate, mauritiusDay, MAURITIUS_OFFSET_MINUTES } from "../lib/overtime";
-import { generateStaffAttendancePdf } from "../lib/pdf/staffAttendancePdf";
+import { generateStaffAttendancePdf, type StaffAttendancePdfInput } from "../lib/pdf/staffAttendancePdf";
+import { generateStaffAttendanceXlsx } from "../lib/xlsx/staffAttendanceXlsx";
 import { isPhotoRequired, parseAttendancePhoto } from "../lib/attendancePhoto";
 import { evaluateVisit, parseClientSentAt } from "../lib/anomalies";
 import { liveStatus } from "../lib/liveMap";
@@ -305,7 +306,12 @@ router.get("/live", requireRole(...ATTENDANCE_VIEW_ROLES), async (req, res) => {
  * GPS and the app's own timestamps alongside what was typed, and has no validation/DRAFT concept:
  * it is an internal management listing, not an official per-employee sheet.
  */
-router.get("/report/pdf", requireRole(...ATTENDANCE_VIEW_ROLES), async (req, res) => {
+/**
+ * Everything the team report needs (register, late, overtime, per-person summary, pay warnings),
+ * shared by the PDF and the Excel export so the two can never disagree.
+ */
+async function loadTeamReport(query: Request["query"]): Promise<StaffAttendancePdfInput | { error: string }> {
+  const req = { query };
   // Same includePast convention as the register endpoint above - without this, the PDF could
   // silently include departed employees the screen it was exported from was actively hiding.
   const activeFilter =
@@ -324,7 +330,7 @@ router.get("/report/pdf", requireRole(...ATTENDANCE_VIEW_ROLES), async (req, res
     from = first ? mauritiusDay(first.checkInAt) : todayInMauritius();
   }
   const range = parseRange(from, req.query.to);
-  if ("error" in range) return res.status(400).json({ error: range.error });
+  if ("error" in range) return { error: range.error };
 
   const offset = MAURITIUS_OFFSET_MINUTES * 60_000;
   const start = new Date(dayToDate(range.from).getTime() - offset);
@@ -417,19 +423,30 @@ router.get("/report/pdf", requireRole(...ATTENDANCE_VIEW_ROLES), async (req, res
   });
   const warnings = payWarnings(visits, approved, overtimeDays).map((w) => ({ ...w, name: people.get(w.employeeId)?.name ?? "—" }));
 
-  const doc = generateStaffAttendancePdf({
-    from: range.from,
-    to: range.to,
-    visits,
-    late,
-    approvedOvertime,
-    pendingOvertime,
-    technicians: summary,
-    warnings,
-  });
+  return { from: range.from, to: range.to, visits, late, approvedOvertime, pendingOvertime, technicians: summary, warnings };
+}
+
+router.get("/report/pdf", requireRole(...ATTENDANCE_VIEW_ROLES), async (req, res) => {
+  const report = await loadTeamReport(req.query);
+  if ("error" in report) return res.status(400).json({ error: report.error });
+  const doc = generateStaffAttendancePdf(report);
   res.setHeader("Content-Type", "application/pdf");
-  res.setHeader("Content-Disposition", `attachment; filename="staff-attendance-${range.from}-to-${range.to}.pdf"`);
+  res.setHeader("Content-Disposition", `attachment; filename="staff-attendance-${report.from}-to-${report.to}.pdf"`);
   doc.pipe(res);
+});
+
+/**
+ * The same report as an Excel workbook (management, 2026-10-03): a Summary sheet and a Register
+ * sheet, each with the company letterhead at the top and a printed header/footer, so "Print to
+ * PDF" from Excel carries the company name, date and page numbers.
+ */
+router.get("/report/xlsx", requireRole(...ATTENDANCE_VIEW_ROLES), async (req, res) => {
+  const report = await loadTeamReport(req.query);
+  if ("error" in report) return res.status(400).json({ error: report.error });
+  const buffer = await generateStaffAttendanceXlsx(report);
+  res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  res.setHeader("Content-Disposition", `attachment; filename="staff-attendance-${report.from}-to-${report.to}.xlsx"`);
+  res.send(buffer);
 });
 
 /**
