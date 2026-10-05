@@ -1,11 +1,8 @@
 import { useState } from 'react'
 import { Download, FileSpreadsheet } from 'lucide-react'
 import * as api from '../lib/api'
-import type { SiteAttendanceWithEmployee } from '../lib/api'
 import { Modal } from './ui'
 import { inputClass, labelClass, primaryButtonClass } from './buttonStyles'
-import { downloadCsv } from '../lib/csv'
-import { clockOf } from '../lib/siteAttendance'
 import { useToast } from './ToastContext'
 import { useT } from '../i18n'
 
@@ -15,9 +12,9 @@ function dayKey(date: Date): string {
 
 /**
  * "Export" on the admin's Staff Attendance panel: pick a range, then take it as a printable PDF
- * or as a spreadsheet. The spreadsheet is CSV rather than a real .xlsx — Excel opens it directly
- * and it needs no new dependency, the same call Work Orders and Intervention Reports already make
- * (CLAUDE.md §7a). Both carry the entered/recorded comparison the table is built around.
+ * or as an Excel workbook (since 2026-10-05 a real .xlsx built on the server - Summary + Register
+ * sheets with the letterhead - replacing the old client-side CSV). Both carry the entered/recorded
+ * comparison the table is built around.
  */
 function StaffAttendanceExportDialog({ month, onClose }: { month: Date; onClose: () => void }) {
   const t = useT()
@@ -57,11 +54,6 @@ function StaffAttendanceExportDialog({ month, onClose }: { month: Date; onClose:
     }
   }
 
-  function entered(declared: string | null, recordedIso: string | null): string {
-    if (declared) return declared
-    return recordedIso ? clockOf(new Date(recordedIso)) : ''
-  }
-
   async function downloadPdf() {
     if (rangeError) return toast.error(rangeError)
     setBusy('pdf')
@@ -80,42 +72,14 @@ function StaffAttendanceExportDialog({ month, onClose }: { month: Date; onClose:
     if (rangeError) return toast.error(rangeError)
     setBusy('csv')
     try {
-      const { history } = await api.listTeamAttendance({ from, to })
-      const rows = [...history].sort((a, b) => {
-        const nameDiff = `${a.employee?.firstName} ${a.employee?.lastName}`.localeCompare(
-          `${b.employee?.firstName} ${b.employee?.lastName}`,
-        )
-        if (nameDiff !== 0) return nameDiff
-        return new Date(a.checkInAt).getTime() - new Date(b.checkInAt).getTime()
-      })
-      const columns: { header: string; accessor: (v: SiteAttendanceWithEmployee) => unknown }[] = [
-        { header: 'Staff', accessor: (v) => (v.employee ? `${v.employee.firstName} ${v.employee.lastName}` : '') },
-        { header: 'Date', accessor: (v) => dayKey(new Date(v.checkInAt)) },
-        { header: 'Time In (entered)', accessor: (v) => entered(v.checkInDeclaredTime, v.checkInAt) },
-        { header: 'Time Out (entered)', accessor: (v) => (v.checkOutAt ? entered(v.checkOutDeclaredTime, v.checkOutAt) : '') },
-        { header: 'Location In (entered)', accessor: (v) => [v.checkInSite, v.checkInNote].filter(Boolean).join(' — ') },
-        { header: 'Location Out (entered)', accessor: (v) => [v.checkOutSite, v.checkOutNote].filter(Boolean).join(' — ') },
-        { header: 'Time In (app)', accessor: (v) => clockOf(new Date(v.checkInAt)) },
-        { header: 'Time Out (app)', accessor: (v) => (v.checkOutAt ? clockOf(new Date(v.checkOutAt)) : '') },
-        { header: 'GPS In Latitude', accessor: (v) => v.checkInLat ?? '' },
-        { header: 'GPS In Longitude', accessor: (v) => v.checkInLng ?? '' },
-        { header: 'GPS In Place', accessor: (v) => v.checkInPlace ?? '' },
-        { header: 'GPS Out Latitude', accessor: (v) => v.checkOutLat ?? '' },
-        { header: 'GPS Out Longitude', accessor: (v) => v.checkOutLng ?? '' },
-        { header: 'GPS Out Place', accessor: (v) => v.checkOutPlace ?? '' },
-        { header: 'Location Check In', accessor: (v) => v.checkInLocationMatch ?? '' },
-        { header: 'Location Check Out', accessor: (v) => v.checkOutLocationMatch ?? '' },
-        {
-          header: 'Transport (MUR)',
-          accessor: (v) => (Number(v.checkInTransportCost ?? 0) + Number(v.checkOutTransportCost ?? 0)).toFixed(2),
-        },
-        { header: 'Closed By Manager', accessor: (v) => (v.checkOutByManager ? 'Yes' : 'No') },
-        { header: 'Checked Out Automatically', accessor: (v) => (v.checkOutAutomatic ? 'Yes' : 'No') },
-      ]
-      downloadCsv(`staff-attendance-${from}-to-${to}.csv`, columns, rows)
+      const xlsxFrom = allRecords ? 'all' : from
+      await api.downloadPdf(
+        api.staffAttendanceReportXlsxUrl(xlsxFrom, to),
+        `staff-attendance-${allRecords ? 'all-records' : from}-to-${to}.xlsx`,
+      )
       onClose()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t.staffAttendance.loadFailed)
+      toast.error(err instanceof Error ? err.message : t.myAttendance.downloadFailed)
     } finally {
       setBusy(null)
     }
@@ -202,7 +166,7 @@ function StaffAttendanceExportDialog({ month, onClose }: { month: Date; onClose:
           <button
             type="button"
             onClick={downloadSpreadsheet}
-            disabled={busy !== null || !!rangeError || allRecords}
+            disabled={busy !== null || !!rangeError}
             className="flex flex-1 items-center justify-center gap-2 rounded-md border border-ink-600 py-2.5 text-sm font-semibold text-ink-200 transition hover:border-cyan-accent hover:text-cyan-accent disabled:cursor-not-allowed disabled:opacity-50"
           >
             <FileSpreadsheet className="h-4 w-4" />
