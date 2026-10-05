@@ -384,11 +384,11 @@ export const mfe: Dict = {
     quickYesterday: 'Yer',
     quickThisMonth: 'Sa mwa-la',
     quickAllRecords: 'Tou bann rezistreman',
-    allRecordsNote: 'Tou check-in depi premie ziska zordi. PDF selman.',
+    allRecordsNote: 'Tou check-in depi premie ziska zordi.',
     pdfContents: 'PDF-la koumans par enn rezime pou sak dimoun (zour check-in, zour san check-in, ler, retar, overtime) ek enn lis vizit pou get avan pey.',
     downloadPdf: 'Telsarz PDF',
     downloadExcel: 'Telsarz Excel',
-    excelNote: 'Fisie Excel la enn CSV — Excel ek Google Sheets ouver li direk.',
+    excelNote: 'Fisie Excel la ena enn fey Rezime ek enn fey Rezis, avek lantet lakonpani, e li inprime avek lantet, pie paz ek nimero paz.',
   },
 
   myJobs: {
