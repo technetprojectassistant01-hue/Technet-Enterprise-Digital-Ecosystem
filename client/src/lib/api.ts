@@ -2194,6 +2194,11 @@ export function siteAttendancePhotoUrl(siteAttendanceId: string) {
 }
 
 /** The team register PDF; `employeeId` narrows it to one person (the Technician filter). */
+/** The same team report as an Excel workbook (Summary + Register sheets, letterhead, print header/footer). */
+export function staffAttendanceReportXlsxUrl(from: string, to: string, includePast = false, employeeId?: string) {
+  return staffAttendanceReportPdfUrl(from, to, includePast, employeeId).replace('/report/pdf?', '/report/xlsx?')
+}
+
 export function staffAttendanceReportPdfUrl(from: string, to: string, includePast = false, employeeId?: string) {
   return `${API_URL}/api/site-attendance/report/pdf?from=${from}&to=${to}${includePast ? '&includePast=true' : ''}${employeeId ? `&employeeId=${employeeId}` : ''}`
 }
