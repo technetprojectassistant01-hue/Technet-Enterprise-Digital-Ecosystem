@@ -195,61 +195,130 @@ export function generateStaffAttendancePdf(input: StaffAttendancePdfInput): PDFK
     doc.y += 3;
   };
 
-  if (input.technicians?.length) {
-    sectionTitle("PER PERSON");
-    const sCols = [
-      { title: "Name", w: 0.17 },
-      { title: "Days checked in", w: 0.08 },
-      { title: "Working days with no check-in", w: 0.1 },
-      { title: "First / last check-in", w: 0.15 },
-      { title: "Hours recorded", w: 0.09 },
-      { title: "Late days (total)", w: 0.1 },
-      { title: "Overtime calculated", w: 0.1 },
-      { title: "Overtime approved", w: 0.1 },
-      { title: "Not checked out", w: 0.11 },
-    ];
-    const sW = sCols.map((c) => c.w * width);
-    const sX = sW.reduce<number[]>((xs, w, i) => [...xs, xs[i] + w], [left]);
-    const sRow = (cells: string[], header: boolean, fill?: string) => {
-      doc.font(header ? "Body-Bold" : "Body").fontSize(8);
-      const h = Math.max(...cells.map((c, i) => doc.heightOfString(c, { width: sW[i] - 6 }))) + 8;
-      ensure(h);
+  /** A bordered table that breaks across pages, repeating its header. */
+  const table = (cols: { title: string; w: number }[], rows: { cells: string[]; fill?: string; bold?: boolean }[], fontSize = 7.5) => {
+    const total = cols.reduce((a, c) => a + c.w, 0);
+    const w = cols.map((c) => (c.w / total) * width);
+    const x = w.reduce<number[]>((xs, cw, i) => [...xs, xs[i] + cw], [left]);
+    const draw = (cells: string[], header: boolean, fill?: string, bold = false) => {
+      doc.font(header ? "Body-Bold" : "Body").fontSize(fontSize);
+      const h = Math.max(...cells.map((c, i) => doc.heightOfString(c, { width: w[i] - 4 }))) + 7;
       const y = doc.y;
       cells.forEach((c, i) => {
-        doc.rect(sX[i], y, sW[i], h).fillAndStroke(header ? PALE : fill ?? "#ffffff", GRID);
-        doc.fillColor("#000000").font(header || i === 0 ? "Body-Bold" : "Body").fontSize(8)
-          .text(c, sX[i] + 3, y + 4, { width: sW[i] - 6, align: i === 0 ? "left" : "center" });
+        doc.rect(x[i], y, w[i], h).fillAndStroke(header ? PALE : fill ?? "#ffffff", GRID);
+        doc.fillColor("#000000").font(header || (bold && i < 2) ? "Body-Bold" : "Body").fontSize(fontSize)
+          .text(c, x[i] + 2, y + 3.5, { width: w[i] - 4, align: i === 1 && !header ? "left" : "center" });
       });
       doc.y = y + h;
+      return h;
     };
-    sRow(sCols.map((c) => c.title), true);
-    for (const t of input.technicians) {
-      sRow(
-        [
-          t.name,
-          String(t.daysCheckedIn),
-          t.noCheckInDays === null ? "—" : String(t.noCheckInDays.length),
-          t.firstCheckIn ? `${fullDay(t.firstCheckIn)} / ${fullDay(t.lastCheckIn!)}` : "—",
-          t.minutesRecorded ? span(t.minutesRecorded) : "—",
-          t.lateDays ? `${t.lateDays} (${span(t.lateMinutes)})` : "0",
-          t.overtimeMinutes ? span(t.overtimeMinutes) : "—",
-          t.approvedOvertimeMinutes ? span(t.approvedOvertimeMinutes) : "—",
-          String(t.openVisits),
-        ],
-        false,
-        t.daysCheckedIn === 0 && t.noCheckInDays !== null ? "#fdf1f1" : undefined,
-      );
+    const headerCells = cols.map((c) => c.title);
+    doc.font("Body-Bold").fontSize(fontSize);
+    ensure(Math.max(...headerCells.map((c, i) => doc.heightOfString(c, { width: w[i] - 4 }))) + 30);
+    draw(headerCells, true);
+    for (const r of rows) {
+      doc.font("Body").fontSize(fontSize);
+      const h = Math.max(...r.cells.map((c, i) => doc.heightOfString(c, { width: w[i] - 4 }))) + 7;
+      if (doc.y + h > bottomLimit) {
+        doc.addPage();
+        doc.y = doc.page.margins.top;
+        draw(headerCells, true);
+      }
+      draw(r.cells, false, r.fill, r.bold);
     }
-    doc.y += 10;
+  };
+  const hrs = (minutes: number | null) => (minutes === null ? "—" : (minutes / 60).toFixed(1));
+  const num = (n: number | null) => (n === null ? "—" : String(n));
 
-    const withGaps = input.technicians.filter((t) => t.noCheckInDays?.length);
-    if (withGaps.length) {
-      sectionTitle("WORKING DAYS WITH NO CHECK-IN");
-      for (const t of withGaps) labelled(`${t.name}:`, t.noCheckInDays!.map(fullDay).join(", "));
-      doc.font("Body-Italic").fontSize(7.5).fillColor("#444444")
-        .text("Monday to Saturday, excluding public holidays, approved leave, days HR excused, and days before the person was hired or had a login. Staff Technicians only. Marked absent by the app from 1 October 2026.", left, doc.y, { width });
-      doc.fillColor("#000000");
-      doc.y += 10;
+  if (input.technicians?.length) {
+    // The office AiFace attendance machine's Monthly Report layout (management, 2026-10-08).
+    sectionTitle("MONTHLY REPORT");
+    table(
+      [
+        { title: "Staff Code", w: 5 },
+        { title: "Name", w: 12 },
+        { title: "Department", w: 8 },
+        { title: "Should (Days)", w: 5 },
+        { title: "Actual (Days)", w: 5 },
+        { title: "Actual (Hrs)", w: 5 },
+        { title: "Absence (Days)", w: 5.5 },
+        { title: "Absence (Hrs)", w: 5.5 },
+        { title: "Late (Times)", w: 5 },
+        { title: "Late (Mins)", w: 5 },
+        { title: "Leave Early (Times)", w: 6 },
+        { title: "Leave Early (Mins)", w: 6 },
+        { title: "Holiday (Days)", w: 5.5 },
+        { title: "Leave (Days)", w: 5 },
+        { title: "Leave (Hrs)", w: 5 },
+        { title: "Overtime (Hrs)", w: 6 },
+        { title: "Overtime Approved (Hrs)", w: 6.5 },
+      ],
+      input.technicians.map((t) => ({
+        cells: [
+          t.code ?? "—",
+          t.name,
+          t.department ?? "—",
+          num(t.shouldDays),
+          String(t.daysCheckedIn),
+          hrs(t.minutesRecorded),
+          t.shouldDays === null ? "—" : String(t.noCheckInDays?.length ?? 0),
+          t.shouldDays === null ? "—" : hrs(t.absenceMinutes),
+          String(t.lateDays),
+          String(t.lateMinutes),
+          String(t.earlyTimes),
+          String(t.earlyMinutes),
+          t.shouldDays === null ? "—" : String(t.holidayDays),
+          t.shouldDays === null ? "—" : String(t.leaveDays),
+          t.shouldDays === null ? "—" : hrs(t.leaveMinutes),
+          hrs(t.overtimeMinutes),
+          hrs(t.approvedOvertimeMinutes),
+        ],
+        bold: true,
+        fill: t.daysCheckedIn === 0 && t.shouldDays !== null ? "#fdf1f1" : undefined,
+      })),
+    );
+    doc.font("Body-Italic").fontSize(7.5).fillColor("#444444")
+      .text("Should = working days (Monday to Saturday, excluding public holidays) from the day the person was hired or had a login. Actual = days and hours checked in by the app. Absence = working days with no check-in, no approved leave and no HR excuse (Staff Technicians only). Late from 08:30 and Leave Early before the end of the shift, both by the time the app recorded. Hours are shift hours: 08:00-17:00 weekdays, 08:00-13:00 Saturday.", left, doc.y + 3, { width });
+    doc.fillColor("#000000");
+    doc.y += 12;
+
+    sectionTitle("DAILY REPORT");
+    const STATUS: Record<string, string> = { PRESENT: "", ABSENT: "Absent", LEAVE: "Leave", HOLIDAY: "Holiday", EXCUSED: "Excused", REST: "Rest day" };
+    const pair = (pp?: { in: string; out: string | null; outNextDay: boolean }) =>
+      pp ? `${pp.in} / ${pp.out === null ? "Not out" : pp.out + (pp.outNextDay ? " (+1 day)" : "")}` : "";
+    for (const t of input.technicians) {
+      if (!t.daily.length) continue;
+      ensure(50);
+      doc.font("Body-Bold").fontSize(9.5).fillColor("#000000").text(`${t.name}${t.code ? ` (${t.code})` : ""}`, left, doc.y, { width });
+      doc.y += 2;
+      table(
+        [
+          { title: "Date", w: 9 },
+          { title: "Shift", w: 9 },
+          { title: "In1 / Out1", w: 11 },
+          { title: "In2 / Out2", w: 11 },
+          { title: "In3 / Out3", w: 11 },
+          { title: "Actual (Hrs)", w: 7 },
+          { title: "Late In (Mins)", w: 7 },
+          { title: "Early Out (Mins)", w: 7 },
+          { title: "Status", w: 9 },
+        ],
+        t.daily.map((r) => ({
+          cells: [
+            fullDay(r.day),
+            r.shift ?? "—",
+            pair(r.punches[0]),
+            pair(r.punches[1]),
+            pair(r.punches[2]) + (r.punches.length > 3 ? ` (+${r.punches.length - 3} more)` : ""),
+            r.punches.length ? hrs(r.minutes) : "",
+            r.lateMinutes ? String(r.lateMinutes) : "",
+            r.earlyMinutes ? String(r.earlyMinutes) : "",
+            STATUS[r.status],
+          ],
+          fill: r.status === "ABSENT" ? "#fdf1f1" : r.status === "REST" ? "#f5f5f5" : undefined,
+        })),
+      );
+      doc.y += 8;
     }
   }
 
