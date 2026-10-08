@@ -445,6 +445,16 @@ router.get("/report/pdf", requireRole(...ATTENDANCE_VIEW_ROLES), async (req, res
  * sheet, each with the company letterhead at the top and a printed header/footer, so "Print to
  * PDF" from Excel carries the company name, date and page numbers.
  */
+/**
+ * The same summary as JSON, for Team Attendance's on-screen Attendance Summary, which follows the
+ * office AiFace machine's Monthly Report and, per person, its Daily Report (2026-10-08).
+ */
+router.get("/report/summary", requireRole(...ATTENDANCE_VIEW_ROLES), async (req, res) => {
+  const report = await loadTeamReport(req.query);
+  if ("error" in report) return res.status(400).json({ error: report.error });
+  res.json({ from: report.from, to: report.to, technicians: report.technicians ?? [], warnings: report.warnings ?? [] });
+});
+
 router.get("/report/xlsx", requireRole(...ATTENDANCE_VIEW_ROLES), async (req, res) => {
   const report = await loadTeamReport(req.query);
   if ("error" in report) return res.status(400).json({ error: report.error });
