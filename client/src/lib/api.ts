@@ -3011,6 +3011,68 @@ export function returnToolCheckout(checkoutId: string, input: { condition: ToolC
   })
 }
 
+// ---- Material requests (consumables, line by line: description, reference, quantity)
+
+export type MaterialRequestStatus = 'PENDING' | 'ISSUED' | 'REJECTED'
+
+export interface MaterialRequestItem {
+  id: string
+  position: number
+  description: string
+  reference: string | null
+  quantity: number
+}
+
+export interface MaterialRequest {
+  id: string
+  sequenceNumber: number
+  requestNumber: string
+  employeeId: string
+  employee: ToolEmployeeRef
+  purpose: string | null
+  neededBy: string | null
+  status: MaterialRequestStatus
+  reviewedBy: { id: string; name: string | null; email: string } | null
+  reviewedAt: string | null
+  reviewNote: string | null
+  createdAt: string
+  items: MaterialRequestItem[]
+}
+
+export interface MaterialRequestInput {
+  /** Quantity as typed - the server checks it is a number above zero. */
+  items: { description: string; reference?: string; quantity: number | string }[]
+  purpose?: string
+  neededBy?: string
+}
+
+export function listMaterialRequests(params: { status?: MaterialRequestStatus } = {}) {
+  const qs = params.status ? `?status=${params.status}` : ''
+  return request<{ requests: MaterialRequest[] }>(`/api/material-requests${qs}`)
+}
+
+export function createMaterialRequest(input: MaterialRequestInput) {
+  return request<{ request: MaterialRequest }>('/api/material-requests', { method: 'POST', body: JSON.stringify(input) })
+}
+
+/** Only while the request is still pending. */
+export function updateMaterialRequest(id: string, input: MaterialRequestInput) {
+  return request<{ request: MaterialRequest }>(`/api/material-requests/${id}`, { method: 'PUT', body: JSON.stringify(input) })
+}
+
+/** Refused once the request has been issued. */
+export function deleteMaterialRequest(id: string) {
+  return request<void>(`/api/material-requests/${id}`, { method: 'DELETE' })
+}
+
+export function issueMaterialRequest(id: string, note?: string) {
+  return request<{ request: MaterialRequest }>(`/api/material-requests/${id}/issue`, { method: 'POST', body: JSON.stringify({ note }) })
+}
+
+export function rejectMaterialRequest(id: string, note?: string) {
+  return request<{ request: MaterialRequest }>(`/api/material-requests/${id}/reject`, { method: 'POST', body: JSON.stringify({ note }) })
+}
+
 export function listToolRequests(params: { status?: ToolRequestStatus } = {}) {
   const qs = params.status ? `?status=${params.status}` : ''
   return request<{ requests: ToolRequest[] }>(`/api/tool-requests${qs}`)
@@ -3150,6 +3212,9 @@ export type NotificationType =
   | 'TOOL_REQUEST_SUBMITTED'
   | 'TOOL_REQUEST_ISSUED'
   | 'TOOL_REQUEST_REJECTED'
+  | 'MATERIAL_REQUEST_SUBMITTED'
+  | 'MATERIAL_REQUEST_ISSUED'
+  | 'MATERIAL_REQUEST_REJECTED'
   | 'OVERTIME_APPROVED'
   | 'OVERTIME_REJECTED'
   | 'OVERTIME_PENDING'
