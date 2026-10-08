@@ -55,6 +55,18 @@ and live. In short:
   export is unchanged. The office attendance machine is an **AiFace11B** (cloud "Timmy",
   global.yunatt.com/timy), not Hikvision; its report fields go into our attendance report/summary only,
   and only once the manager picks which (asked 2026-10-05) - GPS/tracking all stays.
+  **AiFace layout built (2026-10-08)** - the manager never replied, so the user said to follow the
+  AiFace software as it is, in the reports only. The team PDF and Excel now open with the AiFace
+  **Monthly Report** (Staff Code, Name, Department, Should days, Actual days/hrs, Absence days/hrs,
+  Late times/mins, Leave Early times/mins, Holiday, Leave days/hrs, Overtime, Overtime approved) and a
+  **Daily Report** per person (Date, Shift, In1/Out1..In3/Out3, Actual hrs, Late In, Early Out,
+  Status: Present/Absent/Leave/Holiday/Excused/Rest day); the GPS Register follows unchanged.
+  `summarizeTechnicians` computes them; `shiftFor()` in overtime.ts gives each day's hours. Early
+  leave = minutes the day's last *recorded* check-out precedes the shift end (none on a public
+  holiday, none for a next-day check-out). Shift/absence hours are full shift length (9 h weekdays,
+  5 h Saturday, no lunch deducted - nobody has said what lunch is). **Not built** (features, not report
+  layout): per-staff shifts, manual punch, manual overtime records, Business Trip leave. Late on a
+  public holiday still counts (pre-existing rule).
 - **Operations Manager = Admin (2026-10-02, management):** OPERATIONS_MANAGER has exactly the
   admin's access and, like the admin, no check-in card, shift pings or personal pages. One rule on
   each side: `isAdminLike()` (server `lib/roles.ts`, used by `requireRole` - any route allowing ADMIN
