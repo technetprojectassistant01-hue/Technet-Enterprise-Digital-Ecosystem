@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { Camera, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Download, Lock, MapPin, Users } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import * as api from '../lib/api'
-import type { SiteAttendanceWithEmployee, TechnicianAttendanceSummary } from '../lib/api'
+import type { AttendanceMonthlyRow, SiteAttendanceWithEmployee, TechnicianAttendanceSummary } from '../lib/api'
+import AttendanceMonthlyReport, { type MonthlyReportExtras } from './AttendanceMonthlyReport'
 import { Panel, Badge, EmptyState, Modal, TableSkeleton } from '../dashboard/ui'
 import { useAuth } from '../context/AuthContext'
 import { hasRole, ATTENDANCE_VIEW_ROLES } from '../lib/permissions'
@@ -203,6 +204,8 @@ function TeamAttendancePage() {
   const [current, setCurrent] = useState<SiteAttendanceWithEmployee[]>([])
   const [history, setHistory] = useState<SiteAttendanceWithEmployee[]>([])
   const [summary, setSummary] = useState<TechnicianAttendanceSummary[]>([])
+  const [monthly, setMonthly] = useState<AttendanceMonthlyRow[]>([])
+  const [monthlyLoading, setMonthlyLoading] = useState(true)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -256,6 +259,16 @@ function TeamAttendancePage() {
       })
       .catch((err) => setError(err instanceof Error ? err.message : t.ops.team.loadFailed))
       .finally(() => setLoading(false))
+
+    // The AiFace-style summary (Should / Actual / Absence / Late / Leave Early ...) for the same
+    // period and filters - computed server-side, the same figures as the PDF and Excel.
+    const { from, to } = period === 'week' ? { from: weekStart, to: addDays(weekStart, 6) } : monthDayRange(month)
+    setMonthlyLoading(true)
+    api
+      .getAttendanceSummaryReport({ from, to, employeeId: employeeFilter || undefined, includePast })
+      .then(({ technicians }) => setMonthly(technicians))
+      .catch(() => setMonthly([]))
+      .finally(() => setMonthlyLoading(false))
   }
 
   useEffect(reload, [canAccess, period, month, weekStart, employeeFilter, includePast]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -445,58 +458,24 @@ function TeamAttendancePage() {
       </Panel>
 
       <Panel title={t.ops.team.summary} icon={Users}>
-        <p className="mb-4 text-sm text-ink-300">{t.ops.team.summaryNote(periodLabel)}</p>
-        {loading ? (
-          <TableSkeleton rows={4} cols={5} />
-        ) : summary.length === 0 ? (
-          <p className="text-sm text-ink-400">{t.ops.team.noCheckIns(periodLabel)}</p>
-        ) : (
-          <div className="overflow-x-auto rounded-lg border border-ink-800">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
-                  <th className="px-3 py-2 font-semibold">{t.shared.technicianCol}</th>
-                  <th className="px-3 py-2 font-semibold">{t.ops.team.daysPresent}</th>
-                  <th className="px-3 py-2 font-semibold">{t.ops.team.checkInsCol}</th>
-                  <th className="px-3 py-2 font-semibold">{t.ops.team.hoursOnSite}</th>
-                  <th className="px-3 py-2 font-semibold">{t.shared.transportCol}</th>
-                  <th className="px-3 py-2 font-semibold">{t.ops.team.locationFlags}</th>
-                  <th className="px-3 py-2 font-semibold">{t.ops.team.timeFlags}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {summary.map((s) => (
-                  <tr key={s.employee.id} className="border-b border-ink-800 last:border-0">
-                    <td className="px-3 py-2 text-ink-100">
-                      {s.employee.firstName} {s.employee.lastName}
-                      {s.employee.position && <span className="text-ink-400"> · {s.employee.position}</span>}
-                    </td>
-                    <td className="px-3 py-2 text-ink-300">{s.daysPresent}</td>
-                    <td className="px-3 py-2 text-ink-300">{s.totalCheckIns}</td>
-                    <td className="px-3 py-2 text-ink-300">{s.totalHoursOnSite}</td>
-                    <td className="px-3 py-2 text-ink-300">
-                      {s.totalTransportCost > 0 ? formatMoney(s.totalTransportCost) : <span className="text-ink-400">—</span>}
-                    </td>
-                    <td className="px-3 py-2">
-                      {s.locationMismatchCount > 0 ? (
-                        <span className="font-medium text-amber-400">{s.locationMismatchCount}</span>
-                      ) : (
-                        <span className="text-ink-400">0</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2">
-                      {(timeGapCountByEmployee.get(s.employee.id) ?? 0) > 0 ? (
-                        <span className="font-medium text-amber-400">{timeGapCountByEmployee.get(s.employee.id)}</span>
-                      ) : (
-                        <span className="text-ink-400">0</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <p className="mb-4 text-sm text-ink-300">{t.ops.team.aiface.note(periodLabel)}</p>
+        <AttendanceMonthlyReport
+          rows={monthly}
+          extras={
+            new Map<string, MonthlyReportExtras>(
+              summary.map((s) => [
+                s.employee.id,
+                {
+                  transport: s.totalTransportCost,
+                  locationFlags: s.locationMismatchCount,
+                  timeFlags: timeGapCountByEmployee.get(s.employee.id) ?? 0,
+                },
+              ]),
+            )
+          }
+          periodLabel={periodLabel}
+          loading={monthlyLoading}
+        />
       </Panel>
 
       <Panel title={t.ops.team.register}>
