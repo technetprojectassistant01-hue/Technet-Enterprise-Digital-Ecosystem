@@ -27,12 +27,19 @@ function AbsencesPanel({ month }: { month: Date }) {
   const [excusing, setExcusing] = useState<AbsenceEntry | null>(null)
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
+  // Filters over the month's list (client-side - the month is already loaded).
+  const [staffFilter, setStaffFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'' | 'ABSENT' | 'EXCUSED'>('')
+  const [dayFilter, setDayFilter] = useState('')
 
   const from = `${month.getFullYear()}-${pad(month.getMonth() + 1)}-01`
   const last = new Date(month.getFullYear(), month.getMonth() + 1, 0)
   const to = `${last.getFullYear()}-${pad(last.getMonth() + 1)}-${pad(last.getDate())}`
   const now = new Date()
   const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
+
+  // A filtered day from another month means nothing once the month changes.
+  useEffect(() => setDayFilter(''), [from])
 
   useEffect(() => {
     let cancelled = false
@@ -51,7 +58,13 @@ function AbsencesPanel({ month }: { month: Date }) {
   const dateFormat = new Intl.DateTimeFormat(t.shared.dateLocale, { weekday: 'short', day: 'numeric', month: 'short' })
   const dayLabel = (d: string) => dateFormat.format(new Date(`${d}T12:00:00`))
   const absentToday = absences.filter((a) => a.date === today && a.status === 'ABSENT').length
-  const rows = [...absences].sort((a, b) => (a.date === b.date ? name(a).localeCompare(name(b)) : b.date.localeCompare(a.date)))
+  const staffOptions = [...new Map(absences.map((a) => [a.employeeId, name(a)])).entries()].sort((a, b) => a[1].localeCompare(b[1]))
+  const dayOptions = [...new Set(absences.map((a) => a.date))].sort().reverse()
+  const filtering = !!(staffFilter || statusFilter || dayFilter)
+  const rows = absences
+    .filter((a) => (!staffFilter || a.employeeId === staffFilter) && (!statusFilter || a.status === statusFilter) && (!dayFilter || a.date === dayFilter))
+    .sort((a, b) => (a.date === b.date ? name(a).localeCompare(name(b)) : b.date.localeCompare(a.date)))
+  const selectClass = `${inputClass} py-1.5 text-sm`
 
   async function run(action: () => Promise<unknown>, message: string) {
     setBusy(true)
@@ -75,10 +88,66 @@ function AbsencesPanel({ month }: { month: Date }) {
         badge={absentToday > 0 ? <Badge tone="danger">{t.staffAttendance.absentToday(absentToday)}</Badge> : undefined}
       >
         <p className="mb-3 text-xs text-ink-400">{t.staffAttendance.absencesHint}</p>
+        {!loading && absences.length > 0 && (
+          <div className="mb-3 flex flex-wrap items-end gap-2">
+            <select
+              aria-label={t.staffAttendance.colStaff}
+              value={staffFilter}
+              onChange={(e) => setStaffFilter(e.target.value)}
+              className={`${selectClass} w-full sm:w-auto`}
+            >
+              <option value="">{t.ops.team.allTechnicians}</option>
+              {staffOptions.map(([id, label]) => (
+                <option key={id} value={id}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            <select
+              aria-label={t.shared.status}
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as '' | 'ABSENT' | 'EXCUSED')}
+              className={`${selectClass} w-full sm:w-auto`}
+            >
+              <option value="">{t.shared.allStatuses}</option>
+              <option value="ABSENT">{t.staffAttendance.absent}</option>
+              <option value="EXCUSED">{t.staffAttendance.excused}</option>
+            </select>
+            <select
+              aria-label={t.staffAttendance.colDate}
+              value={dayFilter}
+              onChange={(e) => setDayFilter(e.target.value)}
+              className={`${selectClass} w-full sm:w-auto`}
+            >
+              <option value="">{t.staffAttendance.anyDay}</option>
+              {dayOptions.map((d) => (
+                <option key={d} value={d}>
+                  {dayLabel(d)}
+                </option>
+              ))}
+            </select>
+            {filtering && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStaffFilter('')
+                    setStatusFilter('')
+                    setDayFilter('')
+                  }}
+                  className="text-xs font-semibold text-ink-400 hover:text-cyan-accent"
+                >
+                  {t.shared.clearFilters}
+                </button>
+                <span className="text-xs text-ink-400">{t.staffAttendance.absencesShown(rows.length, absences.length)}</span>
+              </>
+            )}
+          </div>
+        )}
         {loading ? (
           <TableSkeleton rows={3} cols={4} />
         ) : rows.length === 0 ? (
-          <EmptyState icon={UserX} message={t.staffAttendance.noAbsences} />
+          <EmptyState icon={UserX} message={filtering ? t.staffAttendance.noMatchingAbsences : t.staffAttendance.noAbsences} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
