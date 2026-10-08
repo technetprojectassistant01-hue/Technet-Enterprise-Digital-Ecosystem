@@ -71,6 +71,20 @@ function recordedMinutes(recorded: Date): number {
   return local(recorded).minutes;
 }
 
+/**
+ * The working hours ("shift", in the AiFace attendance report's terms) of a Mauritius day
+ * "YYYY-MM-DD", as minutes from midnight - null on Sunday, which is not a working day.
+ */
+export function shiftFor(day: string): { start: number; end: number } | null {
+  const s = SCHEDULE[new Date(`${day}T00:00:00Z`).getUTCDay()];
+  return s ? { start: s.start, end: s.end } : null;
+}
+
+/** Minutes from Mauritius midnight of a timestamp (the recorded clock time). */
+export function mauritiusMinutes(date: Date): number {
+  return local(date).minutes;
+}
+
 /** The Mauritius calendar day ("YYYY-MM-DD") a timestamp falls on. */
 export function mauritiusDay(date: Date): string {
   return local(date).day;
