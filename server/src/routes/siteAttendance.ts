@@ -339,7 +339,7 @@ async function loadTeamReport(query: Request["query"]): Promise<StaffAttendanceP
   const [rows, decisions] = await Promise.all([
     prisma.siteAttendance.findMany({
       where: { checkInAt: { gte: start, lt: end }, ...activeFilter, ...(employeeId ? { employeeId } : {}) },
-      include: { employee: { select: { firstName: true, lastName: true } } },
+      include: { employee: { select: { firstName: true, lastName: true, employeeCode: true, department: true } } },
       orderBy: { checkInAt: "asc" },
     }),
     prisma.overtimeDecision.findMany({
@@ -379,18 +379,23 @@ async function loadTeamReport(query: Request["query"]): Promise<StaffAttendanceP
       user: { role: "FIELD_TECHNICIAN" },
       ...(employeeId ? { id: employeeId } : {}),
     },
-    select: { id: true, firstName: true, lastName: true, hireDate: true, user: { select: { createdAt: true } } },
+    select: { id: true, firstName: true, lastName: true, employeeCode: true, department: true, hireDate: true, user: { select: { createdAt: true } } },
   });
   // Nobody can check in before they have a login, so "no check-in" days start at the later of the
   // hire date and the day the login was created.
   const people = new Map(
     technicians.map((e) => {
       const starts = [e.hireDate?.toISOString().slice(0, 10), e.user ? mauritiusDay(e.user.createdAt) : undefined].filter(Boolean) as string[];
-      return [e.id, { id: e.id, name: `${e.firstName} ${e.lastName}`, expectedFrom: starts.sort().at(-1) ?? null, expectedDaily: true }];
+      return [
+        e.id,
+        { id: e.id, name: `${e.firstName} ${e.lastName}`, code: e.employeeCode, department: e.department, expectedFrom: starts.sort().at(-1) ?? null, expectedDaily: true },
+      ];
     }),
   );
   for (const v of visits) {
-    if (!people.has(v.employeeId)) people.set(v.employeeId, { id: v.employeeId, name: v.employeeName, expectedFrom: null, expectedDaily: false });
+    if (!people.has(v.employeeId)) {
+      people.set(v.employeeId, { id: v.employeeId, name: v.employeeName, code: v.employee?.employeeCode ?? null, department: v.employee?.department ?? null, expectedFrom: null, expectedDaily: false });
+    }
   }
   const personIds = [...people.keys()];
   const [leave, holidays, excuses] = await Promise.all([
