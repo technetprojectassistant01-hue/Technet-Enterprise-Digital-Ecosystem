@@ -287,6 +287,7 @@ model User {
   payrollRunsCreated PayrollRun[] @relation("PayrollRunCreator")
 
   toolRequestsReviewed  ToolRequest[]  @relation("ToolRequestReviewer")
+  materialRequestsReviewed MaterialRequest[] @relation("MaterialRequestReviewer")
   toolCheckoutsIssued   ToolCheckout[] @relation("ToolCheckoutIssuer")
   toolCheckoutsReturned ToolCheckout[] @relation("ToolCheckoutReceiver")
 
@@ -443,6 +444,7 @@ model Employee {
   siteAttendance SiteAttendance[]
 
   toolRequests  ToolRequest[]
+  materialRequests MaterialRequest[]
   toolCheckouts ToolCheckout[]
 
   overtimeDecisions OvertimeDecision[]
@@ -1826,6 +1828,9 @@ enum NotificationType {
   TOOL_REQUEST_SUBMITTED
   TOOL_REQUEST_ISSUED
   TOOL_REQUEST_REJECTED
+  MATERIAL_REQUEST_SUBMITTED
+  MATERIAL_REQUEST_ISSUED
+  MATERIAL_REQUEST_REJECTED
   OVERTIME_APPROVED
   OVERTIME_REJECTED
   OVERTIME_PENDING
@@ -1963,6 +1968,50 @@ model ToolRequest {
 
   @@index([employeeId])
   @@index([status])
+}
+
+/// Material requests (2026-10-08, management): consumables such as glue, tape or screws, asked
+/// for line by line - description, reference, quantity. Unlike tools they are not tracked
+/// individually and don't come back: the store issues or rejects the whole request.
+model MaterialRequest {
+  id             String                @id @default(uuid())
+  sequenceNumber Int                   @unique @default(autoincrement())
+  employeeId     String
+  employee       Employee              @relation(fields: [employeeId], references: [id])
+  purpose        String?
+  neededBy       DateTime?
+  status         MaterialRequestStatus @default(PENDING)
+  reviewedById   String?
+  reviewedBy     User?                 @relation("MaterialRequestReviewer", fields: [reviewedById], references: [id])
+  reviewedAt     DateTime?
+  reviewNote     String?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  items MaterialRequestItem[]
+
+  @@index([employeeId])
+  @@index([status])
+}
+
+model MaterialRequestItem {
+  id          String          @id @default(uuid())
+  requestId   String
+  request     MaterialRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  /// Order on the request, from 1.
+  position    Int
+  description String
+  /// Part number, product code or brand reference - optional, not everything has one.
+  reference   String?
+  quantity    Decimal         @db.Decimal(10, 2)
+
+  @@index([requestId])
+}
+
+enum MaterialRequestStatus {
+  PENDING
+  ISSUED
+  REJECTED
 }
 
 model ToolCheckout {
