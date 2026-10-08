@@ -17,7 +17,6 @@ import {
 } from '../lib/siteAttendance'
 import VerificationBadge from '../dashboard/VerificationBadge'
 import { formatMoney } from '../lib/format'
-import { downloadCsv } from '../lib/csv'
 import { primaryButtonClass, secondaryButtonClass } from '../dashboard/buttonStyles'
 import { useEmployees } from '../erp/useEmployees'
 import { useToast } from '../dashboard/ToastContext'
@@ -181,13 +180,6 @@ function toLocalInputValue(date: Date): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
-/** Elapsed time on site, blank while a session is still open. */
-function hoursOnSite(v: SiteAttendanceWithEmployee): string {
-  if (!v.checkOutAt) return ''
-  const hours = (new Date(v.checkOutAt).getTime() - new Date(v.checkInAt).getTime()) / 3_600_000
-  return hours.toFixed(2)
-}
-
 function TeamAttendancePage() {
   const t = useT()
   const { user } = useAuth()
@@ -201,6 +193,7 @@ function TeamAttendancePage() {
   const [employeeFilter, setEmployeeFilter] = useState('')
   const [includePast, setIncludePast] = useState(false)
   const [pdfDownloading, setPdfDownloading] = useState(false)
+  const [excelDownloading, setExcelDownloading] = useState(false)
   const [current, setCurrent] = useState<SiteAttendanceWithEmployee[]>([])
   const [history, setHistory] = useState<SiteAttendanceWithEmployee[]>([])
   const [summary, setSummary] = useState<TechnicianAttendanceSummary[]>([])
@@ -274,62 +267,24 @@ function TeamAttendancePage() {
   useEffect(reload, [canAccess, period, month, weekStart, employeeFilter, includePast]) // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
-   * CSV rather than a real .xlsx: it opens straight in Excel, and the app already exports Work
-   * Orders and Intervention Reports this way. A true .xlsx would mean pulling in a spreadsheet
-   * library for formatting we have not been asked for.
-   *
-   * Exports whatever period is on screen, so "end of the week" is: switch to Week, then Export.
-   * Both the stated time and the recorded one are included side by side - the sheet should carry
-   * the same distinction the app does, not collapse it into a single number.
+   * "Export Month" / "Export Week": the period on screen as an Excel workbook (2026-10-08, was a CSV)
+   * - the AiFace-style Monthly Report and Daily Report sheets plus the full Register (typed vs
+   * recorded, GPS place, work order, verification, time flag) - from the same server-side report
+   * as the PDF. Follows the Technician filter and "Include past employees".
    */
-  function exportCsv() {
-    const label = period === 'week' ? `${weekStart}_to_${addDays(weekStart, 6)}` : month
-    downloadCsv(
-      `attendance-${label}`,
-      [
-        { header: 'Date', accessor: (v: SiteAttendanceWithEmployee) => v.checkInAt.slice(0, 10) },
-        {
-          header: 'Technician',
-          accessor: (v: SiteAttendanceWithEmployee) => `${v.employee?.firstName ?? ''} ${v.employee?.lastName ?? ''}`.trim(),
-        },
-        { header: 'Work Order', accessor: (v: SiteAttendanceWithEmployee) => v.workOrder?.workOrderNumber ?? '' },
-        { header: 'Time In (stated)', accessor: (v: SiteAttendanceWithEmployee) => v.checkInDeclaredTime ?? '' },
-        { header: 'Check-In Recorded', accessor: (v: SiteAttendanceWithEmployee) => formatTime(v.checkInAt) },
-        { header: 'Check-In Site', accessor: (v: SiteAttendanceWithEmployee) => v.checkInSite ?? '' },
-        { header: 'Check-In Location', accessor: (v: SiteAttendanceWithEmployee) => v.checkInNote ?? '' },
-        { header: 'Check-In Place', accessor: (v: SiteAttendanceWithEmployee) => v.checkInPlace ?? '' },
-        { header: 'Time Out (stated)', accessor: (v: SiteAttendanceWithEmployee) => v.checkOutDeclaredTime ?? '' },
-        {
-          header: 'Check-Out Recorded',
-          accessor: (v: SiteAttendanceWithEmployee) => (v.checkOutAt ? formatTime(v.checkOutAt) : ''),
-        },
-        { header: 'Check-Out Site', accessor: (v: SiteAttendanceWithEmployee) => v.checkOutSite ?? '' },
-        { header: 'Check-Out Location', accessor: (v: SiteAttendanceWithEmployee) => v.checkOutNote ?? '' },
-        { header: 'Check-Out Place', accessor: (v: SiteAttendanceWithEmployee) => v.checkOutPlace ?? '' },
-        { header: 'Hours On Site', accessor: (v: SiteAttendanceWithEmployee) => hoursOnSite(v) },
-        {
-          header: 'Transport (MUR)',
-          accessor: (v: SiteAttendanceWithEmployee) =>
-            totalTransportCost(v) > 0 ? totalTransportCost(v).toFixed(2) : '',
-        },
-        {
-          header: 'Verification',
-          accessor: (v: SiteAttendanceWithEmployee) =>
-            ({ VERIFIED: 'Verified', UNVERIFIED: 'Unverified', FLAGGED: 'Flagged' })[verificationState(v)],
-        },
-        {
-          header: 'Time Flag',
-          accessor: (v: SiteAttendanceWithEmployee) =>
-            [
-              statedTimeGapLabel(v.checkInDeclaredTime, v.checkInAt),
-              statedTimeGapLabel(v.checkOutDeclaredTime, v.checkOutAt),
-            ]
-              .filter(Boolean)
-              .join('; '),
-        },
-      ],
-      history,
-    )
+  async function exportExcel() {
+    const { from, to } = period === 'week' ? { from: weekStart, to: addDays(weekStart, 6) } : monthDayRange(month)
+    setExcelDownloading(true)
+    try {
+      await api.downloadPdf(
+        api.staffAttendanceReportXlsxUrl(from, to, includePast, employeeFilter || undefined),
+        `team-attendance-${from}-to-${to}.xlsx`,
+      )
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t.myAttendance.downloadFailed)
+    } finally {
+      setExcelDownloading(false)
+    }
   }
 
   /** The same period on screen, as a real PDF - the register's server-side generator
@@ -538,8 +493,8 @@ function TeamAttendancePage() {
           )}
           <button
             type="button"
-            onClick={exportCsv}
-            disabled={history.length === 0}
+            onClick={exportExcel}
+            disabled={excelDownloading}
             className={`${secondaryButtonClass} disabled:opacity-50`}
           >
             <Download className="h-4 w-4" />
