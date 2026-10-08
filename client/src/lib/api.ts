@@ -2373,6 +2373,53 @@ export interface TechnicianAttendanceSummary {
   locationMismatchCount: number
 }
 
+/** One day of one person, as on the office AiFace machine's Daily Report (server attendanceSummary.ts). */
+export interface AttendanceDailyRow {
+  /** "YYYY-MM-DD" */
+  day: string
+  /** "08:00-17:00", null on Sunday */
+  shift: string | null
+  punches: { in: string; out: string | null; outNextDay: boolean }[]
+  minutes: number
+  lateMinutes: number
+  earlyMinutes: number
+  status: 'PRESENT' | 'ABSENT' | 'LEAVE' | 'HOLIDAY' | 'EXCUSED' | 'REST'
+}
+
+/** One person over the period, as on the AiFace Monthly Report. The Should/Absence/Holiday/Leave
+ * figures are null-ish ("shouldDays: null") for someone not expected to check in every day. */
+export interface AttendanceMonthlyRow {
+  employeeId: string
+  name: string
+  code: string | null
+  department: string | null
+  daysCheckedIn: number
+  noCheckInDays: string[] | null
+  minutesRecorded: number
+  lateDays: number
+  lateMinutes: number
+  overtimeMinutes: number
+  approvedOvertimeMinutes: number
+  openVisits: number
+  shouldDays: number | null
+  shouldMinutes: number | null
+  absenceMinutes: number
+  earlyTimes: number
+  earlyMinutes: number
+  holidayDays: number
+  holidayMinutes: number
+  leaveDays: number
+  leaveMinutes: number
+  daily: AttendanceDailyRow[]
+}
+
+export function getAttendanceSummaryReport(params: { from: string; to: string; employeeId?: string; includePast?: boolean }) {
+  const query = new URLSearchParams({ from: params.from, to: params.to })
+  if (params.employeeId) query.set('employeeId', params.employeeId)
+  if (params.includePast) query.set('includePast', 'true')
+  return request<{ from: string; to: string; technicians: AttendanceMonthlyRow[] }>(`/api/site-attendance/report/summary?${query}`)
+}
+
 /** `from`/`to` are inclusive "YYYY-MM-DD" days and win over `month` when both are given - a week
  * often straddles a month boundary, which `month` alone can't express. */
 export function listTeamAttendance(
