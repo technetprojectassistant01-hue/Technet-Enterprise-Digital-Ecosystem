@@ -339,7 +339,13 @@ async function loadTeamReport(query: Request["query"]): Promise<StaffAttendanceP
   const [rows, decisions] = await Promise.all([
     prisma.siteAttendance.findMany({
       where: { checkInAt: { gte: start, lt: end }, ...activeFilter, ...(employeeId ? { employeeId } : {}) },
-      include: { employee: { select: { firstName: true, lastName: true, employeeCode: true, department: true } } },
+      include: {
+        employee: { select: { firstName: true, lastName: true, employeeCode: true, department: true } },
+        // For the Excel register's Work Order / Verification columns (same badge as on screen).
+        workOrder: WORK_ORDER_SUMMARY_SELECT,
+        anomalies: ANOMALY_SUMMARY_SELECT,
+        knownPlace: KNOWN_PLACE_SUMMARY_SELECT,
+      },
       orderBy: { checkInAt: "asc" },
     }),
     prisma.overtimeDecision.findMany({
