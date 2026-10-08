@@ -35,6 +35,7 @@ import {
   Map as MapIcon,
   MapPin,
   UserCheck,
+  Boxes,
   type LucideIcon,
 } from 'lucide-react'
 import {
@@ -128,6 +129,7 @@ export const MAIN_NAV: NavItem[] = [
     children: [
       { label: 'Tools & Equipment', to: '/dashboard/store/tools', icon: Hammer },
       { label: 'Tool Requests', to: '/dashboard/store/requests', icon: ClipboardList },
+      { label: 'Material Requests', to: '/dashboard/store/materials', icon: Boxes },
     ],
   },
   { label: 'Technet Connect', to: '/dashboard/connect', icon: Share2, hiddenFrom: NON_COMMERCIAL_ROLES },
