@@ -7,9 +7,11 @@ import type { StaffAttendancePdfInput } from "../pdf/staffAttendancePdf";
 /**
  * The team attendance report as an Excel workbook (management, 2026-10-03: "if you had added it on
  * the Excel, it would have taken with the header footer completely"). Same data as the PDF
- * (routes/siteAttendance.ts loadTeamReport), two sheets:
- *   Summary  - one row per person, then the visits to check before pay
- *   Register - one row per visit, typed vs recorded
+ * (routes/siteAttendance.ts loadTeamReport), three sheets:
+ *   Monthly Report - one row per person in the office AiFace machine's layout, then the visits to
+ *                    check before pay
+ *   Daily Report   - one row per person per day, In1/Out1..In3/Out3 as on the AiFace report
+ *   Register       - one row per visit, typed vs recorded, with GPS places
  * Each sheet starts with the letterhead (logo, company name, address, title, period) and carries a
  * printed header/footer (company, title, print date, page x of y), so "Print to PDF" from Excel
  * looks like a company document. Excel can't repeat a picture in a printed header from this
@@ -98,21 +100,31 @@ export async function generateStaffAttendanceXlsx(input: StaffAttendancePdfInput
   const logoId = workbook.addImage({ base64: LOGO_LOCKUP_BASE64, extension: "png" });
   const period = input.from === input.to ? dayLabel(input.from) : `${dayLabel(input.from)} – ${dayLabel(input.to)}`;
 
-  // ---- Summary
-  const summary = workbook.addWorksheet("Summary");
+  const hrs = (minutes: number | null) => (minutes === null ? "—" : Math.round((minutes / 60) * 10) / 10);
+  const weekday = (d: string) => WEEKDAYS[new Date(`${d}T00:00:00Z`).getUTCDay()];
+
+  // ---- Monthly Report: the office AiFace attendance machine's layout (2026-10-08)
+  const summary = workbook.addWorksheet("Monthly Report");
   const sCols = [
-    { header: "Name", width: 26 },
-    { header: "Days checked in", width: 11 },
-    { header: "Working days with no check-in", width: 14 },
-    { header: "First check-in", width: 13 },
-    { header: "Last check-in", width: 13 },
-    { header: "Hours recorded", width: 12 },
-    { header: "Late days", width: 9 },
-    { header: "Late (total)", width: 11 },
-    { header: "Overtime calculated", width: 12 },
-    { header: "Overtime approved", width: 12 },
-    { header: "Not checked out", width: 10 },
-    { header: "Days with no check-in", width: 60 },
+    { header: "Staff Code", width: 8 },
+    { header: "Name", width: 24 },
+    { header: "Department", width: 14 },
+    { header: "Should (Days)", width: 8 },
+    { header: "Actual (Days)", width: 8 },
+    { header: "Actual (Hrs)", width: 8 },
+    { header: "Absence (Days)", width: 9 },
+    { header: "Absence (Hrs)", width: 9 },
+    { header: "Late (Times)", width: 8 },
+    { header: "Late (Mins)", width: 8 },
+    { header: "Leave Early (Times)", width: 9 },
+    { header: "Leave Early (Mins)", width: 9 },
+    { header: "Holiday (Days)", width: 8 },
+    { header: "Holiday (Hrs)", width: 8 },
+    { header: "Leave (Days)", width: 8 },
+    { header: "Leave (Hrs)", width: 8 },
+    { header: "Overtime (Hrs)", width: 9 },
+    { header: "Overtime Approved (Hrs)", width: 10 },
+    { header: "Days with no check-in", width: 50 },
   ];
   sCols.forEach((c, i) => (summary.getColumn(i + 1).width = c.width));
   letterhead(summary, logoId, period, sCols.length);
@@ -121,27 +133,36 @@ export async function generateStaffAttendanceXlsx(input: StaffAttendancePdfInput
   styleHeader(summary.getRow(sHeaderRow));
   let r = sHeaderRow + 1;
   for (const t of input.technicians ?? []) {
+    const daily = t.shouldDays !== null;
     const row = summary.getRow(r++);
     row.values = [
+      t.code ?? "—",
       t.name,
+      t.department ?? "—",
+      daily ? t.shouldDays! : "—",
       t.daysCheckedIn,
-      t.noCheckInDays === null ? "—" : t.noCheckInDays.length,
-      t.firstCheckIn ? dayLabel(t.firstCheckIn) : "—",
-      t.lastCheckIn ? dayLabel(t.lastCheckIn) : "—",
-      t.minutesRecorded ? span(t.minutesRecorded) : "—",
+      hrs(t.minutesRecorded),
+      daily ? (t.noCheckInDays?.length ?? 0) : "—",
+      daily ? hrs(t.absenceMinutes) : "—",
       t.lateDays,
-      t.lateMinutes ? span(t.lateMinutes) : "—",
-      t.overtimeMinutes ? span(t.overtimeMinutes) : "—",
-      t.approvedOvertimeMinutes ? span(t.approvedOvertimeMinutes) : "—",
-      t.openVisits,
-      t.noCheckInDays === null ? "" : t.noCheckInDays.map((d) => `${WEEKDAYS[new Date(`${d}T00:00:00Z`).getUTCDay()]} ${dayLabel(d)}`).join(", "),
+      t.lateMinutes,
+      t.earlyTimes,
+      t.earlyMinutes,
+      daily ? t.holidayDays : "—",
+      daily ? hrs(t.holidayMinutes) : "—",
+      daily ? t.leaveDays : "—",
+      daily ? hrs(t.leaveMinutes) : "—",
+      hrs(t.overtimeMinutes),
+      hrs(t.approvedOvertimeMinutes),
+      daily ? (t.noCheckInDays ?? []).map((d) => `${weekday(d)} ${dayLabel(d)}`).join(", ") : "",
     ];
-    row.getCell(1).font = { bold: true };
+    row.getCell(2).font = { bold: true };
     styleBody(row, sCols.length);
-    for (let c = 2; c <= 11; c++) row.getCell(c).alignment = { horizontal: "center", vertical: "top" };
+    for (let c = 4; c <= 18; c++) row.getCell(c).alignment = { horizontal: "center", vertical: "top" };
   }
   r += 1;
-  summary.getCell(r, 1).value = "Working days with no check-in: Monday to Saturday, excluding public holidays, approved leave, days HR excused, and days before the person was hired or had a login. Staff Technicians only.";
+  summary.getCell(r, 1).value =
+    "Should = working days (Monday to Saturday, excluding public holidays) from the day the person was hired or had a login. Actual = days and hours checked in by the app. Absence = working days with no check-in, no approved leave and no HR excuse (Staff Technicians only). Late from 08:30 and Leave Early before the end of the shift, by the time the app recorded. Hours are shift hours: 08:00-17:00 weekdays, 08:00-13:00 Saturday.";
   summary.getCell(r, 1).font = { italic: true, size: 9, color: { argb: "FF444444" } };
   r += 2;
 
@@ -154,11 +175,13 @@ export async function generateStaffAttendanceXlsx(input: StaffAttendancePdfInput
     summary.getCell(r, 1).font = { size: 9 };
     r += 1;
     const wHeader = summary.getRow(r++);
-    wHeader.values = ["Name", "Date", "Open for", "Overtime that day", "Overtime status", "Action"];
+    wHeader.values = ["Staff Code", "Name", "Date", "Open for", "Overtime that day", "Overtime status", "Action"];
     styleHeader(wHeader);
     for (const w of input.warnings) {
+      const t = input.technicians?.find((x) => x.employeeId === w.employeeId);
       const row = summary.getRow(r++);
       row.values = [
+        t?.code ?? "—",
         w.name,
         dayLabel(w.day),
         span(w.openMinutes),
@@ -166,10 +189,68 @@ export async function generateStaffAttendanceXlsx(input: StaffAttendancePdfInput
         w.overtime ? (w.overtime.status === "APPROVED" ? "Approved" : "Pending") : "—",
         w.overtime ? (w.overtime.status === "APPROVED" ? "Review the approval" : "Check before approving") : "Check the hours",
       ];
-      styleBody(row, 6);
+      styleBody(row, 7);
     }
   }
   pageSetup(summary, sHeaderRow);
+
+  // ---- Daily Report: one row per person per day, In1/Out1..In3/Out3 as on the AiFace report
+  const dailySheet = workbook.addWorksheet("Daily Report");
+  const dCols = [
+    { header: "Staff Code", width: 8 },
+    { header: "Name", width: 22 },
+    { header: "Date", width: 16 },
+    { header: "Shift", width: 12 },
+    { header: "In1", width: 7 },
+    { header: "Out1", width: 10 },
+    { header: "In2", width: 7 },
+    { header: "Out2", width: 10 },
+    { header: "In3", width: 7 },
+    { header: "Out3", width: 10 },
+    { header: "Actual (Hrs)", width: 8 },
+    { header: "Late In (Mins)", width: 8 },
+    { header: "Early Out (Mins)", width: 9 },
+    { header: "Status", width: 12 },
+  ];
+  dCols.forEach((c, i) => (dailySheet.getColumn(i + 1).width = c.width));
+  letterhead(dailySheet, logoId, period, dCols.length);
+  dailySheet.getRow(sHeaderRow).values = dCols.map((c) => c.header);
+  styleHeader(dailySheet.getRow(sHeaderRow));
+  const STATUS: Record<string, string> = { PRESENT: "Present", ABSENT: "Absent", LEAVE: "Leave", HOLIDAY: "Holiday", EXCUSED: "Excused", REST: "Rest day" };
+  r = sHeaderRow + 1;
+  for (const t of input.technicians ?? []) {
+    for (const d of t.daily) {
+      const out = (i: number) => {
+        const pp = d.punches[i];
+        if (!pp) return "";
+        if (pp.out === null) return "Not out";
+        return pp.outNextDay ? `${pp.out} (+1 day)` : pp.out;
+      };
+      const row = dailySheet.getRow(r++);
+      row.values = [
+        t.code ?? "—",
+        t.name,
+        `${weekday(d.day)} ${dayLabel(d.day)}`,
+        d.shift ?? "—",
+        d.punches[0]?.in ?? "",
+        out(0),
+        d.punches[1]?.in ?? "",
+        out(1),
+        d.punches[2]?.in ?? "",
+        out(2) + (d.punches.length > 3 ? ` (+${d.punches.length - 3} more)` : ""),
+        d.punches.length ? hrs(d.minutes) : "",
+        d.lateMinutes || "",
+        d.earlyMinutes || "",
+        STATUS[d.status],
+      ];
+      styleBody(row, dCols.length);
+      for (let c = 4; c <= 14; c++) row.getCell(c).alignment = { horizontal: "center", vertical: "top" };
+      if (d.status === "ABSENT") row.getCell(14).font = { bold: true, color: { argb: RED } };
+      if (d.lateMinutes || d.earlyMinutes) for (const c of [12, 13]) row.getCell(c).font = { bold: true, color: { argb: "FF9A3412" } };
+    }
+  }
+  dailySheet.autoFilter = { from: { row: sHeaderRow, column: 1 }, to: { row: sHeaderRow, column: dCols.length } };
+  pageSetup(dailySheet, sHeaderRow);
 
   // ---- Register
   const register = workbook.addWorksheet("Register");
