@@ -73,6 +73,9 @@ and live. In short:
   kept as the last columns; clicking a name opens the person's Daily Report in a modal. It lists every
   current Staff Technician, including ones with no check-ins (the old summary only listed people with
   visits). The register and everything else on the page are unchanged.
+  Team Attendance's **Export Month / Export Week** now downloads that Excel report for the period and
+  filters on screen (was a client-side CSV); its Register sheet gained the CSV's Work Order,
+  Verification (same rule as `verificationState()`) and Time Flag columns, so nothing was lost.
 - **Operations Manager = Admin (2026-10-02, management):** OPERATIONS_MANAGER has exactly the
   admin's access and, like the admin, no check-in card, shift pings or personal pages. One rule on
   each side: `isAdminLike()` (server `lib/roles.ts`, used by `requireRole` - any route allowing ADMIN
