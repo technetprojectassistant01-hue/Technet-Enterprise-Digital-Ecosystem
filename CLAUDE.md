@@ -67,6 +67,12 @@ and live. In short:
   5 h Saturday, no lunch deducted - nobody has said what lunch is). **Not built** (features, not report
   layout): per-staff shifts, manual punch, manual overtime records, Business Trip leave. Late on a
   public holiday still counts (pre-existing rule).
+  **On screen too (2026-10-08):** Team Attendance's **Attendance Summary** panel is now that Monthly
+  Report (`operations/AttendanceMonthlyReport.tsx`, data from `GET /api/site-attendance/report/summary`,
+  same `loadTeamReport()` as the PDF/Excel) with the app's own Transport / Location flags / Time flags
+  kept as the last columns; clicking a name opens the person's Daily Report in a modal. It lists every
+  current Staff Technician, including ones with no check-ins (the old summary only listed people with
+  visits). The register and everything else on the page are unchanged.
 - **Operations Manager = Admin (2026-10-02, management):** OPERATIONS_MANAGER has exactly the
   admin's access and, like the admin, no check-in card, shift pings or personal pages. One rule on
   each side: `isAdminLike()` (server `lib/roles.ts`, used by `requireRole` - any route allowing ADMIN
