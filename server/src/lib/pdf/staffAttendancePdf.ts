@@ -34,6 +34,10 @@ export interface StaffAttendancePdfVisit {
   checkOutByManager: boolean;
   /** Closed by the app at closing time (lib/autoCheckout.ts). */
   checkOutAutomatic?: boolean;
+  /** For the Excel register's Work Order and Verification columns; optional for other callers. */
+  workOrder?: { workOrderNumber: string; siteLat: Money | null; siteLng: Money | null } | null;
+  anomalies?: { severity: string; status: string }[];
+  knownPlace?: { name: string } | null;
 }
 
 export interface StaffAttendancePdfInput {
