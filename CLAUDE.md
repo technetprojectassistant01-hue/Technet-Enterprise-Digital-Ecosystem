@@ -76,6 +76,17 @@ and live. In short:
   Team Attendance's **Export Month / Export Week** now downloads that Excel report for the period and
   filters on screen (was a client-side CSV); its Register sheet gained the CSV's Work Order,
   Verification (same rule as `verificationState()`) and Time Flag columns, so nothing was lost.
+- **Material requests (2026-10-08, management):** Technet Store has a third tab, **Material Requests**
+  (`/dashboard/store/materials`, `store/MaterialRequestsPage.tsx`, `GET/POST/PUT/DELETE
+  /api/material-requests`, `routes/materialRequests.ts`) for consumables like glue, tape or screws.
+  A request is a list of lines, each **description** (required), **reference** (optional) and
+  **quantity** (> 0, up to 2 decimals) - `MaterialRequest` + `MaterialRequestItem`, migration
+  `20261008100000_material_requests`, numbered `MR-0001`, validated by `lib/materialRequests.ts`
+  (tested). Same flow as tool requests: anyone with a linked employee asks; the store
+  (`TOOL_MANAGE_ROLES`) marks it **Issued** (optional note) or **Rejected**; the requester edits while
+  pending and deletes unless issued. No stock link and no hand-back - materials aren't tracked
+  individually or returned. Notifications `MATERIAL_REQUEST_SUBMITTED/ISSUED/REJECTED`. Not tested
+  end to end before deploy (the tables only exist once Render applies the migration).
 - **Operations Manager = Admin (2026-10-02, management):** OPERATIONS_MANAGER has exactly the
   admin's access and, like the admin, no check-in card, shift pings or personal pages. One rule on
   each side: `isAdminLike()` (server `lib/roles.ts`, used by `requireRole` - any route allowing ADMIN
