@@ -39,6 +39,25 @@ const span = (minutes: number) => {
 };
 const shortPlace = (place: string | null) => (place ? place.split(",")[0].trim() : "");
 
+/** The register's Verified / Unverified / Flagged badge - same rule as verificationState() in
+ * client/src/lib/siteAttendance.ts. */
+function verification(v: StaffAttendancePdfInput["visits"][number]): string {
+  const anomalies = v.anomalies ?? [];
+  if (anomalies.some((a) => (a.status === "OPEN" || a.status === "CONFIRMED_VIOLATION") && a.severity !== "LOW")) return "Flagged";
+  const jobWithSite = !!v.workOrder && v.workOrder.siteLat !== null && v.workOrder.siteLng !== null;
+  if (v.knownPlace || jobWithSite || anomalies.some((a) => a.status === "GENUINE")) return v.knownPlace ? `Verified · ${v.knownPlace.name}` : "Verified";
+  return "Unverified";
+}
+
+/** Typed vs recorded time 15+ minutes apart, as "+22m" / "−15m" - the screen's Time Flag. */
+function timeGap(declared: string | null, recorded: Date | null): string {
+  const m = declared ? /^(\d{1,2}):(\d{2})$/.exec(declared) : null;
+  if (!m || !recorded) return "";
+  const rec = new Date(recorded.getTime() + MAURITIUS_OFFSET_MINUTES * 60_000);
+  const gap = rec.getUTCHours() * 60 + rec.getUTCMinutes() - (Number(m[1]) * 60 + Number(m[2]));
+  return Math.abs(gap) < 15 ? "" : `${gap > 0 ? "+" : "−"}${Math.abs(gap)}m`;
+}
+
 const TITLE = "Staff Attendance Report";
 
 function letterhead(sheet: ExcelJS.Worksheet, logoId: number, period: string, lastCol: number) {
@@ -257,6 +276,7 @@ export async function generateStaffAttendanceXlsx(input: StaffAttendancePdfInput
   const cols = [
     { header: "Staff", width: 22 },
     { header: "Date", width: 14 },
+    { header: "Work Order", width: 10 },
     { header: "Time in (typed)", width: 9 },
     { header: "Time out (typed)", width: 9 },
     { header: "Location in (typed)", width: 22 },
@@ -270,6 +290,8 @@ export async function generateStaffAttendanceXlsx(input: StaffAttendancePdfInput
     { header: "Late", width: 9 },
     { header: "Overtime", width: 16 },
     { header: "Remarks", width: 24 },
+    { header: "Verification", width: 16 },
+    { header: "Time Flag (in / out)", width: 12 },
   ];
   cols.forEach((c, i) => (register.getColumn(i + 1).width = c.width));
   letterhead(register, logoId, period, cols.length);
@@ -295,6 +317,7 @@ export async function generateStaffAttendanceXlsx(input: StaffAttendancePdfInput
     row.values = [
       v.employeeName,
       `${WEEKDAYS[inL.weekday]} ${dayLabel(inL.iso)}`,
+      v.workOrder?.workOrderNumber ?? "",
       v.checkInDeclaredTime ?? inL.clock,
       v.checkOutAt ? (v.checkOutDeclaredTime ?? outL!.clock) : "",
       [v.checkInSite, v.checkInNote].filter(Boolean).join(" — "),
@@ -308,11 +331,14 @@ export async function generateStaffAttendanceXlsx(input: StaffAttendancePdfInput
       input.late.has(v.id) ? span(input.late.get(v.id)!) : "",
       overtime,
       remarks.join(", "),
+      verification(v),
+      [timeGap(v.checkInDeclaredTime, v.checkInAt), timeGap(v.checkOutDeclaredTime, v.checkOutAt)].filter(Boolean).join(" / "),
     ];
     styleBody(row, cols.length);
-    row.getCell(12).numFmt = "#,##0.00";
-    for (const c of [3, 4, 7, 8, 11, 13]) row.getCell(c).alignment = { horizontal: "center", vertical: "top", wrapText: true };
-    if (input.late.has(v.id) || overtime || remarks.length) for (const c of [13, 14, 15]) row.getCell(c).font = { bold: true, color: { argb: "FF9A3412" } };
+    row.getCell(13).numFmt = "#,##0.00";
+    for (const c of [3, 4, 5, 8, 9, 12, 14, 18]) row.getCell(c).alignment = { horizontal: "center", vertical: "top", wrapText: true };
+    if (input.late.has(v.id) || overtime || remarks.length) for (const c of [14, 15, 16]) row.getCell(c).font = { bold: true, color: { argb: "FF9A3412" } };
+    if (row.getCell(17).value === "Flagged") row.getCell(17).font = { bold: true, color: { argb: RED } };
   }
   if (visits.length === 0) register.getCell(r, 1).value = "No check-ins recorded for this period.";
   register.autoFilter = { from: { row: headerRow, column: 1 }, to: { row: headerRow, column: cols.length } };
