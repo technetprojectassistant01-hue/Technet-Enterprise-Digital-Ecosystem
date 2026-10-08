@@ -51,6 +51,7 @@ import AuditCheckPage from './operations/AuditCheckPage'
 import StoreLayout from './store/StoreLayout'
 import ToolsPage from './store/ToolsPage'
 import ToolRequestsPage from './store/ToolRequestsPage'
+import MaterialRequestsPage from './store/MaterialRequestsPage'
 import AvailabilityTab from './hr/AvailabilityTab'
 import OvertimePage from './hr/OvertimePage'
 import AttendanceValidationPage from './hr/AttendanceValidationPage'
@@ -185,6 +186,7 @@ function App() {
             <Route index element={<Navigate to="tools" replace />} />
             <Route path="tools" element={<ToolsPage />} />
             <Route path="requests" element={<ToolRequestsPage />} />
+            <Route path="materials" element={<MaterialRequestsPage />} />
             <Route path="*" element={<Navigate to="tools" replace />} />
           </Route>
           {/* Technet Store used to be Technet Maintenance. Older notifications still link to
