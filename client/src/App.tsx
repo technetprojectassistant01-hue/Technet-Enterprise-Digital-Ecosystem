@@ -52,6 +52,7 @@ import StoreLayout from './store/StoreLayout'
 import ToolsPage from './store/ToolsPage'
 import ToolRequestsPage from './store/ToolRequestsPage'
 import MaterialRequestsPage from './store/MaterialRequestsPage'
+import MaterialsPage from './store/MaterialsPage'
 import AvailabilityTab from './hr/AvailabilityTab'
 import OvertimePage from './hr/OvertimePage'
 import AttendanceValidationPage from './hr/AttendanceValidationPage'
@@ -186,6 +187,7 @@ function App() {
             <Route index element={<Navigate to="tools" replace />} />
             <Route path="tools" element={<ToolsPage />} />
             <Route path="requests" element={<ToolRequestsPage />} />
+            <Route path="stock" element={<MaterialsPage />} />
             <Route path="materials" element={<MaterialRequestsPage />} />
             <Route path="*" element={<Navigate to="tools" replace />} />
           </Route>
