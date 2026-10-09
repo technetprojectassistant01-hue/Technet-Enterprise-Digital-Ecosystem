@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Plus, Pencil, Trash2, Boxes, PackageCheck, X, Search, Clock, CircleCheck } from 'lucide-react'
 import * as api from '../lib/api'
-import type { MaterialRequest, MaterialRequestStatus } from '../lib/api'
+import type { Material, MaterialRequest, MaterialRequestStatus } from '../lib/api'
 import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton, type BadgeTone } from '../dashboard/ui'
 import { inputClass, labelClass, primaryButtonClass, secondaryButtonClass } from '../dashboard/buttonStyles'
 import { useToast } from '../dashboard/ToastContext'
@@ -63,6 +63,35 @@ function MaterialRequestsPage() {
   // Store decisions
   const [deciding, setDeciding] = useState<{ request: MaterialRequest; action: 'issue' | 'reject' } | null>(null)
   const [decisionNote, setDecisionNote] = useState('')
+  // Issue: each request line matched to a stock material (or none) and the quantity handed over.
+  const [stockList, setStockList] = useState<Material[] | null>(null)
+  const [issueLines, setIssueLines] = useState<Record<string, { materialId: string; quantity: string }>>({})
+
+  /** Opens the issue form, guessing each line's stock material from its reference, else its name. */
+  function openIssue(r: MaterialRequest) {
+    setDeciding({ request: r, action: 'issue' })
+    setDecisionNote('')
+    setStockList(null)
+    const blank = Object.fromEntries(r.items.map((i) => [i.id, { materialId: '', quantity: String(i.quantity) }]))
+    setIssueLines(blank)
+    api
+      .listMaterials()
+      .then(({ materials }) => {
+        setStockList(materials)
+        const norm = (v: string | null) => (v ?? '').trim().toLowerCase()
+        setIssueLines(
+          Object.fromEntries(
+            r.items.map((i) => {
+              const match =
+                (i.reference && materials.find((mat) => norm(mat.reference) === norm(i.reference))) ||
+                materials.find((mat) => norm(mat.name) === norm(i.description))
+              return [i.id, { materialId: match ? match.id : '', quantity: String(i.quantity) }]
+            }),
+          ),
+        )
+      })
+      .catch(() => setStockList([]))
+  }
 
   function load() {
     setLoading(true)
@@ -148,7 +177,13 @@ function MaterialRequestsPage() {
     const { request, action } = deciding
     try {
       if (action === 'issue') {
-        await api.issueMaterialRequest(request.id, decisionNote || undefined)
+        await api.issueMaterialRequest(request.id, {
+          note: decisionNote || undefined,
+          lines: request.items.map((i) => {
+            const l = issueLines[i.id]
+            return { itemId: i.id, materialId: l?.materialId || undefined, quantity: l?.quantity ? Number(l.quantity) : undefined }
+          }),
+        })
         toast.success(m.issued)
       } else {
         await api.rejectMaterialRequest(request.id, decisionNote || undefined)
@@ -261,7 +296,12 @@ function MaterialRequestsPage() {
                             <tr key={i.id}>
                               <td className="py-0.5 pr-3 text-ink-100">{i.description}</td>
                               <td className="py-0.5 pr-3 font-mono text-ink-300">{i.reference ?? '—'}</td>
-                              <td className="py-0.5 text-right text-ink-100">{i.quantity}</td>
+                              <td className="py-0.5 text-right text-ink-100">
+                                {i.quantity}
+                                {i.issuedQuantity !== null && i.material && (
+                                  <div className="text-[11px] text-emerald-400">{m.issuedFrom(i.issuedQuantity, i.material.name)}</div>
+                                )}
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -283,10 +323,7 @@ function MaterialRequestsPage() {
                           <>
                             <button
                               type="button"
-                              onClick={() => {
-                                setDeciding({ request: r, action: 'issue' })
-                                setDecisionNote('')
-                              }}
+                              onClick={() => openIssue(r)}
                               className={`${smallButton} hover:border-cyan-accent hover:text-cyan-accent`}
                             >
                               <PackageCheck className="h-3.5 w-3.5" />
@@ -407,12 +444,66 @@ function MaterialRequestsPage() {
       {deciding && (
         <Modal
           title={deciding.action === 'issue' ? m.issueTitle(deciding.request.requestNumber) : m.rejectTitle(deciding.request.requestNumber)}
+          size={deciding.action === 'issue' ? 'lg' : undefined}
           onClose={() => setDeciding(null)}
         >
           <form onSubmit={handleDecision} className="flex flex-col gap-4">
             <p className="text-sm text-ink-300">
               {fullName(deciding.request.employee)} · {deciding.request.items.map((i) => `${i.quantity} × ${i.description}`).join(', ')}
             </p>
+            {deciding.action === 'issue' && (
+              <div className="flex flex-col gap-3">
+                <p className="text-xs text-ink-400">{m.issueIntro}</p>
+                {stockList === null ? (
+                  <TableSkeleton rows={2} cols={3} />
+                ) : (
+                  deciding.request.items.map((i) => {
+                    const line = issueLines[i.id] ?? { materialId: '', quantity: String(i.quantity) }
+                    const chosen = stockList.find((mat) => mat.id === line.materialId)
+                    const short = !!chosen && Number(line.quantity) > chosen.quantity
+                    return (
+                      <div key={i.id} className="rounded-lg border border-ink-800 p-3">
+                        <div className="mb-2 text-sm text-ink-100">
+                          {i.quantity} × {i.description}
+                          {i.reference && <span className="ml-1 font-mono text-xs text-ink-400">({i.reference})</span>}
+                        </div>
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_7rem]">
+                          <label className="flex flex-col gap-1">
+                            <span className={labelClass}>{m.matchLabel}</span>
+                            <select
+                              value={line.materialId}
+                              onChange={(e) => setIssueLines((prev) => ({ ...prev, [i.id]: { ...line, materialId: e.target.value } }))}
+                              className={inputClass}
+                            >
+                              <option value="">{m.noMatch}</option>
+                              {stockList.map((mat) => (
+                                <option key={mat.id} value={mat.id}>
+                                  {mat.name}
+                                  {mat.reference ? ` (${mat.reference})` : ''} · {m.inStock(mat.quantity, mat.unit)}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <label className="flex flex-col gap-1">
+                            <span className={labelClass}>{m.issueQty}</span>
+                            <input
+                              type="number"
+                              inputMode="decimal"
+                              min="0.01"
+                              step="0.01"
+                              value={line.quantity}
+                              onChange={(e) => setIssueLines((prev) => ({ ...prev, [i.id]: { ...line, quantity: e.target.value } }))}
+                              className={inputClass}
+                            />
+                          </label>
+                        </div>
+                        {short && <p className="mt-1 text-xs font-medium text-red-400">{m.notEnough}: {m.inStock(chosen!.quantity, chosen!.unit)}</p>}
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+            )}
             <label className="flex flex-col gap-1">
               <span className={labelClass}>{deciding.action === 'issue' ? m.issueNote : m.rejectReason}</span>
               <input
