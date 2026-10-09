@@ -5,6 +5,7 @@ import { requireAuth, requireRole } from "../middleware/auth";
 import { TOOL_MANAGE_ROLES, type Role } from "../lib/roles";
 import { notifyEmployee, notifyRoles } from "../lib/notifications";
 import { describeMaterialLines, formatMaterialRequestNumber, parseMaterialRequest } from "../lib/materialRequests";
+import { formatMaterialNumber, parseIssueLines } from "../lib/materials";
 
 /**
  * Material requests (2026-10-08, management): consumables such as glue, tape or screws, asked for
@@ -18,7 +19,7 @@ const router = Router();
 const requestInclude = {
   employee: { select: { id: true, firstName: true, lastName: true, employeeCode: true } },
   reviewedBy: { select: { id: true, name: true, email: true } },
-  items: { orderBy: { position: "asc" } },
+  items: { orderBy: { position: "asc" }, include: { material: { select: { id: true, sequenceNumber: true, name: true, unit: true } } } },
 } satisfies Prisma.MaterialRequestInclude;
 
 type RequestWithRelations = Prisma.MaterialRequestGetPayload<{ include: typeof requestInclude }>;
@@ -27,7 +28,12 @@ function serializeRequest(request: RequestWithRelations) {
   return {
     ...request,
     requestNumber: formatMaterialRequestNumber(request.sequenceNumber),
-    items: request.items.map((i) => ({ ...i, quantity: Number(i.quantity) })),
+    items: request.items.map((i) => ({
+      ...i,
+      quantity: Number(i.quantity),
+      issuedQuantity: i.issuedQuantity === null ? null : Number(i.issuedQuantity),
+      material: i.material ? { ...i.material, materialNumber: formatMaterialNumber(i.material.sequenceNumber) } : null,
+    })),
   };
 }
 
@@ -136,7 +142,8 @@ router.delete("/:id", async (req, res) => {
   res.status(204).end();
 });
 
-async function decide(req: Request, res: Response, status: "ISSUED" | "REJECTED") {
+/** The store turns a pending request down, with an optional reason the requester sees. */
+async function reject(req: Request, res: Response) {
   const id = req.params.id as string;
   const { note } = req.body ?? {};
   const reviewNote = typeof note === "string" && note.trim() ? note.trim() : null;
@@ -146,22 +153,92 @@ async function decide(req: Request, res: Response, status: "ISSUED" | "REJECTED"
   // Conditional, so two storekeepers acting at once can't both decide the same request.
   const updated = await prisma.materialRequest.updateMany({
     where: { id, status: "PENDING" },
-    data: { status, reviewedById: req.user!.sub, reviewedAt: new Date(), reviewNote },
+    data: { status: "REJECTED", reviewedById: req.user!.sub, reviewedAt: new Date(), reviewNote },
   });
   if (updated.count === 0) return res.status(409).json({ error: `Request is already ${existing.status.toLowerCase()}` });
 
   const request = await prisma.materialRequest.findUniqueOrThrow({ where: { id }, include: requestInclude });
-  const number = formatMaterialRequestNumber(request.sequenceNumber);
-  await notifyEmployee(
-    request.employeeId,
-    status === "ISSUED" ? "MATERIAL_REQUEST_ISSUED" : "MATERIAL_REQUEST_REJECTED",
-    status === "ISSUED" ? `Your material request ${number} is ready to collect` : `Your material request ${number} was not approved`,
-    { message: reviewNote ?? (status === "ISSUED" ? describeMaterialLines(request.items) : undefined), link: "/dashboard/store/materials" },
-  );
+  await notifyEmployee(request.employeeId, "MATERIAL_REQUEST_REJECTED", `Your material request ${formatMaterialRequestNumber(request.sequenceNumber)} was not approved`, {
+    message: reviewNote ?? undefined,
+    link: "/dashboard/store/materials",
+  });
   res.json({ request: serializeRequest(request) });
 }
 
-router.post("/:id/issue", requireRole(...TOOL_MANAGE_ROLES), (req, res) => decide(req, res, "ISSUED"));
-router.post("/:id/reject", requireRole(...TOOL_MANAGE_ROLES), (req, res) => decide(req, res, "REJECTED"));
+/** Thrown inside the issue transaction to roll it back with a specific response. */
+class IssueError extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
+/**
+ * Issues the request (2026-10-09): each line may be matched to a material in the store's register
+ * and its stock is reduced by the quantity handed over - refused, with nothing changed, if any
+ * material hasn't got enough. A line with no match is issued without touching stock. Body:
+ * { note?, lines: [{ itemId, materialId?, quantity? }] } - lines left out are issued as asked.
+ */
+router.post("/:id/issue", requireRole(...TOOL_MANAGE_ROLES), async (req, res) => {
+  const id = req.params.id as string;
+  const { note, lines: rawLines } = req.body ?? {};
+  const reviewNote = typeof note === "string" && note.trim() ? note.trim() : null;
+  const existing = await prisma.materialRequest.findUnique({ where: { id }, include: { items: true } });
+  if (!existing) return res.status(404).json({ error: "Material request not found" });
+
+  const parsed = parseIssueLines(rawLines, new Map(existing.items.map((i) => [i.id, Number(i.quantity)])));
+  if ("error" in parsed) return res.status(400).json({ error: parsed.error });
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      const claimed = await tx.materialRequest.updateMany({
+        where: { id, status: "PENDING" },
+        data: { status: "ISSUED", reviewedById: req.user!.sub, reviewedAt: new Date(), reviewNote },
+      });
+      if (claimed.count === 0) throw new IssueError(409, `Request is already ${existing.status.toLowerCase()}`);
+
+      for (const line of parsed.lines) {
+        if (line.materialId) {
+          // Conditional decrement, so two issues at once can't take stock below zero.
+          const taken = await tx.material.updateMany({
+            where: { id: line.materialId, quantity: { gte: line.quantity } },
+            data: { quantity: { decrement: line.quantity } },
+          });
+          if (taken.count === 0) {
+            const m = await tx.material.findUnique({ where: { id: line.materialId }, select: { name: true, quantity: true, unit: true } });
+            if (!m) throw new IssueError(400, "A chosen material no longer exists - refresh and try again");
+            throw new IssueError(409, `Not enough ${m.name} in stock: ${Number(m.quantity)} ${m.unit} left, ${line.quantity} needed`);
+          }
+          const after = await tx.material.findUniqueOrThrow({ where: { id: line.materialId }, select: { quantity: true } });
+          await tx.materialMovement.create({
+            data: {
+              materialId: line.materialId,
+              type: "OUT",
+              quantity: line.quantity,
+              balanceAfter: after.quantity,
+              reason: `Issued for ${formatMaterialRequestNumber(existing.sequenceNumber)}`,
+              requestItemId: line.itemId,
+              createdById: req.user!.sub,
+            },
+          });
+        }
+        await tx.materialRequestItem.update({ where: { id: line.itemId }, data: { materialId: line.materialId, issuedQuantity: line.quantity } });
+      }
+    });
+  } catch (err) {
+    if (err instanceof IssueError) return res.status(err.status).json({ error: err.message });
+    throw err;
+  }
+
+  const request = await prisma.materialRequest.findUniqueOrThrow({ where: { id }, include: requestInclude });
+  await notifyEmployee(request.employeeId, "MATERIAL_REQUEST_ISSUED", `Your material request ${formatMaterialRequestNumber(request.sequenceNumber)} is ready to collect`, {
+    message: reviewNote ?? describeMaterialLines(request.items.map((i) => ({ ...i, quantity: i.issuedQuantity ?? i.quantity }))),
+    link: "/dashboard/store/materials",
+  });
+  res.json({ request: serializeRequest(request) });
+});
+router.post("/:id/reject", requireRole(...TOOL_MANAGE_ROLES), reject);
 
 export default router;
