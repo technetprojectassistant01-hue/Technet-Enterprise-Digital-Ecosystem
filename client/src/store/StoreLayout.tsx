@@ -5,6 +5,7 @@ import { navLabel, useT } from '../i18n'
 const TABS = [
   { label: 'Tools & Equipment', to: '/dashboard/store/tools' },
   { label: 'Tool Requests', to: '/dashboard/store/requests' },
+  { label: 'Materials', to: '/dashboard/store/stock' },
   { label: 'Material Requests', to: '/dashboard/store/materials' },
 ]
 
@@ -12,7 +13,7 @@ function StoreLayout() {
   const t = useT()
   return (
     <div className="flex flex-col gap-6">
-      {/* Tools & Equipment, Tool Requests, Material Requests. Just the tabs — no "Technet Store / Tools & Equipment" title (user request). */}
+      {/* Tools & Equipment, Tool Requests, Materials, Material Requests. Just the tabs — no "Technet Store / Tools & Equipment" title (user request). */}
       <ModuleHeader
         tabs={TABS.map((tab) => ({ ...tab, label: navLabel(t, tab.label) }))}
         searchPlaceholder={t.tools.moduleSearchPlaceholder}
