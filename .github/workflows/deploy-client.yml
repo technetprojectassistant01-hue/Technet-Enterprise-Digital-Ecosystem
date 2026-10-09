@@ -8,6 +8,14 @@ on:
       - ".github/workflows/deploy-client.yml"
   workflow_dispatch:
 
+# One deploy at a time, newest wins. Commits are pushed one file at a time, so a dozen runs can start
+# within seconds; without this they raced and whichever finished last went live - twice an older
+# commit's app replaced the newest (2026-10-08 and 10-09), so new pages "didn't appear" though the
+# latest run was green. A newer push now cancels any deploy still running for an older one.
+concurrency:
+  group: deploy-client
+  cancel-in-progress: true
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
