@@ -3021,6 +3021,10 @@ export interface MaterialRequestItem {
   description: string
   reference: string | null
   quantity: number
+  /** Set once issued: the stock material it was matched to (null = no match) and how much was handed over. */
+  materialId: string | null
+  issuedQuantity: number | null
+  material: { id: string; materialNumber: string; name: string; unit: string } | null
 }
 
 export interface MaterialRequest {
@@ -3065,8 +3069,94 @@ export function deleteMaterialRequest(id: string) {
   return request<void>(`/api/material-requests/${id}`, { method: 'DELETE' })
 }
 
-export function issueMaterialRequest(id: string, note?: string) {
-  return request<{ request: MaterialRequest }>(`/api/material-requests/${id}/issue`, { method: 'POST', body: JSON.stringify({ note }) })
+/** Each line may be matched to a stock material (its stock goes down by `quantity`); lines left out are issued as asked. */
+export function issueMaterialRequest(
+  id: string,
+  input: { note?: string; lines: { itemId: string; materialId?: string; quantity?: number }[] },
+) {
+  return request<{ request: MaterialRequest }>(`/api/material-requests/${id}/issue`, { method: 'POST', body: JSON.stringify(input) })
+}
+
+// ---- The store's materials register (consumables by quantity, separate from ERP Inventory)
+
+export interface Material {
+  id: string
+  sequenceNumber: number
+  materialNumber: string
+  name: string
+  reference: string | null
+  category: string | null
+  unit: string
+  quantity: number
+  minStock: number
+  lowStock: boolean
+  location: string | null
+  notes: string | null
+  createdAt: string
+}
+
+export interface MaterialInput {
+  name: string
+  reference?: string
+  category?: string
+  unit?: string
+  minStock?: number
+  location?: string
+  notes?: string
+  /** Opening stock - create only. */
+  quantity?: number
+}
+
+export interface MaterialMovement {
+  id: string
+  type: 'IN' | 'OUT' | 'ADJUST'
+  quantity: number
+  balanceAfter: number
+  reason: string | null
+  createdAt: string
+  createdBy: { id: string; name: string | null; email: string }
+  request: { requestNumber: string; employee: string } | null
+}
+
+export interface MyMaterial {
+  id: string
+  description: string
+  reference: string | null
+  quantity: number
+  issuedAt: string | null
+  purpose: string | null
+  requestNumber: string
+  material: { id: string; materialNumber: string; name: string; unit: string } | null
+}
+
+export function listMaterials(params: { search?: string } = {}) {
+  const qs = params.search ? `?search=${encodeURIComponent(params.search)}` : ''
+  return request<{ materials: Material[] }>(`/api/materials${qs}`)
+}
+
+export function listMyMaterials() {
+  return request<{ items: MyMaterial[] }>('/api/materials/mine')
+}
+
+export function createMaterial(input: MaterialInput) {
+  return request<{ material: Material }>('/api/materials', { method: 'POST', body: JSON.stringify(input) })
+}
+
+export function updateMaterial(id: string, input: MaterialInput) {
+  return request<{ material: Material }>(`/api/materials/${id}`, { method: 'PATCH', body: JSON.stringify(input) })
+}
+
+/** IN adds `quantity`; ADJUST sets the counted stock to `quantity`. */
+export function changeMaterialStock(id: string, input: { type: 'IN' | 'ADJUST'; quantity: number; reason?: string }) {
+  return request<{ material: Material }>(`/api/materials/${id}/stock`, { method: 'POST', body: JSON.stringify(input) })
+}
+
+export function getMaterialMovements(id: string) {
+  return request<{ movements: MaterialMovement[] }>(`/api/materials/${id}/movements`)
+}
+
+export function deleteMaterial(id: string) {
+  return request<void>(`/api/materials/${id}`, { method: 'DELETE' })
 }
 
 export function rejectMaterialRequest(id: string, note?: string) {
