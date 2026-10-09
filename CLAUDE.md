@@ -87,6 +87,19 @@ and live. In short:
   pending and deletes unless issued. No stock link and no hand-back - materials aren't tracked
   individually or returned. Notifications `MATERIAL_REQUEST_SUBMITTED/ISSUED/REJECTED`. Not tested
   end to end before deploy (the tables only exist once Render applies the migration).
+  **Materials register (2026-10-09, user request):** Technet Store → **Materials** (`/dashboard/store/stock`,
+  `store/MaterialsPage.tsx`, `/api/materials`, `routes/materials.ts`, `lib/materials.ts` tested) - the
+  store's consumables kept by quantity, **separate from ERP Inventory on purpose** (the user chose it over
+  reusing Inventory). `Material` (MT-0001; name, reference, category, unit, quantity, minStock, location,
+  notes; low stock = at/below a non-zero minimum) and `MaterialMovement` (IN / OUT / ADJUST with
+  balanceAfter, who, reason, request line), migration `20261009090000_materials_register`. Stock only
+  moves via Add stock, Correct count (sets the counted value, records the difference) and issuing - never
+  via Edit. **Issuing a material request now matches each line to a material** (pre-guessed by reference,
+  then name) and deducts the quantity in one transaction - refused with nothing changed if any material
+  is short; a line can be issued with "No stock match" (bought specially). `MaterialRequestItem` gained
+  `materialId`/`issuedQuantity`. "Materials I Have" (`GET /api/materials/mine`) lists lines issued to the
+  signed-in employee. A material that was ever issued can't be deleted. Everyone can view; the store
+  (`TOOL_MANAGE_ROLES`) manages.
 - **Operations Manager = Admin (2026-10-02, management):** OPERATIONS_MANAGER has exactly the
   admin's access and, like the admin, no check-in card, shift pings or personal pages. One rule on
   each side: `isAdminLike()` (server `lib/roles.ts`, used by `requireRole` - any route allowing ADMIN
