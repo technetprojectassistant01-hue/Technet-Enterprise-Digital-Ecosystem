@@ -288,6 +288,7 @@ model User {
 
   toolRequestsReviewed  ToolRequest[]  @relation("ToolRequestReviewer")
   materialRequestsReviewed MaterialRequest[] @relation("MaterialRequestReviewer")
+  materialMovements MaterialMovement[] @relation("MaterialMovementBy")
   toolCheckoutsIssued   ToolCheckout[] @relation("ToolCheckoutIssuer")
   toolCheckoutsReturned ToolCheckout[] @relation("ToolCheckoutReceiver")
 
@@ -2004,8 +2005,61 @@ model MaterialRequestItem {
   /// Part number, product code or brand reference - optional, not everything has one.
   reference   String?
   quantity    Decimal         @db.Decimal(10, 2)
+  /// Set when the store issues the request: the stock material this line was matched to (null =
+  /// issued without a stock match, e.g. bought specially) and how much was actually handed over.
+  materialId     String?
+  material       Material?       @relation(fields: [materialId], references: [id], onDelete: SetNull)
+  issuedQuantity Decimal?        @db.Decimal(10, 2)
 
   @@index([requestId])
+  @@index([materialId])
+}
+
+/// The store's materials register (2026-10-09, user request): consumables kept in stock by
+/// quantity - separate from ERP Inventory on purpose (the user's choice). Stock goes down when a
+/// material request is issued against it and every change is a MaterialMovement.
+model Material {
+  id             String   @id @default(uuid())
+  sequenceNumber Int      @unique @default(autoincrement())
+  name           String
+  reference      String?
+  category       String?
+  unit           String   @default("unit")
+  quantity       Decimal  @default(0) @db.Decimal(12, 2)
+  minStock       Decimal  @default(0) @db.Decimal(12, 2)
+  location       String?
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  movements    MaterialMovement[]
+  requestItems MaterialRequestItem[]
+
+  @@index([name])
+}
+
+/// One stock change: IN (stock added), OUT (issued against a request line), ADJUST (a count
+/// corrected - `quantity` is the signed difference). `balanceAfter` is the stock after the change.
+model MaterialMovement {
+  id            String               @id @default(uuid())
+  materialId    String
+  material      Material             @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  type          MaterialMovementType
+  quantity      Decimal              @db.Decimal(12, 2)
+  balanceAfter  Decimal              @db.Decimal(12, 2)
+  reason        String?
+  requestItemId String?
+  createdById   String
+  createdBy     User                 @relation("MaterialMovementBy", fields: [createdById], references: [id])
+  createdAt     DateTime             @default(now())
+
+  @@index([materialId])
+}
+
+enum MaterialMovementType {
+  IN
+  OUT
+  ADJUST
 }
 
 enum MaterialRequestStatus {
