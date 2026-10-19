@@ -363,7 +363,8 @@ Grouped by domain (not exhaustive on fields — read the schema for that):
   `t.shell.userGuide` is translated. Written role by role: **Admin done 2026-10-19** (also used by
   the Operations Manager via `hasRole`), **HR done 2026-10-19** (`hrGuide.ts`), **Staff Technician
   done 2026-10-19** (`technicianGuide.ts`, its own text - short sentences, one task per topic, for
-  people who aren't very technical; FIELD_TECHNICIAN only, Staff Office still to do); other roles see a
+  people who aren't very technical; FIELD_TECHNICIAN only, Staff Office still to do), **Storekeeper
+  done 2026-10-19** (`storekeeperGuide.ts`, shares the store/procurement topics); other roles see a
   "still being written" page and no menu link until their guide exists. **Topics that read the
   same for several roles are written once** in the Admin guide and pulled into others with
   `shared('<topic id>')` (throws at start-up if the id is renamed), so a feature change is usually
