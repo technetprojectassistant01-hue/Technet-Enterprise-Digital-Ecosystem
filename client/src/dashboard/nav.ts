@@ -62,8 +62,9 @@ export interface NavItem {
 
 export const MAIN_NAV: NavItem[] = [
   // The landing page is mainly the check-in/check-out card, so it's named for that.
-  // A storekeeper neither checks in here nor reads the register, so the page is not theirs.
-  { label: 'Attendance', to: '/dashboard', icon: Clock, end: true, hiddenFrom: ['STOREKEEPER'] },
+  // The storekeeper, Sales and Finance neither check in here nor read the register, so the page
+  // is not theirs (DashboardHome sends them to the store or Technet ERP).
+  { label: 'Attendance', to: '/dashboard', icon: Clock, end: true, hiddenFrom: ['STOREKEEPER', 'SALES_OFFICER', 'FINANCE_OFFICER'] },
   // Admin and HR approve leave rather than requesting it: Leave Approvals and Technet HR > Leave.
   { label: 'My Leave', to: '/dashboard/my-leave', icon: CalendarDays, hiddenFrom: ADMINISTRATIVE_ROLES },
   { label: 'Leave Approvals', to: '/dashboard/leave-approvals', icon: CalendarCheck, hiddenFrom: NON_ADMIN_ROLES },
