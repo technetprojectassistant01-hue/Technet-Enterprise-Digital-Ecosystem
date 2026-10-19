@@ -1972,6 +1972,7 @@ export const fr: Dict = {
             q: 'Je ne vois pas la carte « Ma présence »',
             a: [
               'Votre compte doit être relié à votre fiche employé. Contactez les RH et demandez-leur de relier votre compte.',
+              "Les administrateurs, les RH, le magasinier, les chargés des ventes et les chargés des finances ne pointent pas : ils n'ont donc pas de carte.",
             ],
           },
           {
