@@ -144,6 +144,7 @@ export const fr: Dict = {
     mainMenu: 'MENU PRINCIPAL',
     system: 'SYSTÈME',
     helpCenter: "Centre d'aide",
+    userGuide: "Guide d'utilisation",
     logOut: 'Se déconnecter',
     all: 'Tout',
     expand: (section: string) => `Déplier ${section}`,
@@ -390,7 +391,7 @@ export const fr: Dict = {
     pdfContents: 'Le PDF commence par un résumé par personne (jours pointés, jours sans pointage, heures, retards, heures supplémentaires) et une liste de visites à vérifier avant la paie.',
     downloadPdf: 'Télécharger le PDF',
     downloadExcel: 'Télécharger Excel',
-    excelNote: "Le fichier Excel contient une feuille Résumé et une feuille Registre, avec l'en-tête de l'entreprise, et s'imprime avec en-tête, pied de page et numéros de page.",
+    excelNote: "Le fichier Excel contient les feuilles Monthly Report, Daily Report et Register (plus Overtime Records si les RH en ont saisi), avec l'en-tête de l'entreprise, et s'imprime avec en-tête, pied de page et numéros de page.",
   },
 
   myJobs: {
