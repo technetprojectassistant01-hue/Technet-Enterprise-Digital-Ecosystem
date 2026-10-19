@@ -355,6 +355,16 @@ Grouped by domain (not exhaustive on fields — read the schema for that):
 
 ## 9. Working conventions (important — established through explicit user correction)
 
+- **Update the User Guide with every feature** (user rule, 2026-10-19): any feature added or changed
+  also updates the in-app User Guide in the same piece of work - `client/src/guide/` (one file per
+  role guide, e.g. `adminGuide.ts`; `index.ts` lists them), shown at `/dashboard/guide`
+  (`UserGuidePage.tsx`) with a "User Guide" link under Help Center for roles that have a guide.
+  **English only** (the user's choice); the page's own labels are English too, only the menu label
+  `t.shell.userGuide` is translated. Written role by role: **Admin done 2026-10-19** (also used by
+  the Operations Manager via `hasRole`); other roles see a "still being written" page and no menu
+  link until their guide exists. Every statement must describe real current behaviour, like the
+  Help Center FAQ - bump the guide's `updated` date when you check it. An older teammate PDF manual
+  (branch `user-manual`, `server/scripts/generateUserManual.ts`, Aug 2026) is stale and not used.
 - **Commit granularity**: commit **and push** every single file change individually - one file per commit, one push per commit, immediately after it's verified (a passing `tsc`/build). Not batched by feature, not held locally. Corrected by the user several times (early on, a ~15-file RBAC pass, 2026-09-24, and 2026-09-28); §23's 2026-09-14 "per finished menu" rule is superseded. Order pushes so a migration lands before code that reads it, and client support before a server rule that requires it (e.g. the check-in photo).
 - **No Claude attribution**: no `Co-Authored-By: Claude` or `Claude-Session:` lines in commits or PRs - only Nadia shows as contributor. On 2026-09-28 the history of `main` and `user-manual` was rewritten to strip them from Nadia's commits only (Deborah606-byte's commits were restored byte-identical), so every commit hash from before that date changed; hashes quoted in older sections of this file no longer resolve. A pre-rewrite backup bundle is at `Desktop/Technet TEDE/TEDE-history-backup-2026-09-28.bundle`.
 - **Migrations reach the live DB by deploy**: `server/.env` points at the live Neon database, and running `prisma migrate deploy` from this machine is blocked by the Claude Code safety check. Write the migration file, `prisma generate` locally, and push - Render runs `migrate deploy` on start. Keep migrations additive, and don't use an enum value in the same migration that adds it (Postgres refuses).
