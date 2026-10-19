@@ -1,5 +1,6 @@
 import { ADMIN_GUIDE } from './adminGuide'
-import type { GuideTopic, RoleGuide } from './types'
+import { topicsFrom } from './shared'
+import type { RoleGuide } from './types'
 
 /**
  * The HR guide (role HR_OFFICER, shown as "HR"). Topics that read the same for HR as for an
@@ -8,14 +9,7 @@ import type { GuideTopic, RoleGuide } from './types'
  * Written against the live app on 2026-10-19.
  */
 
-const adminTopics = new Map(ADMIN_GUIDE.chapters.flatMap((c) => c.topics).map((t) => [t.id, t]))
-
-/** A topic from the Admin guide. Fails loudly at start-up if the id was renamed there. */
-function shared(id: string): GuideTopic {
-  const topic = adminTopics.get(id)
-  if (!topic) throw new Error(`HR guide: no Admin guide topic "${id}"`)
-  return topic
-}
+const shared = topicsFrom(ADMIN_GUIDE)
 
 export const HR_GUIDE: RoleGuide = {
   title: 'HR guide',
