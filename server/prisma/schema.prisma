@@ -2102,6 +2102,13 @@ enum OvertimeStatus {
   REJECTED
 }
 
+/// The type of a manual overtime record, as in the office AiFace software's Overtime Records.
+enum OvertimeType {
+  NORMAL
+  REST_DAY
+  PUBLIC_HOLIDAY
+}
+
 model OvertimeDecision {
   id          String         @id @default(uuid())
   employeeId  String
@@ -2114,6 +2121,13 @@ model OvertimeDecision {
   decidedById String?
   decidedBy   User?          @relation("OvertimeDecider", fields: [decidedById], references: [id], onDelete: SetNull)
   decidedAt   DateTime       @default(now())
+  /// A manual overtime record HR typed in (lib/overtimeRecords.ts) rather than an approval of the
+  /// calculated overtime - it replaces the calculated figure for that day. decidedBy = approver,
+  /// note = reason; start/end are Mauritius "HH:MM" (an end before the start is the next day).
+  manual      Boolean        @default(false)
+  type        OvertimeType?
+  startTime   String?
+  endTime     String?
 
   @@unique([employeeId, date])
   @@index([date])
