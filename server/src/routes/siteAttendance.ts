@@ -15,6 +15,7 @@ import { payWarnings, summarizeTechnicians } from "../lib/attendanceSummary";
 import { computeLateByVisit, computeOvertimeDays, dayToDate, mauritiusDay, MAURITIUS_OFFSET_MINUTES } from "../lib/overtime";
 import { generateStaffAttendancePdf, type StaffAttendancePdfInput } from "../lib/pdf/staffAttendancePdf";
 import { generateStaffAttendanceXlsx } from "../lib/xlsx/staffAttendanceXlsx";
+import { OVERTIME_TYPE_LABELS, withManualRecords } from "../lib/overtimeRecords";
 import { isPhotoRequired, parseAttendancePhoto } from "../lib/attendancePhoto";
 import { evaluateVisit, parseClientSentAt } from "../lib/anomalies";
 import { liveStatus } from "../lib/liveMap";
@@ -350,7 +351,19 @@ async function loadTeamReport(query: Request["query"]): Promise<StaffAttendanceP
     }),
     prisma.overtimeDecision.findMany({
       where: { status: "APPROVED", date: { gte: dayToDate(range.from), lte: dayToDate(range.to) }, ...(employeeId ? { employeeId } : {}) },
-      select: { employeeId: true, date: true, minutes: true },
+      select: {
+        employeeId: true,
+        date: true,
+        minutes: true,
+        note: true,
+        manual: true,
+        type: true,
+        startTime: true,
+        endTime: true,
+        decidedAt: true,
+        decidedBy: { select: { name: true, email: true } },
+        employee: { select: { firstName: true, lastName: true, employeeCode: true } },
+      },
     }),
   ]);
 
@@ -417,8 +430,29 @@ async function loadTeamReport(query: Request["query"]): Promise<StaffAttendanceP
   ]);
   const day = (d: Date) => d.toISOString().slice(0, 10);
   const late = computeLateByVisit(visits);
-  const overtimeDays = computeOvertimeDays(visits);
+  // A manual overtime record replaces that day's calculated overtime (lib/overtimeRecords.ts).
+  const manual = decisions.filter((d) => d.manual);
+  const overtimeDays = withManualRecords(
+    computeOvertimeDays(visits),
+    manual.map((d) => ({ employeeId: d.employeeId, date: day(d.date), minutes: d.minutes, startTime: d.startTime, endTime: d.endTime })),
+  );
   const approved = decisions.map((d) => ({ employeeId: d.employeeId, date: day(d.date), minutes: d.minutes }));
+  // The AiFace "Overtime Records" list, by date then name.
+  const overtimeRecords = manual
+    .map((d) => ({
+      employeeId: d.employeeId,
+      name: d.employee ? `${d.employee.firstName} ${d.employee.lastName}` : "—",
+      code: d.employee?.employeeCode ?? null,
+      date: day(d.date),
+      type: d.type ? OVERTIME_TYPE_LABELS[d.type] : "—",
+      startTime: d.startTime ?? "",
+      endTime: d.endTime ?? "",
+      minutes: d.minutes,
+      reason: d.note ?? "",
+      approver: d.decidedBy?.name || d.decidedBy?.email || "—",
+      approvedAt: d.decidedAt,
+    }))
+    .sort((a, b) => (a.date === b.date ? a.name.localeCompare(b.name) : a.date.localeCompare(b.date)));
   const summary = summarizeTechnicians({
     people: [...people.values()].sort((a, b) => a.name.localeCompare(b.name)),
     from: range.from,
@@ -434,7 +468,8 @@ async function loadTeamReport(query: Request["query"]): Promise<StaffAttendanceP
   });
   const warnings = payWarnings(visits, approved, overtimeDays).map((w) => ({ ...w, name: people.get(w.employeeId)?.name ?? "—" }));
 
-  return { from: range.from, to: range.to, visits, late, approvedOvertime, pendingOvertime, technicians: summary, warnings };
+  return { from: range.from, to: range.to, visits, late, approvedOvertime, pendingOvertime, technicians: summary, warnings, overtimeRecords,
+    approvedOvertimeMinutes: decisions.reduce((s, d) => s + d.minutes, 0) };
 }
 
 router.get("/report/pdf", requireRole(...ATTENDANCE_VIEW_ROLES), async (req, res) => {
