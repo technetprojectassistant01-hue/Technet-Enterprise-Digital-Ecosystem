@@ -110,7 +110,7 @@ export const ADMIN_GUIDE: RoleGuide = {
                 'Staff Office: office staff with the same personal pages (attendance, leave, documents).',
                 'HR: Technet HR, the attendance register, leave and overtime approvals.',
                 'Storekeeper: Technet Store, plus Inventory and Procurement in the ERP.',
-                'Sales Officer and Finance Officer: the customer side of the ERP.',
+                'Sales Officer and Finance Officer: the customer side of the ERP. They do not check in, but they keep My Leave and My Documents.',
                 'Operations Manager: the same access as an administrator.',
                 'Administrator: everything.',
               ],
