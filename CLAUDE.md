@@ -65,8 +65,27 @@ and live. In short:
   leave = minutes the day's last *recorded* check-out precedes the shift end (none on a public
   holiday, none for a next-day check-out). Shift/absence hours are full shift length (9 h weekdays,
   5 h Saturday, no lunch deducted - nobody has said what lunch is). **Not built** (features, not report
-  layout): per-staff shifts, manual punch, manual overtime records, Business Trip leave. Late on a
+  layout): per-staff shifts, manual punch, Business Trip leave. Late on a
   public holiday still counts (pre-existing rule).
+  **Manual overtime records built (2026-10-19)** - the AiFace "Overtime Records". Decisions the user
+  made: **HR/Admin only** create them (no technician request flow), and a record **replaces** that
+  day's calculated overtime (not added on top, not blocked). Stored on the day's existing
+  `OvertimeDecision` (one per employee per day, so "replace" is the unique key): `manual = true`,
+  status APPROVED, new `type` (`OvertimeType` NORMAL / REST_DAY / PUBLIC_HOLIDAY), `startTime` /
+  `endTime` Mauritius "HH:MM" (end <= start = next day), `note` = the required reason, `decidedBy`
+  = approver (migration `20261019090000_overtime_records`). `POST /api/overtime/records` (HR_ROLES,
+  validated by `lib/overtimeRecords.ts`, tested; no future days) upserts it and notifies the
+  employee; the existing `DELETE /api/overtime/:employeeId/:date` deletes it (the day goes back to
+  pending calculated overtime); `POST /decide` refuses (409) on a day with a manual record. Payroll,
+  My Attendance and the validation fingerprint needed no change - they already read APPROVED
+  decisions' minutes. `loadTeamReport` swaps records into the calculated overtime
+  (`withManualRecords`) so the Monthly Report's Overtime column doesn't count both, and passes
+  `overtimeRecords` to a new **Overtime Records** sheet (Excel) / section (PDF), only when any exist;
+  the PDF's Approved Overtime tile now sums every approved day (`approvedOvertimeMinutes`), since a
+  record can sit on a day with no check-in. Screen: HR → Overtime has **Add overtime record**, a
+  "Record instead" action on pending days, a Manual record badge with type + "Recorded by", Edit /
+  Delete record, and a "Manual records" status filter. Not tested against a live database before
+  deploy (the columns only exist once Render applies the migration) nor clicked through in a browser.
   **On screen too (2026-10-08):** Team Attendance's **Attendance Summary** panel is now that Monthly
   Report (`operations/AttendanceMonthlyReport.tsx`, data from `GET /api/site-attendance/report/summary`,
   same `loadTeamReport()` as the PDF/Excel) with the app's own Transport / Location flags / Time flags
