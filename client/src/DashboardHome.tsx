@@ -16,14 +16,18 @@ function DashboardHome() {
   // Admin, HR and the storekeeper have no personal attendance here: the first two run the
   // register rather than appearing in it, the third works entirely in the store.
   const administers = hasRole(user?.role, ADMINISTRATIVE_ROLES)
-  const canCheckIn = !!user?.employeeId && !administers
-  // Same audience as the check-in card: staff with an employee record who can check in.
-  const canSeeMyAttendance = canCheckIn && hasRole(user?.role, OPS_SUBMIT_ROLES)
-  // Admin and HR get the whole team's register in place of their own attendance. A storekeeper
-  // does not read it, so this page has nothing for them at all — send them to the store instead
-  // of showing a title over an empty screen.
+  // Sales and Finance do not check in either (the server's check-in routes are OPS_SUBMIT_ROLES
+  // only - showing them the card only led to a refused check-in; user decision 2026-10-19).
+  const checksIn = !administers && hasRole(user?.role, OPS_SUBMIT_ROLES)
+  const canCheckIn = !!user?.employeeId && checksIn
+  // Admin and HR get the whole team's register in place of their own attendance. Everyone else
+  // who neither checks in nor reads it has nothing on this page, so send them to their own work
+  // instead of showing a title over an empty screen: the storekeeper to the store, Sales and
+  // Finance to Technet ERP.
   const readsRegister = administers && hasRole(user?.role, ATTENDANCE_VIEW_ROLES)
-  if (administers && !readsRegister) return <Navigate to="/dashboard/store/tools" replace />
+  if (!checksIn && !readsRegister) {
+    return <Navigate to={administers ? '/dashboard/store/tools' : '/dashboard/erp'} replace />
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -42,9 +46,9 @@ function DashboardHome() {
 
       {readsRegister && <StaffAttendancePanel />}
 
-      {canSeeMyAttendance && <TodayAttendance />}
+      {canCheckIn && <TodayAttendance />}
 
-      {canSeeMyAttendance && <MyAttendanceHistory />}
+      {canCheckIn && <MyAttendanceHistory />}
     </div>
   )
 }
