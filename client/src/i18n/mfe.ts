@@ -1961,7 +1961,10 @@ export const mfe: Dict = {
           },
           {
             q: 'Mo pa trouv kart "Mo Prezans"',
-            a: ['Ou kont bizin konekte ar ou dosie anplwaye. Kontakte RH e demann zot konekte ou kont.'],
+            a: [
+              'Ou kont bizin konekte ar ou dosie anplwaye. Kontakte RH e demann zot konekte ou kont.',
+              'Administrater, RH, Magazinie, Ofisie Lavant ek Ofisie Finans pa pointe, alor zot pena kart.',
+            ],
           },
           {
             q: 'Eski aplikasion la kapav rapel mwa pou pointe?',
