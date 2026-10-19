@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { HelpCircle } from 'lucide-react'
+import { BookOpen, HelpCircle } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import Logo from '../components/Logo'
 import { MAIN_NAV, SYSTEM_NAV, ADMIN_NAV, visibleNav } from './nav'
@@ -7,6 +7,7 @@ import { Avatar } from './ui'
 import NavTree from './NavTree'
 import { navLabel, useT } from '../i18n'
 import { isAdminLike } from '../lib/permissions'
+import { guideFor } from '../guide'
 
 /**
  * The navigation column shared by the always-on desktop sidebar and the slide-in drawer used at
@@ -60,6 +61,20 @@ function SidebarContent() {
           <HelpCircle className="h-4 w-4 shrink-0" />
           {t.shell.helpCenter}
         </NavLink>
+        {/* Only for roles whose guide has been written (Admin first, 2026-10-19). */}
+        {guideFor(user?.role) && (
+          <NavLink
+            to="/dashboard/guide"
+            className={({ isActive }: { isActive: boolean }) =>
+              `flex items-center gap-3 rounded-md px-3 py-1.5 text-sm ${
+                isActive ? 'text-cyan-accent' : 'text-ink-300 hover:text-ink-100'
+              }`
+            }
+          >
+            <BookOpen className="h-4 w-4 shrink-0" />
+            {t.shell.userGuide}
+          </NavLink>
+        )}
       </div>
 
       <div className="mt-4 flex items-center gap-3 border-t border-ink-800 px-2 pt-4">
