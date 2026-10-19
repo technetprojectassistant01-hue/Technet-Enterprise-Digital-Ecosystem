@@ -746,8 +746,10 @@ export const ADMIN_GUIDE: RoleGuide = {
                 'An approved requisition can be converted: Convert to Purchase Order, choosing the supplier and unit costs.',
                 'Purchase Orders: open the order and Send to Supplier once it has been sent.',
                 'When goods arrive, click Record Receipt and enter the quantities received. Items linked to inventory are added to stock automatically. The order shows partly or fully received.',
+                'Once everything has arrived, click Close Order.',
               ],
             },
+            { kind: 'tip', text: 'Cancel Order stops an order that is still a draft or has been sent but nothing has arrived yet.' },
           ],
         },
         {
