@@ -361,8 +361,12 @@ Grouped by domain (not exhaustive on fields — read the schema for that):
   (`UserGuidePage.tsx`) with a "User Guide" link under Help Center for roles that have a guide.
   **English only** (the user's choice); the page's own labels are English too, only the menu label
   `t.shell.userGuide` is translated. Written role by role: **Admin done 2026-10-19** (also used by
-  the Operations Manager via `hasRole`); other roles see a "still being written" page and no menu
-  link until their guide exists. Every statement must describe real current behaviour, like the
+  the Operations Manager via `hasRole`), **HR done 2026-10-19** (`hrGuide.ts`); other roles see a
+  "still being written" page and no menu link until their guide exists. **Topics that read the
+  same for several roles are written once** in the Admin guide and pulled into others with
+  `shared('<topic id>')` (throws at start-up if the id is renamed), so a feature change is usually
+  one edit - but check every guide that shares the topic still reads true for its role (e.g. HR
+  can only *view* Operations; it gets its own Team Attendance / anomalies topics for that reason). Every statement must describe real current behaviour, like the
   Help Center FAQ - bump the guide's `updated` date when you check it. An older teammate PDF manual
   (branch `user-manual`, `server/scripts/generateUserManual.ts`, Aug 2026) is stale and not used.
 - **Commit granularity**: commit **and push** every single file change individually - one file per commit, one push per commit, immediately after it's verified (a passing `tsc`/build). Not batched by feature, not held locally. Corrected by the user several times (early on, a ~15-file RBAC pass, 2026-09-24, and 2026-09-28); §23's 2026-09-14 "per finished menu" rule is superseded. Order pushes so a migration lands before code that reads it, and client support before a server rule that requires it (e.g. the check-in photo).
