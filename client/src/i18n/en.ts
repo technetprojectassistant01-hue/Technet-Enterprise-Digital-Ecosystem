@@ -1962,7 +1962,10 @@ export const en = {
           },
           {
             q: 'I don\'t see the "My Attendance" card',
-            a: ['Your login needs to be linked to your employee record. Contact HR and ask them to link your account.'],
+            a: [
+              'Your login needs to be linked to your employee record. Contact HR and ask them to link your account.',
+              'Administrators, HR, the Storekeeper, Sales Officers and Finance Officers do not check in, so they have no card.',
+            ],
           },
           {
             q: 'Can the app remind me to check in?',
