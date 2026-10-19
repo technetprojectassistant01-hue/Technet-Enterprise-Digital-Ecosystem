@@ -1977,7 +1977,7 @@ export const fr: Dict = {
           {
             q: "L'application peut-elle me rappeler de pointer ?",
             a: [
-              "Oui. Touchez « Me le rappeler » sur la carte « Ma présence » et autorisez les notifications. Les jours de semaine, vous recevrez un rappel à 8 h 15 si vous n'avez pas encore pointé.",
+              "Oui. Touchez « Me le rappeler » sur la carte « Ma présence » et autorisez les notifications. Du lundi au samedi, vous recevrez un rappel à 8 h 15 si vous n'avez pas encore pointé, et à 17 h 15 si vous êtes toujours pointé. Touchez-le à nouveau pour couper les rappels ; les contrôles de présence arrivent quand même.",
               "Sur iPhone, installez d'abord l'application sur votre écran d'accueil — les iPhone n'autorisent les rappels que pour les applications installées.",
             ],
           },
@@ -2027,7 +2027,7 @@ export const fr: Dict = {
             q: 'Comment demander un congé ?',
             a: [
               'Ouvrez « Mes congés » dans le menu et touchez « Demander un congé ». Les RH examinent la demande et vous recevez une notification quand elle est approuvée ou refusée.',
-              "Tant qu'une demande est en attente, vous pouvez la retirer depuis la même page.",
+              "Tant qu'une demande est en attente, vous pouvez la modifier ou la retirer depuis la même page. Une fois que les RH ont décidé, vous pouvez seulement la retirer.",
             ],
           },
         ],
