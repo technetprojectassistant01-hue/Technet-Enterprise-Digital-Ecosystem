@@ -3,15 +3,16 @@ import { hasRole } from '../lib/permissions'
 import { ADMIN_GUIDE } from './adminGuide'
 import { HR_GUIDE } from './hrGuide'
 import { OFFICE_GUIDE } from './officeGuide'
+import { SALES_GUIDE } from './salesGuide'
 import { STOREKEEPER_GUIDE } from './storekeeperGuide'
 import { TECHNICIAN_GUIDE } from './technicianGuide'
 import type { RoleGuide } from './types'
 
 /**
- * Every role guide written so far. Written role by role (Admin, HR, Staff Technician, Storekeeper, Staff Office, 2026-10-19); add each
+ * Every role guide written so far. Written role by role (Admin, HR, Staff Technician, Storekeeper, Staff Office, Sales Officer, 2026-10-19); add each
  * new guide here and it appears in the menu for that role.
  */
-export const GUIDES: RoleGuide[] = [ADMIN_GUIDE, HR_GUIDE, TECHNICIAN_GUIDE, STOREKEEPER_GUIDE, OFFICE_GUIDE]
+export const GUIDES: RoleGuide[] = [ADMIN_GUIDE, HR_GUIDE, TECHNICIAN_GUIDE, STOREKEEPER_GUIDE, OFFICE_GUIDE, SALES_GUIDE]
 
 /** The guide for a role, or null while that role's guide hasn't been written. */
 export function guideFor(role: Role | undefined): RoleGuide | null {
