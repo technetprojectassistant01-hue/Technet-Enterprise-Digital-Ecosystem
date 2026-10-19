@@ -147,6 +147,7 @@ export const en = {
     mainMenu: 'MAIN MENU',
     system: 'SYSTEM',
     helpCenter: 'Help Center',
+    userGuide: 'User Guide',
     logOut: 'Log out',
     all: 'All',
     expand: (section: string) => `Expand ${section}`,
@@ -393,7 +394,7 @@ export const en = {
     pdfContents: 'The PDF opens with a summary per person (days checked in, days with no check-in, hours, late, overtime) and a list of visits to check before pay.',
     downloadPdf: 'Download PDF',
     downloadExcel: 'Download Excel',
-    excelNote: 'The Excel file has a Summary sheet and a Register sheet, with the company letterhead, and prints with a header, footer and page numbers.',
+    excelNote: 'The Excel file has Monthly Report, Daily Report and Register sheets (plus Overtime Records when HR has typed any in), with the company letterhead, and prints with a header, footer and page numbers.',
   },
 
   /** "My Jobs Today" under the check-in card: what the admin scheduled for this technician. */
