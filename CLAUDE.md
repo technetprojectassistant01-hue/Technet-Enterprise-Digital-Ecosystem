@@ -363,11 +363,14 @@ Grouped by domain (not exhaustive on fields — read the schema for that):
   `t.shell.userGuide` is translated. Written role by role: **Admin done 2026-10-19** (also used by
   the Operations Manager via `hasRole`), **HR done 2026-10-19** (`hrGuide.ts`), **Staff Technician
   done 2026-10-19** (`technicianGuide.ts`, its own text - short sentences, one task per topic, for
-  people who aren't very technical; FIELD_TECHNICIAN only, Staff Office still to do), **Storekeeper
-  done 2026-10-19** (`storekeeperGuide.ts`, shares the store/procurement topics); other roles see a
+  people who aren't very technical; FIELD_TECHNICIAN only), **Storekeeper done 2026-10-19**
+  (`storekeeperGuide.ts`, shares the store/procurement topics), **Staff Office done 2026-10-19**
+  (`officeGuide.ts`, EMPLOYEE - reuses the Technician topics; only difference written: office staff
+  are never marked Absent). **Sales/Finance still to do.** Other roles see a
   "still being written" page and no menu link until their guide exists. **Topics that read the
-  same for several roles are written once** in the Admin guide and pulled into others with
-  `shared('<topic id>')` (throws at start-up if the id is renamed), so a feature change is usually
+  same for several roles are written once** (Admin guide for office/management topics, Technician
+  guide for the personal check-in/leave/store topics) and pulled into others with `topicsFrom(guide)`
+  from `guide/shared.ts` (throws at start-up if an id is renamed), so a feature change is usually
   one edit - but check every guide that shares the topic still reads true for its role (e.g. HR
   can only *view* Operations; it gets its own Team Attendance / anomalies topics for that reason). Every statement must describe real current behaviour, like the
   Help Center FAQ - bump the guide's `updated` date when you check it. An older teammate PDF manual
