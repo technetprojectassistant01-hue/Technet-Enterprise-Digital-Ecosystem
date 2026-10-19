@@ -5,6 +5,7 @@ import Login from './Login'
 import ForgotPassword from './ForgotPassword'
 import ResetPassword from './ResetPassword'
 import HelpCenterPage, { HelpCenterContent } from './HelpCenterPage'
+import UserGuidePage from './UserGuidePage'
 import LegalPage, { LegalContent } from './LegalPage'
 import Dashboard from './Dashboard'
 import DashboardHome from './DashboardHome'
@@ -138,6 +139,7 @@ function App() {
           <Route path="my-leave" element={<MyLeavePage />} />
           <Route path="my-documents" element={<MyDocumentsPage />} />
           <Route path="help" element={<HelpCenterContent />} />
+          <Route path="guide" element={<UserGuidePage />} />
           <Route path="privacy" element={<LegalContent doc="privacy" />} />
           <Route path="terms" element={<LegalContent doc="terms" />} />
           <Route element={<RoleRoute blockedRoles={ERP_HIDDEN_ROLES} />}>
