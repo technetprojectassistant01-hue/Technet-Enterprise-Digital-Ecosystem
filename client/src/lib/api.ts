@@ -2283,6 +2283,10 @@ export async function downloadPdf(url: string, fallbackName: string) {
 
 export type OvertimeItemStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
 
+/** The type of a manual overtime record (AiFace "Overtime Records"). */
+export type OvertimeType = 'NORMAL' | 'REST_DAY' | 'PUBLIC_HOLIDAY'
+export const OVERTIME_TYPES: OvertimeType[] = ['NORMAL', 'REST_DAY', 'PUBLIC_HOLIDAY']
+
 export interface OvertimeItem {
   employeeId: string
   employee: { id: string; firstName: string; lastName: string; employeeCode: string } | null
@@ -2299,6 +2303,11 @@ export interface OvertimeItem {
     note: string | null
     decidedAt: string
     decidedBy: { id: string; name: string | null; email: string } | null
+    /** A record HR typed in by hand: it replaces the calculated `minutes` for the day. note = reason. */
+    manual: boolean
+    type: OvertimeType | null
+    startTime: string | null
+    endTime: string | null
   } | null
   /** Open or confirmed-violation anomalies on this employee's visits that day - a warning, not a block. */
   anomalyCount?: number
@@ -2314,6 +2323,19 @@ export function decideOvertime(input: { employeeId: string; date: string; approv
   return request<{ decision: unknown }>('/api/overtime/decide', { method: 'POST', body: JSON.stringify(input) })
 }
 
+/** Saves a manual overtime record; it replaces that employee-day's calculated overtime and counts as approved. */
+export function saveOvertimeRecord(input: {
+  employeeId: string
+  date: string
+  type: OvertimeType
+  startTime: string
+  endTime: string
+  reason: string
+}) {
+  return request<{ decision: unknown }>('/api/overtime/records', { method: 'POST', body: JSON.stringify(input) })
+}
+
+/** Clears a decision, or deletes a manual record, so the day goes back to its calculated overtime. */
 export function undoOvertimeDecision(employeeId: string, date: string) {
   return request<void>(`/api/overtime/${employeeId}/${date}`, { method: 'DELETE' })
 }
