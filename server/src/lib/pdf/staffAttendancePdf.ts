@@ -58,6 +58,29 @@ export interface StaffAttendancePdfInput {
   technicians?: TechnicianSummary[];
   /** Visits open over 12 hours, printed as "check before using these figures for pay". */
   warnings?: (PayWarning & { name: string })[];
+  /** Manual overtime records HR typed in (AiFace "Overtime Records", lib/overtimeRecords.ts). */
+  overtimeRecords?: OvertimeRecordRow[];
+  /**
+   * All approved overtime in the range, including a manual record on a day with no check-in (which
+   * `approvedOvertime`, keyed by visit, can't hold). Falls back to summing `approvedOvertime`.
+   */
+  approvedOvertimeMinutes?: number;
+}
+
+export interface OvertimeRecordRow {
+  employeeId: string;
+  name: string;
+  code: string | null;
+  /** Mauritius day, "YYYY-MM-DD". */
+  date: string;
+  /** Printed label: Normal / Rest day / Public holiday. */
+  type: string;
+  startTime: string;
+  endTime: string;
+  minutes: number;
+  reason: string;
+  approver: string;
+  approvedAt: Date;
 }
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -161,7 +184,7 @@ export function generateStaffAttendancePdf(input: StaffAttendancePdfInput): PDFK
     ["Employee-Days", String(days)],
     ["Hours Recorded", span(workedMinutes)],
     ["Days Late", String(input.late.size)],
-    ["Approved Overtime", span([...input.approvedOvertime.values()].reduce((a, b) => a + b, 0))],
+    ["Approved Overtime", span(input.approvedOvertimeMinutes ?? [...input.approvedOvertime.values()].reduce((a, b) => a + b, 0))],
     ["Transport (MUR)", transportTotal.toFixed(2)],
   ];
   doc.y += 10;
@@ -326,6 +349,41 @@ export function generateStaffAttendancePdf(input: StaffAttendancePdfInput): PDFK
     }
   }
 
+  if (input.overtimeRecords?.length) {
+    // The AiFace software's Overtime Records: typed in by HR, each replacing that day's calculated overtime.
+    sectionTitle("OVERTIME RECORDS");
+    table(
+      [
+        { title: "Staff Code", w: 6 },
+        { title: "Name", w: 14 },
+        { title: "Date", w: 9 },
+        { title: "Type", w: 8 },
+        { title: "Start", w: 5 },
+        { title: "End", w: 5 },
+        { title: "Hours", w: 5 },
+        { title: "Reason", w: 26 },
+        { title: "Approved by", w: 12 },
+      ],
+      input.overtimeRecords.map((o) => ({
+        cells: [
+          o.code ?? "—",
+          o.name,
+          fullDay(o.date),
+          o.type,
+          o.startTime,
+          o.endTime + (o.endTime <= o.startTime ? " (+1 day)" : ""),
+          hrs(o.minutes),
+          o.reason,
+          o.approver,
+        ],
+      })),
+    );
+    doc.font("Body-Italic").fontSize(7.5).fillColor("#444444")
+      .text("Recorded by HR. Each record replaces the overtime the app calculated for that person and day, and counts as approved.", left, doc.y + 3, { width });
+    doc.fillColor("#000000");
+    doc.y += 12;
+  }
+
   if (input.warnings?.length) {
     sectionTitle("CHECK BEFORE USING THESE FIGURES FOR PAY", "#b42318");
     doc.font("Body").fontSize(8.5).fillColor("#000000")
@@ -338,7 +396,7 @@ export function generateStaffAttendancePdf(input: StaffAttendancePdfInput): PDFK
     doc.y += 8;
   }
 
-  if (input.technicians?.length || input.warnings?.length) {
+  if (input.technicians?.length || input.warnings?.length || input.overtimeRecords?.length) {
     doc.addPage();
     doc.y = doc.page.margins.top;
   }
