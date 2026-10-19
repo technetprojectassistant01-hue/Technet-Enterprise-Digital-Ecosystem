@@ -1967,7 +1967,7 @@ export const en = {
           {
             q: 'Can the app remind me to check in?',
             a: [
-              'Yes. Tap "Remind me" on the "My Attendance" card and allow notifications. On weekdays you\'ll get a reminder at 8:15 if you haven\'t checked in yet.',
+              'Yes. Tap "Remind me" on the "My Attendance" card and allow notifications. Monday to Saturday you\'ll get a reminder at 8:15 if you haven\'t checked in yet, and at 17:15 if you are still checked in. Tap it again to turn reminders off; compliance checks still arrive.',
               'On an iPhone, install the app to your home screen first — iPhones only allow reminders from installed apps.',
             ],
           },
@@ -2017,7 +2017,7 @@ export const en = {
             q: 'How do I request leave?',
             a: [
               'Open "My Leave" from the menu and tap "Request Leave". HR reviews the request and you\'ll get a notification when it\'s approved or rejected.',
-              'While a request is still pending you can withdraw it from the same page.',
+              'While a request is still pending you can edit it or withdraw it from the same page. Once HR has decided, you can only withdraw it.',
             ],
           },
         ],
