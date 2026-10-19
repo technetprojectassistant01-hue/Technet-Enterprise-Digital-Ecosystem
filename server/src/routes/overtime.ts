@@ -13,11 +13,15 @@ import {
 import { overtimeForDay } from "../lib/overtimeQueue";
 import { findExcessiveOvertimeDays, findInvertedSessions, findOverlappingSessions } from "../lib/attendanceDataIssues";
 import { payWarnings } from "../lib/attendanceSummary";
+import { todayInMauritius } from "../lib/attendanceReport";
+import { parseOvertimeRecord } from "../lib/overtimeRecords";
 
 /**
  * Overtime approval for HR (and Admin). Overtime is calculated from site attendance against the
  * standard hours; each day with overtime is pending until HR approves or rejects it. Only approved
  * overtime appears on the technician's own My Attendance (siteAttendance.ts /me/history).
+ * HR can also type an overtime record in by hand (POST /records, lib/overtimeRecords.ts), which
+ * replaces that day's calculated overtime.
  */
 const router = Router();
 router.use(requireAuth);
@@ -96,7 +100,9 @@ router.get("/", async (req, res) => {
       longVisitMinutes: longVisitByKey.get(key) ?? null,
     };
   });
-  // A decision whose overtime no longer calculates (attendance was corrected) still shows, so HR can see it.
+  // A decision whose overtime no longer calculates (attendance was corrected) still shows, so HR can
+  // see it - as does a manual record on a day the app calculated no overtime for (minutes stays 0:
+  // it is the *calculated* figure).
   for (const decision of decisionByKey.values()) {
     const date = decision.date.toISOString().slice(0, 10);
     items.push({
@@ -163,6 +169,14 @@ router.post("/decide", async (req, res) => {
     return res.status(400).json({ error: "employeeId, date (YYYY-MM-DD) and approve are required" });
   }
 
+  const existing = await prisma.overtimeDecision.findUnique({
+    where: { employeeId_date: { employeeId, date: dayToDate(date) } },
+    select: { manual: true },
+  });
+  if (existing?.manual) {
+    return res.status(409).json({ error: "This day has a manual overtime record. Edit or delete the record instead." });
+  }
+
   const day = await overtimeForDay(employeeId, date);
   if (!day) return res.status(409).json({ error: "There is no overtime to decide for that day" });
 
@@ -185,7 +199,46 @@ router.post("/decide", async (req, res) => {
   res.json({ decision });
 });
 
-/** Clears a decision so the day goes back to pending. */
+/**
+ * Saves a manual overtime record (AiFace "Overtime Records"): HR types the type, start, end and
+ * reason, and is stored as the approver. It replaces whatever was on that employee-day - a pending
+ * calculated figure, an earlier decision or an earlier record (the user's choice, 2026-10-19:
+ * "replace that day's overtime", so the same hours are never counted twice).
+ */
+router.post("/records", async (req, res) => {
+  const parsed = parseOvertimeRecord(req.body, todayInMauritius());
+  if ("error" in parsed) return res.status(400).json({ error: parsed.error });
+  const r = parsed.value;
+
+  const employee = await prisma.employee.findUnique({ where: { id: r.employeeId }, select: { id: true } });
+  if (!employee) return res.status(404).json({ error: "Employee not found" });
+
+  const fields = {
+    minutes: r.minutes,
+    status: "APPROVED" as const,
+    note: r.reason,
+    manual: true,
+    type: r.type,
+    startTime: r.startTime,
+    endTime: r.endTime,
+    decidedById: req.user!.sub,
+  };
+  const decision = await prisma.overtimeDecision.upsert({
+    where: { employeeId_date: { employeeId: r.employeeId, date: dayToDate(r.date) } },
+    create: { employeeId: r.employeeId, date: dayToDate(r.date), ...fields },
+    update: { ...fields, decidedAt: new Date() },
+  });
+
+  const hours = `${Math.floor(r.minutes / 60)}h ${r.minutes % 60}m`;
+  await notifyEmployee(employee.id, "OVERTIME_APPROVED", `Overtime recorded for you on ${r.date} (${hours})`, {
+    message: `${r.startTime} → ${r.endTime}: ${r.reason}`,
+    link: "/dashboard",
+  });
+
+  res.status(201).json({ decision });
+});
+
+/** Clears a decision (or deletes a manual record) so the day goes back to its calculated overtime, pending. */
 router.delete("/:employeeId/:date", async (req, res) => {
   const { employeeId, date } = req.params as { employeeId: string; date: string };
   if (!isDay(date)) return res.status(400).json({ error: "Invalid date" });
