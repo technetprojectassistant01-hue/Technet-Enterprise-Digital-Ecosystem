@@ -11,6 +11,7 @@ import type { StaffAttendancePdfInput } from "../pdf/staffAttendancePdf";
  *   Monthly Report - one row per person in the office AiFace machine's layout, then the visits to
  *                    check before pay
  *   Daily Report   - one row per person per day, In1/Out1..In3/Out3 as on the AiFace report
+ *   Overtime Records - the overtime HR typed in by hand, as on the AiFace software (only when any)
  *   Register       - one row per visit, typed vs recorded, with GPS places
  * Each sheet starts with the letterhead (logo, company name, address, title, period) and carries a
  * printed header/footer (company, title, print date, page x of y), so "Print to PDF" from Excel
@@ -270,6 +271,50 @@ export async function generateStaffAttendanceXlsx(input: StaffAttendancePdfInput
   }
   dailySheet.autoFilter = { from: { row: sHeaderRow, column: 1 }, to: { row: sHeaderRow, column: dCols.length } };
   pageSetup(dailySheet, sHeaderRow);
+
+  // ---- Overtime Records: typed in by HR (lib/overtimeRecords.ts), each replacing that day's calculated overtime
+  if (input.overtimeRecords?.length) {
+    const otSheet = workbook.addWorksheet("Overtime Records");
+    const oCols = [
+      { header: "Staff Code", width: 8 },
+      { header: "Name", width: 22 },
+      { header: "Date", width: 16 },
+      { header: "Type", width: 13 },
+      { header: "Start", width: 8 },
+      { header: "End", width: 12 },
+      { header: "Hours", width: 8 },
+      { header: "Reason", width: 44 },
+      { header: "Approved by", width: 20 },
+      { header: "Approved on", width: 16 },
+    ];
+    oCols.forEach((c, i) => (otSheet.getColumn(i + 1).width = c.width));
+    letterhead(otSheet, logoId, period, oCols.length);
+    otSheet.getRow(sHeaderRow).values = oCols.map((c) => c.header);
+    styleHeader(otSheet.getRow(sHeaderRow));
+    r = sHeaderRow + 1;
+    for (const o of input.overtimeRecords) {
+      const row = otSheet.getRow(r++);
+      row.values = [
+        o.code ?? "—",
+        o.name,
+        `${weekday(o.date)} ${dayLabel(o.date)}`,
+        o.type,
+        o.startTime,
+        o.endTime + (o.endTime <= o.startTime ? " (+1 day)" : ""),
+        hrs(o.minutes),
+        o.reason,
+        o.approver,
+        dayLabel(local(o.approvedAt).iso),
+      ];
+      styleBody(row, oCols.length);
+      for (const c of [4, 5, 6, 7]) row.getCell(c).alignment = { horizontal: "center", vertical: "top" };
+    }
+    r += 1;
+    otSheet.getCell(r, 1).value = "Recorded by HR. Each record replaces the overtime the app calculated for that person and day, and counts as approved.";
+    otSheet.getCell(r, 1).font = { italic: true, size: 9, color: { argb: "FF444444" } };
+    otSheet.autoFilter = { from: { row: sHeaderRow, column: 1 }, to: { row: sHeaderRow, column: oCols.length } };
+    pageSetup(otSheet, sHeaderRow);
+  }
 
   // ---- Register
   const register = workbook.addWorksheet("Register");
