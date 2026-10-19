@@ -1966,7 +1966,7 @@ export const mfe: Dict = {
           {
             q: 'Eski aplikasion la kapav rapel mwa pou pointe?',
             a: [
-              'Wi. Tap "Rapel mwa" lor kart "Mo Prezans" e permet notifikasion. Dan lasemenn ou pou gagn enn rapel a 8h15 si ou pa ankor pointe.',
+              'Wi. Tap "Rapel mwa" lor kart "Mo Prezans" e permet notifikasion. Lindi ziska sanmdi ou pou gagn enn rapel a 8h15 si ou pa ankor pointe, ek a 17h15 si ou ankor pointe. Tap li ankor pou aret rapel; bann kontrol prezans pou kontinye vini.',
               'Lor enn iPhone, instal aplikasion la lor ou lekran dakey avan — iPhone permet rapel zis pou bann aplikasion ki instale.',
             ],
           },
@@ -2016,7 +2016,7 @@ export const mfe: Dict = {
             q: 'Kouma pou demann konze?',
             a: [
               'Ouver "Mo Konze" dan meni la e tap "Demann konze". RH pou get ou demann e ou pou gagn enn notifikasion kan li aksepte ouswa refize.',
-              'Tan ki enn demann pa ankor desid, ou kapav retir li depi mem paz la.',
+              'Tan ki enn demann pa ankor desid, ou kapav modifie li ouswa retir li depi mem paz la. Kan HR inn desid, ou kapav zis retir li.',
             ],
           },
         ],
