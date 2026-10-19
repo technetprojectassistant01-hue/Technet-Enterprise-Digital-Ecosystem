@@ -366,7 +366,9 @@ Grouped by domain (not exhaustive on fields — read the schema for that):
   people who aren't very technical; FIELD_TECHNICIAN only), **Storekeeper done 2026-10-19**
   (`storekeeperGuide.ts`, shares the store/procurement topics), **Staff Office done 2026-10-19**
   (`officeGuide.ts`, EMPLOYEE - reuses the Technician topics; only difference written: office staff
-  are never marked Absent). **Sales/Finance still to do.** Other roles see a
+  are never marked Absent), **Sales Officer done 2026-10-19** (`salesGuide.ts`, SALES_OFFICER -
+  pulls customers/quotations/Connect/Marketing from the Admin guide and leave/store from the Technician
+  guide). **Finance Officer still to do.** Other roles see a
   "still being written" page and no menu link until their guide exists. **Topics that read the
   same for several roles are written once** (Admin guide for office/management topics, Technician
   guide for the personal check-in/leave/store topics) and pulled into others with `topicsFrom(guide)`
@@ -1493,6 +1495,14 @@ the site attendance register.
 landing page empty — so `DashboardHome` redirects them to Technet Store, and the Attendance menu item is
 hidden from them. The `readsRegister` flag is `administers && ATTENDANCE_VIEW_ROLES`, keeping the two ideas
 separate: who has no self-service, and who reads everyone else’s attendance.
+
+**Sales and Finance don't check in either** (2026-10-19, user decision). The server's check-in routes were
+always `OPS_SUBMIT_ROLES` only, but `DashboardHome` showed the check-in card to any linked non-administrative
+login, so a linked SALES_OFFICER/FINANCE_OFFICER got a card whose Check In was refused (403), and
+`useShiftPings` polled `/site-attendance/me` for them. Now the card, Today, My Attendance and shift pings all
+need `OPS_SUBMIT_ROLES` too; Sales and Finance land on Technet ERP and the Attendance menu item is hidden
+from them. They are *not* in `ADMINISTRATIVE_ROLES`: they keep My Leave, My Documents and store requests.
+The Help FAQ "I don't see the My Attendance card" names the roles that have no card.
 
 **Add Employee was impossible to submit** (fixed 2026-09-16). `EmployeesPage.handleSubmit` required
 `form.employeeCode`, but the code is server-assigned on create and `EmployeeForm` deliberately renders
