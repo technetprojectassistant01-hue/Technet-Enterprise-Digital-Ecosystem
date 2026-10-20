@@ -67,7 +67,7 @@ export const TECHNICIAN_GUIDE: RoleGuide = {
           title: 'Change the language',
           path: '/dashboard/settings',
           blocks: [
-            { kind: 'p', text: 'Open Settings and choose English, Français or Kreol under Language. Your choice is saved on your account. (This guide is in English only for now.)' },
+            { kind: 'p', text: 'Open Settings and choose English, Français or Kreol under Language. Your choice is saved on your account. This guide comes in English and French; in Kreol it shows in English for now.' },
           ],
         },
         {
