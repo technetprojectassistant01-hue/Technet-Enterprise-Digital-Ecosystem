@@ -1,6 +1,7 @@
 import type { Language, Role } from '../lib/api'
 import { hasRole } from '../lib/permissions'
 import { ADMIN_GUIDE } from './adminGuide'
+import { FINANCE_GUIDE } from './financeGuide'
 import { HR_GUIDE } from './hrGuide'
 import { OFFICE_GUIDE } from './officeGuide'
 import { SALES_GUIDE } from './salesGuide'
@@ -11,11 +12,11 @@ import type { RoleGuide } from './types'
 
 /**
  * Every role guide written so far. Written role by role (Admin, HR, Staff Technician, Storekeeper,
- * Staff Office, Sales Officer, 2026-10-19); add each new guide here and it appears in the menu for
+ * Staff Office, Sales Officer, 2026-10-19; Finance Officer, 2026-10-20); add each new guide here and it appears in the menu for
  * that role. French copies (2026-10-20) live in ./fr, one per English guide, same chapter and
  * topic ids. Kreol shows the English guide until its copies are written.
  */
-export const GUIDES: RoleGuide[] = [ADMIN_GUIDE, HR_GUIDE, TECHNICIAN_GUIDE, STOREKEEPER_GUIDE, OFFICE_GUIDE, SALES_GUIDE]
+export const GUIDES: RoleGuide[] = [ADMIN_GUIDE, HR_GUIDE, TECHNICIAN_GUIDE, STOREKEEPER_GUIDE, OFFICE_GUIDE, SALES_GUIDE, FINANCE_GUIDE]
 
 const GUIDES_BY_LANGUAGE: Record<Language, RoleGuide[]> = { en: GUIDES, fr: FR_GUIDES, mfe: GUIDES }
 
