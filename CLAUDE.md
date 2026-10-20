@@ -377,7 +377,8 @@ Grouped by domain (not exhaustive on fields — read the schema for that):
   (`officeGuide.ts`, EMPLOYEE - reuses the Technician topics; only difference written: office staff
   are never marked Absent), **Sales Officer done 2026-10-19** (`salesGuide.ts`, SALES_OFFICER -
   pulls customers/quotations/Connect/Marketing from the Admin guide and leave/store from the Technician
-  guide). **Finance Officer still to do.** Other roles see a
+  guide). **Finance Officer done 2026-10-20** (`financeGuide.ts` - customers and contracts are
+  Finance's, quotations view only, invoices/expenses in QuickBooks). **Every role now has a guide.** Other roles see a
   "still being written" page and no menu link until their guide exists. **Topics that read the
   same for several roles are written once** (Admin guide for office/management topics, Technician
   guide for the personal check-in/leave/store topics) and pulled into others with `topicsFrom(guide)`
