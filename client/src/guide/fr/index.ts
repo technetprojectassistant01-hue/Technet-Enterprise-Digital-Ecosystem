@@ -1,5 +1,6 @@
 import type { RoleGuide } from '../types'
 import { ADMIN_GUIDE_FR } from './adminGuide'
+import { FINANCE_GUIDE_FR } from './financeGuide'
 import { HR_GUIDE_FR } from './hrGuide'
 import { OFFICE_GUIDE_FR } from './officeGuide'
 import { SALES_GUIDE_FR } from './salesGuide'
@@ -14,4 +15,5 @@ export const FR_GUIDES: RoleGuide[] = [
   STOREKEEPER_GUIDE_FR,
   OFFICE_GUIDE_FR,
   SALES_GUIDE_FR,
+  FINANCE_GUIDE_FR,
 ]
