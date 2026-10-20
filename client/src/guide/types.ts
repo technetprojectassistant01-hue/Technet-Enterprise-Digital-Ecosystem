@@ -1,8 +1,8 @@
 import type { Role } from '../lib/api'
 
 /**
- * The in-app User Guide (2026-10-19): a step-by-step manual per role, English only for now (the
- * user's choice). Every statement must describe how the app behaves today - when a feature is added
+ * The in-app User Guide (2026-10-19): a step-by-step manual per role, in English and (from
+ * 2026-10-20) French - see ./fr; Kreol shows English until it is written. Every statement must describe how the app behaves today - when a feature is added
  * or changed, update the guide in the same piece of work (the user's standing rule).
  */
 
