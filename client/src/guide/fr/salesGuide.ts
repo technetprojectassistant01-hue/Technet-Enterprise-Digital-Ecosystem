@@ -129,10 +129,10 @@ export const SALES_GUIDE_FR: RoleGuide = {
             {
               kind: 'steps',
               items: [
-                "Ouvrez Technet ERP → Achats → Demandes d'achat et cliquez sur New Requisition.",
-                "Saisissez un numéro (REQUISITION NUMBER, qui ne doit pas être déjà utilisé), la date à laquelle c'est nécessaire (NEEDED BY) et, si c'est pour un projet, le PROJECT.",
-                "Ajoutez une ligne par besoin : description, quantité et, si vous le connaissez, le coût unitaire. Cliquez sur Add line item pour plus de lignes.",
-                'Cliquez sur Submit Requisition.',
+                "Ouvrez Technet ERP → Achats → Demandes d'achat et cliquez sur Nouvelle demande d'achat.",
+                "Saisissez le NUMÉRO DE DEMANDE (il ne doit pas être déjà utilisé), la date NÉCESSAIRE POUR LE et, si c'est pour un projet, le PROJET.",
+                "Ajoutez une ligne par besoin : description, quantité et, si vous le connaissez, le coût unitaire. Cliquez sur Ajouter une ligne pour plus de lignes.",
+                'Cliquez sur Envoyer la demande.',
               ],
             },
             { kind: 'p', text: "Le magasinier ou un administrateur l'approuve ou la refuse, et vous recevez une notification dans les deux cas. Une demande approuvée devient un bon de commande, que vous pouvez suivre dans Bons de commande." },
