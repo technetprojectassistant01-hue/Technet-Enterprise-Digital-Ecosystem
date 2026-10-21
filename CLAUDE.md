@@ -360,15 +360,16 @@ Grouped by domain (not exhaustive on fields — read the schema for that):
   also updates the in-app User Guide in the same piece of work - `client/src/guide/` (one file per
   role guide, e.g. `adminGuide.ts`; `index.ts` lists them), shown at `/dashboard/guide`
   (`UserGuidePage.tsx`) with a "User Guide" link under Help Center for roles that have a guide.
-  **English and French** (French added 2026-10-20; **Kreol next**, the user's plan for 2026-10-21):
-  `guide/fr/` holds one French copy per English guide with the *same chapter/topic ids, order and
-  paths* (composed guides use `topicsFrom` on the French sources), listed in `guide/fr/index.ts` in
-  the same order as `GUIDES`. `guideFor(role, language)` picks by the Settings language; a language
+  **English, French and Kreol** (French added 2026-10-20, Kreol Morisien 2026-10-21):
+  `guide/fr/` and `guide/mfe/` each hold one copy per English guide with the *same chapter/topic ids, order and
+  paths* (composed guides use `topicsFrom` on the French sources), listed in `guide/fr/index.ts` / `guide/mfe/index.ts`
+  in the same order as `GUIDES`. `guideFor(role, language)` picks by the Settings language; a language
   with no guides falls back to English (`guideLanguage()`), labels included - the page's own labels
-  live in `guide/labels.ts`, not the i18n dictionaries, so Kreol never shows a mix. In dev,
+  live in `guide/labels.ts`, not the i18n dictionaries, so a language never shows a mix (Kreol month
+  names are written out there; browsers have none). In dev,
   `guide/index.ts` logs a console error if a translation's shape differs from the English. **Any
-  guide change now means editing the English and French copies together.** French button names are
-  the ones the French screen shows (looked up in `i18n/fr.ts`); pages still hardcoded in English
+  guide change now means editing the English, French and Kreol copies together.** Button names are
+  the ones each language's screen shows (looked up in `i18n/fr.ts` / `i18n/mfe.ts`); pages still hardcoded in English
   (all of Technet ERP, Marketing, Security, User Management, HR Employees/Certifications) keep their
   English button names, and those guides' intros say so. Guide search ignores accents. Written role by role: **Admin done 2026-10-19** (also used by
   the Operations Manager via `hasRole`), **HR done 2026-10-19** (`hrGuide.ts`), **Staff Technician
