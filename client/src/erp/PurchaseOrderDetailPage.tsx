@@ -11,6 +11,7 @@ import { useAuth } from '../context/AuthContext'
 import { hasRole, PROCUREMENT_ROLES } from '../lib/permissions'
 import { purchaseOrderStatusTone } from './statusTones'
 import { formatMoney } from '../lib/format'
+import { useT } from '../i18n'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -26,6 +27,7 @@ function PurchaseOrderDetailPage() {
   const confirm = useConfirm()
   const { user } = useAuth()
   const canWrite = hasRole(user?.role, PROCUREMENT_ROLES)
+  const { poDetail: m, shared, status } = useT().erp
 
   const [po, setPo] = useState<PurchaseOrderDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -44,7 +46,7 @@ function PurchaseOrderDetailPage() {
     api
       .getPurchaseOrder(id)
       .then(({ purchaseOrder }) => setPo(purchaseOrder))
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load purchase order'))
+      .catch((err) => setError(err instanceof Error ? err.message : m.loadFailed))
       .finally(() => setLoading(false))
   }
 
@@ -54,10 +56,10 @@ function PurchaseOrderDetailPage() {
     setActioning(true)
     try {
       await api.sendPurchaseOrder(po!.id)
-      toast.success('Purchase order sent')
+      toast.success(m.sent)
       load()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to send purchase order')
+      toast.error(err instanceof Error ? err.message : m.sendFailed)
     } finally {
       setActioning(false)
     }
@@ -65,19 +67,19 @@ function PurchaseOrderDetailPage() {
 
   async function handleCancel() {
     const ok = await confirm({
-      title: 'Cancel purchase order',
-      message: `Cancel ${po!.poNumber}? This is a terminal state.`,
-      confirmLabel: 'Cancel Order',
+      title: m.cancelTitle,
+      message: m.cancelMessage(po!.poNumber),
+      confirmLabel: m.cancelConfirm,
       tone: 'danger',
     })
     if (!ok) return
     setActioning(true)
     try {
       await api.cancelPurchaseOrder(po!.id)
-      toast.success('Purchase order cancelled')
+      toast.success(m.cancelled)
       load()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to cancel purchase order')
+      toast.error(err instanceof Error ? err.message : m.cancelFailed)
     } finally {
       setActioning(false)
     }
@@ -87,10 +89,10 @@ function PurchaseOrderDetailPage() {
     setActioning(true)
     try {
       await api.closePurchaseOrder(po!.id)
-      toast.success('Purchase order closed')
+      toast.success(m.closed)
       load()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to close purchase order')
+      toast.error(err instanceof Error ? err.message : m.closeFailed)
     } finally {
       setActioning(false)
     }
@@ -117,25 +119,25 @@ function PurchaseOrderDetailPage() {
       .map(([purchaseOrderItemId, qty]) => ({ purchaseOrderItemId, quantityReceived: Number(qty) }));
 
     if (items.length === 0) {
-      setReceiveError('Enter at least one received quantity')
+      setReceiveError(m.enterQuantity)
       return
     }
 
     setReceiving(true)
     try {
       await api.receivePurchaseOrder(po!.id, { items, notes: receiveNotes || undefined })
-      toast.success('Receipt recorded')
+      toast.success(m.receiptRecorded)
       setShowReceive(false)
       load()
     } catch (err) {
-      setReceiveError(err instanceof Error ? err.message : 'Failed to record receipt')
+      setReceiveError(err instanceof Error ? err.message : m.receiptFailed)
     } finally {
       setReceiving(false)
     }
   }
 
   if (loading) return <TableSkeleton rows={6} cols={4} />
-  if (error || !po) return <EmptyState icon={X} message={error || 'Purchase order not found'} />
+  if (error || !po) return <EmptyState icon={X} message={error || m.notFound} />
 
   const canReceive = po.status === 'SENT' || po.status === 'PARTIALLY_RECEIVED'
 
@@ -146,20 +148,20 @@ function PurchaseOrderDetailPage() {
         className="flex w-fit items-center gap-2 text-sm text-ink-400 hover:text-ink-100"
       >
         <ArrowLeft className="h-4 w-4" />
-        Back to Purchase Orders
+        {m.back}
       </Link>
 
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
         <div>
           <div className="flex items-center gap-3">
             <h1 className="font-mono text-2xl font-bold text-ink-100">{po.poNumber}</h1>
-            <Badge tone={purchaseOrderStatusTone[po.status]}>{po.status.replace('_', ' ')}</Badge>
+            <Badge tone={purchaseOrderStatusTone[po.status]}>{status.purchaseOrder[po.status]}</Badge>
           </div>
           <p className="mt-1 text-sm text-ink-300">
             {po.supplier.name}
             {po.requisition && (
               <>
-                {' · from '}
+                {` · ${m.from} `}
                 <Link
                   to={`/dashboard/erp/procurement/requisitions/${po.requisition.id}`}
                   className="font-mono text-cyan-accent hover:underline"
@@ -168,45 +170,45 @@ function PurchaseOrderDetailPage() {
                 </Link>
               </>
             )}
-            {po.expectedDate && ` · Expected ${po.expectedDate.slice(0, 10)}`}
+            {po.expectedDate && ` · ${m.expected(po.expectedDate.slice(0, 10))}`}
           </p>
         </div>
 
         <div className="flex gap-3">
           {canWrite && po.status === 'DRAFT' && (
             <button type="button" onClick={handleSend} disabled={actioning} className={primaryButtonClass}>
-              Send to Supplier
+              {m.send}
             </button>
           )}
           {canWrite && canReceive && (
             <button type="button" onClick={openReceive} className={primaryButtonClass}>
               <PackageCheck className="h-4 w-4" />
-              Record Receipt
+              {m.recordReceipt}
             </button>
           )}
           {canWrite && po.status === 'FULLY_RECEIVED' && (
             <button type="button" onClick={handleClose} disabled={actioning} className={secondaryButtonClass}>
-              Close Order
+              {m.closeOrder}
             </button>
           )}
           {canWrite && (po.status === 'DRAFT' || po.status === 'SENT') && (
             <button type="button" onClick={handleCancel} disabled={actioning} className={dangerButtonClass}>
-              Cancel
+              {m.cancel}
             </button>
           )}
         </div>
       </div>
 
-      <Panel title="Line Items">
+      <Panel title={m.lineItems}>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
-                <th className="px-3 py-3 font-semibold">DESCRIPTION</th>
-                <th className="px-3 py-3 font-semibold">UNIT COST</th>
-                <th className="px-3 py-3 font-semibold">ORDERED</th>
-                <th className="px-3 py-3 font-semibold">RECEIVED</th>
-                <th className="px-3 py-3 font-semibold">REMAINING</th>
+                <th className="px-3 py-3 font-semibold">{shared.description}</th>
+                <th className="px-3 py-3 font-semibold">{shared.unitCost}</th>
+                <th className="px-3 py-3 font-semibold">{m.colOrdered}</th>
+                <th className="px-3 py-3 font-semibold">{m.colReceived}</th>
+                <th className="px-3 py-3 font-semibold">{m.colRemaining}</th>
               </tr>
             </thead>
             <tbody>
@@ -226,7 +228,7 @@ function PurchaseOrderDetailPage() {
             <tfoot>
               <tr>
                 <td colSpan={5} className="px-3 pt-3 text-right text-sm font-semibold text-ink-100">
-                  Total: {formatMoney(po.totalAmount)}
+                  {m.total(formatMoney(po.totalAmount))}
                 </td>
               </tr>
             </tfoot>
@@ -234,16 +236,16 @@ function PurchaseOrderDetailPage() {
         </div>
       </Panel>
 
-      <Panel title="Goods Receipts">
+      <Panel title={m.receipts}>
         {po.goodsReceipts.length === 0 ? (
-          <p className="text-sm text-ink-400">No receipts recorded yet.</p>
+          <p className="text-sm text-ink-400">{m.noReceipts}</p>
         ) : (
           <div className="flex flex-col gap-3">
             {po.goodsReceipts.map((gr) => (
               <div key={gr.id} className="rounded-lg bg-ink-800 px-4 py-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-ink-100">
-                    {gr.items.reduce((s, i) => s + i.quantityReceived, 0)} units received
+                    {m.unitsReceived(gr.items.reduce((s, i) => s + i.quantityReceived, 0))}
                   </span>
                   <span className="text-xs text-ink-400">{new Date(gr.createdAt).toLocaleString()}</span>
                 </div>
@@ -258,7 +260,7 @@ function PurchaseOrderDetailPage() {
       </Panel>
 
       {showReceive && (
-        <Modal title="Record Receipt" onClose={() => setShowReceive(false)}>
+        <Modal title={m.recordReceipt} onClose={() => setShowReceive(false)}>
           <form onSubmit={handleReceiveSubmit} className="flex flex-col gap-4">
             <div className="flex flex-col gap-3">
               {po.items.map((item) => {
@@ -267,7 +269,7 @@ function PurchaseOrderDetailPage() {
                 return (
                   <div key={item.id} className="flex items-center gap-3 rounded-md border border-ink-700 bg-ink-950 p-3">
                     <span className="flex-1 text-sm text-ink-200">
-                      {item.description} <span className="text-ink-400">(remaining {remaining})</span>
+                      {item.description} <span className="text-ink-400">{m.remaining(remaining)}</span>
                     </span>
                     <input
                       type="number"
@@ -282,14 +284,14 @@ function PurchaseOrderDetailPage() {
               })}
             </div>
             <div>
-              <label className={labelClass}>NOTES</label>
+              <label className={labelClass}>{shared.notes}</label>
               <input value={receiveNotes} onChange={(e) => setReceiveNotes(e.target.value)} className={`mt-2 ${inputClass}`} />
             </div>
 
             {receiveError && <p className="text-sm text-red-400">{receiveError}</p>}
 
             <button type="submit" disabled={receiving} className={`justify-center py-2.5 ${primaryButtonClass}`}>
-              {receiving ? 'Recording…' : 'Record Receipt'}
+              {receiving ? m.recording : m.recordReceipt}
             </button>
           </form>
         </Modal>
