@@ -669,7 +669,7 @@ export const ADMIN_GUIDE: RoleGuide = {
               kind: 'list',
               items: [
                 'Technet ERP → Customers → Add Customer creates a customer (name, company, contact details, BRN, VAT number, address).',
-                'Portal access gives a customer their own login to Technet Connect, where they can see their quotations and job status and ask for a quote. Click Grant portal access, enter their email and give them the password shown. You can reset or revoke it later.',
+                'Portal access gives a customer their own login to Technet Connect, where they can see their quotations and job status and ask for a quote. Click the key icon (Grant portal access), enter their email, click Grant Access and give them the password shown. You can reset or revoke it later.',
               ],
             },
           ],
