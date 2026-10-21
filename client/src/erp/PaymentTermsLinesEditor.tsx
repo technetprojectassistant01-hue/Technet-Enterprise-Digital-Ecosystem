@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import type { PaymentTermsLine } from '../lib/api'
+import { useT } from '../i18n'
 
 export const EMPTY_PAYMENT_TERMS_LINE: PaymentTermsLine = { label: '', percentage: '' }
 
@@ -25,6 +26,7 @@ function PaymentTermsLinesEditor({
   knownLabels: string[]
   isAdmin: boolean
 }) {
+  const m = useT().erp.paymentTerms
   // Rows currently showing a free-text input instead of the dropdown (admin "add new label" mode).
   const [newLabelRows, setNewLabelRows] = useState<Set<number>>(new Set())
 
@@ -51,9 +53,9 @@ function PaymentTermsLinesEditor({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <label className="text-xs font-semibold tracking-widest text-ink-400">PAYMENT TERMS</label>
+        <label className="text-xs font-semibold tracking-widest text-ink-400">{m.title}</label>
         <span className={`text-xs font-semibold ${totalOk ? 'text-cyan-accent' : 'text-red-400'}`}>
-          Total: {total}% {totalOk ? '✓' : '— must equal 100'}
+          {m.total(total)} {totalOk ? '✓' : m.mustEqual}
         </span>
       </div>
       {lines.map((row, i) => {
@@ -61,12 +63,12 @@ function PaymentTermsLinesEditor({
         return (
           <div key={i} className="flex items-end gap-2">
             <div className="flex-1">
-              <label className={fieldLabelClass}>LABEL</label>
+              <label className={fieldLabelClass}>{m.label}</label>
               {inNewLabelMode ? (
                 <input
                   value={row.label}
                   onChange={(e) => updateRow(i, { label: e.target.value })}
-                  placeholder="e.g. Delivery"
+                  placeholder={m.labelPlaceholder}
                   className={fieldInputClass}
                 />
               ) : (
@@ -82,13 +84,13 @@ function PaymentTermsLinesEditor({
                   }}
                   className={fieldInputClass}
                 >
-                  <option value="">Select a label</option>
+                  <option value="">{m.selectLabel}</option>
                   {knownLabels.map((l) => (
                     <option key={l} value={l}>
                       {l}
                     </option>
                   ))}
-                  {isAdmin && <option value={NEW_LABEL_VALUE}>+ Add new label</option>}
+                  {isAdmin && <option value={NEW_LABEL_VALUE}>{m.addNewLabel}</option>}
                 </select>
               )}
             </div>
@@ -108,7 +110,7 @@ function PaymentTermsLinesEditor({
               type="button"
               onClick={() => removeRow(i)}
               disabled={lines.length === 1}
-              aria-label="Remove payment terms line"
+              aria-label={m.removeAria}
               className="mb-1.5 shrink-0 text-ink-400 hover:text-red-400 disabled:opacity-30"
             >
               <Trash2 className="h-4 w-4" />
@@ -122,7 +124,7 @@ function PaymentTermsLinesEditor({
         className="flex w-fit items-center gap-1.5 text-xs font-semibold text-cyan-accent hover:underline"
       >
         <Plus className="h-3.5 w-3.5" />
-        Add line
+        {m.addLine}
       </button>
     </div>
   )
