@@ -7,6 +7,7 @@ import { Panel, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { quotationStatusTone } from './statusTones'
 import { formatMoney } from '../lib/format'
 import { useCustomers } from './useCustomers'
+import { useT } from '../i18n'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -18,6 +19,7 @@ function today(): string {
 
 function QuotationFollowUpPage() {
   const customers = useCustomers()
+  const { followUp: m, status } = useT().erp
   const [mode, setMode] = useState<'customer' | 'date'>('customer')
 
   const [customerId, setCustomerId] = useState('')
@@ -76,7 +78,7 @@ function QuotationFollowUpPage() {
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-ink-100">{formatMoney(q.total)}</span>
-                <Badge tone={quotationStatusTone[q.status]}>{q.status}</Badge>
+                <Badge tone={quotationStatusTone[q.status]}>{status.quotation[q.status]}</Badge>
               </div>
             </Link>
           </li>
@@ -88,9 +90,9 @@ function QuotationFollowUpPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold text-ink-100">Follow-Up of Quotation</h1>
+        <h1 className="text-2xl font-bold text-ink-100">{m.title}</h1>
         <p className="mt-1 text-sm text-ink-300">
-          Find a quotation to see its call history, log a new call, or record whether it was approved.
+          {m.subtitle}
         </p>
       </div>
 
@@ -102,7 +104,7 @@ function QuotationFollowUpPage() {
             mode === 'customer' ? 'bg-cyan-accent/10 text-cyan-accent' : 'text-ink-300 hover:bg-ink-800 hover:text-ink-100'
           }`}
         >
-          By Customer
+          {m.byCustomer}
         </button>
         <button
           type="button"
@@ -111,16 +113,16 @@ function QuotationFollowUpPage() {
             mode === 'date' ? 'bg-cyan-accent/10 text-cyan-accent' : 'text-ink-300 hover:bg-ink-800 hover:text-ink-100'
           }`}
         >
-          By Date
+          {m.byDate}
         </button>
       </div>
 
       {mode === 'customer' ? (
-        <Panel title="By Customer">
+        <Panel title={m.byCustomer}>
           <div className="mb-4 max-w-sm">
-            <label className={labelClass}>CUSTOMER</label>
+            <label className={labelClass}>{m.customer}</label>
             <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className={`mt-2 ${inputClass}`}>
-              <option value="">Select a customer</option>
+              <option value="">{m.selectCustomer}</option>
               {customers.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.company || c.name}
@@ -129,18 +131,18 @@ function QuotationFollowUpPage() {
             </select>
           </div>
           {customerId ? (
-            renderList(customerQuotations, customerLoading, 'No sent quotations for this customer yet.')
+            renderList(customerQuotations, customerLoading, m.noneForCustomer)
           ) : (
-            <p className="text-sm text-ink-400">Select a customer to see their quotations.</p>
+            <p className="text-sm text-ink-400">{m.pickCustomer}</p>
           )}
         </Panel>
       ) : (
-        <Panel title="By Date">
+        <Panel title={m.byDate}>
           <div className="mb-4 max-w-sm">
-            <label className={labelClass}>DATE</label>
+            <label className={labelClass}>{m.date}</label>
             <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={`mt-2 ${inputClass}`} />
           </div>
-          {renderList(dateQuotations, dateLoading, 'No quotations issued on this date.')}
+          {renderList(dateQuotations, dateLoading, m.noneForDate)}
         </Panel>
       )}
     </div>
