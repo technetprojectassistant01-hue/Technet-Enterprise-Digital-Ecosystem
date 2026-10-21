@@ -12,6 +12,7 @@ import { hasRole, OPS_MANAGE_ROLES } from '../lib/permissions'
 import { useAssignableEmployees } from './useEmployees'
 import { projectStatusTone, projectStatusTransitions } from './statusTones'
 import { formatMoney } from '../lib/format'
+import { useT } from '../i18n'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -23,6 +24,8 @@ function ProjectDetailPage() {
   const confirm = useConfirm()
   const { user } = useAuth()
   const canWrite = hasRole(user?.role, OPS_MANAGE_ROLES)
+  const t = useT()
+  const { projectDetail: m, status } = t.erp
   const employees = useAssignableEmployees()
 
   const [project, setProject] = useState<ProjectDetail | null>(null)
@@ -42,7 +45,7 @@ function ProjectDetailPage() {
     api
       .getProject(id)
       .then(({ project }) => setProject(project))
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load project'))
+      .catch((err) => setError(err instanceof Error ? err.message : m.loadFailed))
       .finally(() => setLoading(false))
   }
 
@@ -52,9 +55,9 @@ function ProjectDetailPage() {
     if (!project) return
     if (newStatus === 'CANCELLED') {
       const ok = await confirm({
-        title: 'Cancel project',
-        message: `Move "${project.name}" to CANCELLED? This is a terminal state.`,
-        confirmLabel: 'Cancel Project',
+        title: m.cancelTitle,
+        message: m.cancelMessage(project.name),
+        confirmLabel: m.cancelConfirm,
         tone: 'danger',
       })
       if (!ok) return
@@ -62,10 +65,10 @@ function ProjectDetailPage() {
     setChangingStatus(true)
     try {
       await api.updateProjectStatus(project.id, newStatus)
-      toast.success(`Project moved to ${newStatus.replace('_', ' ')}`)
+      toast.success(m.moved(status.project[newStatus]))
       load()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to update status')
+      toast.error(err instanceof Error ? err.message : m.statusFailed)
     } finally {
       setChangingStatus(false)
     }
@@ -82,17 +85,17 @@ function ProjectDetailPage() {
     e.preventDefault()
     setAssignError(null)
     if (!assignEmployeeId) {
-      setAssignError('Select an employee')
+      setAssignError(m.selectEmployeeError)
       return
     }
     setAssigning(true)
     try {
       await api.assignToProject(project!.id, assignEmployeeId, assignRole || undefined)
-      toast.success('Employee assigned')
+      toast.success(m.assigned)
       setShowAssign(false)
       load()
     } catch (err) {
-      setAssignError(err instanceof Error ? err.message : 'Failed to assign employee')
+      setAssignError(err instanceof Error ? err.message : m.assignFailed)
     } finally {
       setAssigning(false)
     }
@@ -100,18 +103,18 @@ function ProjectDetailPage() {
 
   async function handleUnassign(employeeId: string, name: string) {
     const ok = await confirm({
-      title: 'Remove from project',
-      message: `Remove ${name} from this project?`,
-      confirmLabel: 'Remove',
+      title: m.removeTitle,
+      message: m.removeMessage(name),
+      confirmLabel: m.remove,
       tone: 'danger',
     })
     if (!ok) return
     try {
       await api.unassignFromProject(project!.id, employeeId)
-      toast.success('Removed from project')
+      toast.success(m.removed)
       load()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to remove employee')
+      toast.error(err instanceof Error ? err.message : m.removeFailed)
     }
   }
 
@@ -120,7 +123,7 @@ function ProjectDetailPage() {
   }
 
   if (error || !project) {
-    return <EmptyState icon={X} message={error || 'Project not found'} />
+    return <EmptyState icon={X} message={error || m.notFound} />
   }
 
   const budget = project.budget ? Number(project.budget) : null
@@ -132,18 +135,18 @@ function ProjectDetailPage() {
     <div className="flex flex-col gap-6">
       <Link to="/dashboard/erp/projects" className="flex w-fit items-center gap-2 text-sm text-ink-400 hover:text-ink-100">
         <ArrowLeft className="h-4 w-4" />
-        Back to Projects
+        {m.back}
       </Link>
 
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold text-ink-100">{project.name}</h1>
-            <Badge tone={projectStatusTone[project.status]}>{project.status.replace('_', ' ')}</Badge>
+            <Badge tone={projectStatusTone[project.status]}>{status.project[project.status]}</Badge>
           </div>
           <p className="mt-1 text-sm text-ink-300">
-            {project.customer?.company || project.customer?.name || 'No customer'} ·{' '}
-            {project.serviceCategory.replace('_', ' ')}
+            {project.customer?.company || project.customer?.name || m.noCustomer} ·{' '}
+            {t.labels.workType[project.serviceCategory]}
           </p>
           {project.description && <p className="mt-2 max-w-2xl text-sm text-ink-400">{project.description}</p>}
         </div>
@@ -155,10 +158,10 @@ function ProjectDetailPage() {
             onChange={(e) => e.target.value && handleStatusChange(e.target.value as ProjectStatus)}
             className={`w-56 ${inputClass}`}
           >
-            <option value="">Move to…</option>
+            <option value="">{m.moveTo}</option>
             {nextStatuses.map((s) => (
               <option key={s} value={s}>
-                {s.replace('_', ' ')}
+                {status.project[s]}
               </option>
             ))}
           </select>
@@ -166,11 +169,11 @@ function ProjectDetailPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="BUDGET" value={budget !== null ? formatMoney(budget) : '—'} icon={Wallet} />
+        <StatCard label={m.budget} value={budget !== null ? formatMoney(budget) : '—'} icon={Wallet} />
       </div>
 
       <Panel
-        title="Team"
+        title={m.team}
         action={
           canWrite && (
             <button
@@ -179,13 +182,13 @@ function ProjectDetailPage() {
               className="flex items-center gap-1.5 text-xs font-semibold text-cyan-accent hover:underline"
             >
               <Plus className="h-3.5 w-3.5" />
-              Assign
+              {m.assign}
             </button>
           )
         }
       >
         {project.assignments.length === 0 ? (
-          <p className="text-sm text-ink-400">No one assigned yet.</p>
+          <p className="text-sm text-ink-400">{m.nobody}</p>
         ) : (
           <div className="flex flex-col gap-2">
             {project.assignments.map((a) => (
@@ -200,7 +203,7 @@ function ProjectDetailPage() {
                   <button
                     type="button"
                     onClick={() => handleUnassign(a.employeeId, `${a.employee.firstName} ${a.employee.lastName}`)}
-                    aria-label="Remove from project"
+                    aria-label={m.removeAria}
                     className="text-ink-400 hover:text-red-400"
                   >
                     <X className="h-4 w-4" />
@@ -213,16 +216,16 @@ function ProjectDetailPage() {
       </Panel>
 
       {showAssign && (
-        <Modal title="Assign Employee" onClose={() => setShowAssign(false)}>
+        <Modal title={m.assignTitle} onClose={() => setShowAssign(false)}>
           <form onSubmit={handleAssignSubmit} className="flex flex-col gap-4">
             <div>
-              <label className={labelClass}>EMPLOYEE</label>
+              <label className={labelClass}>{m.employee}</label>
               <select
                 value={assignEmployeeId}
                 onChange={(e) => setAssignEmployeeId(e.target.value)}
                 className={`mt-2 ${inputClass}`}
               >
-                <option value="">Select an employee</option>
+                <option value="">{m.selectEmployee}</option>
                 {availableEmployees.map((emp) => (
                   <option key={emp.id} value={emp.id}>
                     {emp.firstName} {emp.lastName}
@@ -231,7 +234,7 @@ function ProjectDetailPage() {
               </select>
             </div>
             <div>
-              <label className={labelClass}>ROLE ON PROJECT (OPTIONAL)</label>
+              <label className={labelClass}>{m.roleOnProject}</label>
               <input
                 value={assignRole}
                 onChange={(e) => setAssignRole(e.target.value)}
@@ -242,7 +245,7 @@ function ProjectDetailPage() {
             {assignError && <p className="text-sm text-red-400">{assignError}</p>}
 
             <button type="submit" disabled={assigning} className={`justify-center py-2.5 ${primaryButtonClass}`}>
-              {assigning ? 'Assigning…' : 'Assign'}
+              {assigning ? m.assigning : m.assign}
             </button>
           </form>
         </Modal>
