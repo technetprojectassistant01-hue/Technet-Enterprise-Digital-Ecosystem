@@ -741,15 +741,15 @@ export const ADMIN_GUIDE_MFE: RoleGuide = {
             {
               kind: 'steps',
               items: [
-                "Fourniser: Add Supplier avek kontak ek kondision peyman (par egzanp « Net 30 »).",
-                "Demann lasa: New Requisition montre seki bizin. Ouver li pou Approve ouswa Reject.",
-                "Enn demann aprouve kapav konverti: Convert to Purchase Order, avek fourniser ek pri inite.",
-                "Bon komand: ouver bon la e klik Send to Supplier kan finn avoy li.",
-                "Kan marsandiz ariv, klik Record Receipt e rant kantite ki finn resevwar. Bann lartik ki konekte ar inventer azoute dan stok otomatikman. Bon la paret enn parti ouswa tou resevwar.",
-                'Kan tou finn ariv, klik Close Order.',
+                "Fourniser: Azout enn fourniser avek kontak ek kondision peyman (par egzanp « Net 30 »).",
+                "Demann lasa: Nouvo demann lasa montre seki bizin. Ouver li pou Aprouv li ouswa Refiz li.",
+                "Enn demann aprouve kapav konverti: Konverti an bon komand, avek fourniser ek pri inite.",
+                "Bon komand: ouver bon la e klik Avoy ar fourniser kan finn avoy li.",
+                "Kan marsandiz ariv, klik Anrezistre enn resepsion e rant kantite ki finn resevwar. Bann lartik ki konekte ar inventer azoute dan stok otomatikman. Bon la paret enn parti ouswa tou resevwar.",
+                'Kan tou finn ariv, klik Ferm komand.',
               ],
             },
-            { kind: 'tip', text: "Cancel Order aret enn bon ki ankor brouyon, ouswa ki finn avoye me ki nanye pa ankor ariv." },
+            { kind: 'tip', text: "Anile aret enn bon ki ankor brouyon, ouswa ki finn avoye me ki nanye pa ankor ariv." },
           ],
         },
         {
