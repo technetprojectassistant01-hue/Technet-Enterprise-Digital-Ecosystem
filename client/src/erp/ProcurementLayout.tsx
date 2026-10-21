@@ -1,5 +1,6 @@
 import { Outlet } from 'react-router-dom'
 import ModuleHeader from '../dashboard/ModuleHeader'
+import { navLabel, useT } from '../i18n'
 
 const TABS = [
   { label: 'Suppliers', to: '/dashboard/erp/procurement/suppliers' },
@@ -8,13 +9,14 @@ const TABS = [
 ]
 
 function ProcurementLayout() {
+  const t = useT()
   return (
     <div className="flex flex-col gap-6">
       <ModuleHeader
-        title="Procurement"
-        subtitle="Management"
-        tabs={TABS}
-        searchPlaceholder="Search suppliers, POs, or parts..."
+        title={t.erp.procurement.title}
+        subtitle={t.erp.shared.management}
+        tabs={TABS.map((tab) => ({ ...tab, label: navLabel(t, tab.label) }))}
+        searchPlaceholder={t.erp.procurement.searchPlaceholder}
       />
       <Outlet />
     </div>
