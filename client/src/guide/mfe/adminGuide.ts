@@ -668,8 +668,8 @@ export const ADMIN_GUIDE_MFE: RoleGuide = {
             {
               kind: 'list',
               items: [
-                "Technet ERP → Kliyan → Add Customer kre enn kliyan (nom, lantrepriz, kontak, BRN, nimero TVA, ladres).",
-                "Akse portal donn enn kliyan so prop login lor Technet Connect, kot li trouv so devi ek kot so travay ete, e li kapav demann enn devi. Klik Grant portal access, rant so imel e donn li mo de pas ki paret. Ou kapav reinisializ ouswa tir li pli tar.",
+                "Technet ERP → Kliyan → Azout enn kliyan kre enn kliyan (nom, lantrepriz, kontak, BRN, nimero TVA, ladres).",
+                "Akse portal donn enn kliyan so prop login lor Technet Connect, kot li trouv so devi ek kot so travay ete, e li kapav demann enn devi. Klik ikonn lakle (Donn akse portal), rant so imel, klik Donn akse e donn li mo de pas ki paret. Ou kapav reinisializ ouswa tir li pli tar.",
               ],
             },
           ],
@@ -728,7 +728,7 @@ export const ADMIN_GUIDE_MFE: RoleGuide = {
               kind: 'list',
               items: [
                 'Swivi montre bann apel ki finn anrezistre lor devi, par kliyan ouswa par dat.',
-                "Kontra: New Contract anrezistre enn kontra servis avek enn kliyan, so valer ek so dat koumansman ek lafin.",
+                "Kontra: Nouvo kontra anrezistre enn kontra servis avek enn kliyan, so valer ek so dat koumansman ek lafin.",
               ],
             },
           ],
