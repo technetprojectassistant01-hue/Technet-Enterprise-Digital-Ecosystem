@@ -186,7 +186,7 @@ export const ADMIN_GUIDE_MFE: RoleGuide = {
               kind: 'list',
               items: [
                 "SA KI PERSONEL FINN MET: sa ki dimoun la finn ekrir, so ler ek so landrwa lariver ek depar.",
-                "SA KI APLIKASION FINN ANRZISTRE: sa ki aplikasion la finn trouve, so prop ler ek pozision GPS, avek enn lien Kart ek nom landrwa.",
+                "SA KI APLIKASION FINN ANREZISTRE: sa ki aplikasion la finn trouve, so prop ler ek pozision GPS, avek enn lien Kart ek nom landrwa.",
                 "Bann siyal montre kan le de pa dakor, par egzanp enn ler ekrir ki lwin ar ler aplikasion la.",
                 "Badz akote sak vizit dir Verifie, Pa verifie ouswa Signale. Klik lor Signale pou trouv kifer (get Anomali prezans).",
                 "Kolonn ler siplemanter les ou aprouv ouswa refiz ler siplemanter sa zour la direkteman.",
@@ -223,7 +223,7 @@ export const ADMIN_GUIDE_MFE: RoleGuide = {
               items: [
                 'Lor rezis Prezans Personel, klik Exporte.',
                 "Swazir bann dat, ouswa enn swa rapid: Yer (rapor zournalie), Sa mwa-la ouswa Tou bann rezistreman.",
-                'Klik Telsarz PDF ouswa Telsarz Excel.',
+                'Klik Telesarz PDF ouswa Telesarz Excel.',
               ],
             },
             { kind: 'p', text: 'Bann rapor zot-mem an angle, parey kouma pou masinn AiFace. Ladan ena:' },
@@ -251,7 +251,7 @@ export const ADMIN_GUIDE_MFE: RoleGuide = {
               items: [
                 'Mwa / Semenn sanz peryod la. Bann fles al divan ek deryer.',
                 "Swazir enn teknisien pou trouv zis enn dimoun. Tik Inklir ansien anplwaye pou trouv dimoun ki finn ale.",
-                "Pointe la minitt la montre kisannla prezan aster. Enn vizit ouver depi boukou ler gagn mark « kitfwa finn bliye ».",
+                "Pointe la minit la montre kisannla prezan aster. Enn vizit ouver depi boukou ler gagn mark « kitfwa finn bliye ».",
                 "Rezime prezans se Monthly Report AiFace. Klik lor enn nom pou ouver rapor zournalie sa dimoun la.",
                 'Rezis prezans montre sak vizit zour par zour, avek foto pointaz ek bann kontrol konformite.',
                 "Exporte mwa / Exporte semenn telesarz rapor Excel, ek Telesarz PDF telesarz PDF la, pou peryod ki lor lekran.",
@@ -268,7 +268,7 @@ export const ADMIN_GUIDE_MFE: RoleGuide = {
             {
               kind: 'steps',
               items: [
-                "Dan Prezans lekip, trouv vizit la anba Pointe la minitt la.",
+                "Dan Prezans lekip, trouv vizit la anba Pointe la minit la.",
                 'Klik Ferm sesion.',
                 "Met FINN DEPOINTE A lor ler ki li ti vremem ale. Si ou les li lor « aster », tou sa letan la konte kouma ler lor sit.",
                 'Azout enn not si ou anvi e konfirme.',
@@ -349,7 +349,7 @@ export const ADMIN_GUIDE_MFE: RoleGuide = {
                 'Konfirme. Lezot pointaz resan dan mem landrwa vinn Verifie osi.',
               ],
             },
-            { kind: 'p', text: "Dan Technet Operations → Plas koni, ou kapav sanz nom enn plas, sanz so reyon, met de plas parey ansam (Mett ansanm ar…) ouswa efas enn." },
+            { kind: 'p', text: "Dan Technet Operations → Plas koni, ou kapav sanz nom enn plas, sanz so reyon, met de plas parey ansam (Met ansanm ar…) ouswa efas enn." },
           ],
         },
       ],
@@ -410,7 +410,7 @@ export const ADMIN_GUIDE_MFE: RoleGuide = {
               items: [
                 'Ouver Technet Operations → Rapor zournalie. Filtre par dat ouswa rod dan text la.',
                 'Lir rapor la ek so bann foto.',
-                'Aksepte li, ouswa refiz li. Teknisien la gagn enn notifikasion dan tou le de ka.',
+                'Aprouv li, ouswa refiz li. Teknisien la gagn enn notifikasion dan tou le de ka.',
               ],
             },
           ],
@@ -474,7 +474,7 @@ export const ADMIN_GUIDE_MFE: RoleGuide = {
               items: [
                 "Ouver Aprouv konze dan meni. Pe atann aprobasion montre bann demann ki pe atann enn desizion.",
                 "Aprouv ouswa refiz sakenn. Si dimoun la pena ase balans, ou gagn enn avertisman e ou kapav klik Aprouve kanmem.",
-                "Tab Aksepte montre bann konze aprouve. Ou kapav sanz zot, ouswa anil zot pou remet bann zour dan balans.",
+                "Tab Aprouve montre bann konze aprouve. Ou kapav sanz zot, ouswa anil zot pou remet bann zour dan balans.",
               ],
             },
             { kind: 'tip', text: "Technet HR → Konze montre tou bann demann, ninport ki stati, e les ou Anrezistre konze pou enn kikenn." },
@@ -548,7 +548,7 @@ export const ADMIN_GUIDE_MFE: RoleGuide = {
               items: [
                 "Ouver Technet HR → Validasion. Li ouver lor mwa pase. Enn mwa kapav valide depi so dernie zour.",
                 "Ouver PDF enn dimoun pou verifie, apre klik Valide, ouswa Valid tou pou tou dimoun.",
-                'Anile tir enn validasion.',
+                'Defer tir enn validasion.',
               ],
             },
             {
@@ -569,7 +569,7 @@ export const ADMIN_GUIDE_MFE: RoleGuide = {
               kind: 'steps',
               items: [
                 'Asir ou ki sak anplwaye ki bizin gagn lapey ena enn saler de baz lor so dosie.',
-                "Ouver Technet HR → Pey, swazir mwa ek lane e klik Tret lapey.",
+                "Ouver Technet HR → Lapey, swazir mwa ek lane e klik Tret lapey.",
                 "Ouver tretman la pou trouv, pou sak dimoun, saler de baz, ler, ler siplemanter, konze san pey, dediksion ek net pou peye.",
               ],
             },
@@ -615,7 +615,7 @@ export const ADMIN_GUIDE_MFE: RoleGuide = {
                 "Azout enn zouti anrezistre enn zouti. Enn nimero etiket (TL-0001, TL-0002…) donn otomatikman: ekrir li lor zouti la.",
                 "Rezis la montre stati sak zouti (Disponib, Finn sorti, Pe repare, Pa servi ankor), kisannla ena li ek kan li bizin retourne. Zouti ki an reta gagn enn mark.",
                 "Marke retourne anrezistre enn retour ek so leta. Enn zouti ki retourn Abime al dan Pe repare ziska ou remet li Disponib.",
-                "Istorik montre sak fwa enn zouti finn sorti. Enn zouti ki finn deza sorti pa kapav efase: met li Pa servi ankor olie.",
+                "Listwar montre sak fwa enn zouti finn sorti. Enn zouti ki finn deza sorti pa kapav efase: met li Pa servi ankor olie.",
               ],
             },
           ],
