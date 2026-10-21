@@ -1,3 +1,4 @@
+import { erpEn } from './erp/en'
 /**
  * English — the master dictionary. fr.ts and mfe.ts are typed against this shape (`Dict`), so a
  * key added here fails the build until it's translated in both.
@@ -2214,6 +2215,9 @@ export const en = {
       ],
     },
   },
+
+  /** Technet ERP pages - kept in ./erp/ to keep this file manageable. */
+  erp: erpEn,
 }
 
 export type Dict = typeof en
