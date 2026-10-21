@@ -683,13 +683,13 @@ export const ADMIN_GUIDE_FR: RoleGuide = {
             {
               kind: 'steps',
               items: [
-                "Cliquez sur Log a Request et indiquez le client (ou le nom d'une société s'il est nouveau) et ce qu'il demande.",
+                "Cliquez sur Noter une demande et indiquez le client (ou le nom d'une société s'il est nouveau) et ce qu'il demande.",
                 "Ajoutez une note de statut pour que les autres voient pourquoi la demande attend encore (par exemple « en attente des prix du fournisseur »).",
-                "Envoyez un accusé de réception : modifiez l'e-mail, puis Save Draft ou Send. Send ouvre votre messagerie avec le texte déjà rempli.",
-                'Convert to Quotation transforme la demande en devis brouillon, ou Decline la clôture.',
+                "Envoyez un accusé de réception : cliquez sur Accuser réception, modifiez l'e-mail, puis Enregistrer le brouillon ou Envoyer. Envoyer ouvre votre messagerie avec le texte déjà rempli (l'e-mail lui-même est en anglais, comme le devis).",
+                'Convertir transforme la demande en devis brouillon, ou Refuser la clôture.',
               ],
             },
-            { kind: 'note', text: "Une demande qui n'a pas reçu d'accusé de réception, n'a pas été convertie ni refusée dans les 24 heures est marquée OVERDUE." },
+            { kind: 'note', text: "Une demande qui n'a pas reçu d'accusé de réception, n'a pas été convertie ni refusée dans les 24 heures est marquée EN RETARD." },
           ],
         },
         {
@@ -700,23 +700,23 @@ export const ADMIN_GUIDE_FR: RoleGuide = {
             {
               kind: 'steps',
               items: [
-                "Cliquez sur New Quotation. Choisissez le client, saisissez le titre et la personne à contacter, et ajoutez les lignes (les boutons Labor et Transport ajoutent les lignes courantes).",
+                "Cliquez sur Nouveau devis. Choisissez le client, saisissez le titre et la personne à contacter, et ajoutez les lignes (les boutons + Labor et + Transport ajoutent ces lignes courantes, en anglais comme le reste du devis).",
                 "Fixez les conditions de paiement (les lignes doivent faire 100 % au total), la validité en jours (15 par défaut) et la disponibilité.",
                 "Enregistrez. Le numéro du devis est attribué automatiquement et il commence en brouillon.",
-                "Ouvrez-le pour vérifier, puis Download PDF ou Email Customer.",
-                "Utilisez Mark as Sent une fois envoyé, puis Mark Approved, Mark Not Approved ou Mark Expired.",
+                "Ouvrez-le pour vérifier, puis Télécharger le PDF ou Envoyer au client.",
+                "Utilisez Marquer comme envoyé une fois envoyé, puis Marquer approuvé, Marquer non approuvé ou Marquer expiré.",
               ],
             },
             {
               kind: 'list',
               items: [
                 "Le client, les conditions et les lignes ne se modifient que tant que le devis est un brouillon.",
-                "Follow-Up, sur le devis, note chaque appel : date, interlocuteur et résultat. Notez-y aussi le bon de commande ou la référence de confirmation du client.",
-                'Attachments contient les fichiers liés au devis.',
+                "Suivi, sur le devis, note chaque appel : date, interlocuteur et résultat. Notez-y aussi le bon de commande ou la référence de confirmation du client.",
+                'Pièces jointes contient les fichiers liés au devis.',
                 "Seul un administrateur peut ajouter un nouveau libellé de conditions de paiement. Les autres choisissent parmi les libellés déjà utilisés.",
               ],
             },
-            { kind: 'note', text: "Email Customer télécharge le PDF et ouvre un e-mail avec le texte prêt. Un navigateur ne peut pas joindre le fichier à votre place : joignez vous-même le PDF téléchargé avant d'envoyer." },
+            { kind: 'note', text: "Envoyer au client télécharge le PDF et ouvre un e-mail avec le texte prêt. Un navigateur ne peut pas joindre le fichier à votre place : joignez vous-même le PDF téléchargé avant d'envoyer." },
           ],
         },
         {
