@@ -759,9 +759,9 @@ export const ADMIN_GUIDE_FR: RoleGuide = {
             {
               kind: 'list',
               items: [
-                "Inventaire : Add Item, puis Adjust stock pour les mouvements. Le Stock Ledger les liste. Le stock bas est signalé au niveau minimum.",
-                'Projets : New Project avec le client, le responsable, les dates et le budget.',
-                "Documents : Upload Document range un fichier dans une catégorie (contrat, RH, projet, devis…) et peut le relier à un client ou à un projet.",
+                "Inventaire : Ajouter un article, puis le bouton Ajuster le stock (les flèches) pour les mouvements. Le Registre du stock les liste. Le stock bas est signalé au niveau minimum.",
+                'Projets : Nouveau projet avec le client, le responsable, les dates et le budget.',
+                "Documents : Ajouter un document range un fichier dans une catégorie (contrat, RH, projet, devis…) et peut le relier à un client ou à un projet.",
               ],
             },
           ],
