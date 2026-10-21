@@ -129,10 +129,10 @@ export const SALES_GUIDE_MFE: RoleGuide = {
             {
               kind: 'steps',
               items: [
-                'Ouver Technet ERP → Lasa → Demann lasa e klik New Requisition.',
-                "Rant enn nimero (REQUISITION NUMBER, ki pa bizin deza servi), dat ki ou bizin li (NEEDED BY) ek, si li pou enn proze, PROJECT la.",
-                "Azout enn lign pou sak zafer ki bizin: deskripsion, kantite ek, si ou kone, pri inite. Klik Add line item pou plis lign.",
-                'Klik Submit Requisition.',
+                'Ouver Technet ERP → Lasa → Demann lasa e klik Nouvo demann lasa.',
+                "Rant NIMERO DEMANN (li pa bizin deza servi), dat BIZIN POU ek, si li pou enn proze, PROZE la.",
+                "Azout enn lign pou sak zafer ki bizin: deskripsion, kantite ek, si ou kone, pri inite. Klik Azout enn lign pou plis lign.",
+                'Klik Avoy demann.',
               ],
             },
             { kind: 'p', text: "Magazinie ouswa enn administrater aprouv ouswa refiz li, e ou gagn enn notifikasion dan tou le de ka. Enn demann aprouve vinn enn bon komand, ki ou kapav swiv dan Bon komand." },
