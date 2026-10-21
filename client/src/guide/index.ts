@@ -8,17 +8,18 @@ import { SALES_GUIDE } from './salesGuide'
 import { STOREKEEPER_GUIDE } from './storekeeperGuide'
 import { TECHNICIAN_GUIDE } from './technicianGuide'
 import { FR_GUIDES } from './fr'
+import { MFE_GUIDES } from './mfe'
 import type { RoleGuide } from './types'
 
 /**
  * Every role guide written so far. Written role by role (Admin, HR, Staff Technician, Storekeeper,
  * Staff Office, Sales Officer, 2026-10-19; Finance Officer, 2026-10-20); add each new guide here and it appears in the menu for
- * that role. French copies (2026-10-20) live in ./fr, one per English guide, same chapter and
- * topic ids. Kreol shows the English guide until its copies are written.
+ * that role. French (2026-10-20) and Kreol (2026-10-21) copies live in ./fr and ./mfe, one per
+ * English guide, same chapter and topic ids. A language with no copies falls back to English.
  */
 export const GUIDES: RoleGuide[] = [ADMIN_GUIDE, HR_GUIDE, TECHNICIAN_GUIDE, STOREKEEPER_GUIDE, OFFICE_GUIDE, SALES_GUIDE, FINANCE_GUIDE]
 
-const GUIDES_BY_LANGUAGE: Record<Language, RoleGuide[]> = { en: GUIDES, fr: FR_GUIDES, mfe: GUIDES }
+const GUIDES_BY_LANGUAGE: Record<Language, RoleGuide[]> = { en: GUIDES, fr: FR_GUIDES, mfe: MFE_GUIDES }
 
 /** The language the guide is actually shown in: one without its own guides falls back to English. */
 export function guideLanguage(language: Language): Language {
