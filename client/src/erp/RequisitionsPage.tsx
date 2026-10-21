@@ -14,6 +14,7 @@ import { useProjects } from './useProjects'
 import { useInventoryItems } from './useInventoryItems'
 import LineItemsEditor, { EMPTY_LINE_ITEM, type LineItemRow } from './LineItemsEditor'
 import { requisitionStatusTone } from './statusTones'
+import { useT } from '../i18n'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -24,6 +25,7 @@ function RequisitionsPage() {
   const confirm = useConfirm()
   const { user } = useAuth()
   const canManage = hasRole(user?.role, PROCUREMENT_ROLES)
+  const { requisitions: m, shared, status } = useT().erp
   const projects = useProjects()
   const inventoryItems = useInventoryItems()
   const [requisitions, setRequisitions] = useState<Requisition[]>([])
@@ -45,7 +47,7 @@ function RequisitionsPage() {
     api
       .listRequisitions({ search: searchValue || undefined })
       .then(({ requisitions }) => setRequisitions(requisitions))
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load requisitions'))
+      .catch((err) => setError(err instanceof Error ? err.message : m.loadFailed))
       .finally(() => setLoading(false))
   }
 
@@ -69,7 +71,7 @@ function RequisitionsPage() {
     setFormError(null)
 
     if (!requisitionNumber.trim()) {
-      setFormError('Requisition number is required')
+      setFormError(m.numberRequired)
       return
     }
 
@@ -86,11 +88,11 @@ function RequisitionsPage() {
           inventoryItemId: item.inventoryItemId || undefined,
         })),
       })
-      toast.success('Requisition submitted')
+      toast.success(m.submitted)
       setShowCreate(false)
       load()
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Failed to submit requisition')
+      setFormError(err instanceof Error ? err.message : m.submitFailed)
     } finally {
       setSubmitting(false)
     }
@@ -98,18 +100,18 @@ function RequisitionsPage() {
 
   async function handleDelete(r: Requisition) {
     const ok = await confirm({
-      title: 'Delete requisition',
-      message: `Delete requisition ${r.requisitionNumber}? This cannot be undone.`,
-      confirmLabel: 'Delete',
+      title: m.deleteTitle,
+      message: m.deleteMessage(r.requisitionNumber),
+      confirmLabel: shared.delete,
       tone: 'danger',
     })
     if (!ok) return
     try {
       await api.deleteRequisition(r.id)
-      toast.success(`Deleted ${r.requisitionNumber}`)
+      toast.success(shared.deleted(r.requisitionNumber))
       load()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to delete requisition')
+      toast.error(err instanceof Error ? err.message : m.deleteFailed)
     }
   }
 
@@ -119,12 +121,12 @@ function RequisitionsPage() {
     downloadCsv(
       'requisitions',
       [
-        { header: 'Number', accessor: (r: Requisition) => r.requisitionNumber },
-        { header: 'Project', accessor: (r: Requisition) => r.project?.name },
-        { header: 'Requested By', accessor: (r: Requisition) => r.requestedBy.name || r.requestedBy.email },
-        { header: 'Items', accessor: (r: Requisition) => r.items.length },
-        { header: 'Needed By', accessor: (r: Requisition) => r.neededByDate?.slice(0, 10) },
-        { header: 'Status', accessor: (r: Requisition) => r.status },
+        { header: m.csv.number, accessor: (r: Requisition) => r.requisitionNumber },
+        { header: m.csv.project, accessor: (r: Requisition) => r.project?.name },
+        { header: m.csv.requestedBy, accessor: (r: Requisition) => r.requestedBy.name || r.requestedBy.email },
+        { header: m.csv.items, accessor: (r: Requisition) => r.items.length },
+        { header: m.csv.neededBy, accessor: (r: Requisition) => r.neededByDate?.slice(0, 10) },
+        { header: m.csv.status, accessor: (r: Requisition) => status.requisition[r.status] },
       ],
       requisitions,
     )
@@ -134,32 +136,32 @@ function RequisitionsPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-ink-100">Requisitions</h1>
-          <p className="mt-1 text-sm text-ink-300">Track material requests from submission through approval.</p>
+          <h1 className="text-2xl font-bold text-ink-100">{m.title}</h1>
+          <p className="mt-1 text-sm text-ink-300">{m.subtitle}</p>
         </div>
         <div className="flex items-center gap-3">
           <button type="button" onClick={exportCsv} className={secondaryButtonClass}>
             <Download className="h-4 w-4" />
-            Export Ledger
+            {m.exportLedger}
           </button>
           <button type="button" onClick={openCreate} className={primaryButtonClass}>
             <Plus className="h-4 w-4" />
-            New Requisition
+            {m.new}
           </button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-        <StatCard label="TOTAL REQUISITIONS" value={requisitions.length} icon={ClipboardList} />
-        <StatCard label="AWAITING APPROVAL" value={submittedCount} deltaTone="warning" icon={ClipboardList} />
+        <StatCard label={m.statTotal} value={requisitions.length} icon={ClipboardList} />
+        <StatCard label={m.statAwaiting} value={submittedCount} deltaTone="warning" icon={ClipboardList} />
       </div>
 
-      <Panel title="Requisition Ledger">
+      <Panel title={m.panel}>
         <div className="mb-4 flex flex-1 max-w-sm items-center gap-2 rounded-md border border-ink-700 bg-ink-950 px-3 py-2">
           <Search className="h-4 w-4 text-ink-400" />
           <input
             type="text"
-            placeholder="Search by requisition number..."
+            placeholder={m.search}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && load(search)}
@@ -172,18 +174,18 @@ function RequisitionsPage() {
         {loading ? (
           <TableSkeleton cols={6} />
         ) : requisitions.length === 0 ? (
-          <EmptyState icon={ClipboardList} message="No requisitions yet. Submit your first request to get started." />
+          <EmptyState icon={ClipboardList} message={m.empty} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
-                  <th className="px-3 py-3 font-semibold">NUMBER</th>
-                  <th className="px-3 py-3 font-semibold">PROJECT</th>
-                  <th className="px-3 py-3 font-semibold">REQUESTED BY</th>
-                  <th className="px-3 py-3 font-semibold">ITEMS</th>
-                  <th className="px-3 py-3 font-semibold">NEEDED BY</th>
-                  <th className="px-3 py-3 font-semibold">STATUS</th>
+                  <th className="px-3 py-3 font-semibold">{m.colNumber}</th>
+                  <th className="px-3 py-3 font-semibold">{shared.project}</th>
+                  <th className="px-3 py-3 font-semibold">{m.colRequestedBy}</th>
+                  <th className="px-3 py-3 font-semibold">{shared.items}</th>
+                  <th className="px-3 py-3 font-semibold">{shared.neededBy}</th>
+                  <th className="px-3 py-3 font-semibold">{shared.status}</th>
                   {canManage && <th className="px-3 py-3" />}
                 </tr>
               </thead>
@@ -203,14 +205,14 @@ function RequisitionsPage() {
                     <td className="px-3 py-3 text-ink-300">{r.items.length}</td>
                     <td className="px-3 py-3 text-ink-400">{r.neededByDate ? r.neededByDate.slice(0, 10) : '—'}</td>
                     <td className="px-3 py-3">
-                      <Badge tone={requisitionStatusTone[r.status]}>{r.status}</Badge>
+                      <Badge tone={requisitionStatusTone[r.status]}>{status.requisition[r.status]}</Badge>
                     </td>
                     {canManage && (
                       <td className="px-3 py-3">
                         <button
                           type="button"
                           onClick={() => handleDelete(r)}
-                          aria-label="Delete requisition"
+                          aria-label={m.deleteAria}
                           className="text-ink-400 hover:text-red-400"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -226,11 +228,11 @@ function RequisitionsPage() {
       </Panel>
 
       {showCreate && (
-        <Modal title="New Requisition" onClose={() => setShowCreate(false)}>
+        <Modal title={m.new} onClose={() => setShowCreate(false)}>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className={labelClass}>REQUISITION NUMBER</label>
+                <label className={labelClass}>{m.number}</label>
                 <input
                   value={requisitionNumber}
                   onChange={(e) => setRequisitionNumber(e.target.value)}
@@ -239,7 +241,7 @@ function RequisitionsPage() {
                 />
               </div>
               <div>
-                <label className={labelClass}>NEEDED BY</label>
+                <label className={labelClass}>{shared.neededBy}</label>
                 <input
                   type="date"
                   value={neededByDate}
@@ -249,7 +251,7 @@ function RequisitionsPage() {
               </div>
             </div>
             <div>
-              <label className={labelClass}>PROJECT (OPTIONAL)</label>
+              <label className={labelClass}>{shared.projectOptional}</label>
               <select value={projectId} onChange={(e) => setProjectId(e.target.value)} className={`mt-2 ${inputClass}`}>
                 <option value="">—</option>
                 {projects.map((p) => (
@@ -260,7 +262,7 @@ function RequisitionsPage() {
               </select>
             </div>
             <div>
-              <label className={labelClass}>NOTES</label>
+              <label className={labelClass}>{shared.notes}</label>
               <input value={notes} onChange={(e) => setNotes(e.target.value)} className={`mt-2 ${inputClass}`} />
             </div>
 
@@ -269,7 +271,7 @@ function RequisitionsPage() {
             {formError && <p className="text-sm text-red-400">{formError}</p>}
 
             <button type="submit" disabled={submitting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
-              {submitting ? 'Submitting…' : 'Submit Requisition'}
+              {submitting ? shared.submitting : m.submit}
             </button>
           </form>
         </Modal>
