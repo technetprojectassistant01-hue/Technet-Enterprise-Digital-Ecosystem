@@ -1,5 +1,6 @@
 import { Plus, Trash2 } from 'lucide-react'
 import type { InventoryItem } from '../lib/api'
+import { useT } from '../i18n'
 
 export interface LineItemRow {
   description: string
@@ -25,6 +26,7 @@ function LineItemsEditor({
   showUnitCost?: boolean
   inventoryItems: InventoryItem[]
 }) {
+  const { lineItems: l, shared } = useT().erp
   function updateRow(index: number, patch: Partial<LineItemRow>) {
     onChange(items.map((row, i) => (i === index ? { ...row, ...patch } : row)))
   }
@@ -39,11 +41,11 @@ function LineItemsEditor({
 
   return (
     <div className="flex flex-col gap-3">
-      <label className="text-xs font-semibold tracking-widest text-ink-400">LINE ITEMS</label>
+      <label className="text-xs font-semibold tracking-widest text-ink-400">{l.title}</label>
       {items.map((row, i) => (
         <div key={i} className="flex items-end gap-2 rounded-md border border-ink-700 bg-ink-950 p-3">
           <div className="flex-1">
-            <label className={fieldLabelClass}>ITEM (OPTIONAL)</label>
+            <label className={fieldLabelClass}>{l.item}</label>
             <select
               value={row.inventoryItemId}
               onChange={(e) => {
@@ -55,7 +57,7 @@ function LineItemsEditor({
               }}
               className={fieldInputClass}
             >
-              <option value="">— free text —</option>
+              <option value="">{l.freeText}</option>
               {inventoryItems.map((it) => (
                 <option key={it.id} value={it.id}>
                   {it.sku} — {it.name}
@@ -64,7 +66,7 @@ function LineItemsEditor({
             </select>
           </div>
           <div className="flex-[2]">
-            <label className={fieldLabelClass}>DESCRIPTION</label>
+            <label className={fieldLabelClass}>{shared.description}</label>
             <input
               value={row.description}
               onChange={(e) => updateRow(i, { description: e.target.value })}
@@ -73,7 +75,7 @@ function LineItemsEditor({
             />
           </div>
           <div className="w-20">
-            <label className={fieldLabelClass}>QTY</label>
+            <label className={fieldLabelClass}>{l.qty}</label>
             <input
               type="number"
               min={1}
@@ -85,7 +87,7 @@ function LineItemsEditor({
           </div>
           {showUnitCost && (
             <div className="w-24">
-              <label className={fieldLabelClass}>UNIT COST</label>
+              <label className={fieldLabelClass}>{shared.unitCost}</label>
               <input
                 type="number"
                 min={0}
@@ -101,7 +103,7 @@ function LineItemsEditor({
             type="button"
             onClick={() => removeRow(i)}
             disabled={items.length === 1}
-            aria-label="Remove line item"
+            aria-label={l.remove}
             className="mb-1.5 shrink-0 text-ink-400 hover:text-red-400 disabled:opacity-30"
           >
             <Trash2 className="h-4 w-4" />
@@ -114,7 +116,7 @@ function LineItemsEditor({
         className="flex items-center gap-1.5 self-start text-xs font-semibold text-cyan-accent hover:underline"
       >
         <Plus className="h-3.5 w-3.5" />
-        Add line item
+        {l.add}
       </button>
     </div>
   )
