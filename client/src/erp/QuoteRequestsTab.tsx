@@ -13,6 +13,10 @@ import { usePaymentTermLabels } from './usePaymentTermLabels'
 import { formatMoney } from '../lib/format'
 import SalesLineItemsEditor, { EMPTY_SALES_LINE_ITEM, type SalesLineItemRow } from './SalesLineItemsEditor'
 import PaymentTermsLinesEditor, { EMPTY_PAYMENT_TERMS_LINE } from './PaymentTermsLinesEditor'
+import { useT } from '../i18n'
+import type { ErpDict } from '../i18n/erp/en'
+
+type RequestsText = ErpDict['quoteRequests']
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -24,18 +28,18 @@ const STATUS_TONE: Record<QuotationRequest['status'], BadgeTone> = {
   DECLINED: 'danger',
 }
 
-function requesterName(r: QuotationRequest): string {
-  return r.customer?.company || r.customer?.name || r.companyName || 'Unknown'
+function requesterName(r: QuotationRequest, unknown = 'Unknown'): string {
+  return r.customer?.company || r.customer?.name || r.companyName || unknown
 }
 
-function timeAgo(iso: string) {
+function timeAgo(iso: string, m: RequestsText) {
   const diffMs = Date.now() - new Date(iso).getTime()
   const mins = Math.floor(diffMs / 60000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins}m ago`
+  if (mins < 1) return m.justNow
+  if (mins < 60) return m.minutesAgo(mins)
   const hours = Math.floor(mins / 60)
-  if (hours < 24) return `${hours}h ago`
-  return `${Math.floor(hours / 24)}d ago`
+  if (hours < 24) return m.hoursAgo(hours)
+  return m.daysAgo(Math.floor(hours / 24))
 }
 
 /** Overdue = still pending, never acknowledged, and past the office's response SLA. Converting or
@@ -45,12 +49,13 @@ function isOverdue(r: QuotationRequest, slaHours: number): boolean {
   return Date.now() - new Date(r.createdAt).getTime() > slaHours * 3600 * 1000
 }
 
-function ackStatusLabel(r: QuotationRequest): string {
-  if (r.acknowledgedAt) return `Acknowledged ${timeAgo(r.acknowledgedAt)}`
-  if (r.ackDraftSavedAt) return 'Draft saved'
-  return 'Not acknowledged'
+function ackStatusLabel(r: QuotationRequest, m: RequestsText): string {
+  if (r.acknowledgedAt) return m.acknowledged(timeAgo(r.acknowledgedAt, m))
+  if (r.ackDraftSavedAt) return m.draftSaved
+  return m.notAcknowledged
 }
 
+/** The acknowledgement email goes to the customer, so it stays in English like the quotation PDF. */
 function ackTemplate(r: QuotationRequest): string {
   const name = requesterName(r)
   return `Dear ${name},\n\nWe've received your request for ${r.description} and are preparing your quotation for you. We'll follow up shortly.\n\nBest regards,\nTechnet Engineering`
@@ -61,6 +66,7 @@ function QuoteRequestsTab() {
   const { user } = useAuth()
   const canManage = hasRole(user?.role, SALES_ROLES)
   const isAdmin = isAdminLike(user?.role)
+  const { quoteRequests: m, quotations: q, shared, status, requestSources, requestSourceOptions, requestCategories } = useT().erp
   const customers = useCustomers()
   const paymentTermLabels = usePaymentTermLabels()
   const [requests, setRequests] = useState<QuotationRequest[]>([])
@@ -167,10 +173,10 @@ function QuoteRequestsTab() {
   async function handleLogRequest(e: FormEvent) {
     e.preventDefault()
     setLogError(null)
-    if (useExistingCustomer && !logCustomerId) return setLogError('Select a customer')
-    if (!useExistingCustomer && !logCompanyName.trim()) return setLogError('Enter a company name')
-    if (logRequestFor === 'OTHER' && !logRequestForOther.trim()) return setLogError('Describe the request')
-    if (!logDescription.trim()) return setLogError('Description is required')
+    if (useExistingCustomer && !logCustomerId) return setLogError(m.selectCustomerError)
+    if (!useExistingCustomer && !logCompanyName.trim()) return setLogError(m.companyRequired)
+    if (logRequestFor === 'OTHER' && !logRequestForOther.trim()) return setLogError(m.describeRequired)
+    if (!logDescription.trim()) return setLogError(m.descriptionRequired)
 
     setLogSubmitting(true)
     try {
@@ -188,11 +194,11 @@ function QuoteRequestsTab() {
         description: logDescription.trim(),
         remarks: logRemarks.trim() || undefined,
       })
-      toast.success('Request logged')
+      toast.success(m.logged)
       setLogging(false)
       load()
     } catch (err) {
-      setLogError(err instanceof Error ? err.message : 'Failed to log request')
+      setLogError(err instanceof Error ? err.message : m.logFailed)
     } finally {
       setLogSubmitting(false)
     }
@@ -219,10 +225,10 @@ function QuoteRequestsTab() {
     e.preventDefault()
     setFormError(null)
     if (!converting) return
-    if (!converting.customerId && !convertCustomerId) return setFormError('Select a customer for this request')
-    if (!title.trim()) return setFormError('Title is required')
+    if (!converting.customerId && !convertCustomerId) return setFormError(m.selectCustomerForRequest)
+    if (!title.trim()) return setFormError(q.titleRequired)
     const paymentTotal = paymentTermsLines.reduce((sum, l) => sum + (Number(l.percentage) || 0), 0)
-    if (Math.round(paymentTotal * 100) !== 10000) return setFormError('Payment terms percentages must sum to 100')
+    if (Math.round(paymentTotal * 100) !== 10000) return setFormError(q.termsMustSum)
 
     setSubmitting(true)
     try {
@@ -239,13 +245,13 @@ function QuoteRequestsTab() {
           unitPrice: Number(item.unitPrice),
         })),
       })
-      toast.success('Converted to a draft quotation')
+      toast.success(m.converted)
       // Jump straight to the new quotation - the Quotations tab's own list only
       // loads once on mount, so switching tabs wouldn't show it without this.
       window.location.href = `/dashboard/erp/customers/quotations/${quotation.id}`
       return
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Failed to convert request')
+      setFormError(err instanceof Error ? err.message : m.convertFailed)
     } finally {
       setSubmitting(false)
     }
@@ -262,11 +268,11 @@ function QuoteRequestsTab() {
     setDeclineSubmitting(true)
     try {
       await api.declineQuoteRequest(declining.id, declineNote.trim() || undefined)
-      toast.success('Request declined')
+      toast.success(m.declined)
       setDeclining(null)
       load()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to decline request')
+      toast.error(err instanceof Error ? err.message : m.declineFailed)
     } finally {
       setDeclineSubmitting(false)
     }
@@ -277,10 +283,10 @@ function QuoteRequestsTab() {
     setSavingNote(r.id)
     try {
       await api.setQuoteRequestNote(r.id, note)
-      toast.success('Note saved')
+      toast.success(m.noteSaved)
       load()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to save note')
+      toast.error(err instanceof Error ? err.message : m.noteFailed)
     } finally {
       setSavingNote(null)
     }
@@ -296,11 +302,11 @@ function QuoteRequestsTab() {
     setAckSaving('draft')
     try {
       await api.saveQuoteRequestAcknowledgement(acknowledging.id, ackBody, 'draft')
-      toast.success('Acknowledgement saved as draft')
+      toast.success(m.ackDraftSaved)
       setAcknowledging(null)
       load()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to save draft')
+      toast.error(err instanceof Error ? err.message : m.ackDraftFailed)
     } finally {
       setAckSaving(null)
     }
@@ -314,12 +320,12 @@ function QuoteRequestsTab() {
       const to = acknowledging.contactEmail || acknowledging.customer?.email || ''
       const subject = encodeURIComponent(`Re: your request - Technet Engineering`)
       window.location.href = `mailto:${to}?subject=${subject}&body=${encodeURIComponent(ackBody)}`
-      toast.success('Acknowledgement sent - attach nothing needed, just send the email that just opened')
+      toast.success(m.ackSent)
       void updated
       setAcknowledging(null)
       load()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to send acknowledgement')
+      toast.error(err instanceof Error ? err.message : m.ackSendFailed)
     } finally {
       setAckSaving(null)
     }
@@ -328,26 +334,26 @@ function QuoteRequestsTab() {
   return (
     <div className="flex flex-col gap-6">
       <Panel
-        title="Call Log"
+        title={m.panel}
         action={
           canManage && (
             <button type="button" onClick={openLogRequest} className={secondaryButtonClass}>
               <Plus className="h-4 w-4" />
-              Log a Request
+              {m.logRequest}
             </button>
           )
         }
       >
         <div className="mb-4 flex flex-wrap items-end gap-4">
           <div>
-            <label className={labelClass}>LOGGED BY</label>
+            <label className={labelClass}>{m.loggedBy}</label>
             <select
               value={loggedByFilter}
               onChange={(e) => setLoggedByFilter(e.target.value)}
               className={`mt-2 ${inputClass}`}
             >
-              <option value="">All staff</option>
-              <option value="unassigned">Unassigned / portal</option>
+              <option value="">{m.allStaff}</option>
+              <option value="unassigned">{m.unassigned}</option>
               {loggedByOptions.map((o) => (
                 <option key={o.id} value={o.id}>
                   {o.name}
@@ -361,7 +367,7 @@ function QuoteRequestsTab() {
               onClick={() => setLoggedByFilter('')}
               className="pb-2.5 text-xs text-ink-400 hover:text-cyan-accent"
             >
-              Clear filter
+              {m.clearFilter}
             </button>
           )}
         </div>
@@ -369,7 +375,7 @@ function QuoteRequestsTab() {
         {loading ? (
           <TableSkeleton rows={4} cols={3} />
         ) : requests.length === 0 ? (
-          <EmptyState icon={FileSignature} message="No quote requests yet." />
+          <EmptyState icon={FileSignature} message={m.empty} />
         ) : (
           <ul className="flex flex-col gap-3">
             {requests.map((r) => {
@@ -378,23 +384,22 @@ function QuoteRequestsTab() {
                 <li key={r.id} className="rounded-lg bg-ink-800 px-4 py-3">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <div className="text-sm font-medium text-ink-100">{requesterName(r)}</div>
+                      <div className="text-sm font-medium text-ink-100">{requesterName(r, m.unknown)}</div>
                       <p className="mt-1 text-sm text-ink-300">{r.description}</p>
                       {r.remarks && <p className="mt-1 text-xs text-ink-400">{r.remarks}</p>}
                       <p className="mt-1 text-xs text-ink-400">
-                        {new Date(r.createdAt).toLocaleString()} · {timeAgo(r.createdAt)}
-                        {r.source !== 'PORTAL' && ` · via ${r.source === 'PHONE_CALL' ? 'phone call' : r.source.toLowerCase()}`}
-                        {r.requestFor && ` · ${REQUEST_CATEGORY_OPTIONS.find((o) => o.value === r.requestFor)?.label || r.requestForOther}`}
-                        {' · logged by '}
-                        {r.loggedBy ? r.loggedBy.name || r.loggedBy.email : 'submitted via portal'}
+                        {new Date(r.createdAt).toLocaleString()} · {timeAgo(r.createdAt, m)}
+                        {r.source !== 'PORTAL' && ` · ${m.via(requestSources[r.source])}`}
+                        {r.requestFor && ` · ${r.requestFor === 'OTHER' && r.requestForOther ? r.requestForOther : requestCategories[r.requestFor]}`}
+                        {` · ${r.loggedBy ? m.loggedByName(r.loggedBy.name || r.loggedBy.email) : m.viaPortal}`}
                       </p>
                       {r.convertedQuotation && (
                         <p className="mt-1 text-xs text-cyan-accent">→ {r.convertedQuotation.quotationNumber}</p>
                       )}
                     </div>
                     <div className="flex items-center gap-3">
-                      {overdue && <Badge tone="danger">OVERDUE</Badge>}
-                      <Badge tone={STATUS_TONE[r.status]}>{r.status}</Badge>
+                      {overdue && <Badge tone="danger">{m.overdue}</Badge>}
+                      <Badge tone={STATUS_TONE[r.status]}>{status.quoteRequest[r.status]}</Badge>
                       {canManage && r.status === 'PENDING' && (
                         <div className="flex gap-2">
                           <button
@@ -403,17 +408,17 @@ function QuoteRequestsTab() {
                             className={secondaryButtonClass}
                           >
                             <Mail className="h-4 w-4" />
-                            Acknowledge
+                            {m.acknowledge}
                           </button>
                           <button type="button" onClick={() => openConvert(r)} className={secondaryButtonClass}>
-                            Convert
+                            {m.convert}
                           </button>
                           <button
                             type="button"
                             onClick={() => openDecline(r)}
                             className="rounded-md border border-red-400/50 px-3 py-1.5 text-xs text-red-400 hover:bg-red-400/10"
                           >
-                            Decline
+                            {m.decline}
                           </button>
                         </div>
                       )}
@@ -422,13 +427,13 @@ function QuoteRequestsTab() {
 
                   {r.status === 'PENDING' && (
                     <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-ink-700 pt-3">
-                      <span className="text-xs text-ink-400">Acknowledgement: {ackStatusLabel(r)}</span>
+                      <span className="text-xs text-ink-400">{m.ackLabel(ackStatusLabel(r, m))}</span>
                       {canManage && (
                         <div className="flex flex-1 items-center gap-2">
                           <input
                             value={noteDrafts[r.id] ?? r.statusNote ?? ''}
                             onChange={(e) => setNoteDrafts((d) => ({ ...d, [r.id]: e.target.value }))}
-                            placeholder="Status note (e.g. awaiting supplier pricing)"
+                            placeholder={m.notePlaceholder}
                             className={`${inputClass} !py-1.5 text-xs`}
                           />
                           <button
@@ -437,7 +442,7 @@ function QuoteRequestsTab() {
                             disabled={savingNote === r.id}
                             className="shrink-0 text-xs font-semibold text-cyan-accent hover:underline disabled:opacity-50"
                           >
-                            {savingNote === r.id ? 'Saving…' : 'Save'}
+                            {savingNote === r.id ? shared.saving : m.save}
                           </button>
                         </div>
                       )}
@@ -452,7 +457,7 @@ function QuoteRequestsTab() {
       </Panel>
 
       {logging && (
-        <Modal title="Log a Request" onClose={() => setLogging(false)}>
+        <Modal title={m.logRequest} onClose={() => setLogging(false)}>
           <form onSubmit={handleLogRequest} className="flex flex-col gap-4">
             <div>
               <label className="flex items-center gap-2 text-sm text-ink-200">
@@ -461,14 +466,14 @@ function QuoteRequestsTab() {
                   checked={useExistingCustomer}
                   onChange={(e) => setUseExistingCustomer(e.target.checked)}
                 />
-                This is an existing customer
+                {m.existingCustomer}
               </label>
             </div>
             {useExistingCustomer ? (
               <div>
-                <label className={labelClass}>CUSTOMER</label>
+                <label className={labelClass}>{m.customer}</label>
                 <select value={logCustomerId} onChange={(e) => setLogCustomerId(e.target.value)} className={`mt-2 ${inputClass}`}>
-                  <option value="">Select a customer</option>
+                  <option value="">{m.selectCustomer}</option>
                   {customers.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.company || c.name}
@@ -478,14 +483,14 @@ function QuoteRequestsTab() {
               </div>
             ) : (
               <div>
-                <label className={labelClass}>COMPANY NAME</label>
+                <label className={labelClass}>{m.companyName}</label>
                 <input value={logCompanyName} onChange={(e) => setLogCompanyName(e.target.value)} className={`mt-2 ${inputClass}`} />
               </div>
             )}
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className={labelClass}>CONTACT EMAIL</label>
+                <label className={labelClass}>{m.contactEmail}</label>
                 <input
                   type="email"
                   value={logContactEmail}
@@ -494,27 +499,27 @@ function QuoteRequestsTab() {
                 />
               </div>
               <div>
-                <label className={labelClass}>CONTACT PHONE</label>
+                <label className={labelClass}>{m.contactPhone}</label>
                 <input value={logContactPhone} onChange={(e) => setLogContactPhone(e.target.value)} className={`mt-2 ${inputClass}`} />
               </div>
             </div>
 
             <div>
-              <label className={labelClass}>TITLE OF CONTACT (their role, e.g. Facilities Manager)</label>
+              <label className={labelClass}>{m.contactTitle}</label>
               <input value={logContactTitle} onChange={(e) => setLogContactTitle(e.target.value)} className={`mt-2 ${inputClass}`} />
             </div>
 
             <div className="rounded-md border border-ink-700 px-4 py-3">
-              <p className={labelClass}>OTHER CONTACT (if the caller isn't the decision-maker)</p>
+              <p className={labelClass}>{m.otherContact}</p>
               <div className="mt-2 grid grid-cols-2 gap-4">
                 <input
-                  placeholder="Name"
+                  placeholder={m.namePlaceholder}
                   value={logOtherContactName}
                   onChange={(e) => setLogOtherContactName(e.target.value)}
                   className={inputClass}
                 />
                 <input
-                  placeholder="Phone"
+                  placeholder={m.phonePlaceholder}
                   value={logOtherContactPhone}
                   onChange={(e) => setLogOtherContactPhone(e.target.value)}
                   className={inputClass}
@@ -524,7 +529,7 @@ function QuoteRequestsTab() {
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className={labelClass}>SOURCE</label>
+                <label className={labelClass}>{m.source}</label>
                 <select
                   value={logSource}
                   onChange={(e) => setLogSource(e.target.value as Exclude<RequestSource, 'PORTAL'>)}
@@ -532,22 +537,22 @@ function QuoteRequestsTab() {
                 >
                   {REQUEST_SOURCE_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>
-                      {opt.label}
+                      {requestSourceOptions[opt.value]}
                     </option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className={labelClass}>REQUEST FOR</label>
+                <label className={labelClass}>{m.requestFor}</label>
                 <select
                   value={logRequestFor}
                   onChange={(e) => setLogRequestFor(e.target.value as RequestCategory | '')}
                   className={`mt-2 ${inputClass}`}
                 >
-                  <option value="">Not specified</option>
+                  <option value="">{m.notSpecified}</option>
                   {REQUEST_CATEGORY_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>
-                      {opt.label}
+                      {requestCategories[opt.value]}
                     </option>
                   ))}
                 </select>
@@ -555,7 +560,7 @@ function QuoteRequestsTab() {
             </div>
             {logRequestFor === 'OTHER' && (
               <div>
-                <label className={labelClass}>DESCRIBE</label>
+                <label className={labelClass}>{m.describe}</label>
                 <input
                   value={logRequestForOther}
                   onChange={(e) => setLogRequestForOther(e.target.value)}
@@ -565,7 +570,7 @@ function QuoteRequestsTab() {
             )}
 
             <div>
-              <label className={labelClass}>WHAT ARE THEY ASKING FOR</label>
+              <label className={labelClass}>{m.askingFor}</label>
               <textarea
                 value={logDescription}
                 onChange={(e) => setLogDescription(e.target.value)}
@@ -574,29 +579,29 @@ function QuoteRequestsTab() {
               />
             </div>
             <div>
-              <label className={labelClass}>REMARKS (extra detail, e.g. which unit/location)</label>
+              <label className={labelClass}>{m.remarks}</label>
               <textarea value={logRemarks} onChange={(e) => setLogRemarks(e.target.value)} rows={2} className={`mt-2 ${inputClass}`} />
             </div>
 
             {logError && <p className="text-sm text-red-400">{logError}</p>}
 
             <button type="submit" disabled={logSubmitting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
-              {logSubmitting ? 'Saving…' : 'Save Request'}
+              {logSubmitting ? shared.saving : m.saveRequest}
             </button>
           </form>
         </Modal>
       )}
 
       {converting && (
-        <Modal title="Convert to Quotation" onClose={() => setConverting(null)}>
+        <Modal title={m.convertTitle} onClose={() => setConverting(null)}>
           <form onSubmit={handleConvert} className="flex flex-col gap-4">
             <p className="rounded-md bg-ink-800 px-3 py-2 text-sm text-ink-300">{converting.description}</p>
 
             {!converting.customerId && (
               <div>
-                <label className={labelClass}>CUSTOMER (this request had no linked customer)</label>
+                <label className={labelClass}>{m.customerNoLink}</label>
                 <select value={convertCustomerId} onChange={(e) => setConvertCustomerId(e.target.value)} className={`mt-2 ${inputClass}`}>
-                  <option value="">Select a customer</option>
+                  <option value="">{m.selectCustomer}</option>
                   {customers.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.company || c.name}
@@ -608,11 +613,11 @@ function QuoteRequestsTab() {
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className={labelClass}>TITLE</label>
+                <label className={labelClass}>{q.titleLabel}</label>
                 <input value={title} onChange={(e) => setTitle(e.target.value)} required className={`mt-2 ${inputClass}`} />
               </div>
               <div>
-                <label className={labelClass}>CONTACT PERSON</label>
+                <label className={labelClass}>{q.contactPerson}</label>
                 <input
                   value={contactPerson}
                   onChange={(e) => setContactPerson(e.target.value)}
@@ -622,7 +627,7 @@ function QuoteRequestsTab() {
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className={labelClass}>VAT %</label>
+                <label className={labelClass}>{q.vat}</label>
                 <input
                   type="number"
                   min={0}
@@ -633,7 +638,7 @@ function QuoteRequestsTab() {
                 />
               </div>
               <div>
-                <label className={labelClass}>VALIDITY (DAYS)</label>
+                <label className={labelClass}>{q.validity}</label>
                 <input
                   type="number"
                   min={1}
@@ -655,15 +660,15 @@ function QuoteRequestsTab() {
 
             <div className="flex flex-col gap-1 rounded-md bg-ink-800 px-4 py-3 text-sm">
               <div className="flex items-center justify-between text-ink-300">
-                <span>Subtotal</span>
+                <span>{q.subtotal}</span>
                 <span>{formatMoney(liveSubtotal)}</span>
               </div>
               <div className="flex items-center justify-between text-ink-300">
-                <span>VAT ({vatRate || 0}%)</span>
+                <span>{q.vatLine(vatRate || 0)}</span>
                 <span>{formatMoney(liveVatAmount)}</span>
               </div>
               <div className="flex items-center justify-between font-semibold text-cyan-accent">
-                <span>Total</span>
+                <span>{shared.total}</span>
                 <span>{formatMoney(liveTotal)}</span>
               </div>
             </div>
@@ -671,20 +676,20 @@ function QuoteRequestsTab() {
             {formError && <p className="text-sm text-red-400">{formError}</p>}
 
             <button type="submit" disabled={submitting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
-              {submitting ? 'Creating…' : 'Create Draft Quotation'}
+              {submitting ? shared.creating : m.createDraft}
             </button>
           </form>
         </Modal>
       )}
 
       {declining && (
-        <Modal title="Decline request" onClose={() => setDeclining(null)}>
+        <Modal title={m.declineTitle} onClose={() => setDeclining(null)}>
           <form onSubmit={handleDecline} className="flex flex-col gap-4">
             <p className="text-sm text-ink-300">
-              Decline the quote request from {requesterName(declining)}?
+              {m.declineMessage(requesterName(declining, m.unknown))}
             </p>
             <div>
-              <label className={labelClass}>REASON (OPTIONAL)</label>
+              <label className={labelClass}>{m.reasonOptional}</label>
               <textarea
                 value={declineNote}
                 onChange={(e) => setDeclineNote(e.target.value)}
@@ -697,21 +702,20 @@ function QuoteRequestsTab() {
               disabled={declineSubmitting}
               className="justify-center rounded-md bg-red-400 py-2.5 text-sm font-semibold text-ink-950 hover:bg-red-300 disabled:opacity-50"
             >
-              {declineSubmitting ? 'Declining…' : 'Decline'}
+              {declineSubmitting ? m.declining : m.decline}
             </button>
           </form>
         </Modal>
       )}
 
       {acknowledging && (
-        <Modal title="Send acknowledgement" onClose={() => setAcknowledging(null)}>
+        <Modal title={m.ackTitle} onClose={() => setAcknowledging(null)}>
           <div className="flex flex-col gap-4">
             <p className="text-sm text-ink-300">
-              Satisfies the {slaHours}h SLA even before the priced quotation is ready. Save as a
-              draft if you're not ready to send yet, or send it now.
+              {m.ackIntro(slaHours)}
             </p>
             <div>
-              <label className={labelClass}>EMAIL BODY</label>
+              <label className={labelClass}>{m.emailBody}</label>
               <textarea
                 value={ackBody}
                 onChange={(e) => setAckBody(e.target.value)}
@@ -726,7 +730,7 @@ function QuoteRequestsTab() {
                 disabled={ackSaving !== null}
                 className={`flex-1 justify-center py-2.5 ${secondaryButtonClass}`}
               >
-                {ackSaving === 'draft' ? 'Saving…' : 'Save Draft'}
+                {ackSaving === 'draft' ? shared.saving : m.saveDraft}
               </button>
               <button
                 type="button"
@@ -734,7 +738,7 @@ function QuoteRequestsTab() {
                 disabled={ackSaving !== null}
                 className={`flex-1 justify-center py-2.5 ${primaryButtonClass}`}
               >
-                {ackSaving === 'send' ? 'Sending…' : 'Send'}
+                {ackSaving === 'send' ? m.sending : m.send}
               </button>
             </div>
           </div>
