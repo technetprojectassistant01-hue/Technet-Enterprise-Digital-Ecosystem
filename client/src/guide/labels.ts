@@ -2,8 +2,8 @@ import type { Language } from '../lib/api'
 
 /**
  * The User Guide page's own labels. Kept beside the guide text rather than in the i18n
- * dictionaries because they follow the same rule as the guides: a language without a guide yet
- * (Kreol, until it is written) shows the English guide with English labels, not a mix.
+ * dictionaries because they follow the same rule as the guides: a language without guides shows
+ * the English guide with English labels, never a mix.
  */
 export interface GuideLabels {
   pageTitle: string
@@ -18,9 +18,12 @@ export interface GuideLabels {
   /** Before and after the Help Center link, for "Nothing in the guide matches …". */
   noMatch: (query: string) => string
   noMatchHelp: string
-  /** BCP 47 locale for the "last checked" date. */
-  locale: string
+  /** The "last checked" date, e.g. "20 October 2026". */
+  formatDate: (date: Date) => string
 }
+
+const LONG_DATE: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'long', year: 'numeric' }
+const MFE_MONTHS = ['zanvie', 'fevrie', 'mars', 'avril', 'me', 'zin', 'zilyet', 'out', 'septam', 'oktob', 'novam', 'desam']
 
 const EN: GuideLabels = {
   pageTitle: 'User Guide',
@@ -33,7 +36,7 @@ const EN: GuideLabels = {
   openHelp: 'Open the Help Center',
   noMatch: (query) => `Nothing in the guide matches "${query}". Try another word, or look in the `,
   noMatchHelp: 'Help Center',
-  locale: 'en-GB',
+  formatDate: (date) => date.toLocaleDateString('en-GB', LONG_DATE),
 }
 
 const FR: GuideLabels = {
@@ -47,7 +50,22 @@ const FR: GuideLabels = {
   openHelp: "Ouvrir le Centre d'aide",
   noMatch: (query) => `Rien dans le guide ne correspond à « ${query} ». Essayez un autre mot, ou consultez le `,
   noMatchHelp: "Centre d'aide",
-  locale: 'fr-FR',
+  formatDate: (date) => date.toLocaleDateString('fr-FR', LONG_DATE),
 }
 
-export const GUIDE_LABELS: Record<Language, GuideLabels> = { en: EN, fr: FR, mfe: EN }
+const MFE: GuideLabels = {
+  pageTitle: 'Gid Itilizater',
+  contents: 'Sommer',
+  searchPlaceholder: 'Rod dan gid la — egz. ler siplemanter, mo de pas, devi',
+  searchAria: 'Rod dan gid la',
+  openPage: 'Ouver sa paz la',
+  lastChecked: (date) => `Finn verifie dan aplikasion la le ${date}.`,
+  noGuide: 'Gid pou ou rol pe ekrir ankor. Antan, Sant Led reponn bann kestion ki dimoun demann souvan.',
+  openHelp: 'Ouver Sant Led',
+  noMatch: (query) => `Nanye dan gid la pa koresponn ar « ${query} ». Eseye enn lot mo, ouswa get dan `,
+  noMatchHelp: 'Sant Led',
+  // Browsers have no Kreol month names, so they are written out here.
+  formatDate: (date) => `${date.getDate()} ${MFE_MONTHS[date.getMonth()]} ${date.getFullYear()}`,
+}
+
+export const GUIDE_LABELS: Record<Language, GuideLabels> = { en: EN, fr: FR, mfe: MFE }
