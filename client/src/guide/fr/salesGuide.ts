@@ -53,7 +53,7 @@ export const SALES_GUIDE_FR: RoleGuide = {
               kind: 'list',
               items: [
                 "Un client a demandé un devis depuis le portail. Cliquez dessus pour ouvrir le Call Log.",
-                'Un devis que vous avez créé a été marqué Approved ou Not Approved.',
+                'Un devis que vous avez créé a été marqué Approuvé ou Non approuvé.',
                 "Votre demande d'achat a été approuvée ou refusée.",
                 'Votre demande de congé a été décidée, ou vos outils ou votre matériel sont prêts.',
               ],
@@ -84,7 +84,7 @@ export const SALES_GUIDE_FR: RoleGuide = {
             {
               kind: 'list',
               items: [
-                "Suivi liste les appels notés sur les devis, par client ou par date. Pour noter un appel, ouvrez le devis et utilisez Follow-Up.",
+                "Suivi liste les appels notés sur les devis, par client ou par date. Pour noter un appel, ouvrez le devis et utilisez sa partie Suivi.",
                 "Contrats liste les contrats de service avec les clients, leur valeur et leurs dates de début et de fin. Vous pouvez les lire ; ajouter ou modifier un contrat revient à un administrateur ou au chargé des finances.",
               ],
             },
