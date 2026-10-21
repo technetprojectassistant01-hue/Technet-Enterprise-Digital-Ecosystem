@@ -37,7 +37,7 @@ export const FINANCE_GUIDE_FR: RoleGuide = {
               items: [
                 "Vous ajoutez et modifiez les clients, y compris leurs informations de facturation (BRN, numéro de TVA), et leur donnez accès au portail.",
                 'Vous enregistrez et mettez à jour les contrats de service.',
-                "Vous pouvez lire tous les devis, télécharger leur PDF et les envoyer par e-mail, mais créer et modifier les devis revient aux ventes.",
+                "Vous pouvez lire tous les devis et leur historique d'appels, télécharger leur PDF et les envoyer par e-mail, mais créer et modifier les devis revient aux ventes.",
                 "Vous pouvez ajouter des documents et demander un achat avec une demande d'achat.",
                 "Les projets, l'inventaire, les fournisseurs, les bons de commande et Technet Operations sont en consultation seule pour vous.",
                 "Vous ne pointez pas : il n'y a donc pas de page Présence dans votre menu. Mes congés et Mes documents fonctionnent une fois que les RH ont relié votre compte à votre fiche employé.",
@@ -103,7 +103,8 @@ export const FINANCE_GUIDE_FR: RoleGuide = {
                 "Devis liste tous les devis avec leur client, leur statut et leur total. Ouvrez-en un pour voir ses lignes, ses conditions de paiement et ses pièces jointes.",
                 "Download PDF enregistre le devis en PDF. Email Customer le télécharge et ouvre un e-mail avec le texte prêt ; joignez vous-même le PDF avant d'envoyer.",
                 "Suivi liste les devis par client ou par date, pour voir ce qui a été proposé et quand.",
-                "Créer, modifier et marquer les devis (envoyé, approuvé, non approuvé) revient aux ventes. Le Call Log des demandes de devis et l'historique des appels sur chaque devis ne sont visibles que par les ventes.",
+                "Follow-Up, sur un devis, montre chaque appel noté par les ventes : la date, l'interlocuteur et le résultat.",
+                "Créer, modifier et marquer les devis (envoyé, approuvé, non approuvé), noter les appels et le Call Log des demandes de devis reviennent aux ventes.",
               ],
             },
           ],
