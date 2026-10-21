@@ -10,7 +10,7 @@ export const TECHNICIAN_GUIDE: RoleGuide = {
   intro:
     'How to use Technet Digital on your phone: checking in and out, your jobs for the day, reports, leave, tools and documents. Each topic is one task, step by step.',
   roles: ['FIELD_TECHNICIAN'],
-  updated: '2026-10-19',
+  updated: '2026-10-21',
   chapters: [
     // ------------------------------------------------------------------------------------------
     {
@@ -67,7 +67,7 @@ export const TECHNICIAN_GUIDE: RoleGuide = {
           title: 'Change the language',
           path: '/dashboard/settings',
           blocks: [
-            { kind: 'p', text: 'Open Settings and choose English, Français or Kreol under Language. Your choice is saved on your account. This guide comes in English and French; in Kreol it shows in English for now.' },
+            { kind: 'p', text: 'Open Settings and choose English, Français or Kreol under Language. Your choice is saved on your account. This guide comes in English, French and Kreol.' },
           ],
         },
         {
