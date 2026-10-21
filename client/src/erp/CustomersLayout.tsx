@@ -1,5 +1,6 @@
 import { Outlet } from 'react-router-dom'
 import ModuleHeader from '../dashboard/ModuleHeader'
+import { navLabel, useT } from '../i18n'
 
 /**
  * Used to be Finance. Invoices and expenses were removed on 2026-09-17 because the company keeps
@@ -14,9 +15,15 @@ const TABS = [
 ]
 
 function CustomersLayout() {
+  const t = useT()
   return (
     <div className="flex flex-col gap-6">
-      <ModuleHeader title="Customers" subtitle="Management" tabs={TABS} searchPlaceholder="Search systems..." />
+      <ModuleHeader
+        title={navLabel(t, 'Customers')}
+        subtitle={t.erp.shared.management}
+        tabs={TABS.map((tab) => ({ ...tab, label: navLabel(t, tab.label) }))}
+        searchPlaceholder={t.erp.customersLayout.searchPlaceholder}
+      />
       <Outlet />
     </div>
   )
