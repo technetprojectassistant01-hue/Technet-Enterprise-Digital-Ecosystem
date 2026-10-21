@@ -11,6 +11,7 @@ import { useAuth } from '../context/AuthContext'
 import { hasRole, DOCUMENT_ROLES } from '../lib/permissions'
 import { useCustomers } from './useCustomers'
 import { useProjects } from './useProjects'
+import { useT } from '../i18n'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -48,6 +49,7 @@ function DocumentsPage() {
   const confirm = useConfirm()
   const { user } = useAuth()
   const canWrite = hasRole(user?.role, DOCUMENT_ROLES)
+  const { documents: m, shared } = useT().erp
   const customers = useCustomers()
   const projects = useProjects()
   const [documents, setDocuments] = useState<Document[]>([])
@@ -71,7 +73,7 @@ function DocumentsPage() {
     api
       .listDocuments({ category: category || undefined })
       .then(({ documents }) => setDocuments(documents))
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load documents'))
+      .catch((err) => setError(err instanceof Error ? err.message : m.loadFailed))
       .finally(() => setLoading(false))
   }
 
@@ -97,7 +99,7 @@ function DocumentsPage() {
     setFileError(null)
     const selected = e.target.files?.[0] || null
     if (selected && selected.size > MAX_FILE_BYTES) {
-      setFileError('File must be 15MB or smaller')
+      setFileError(m.fileTooBig)
       setFile(null)
       e.target.value = ''
       return
@@ -111,11 +113,11 @@ function DocumentsPage() {
     setFormError(null)
 
     if (!title.trim()) {
-      setFormError('Title is required')
+      setFormError(m.titleRequired)
       return
     }
     if (!file) {
-      setFormError('Choose a file to upload')
+      setFormError(m.chooseFile)
       return
     }
 
@@ -130,11 +132,11 @@ function DocumentsPage() {
         fileData,
         fileName: file.name,
       })
-      toast.success('Document uploaded')
+      toast.success(m.uploaded)
       setShowUpload(false)
       load()
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Failed to upload document')
+      setFormError(err instanceof Error ? err.message : m.uploadFailed)
     } finally {
       setSubmitting(false)
     }
@@ -148,7 +150,7 @@ function DocumentsPage() {
     setDownloadingId(doc.id)
     try {
       const res = await fetch(api.documentDownloadUrl(doc.id), { credentials: 'include' })
-      if (!res.ok) throw new Error('Failed to download document')
+      if (!res.ok) throw new Error(m.downloadFailed)
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -159,7 +161,7 @@ function DocumentsPage() {
       a.remove()
       URL.revokeObjectURL(url)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to download document')
+      toast.error(err instanceof Error ? err.message : m.downloadFailed)
     } finally {
       setDownloadingId(null)
     }
@@ -167,18 +169,18 @@ function DocumentsPage() {
 
   async function handleDelete(doc: Document) {
     const ok = await confirm({
-      title: 'Delete document',
-      message: `Delete "${doc.title}"? This cannot be undone.`,
-      confirmLabel: 'Delete',
+      title: m.deleteTitle,
+      message: m.deleteMessage(doc.title),
+      confirmLabel: shared.delete,
       tone: 'danger',
     })
     if (!ok) return
     try {
       await api.deleteDocument(doc.id)
-      toast.success('Document deleted')
+      toast.success(m.deleted)
       load()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to delete document')
+      toast.error(err instanceof Error ? err.message : m.deleteFailed)
     }
   }
 
@@ -188,23 +190,23 @@ function DocumentsPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-ink-100">Document Management</h1>
-          <p className="mt-1 text-sm text-ink-300">Central archive for contracts, invoices, and project files.</p>
+          <h1 className="text-2xl font-bold text-ink-100">{m.title}</h1>
+          <p className="mt-1 text-sm text-ink-300">{m.subtitle}</p>
         </div>
         {canWrite && (
           <button type="button" onClick={openUpload} className={primaryButtonClass}>
             <Upload className="h-4 w-4" />
-            Upload Document
+            {m.upload}
           </button>
         )}
       </div>
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-        <StatCard label="TOTAL DOCUMENTS" value={documents.length} icon={FileText} />
-        <StatCard label="STORAGE USED" value={formatSize(totalSize)} icon={FileText} />
+        <StatCard label={m.statTotal} value={documents.length} icon={FileText} />
+        <StatCard label={m.statStorage} value={formatSize(totalSize)} icon={FileText} />
       </div>
 
-      <Panel title="Document Archive">
+      <Panel title={m.panel}>
         <div className="mb-4 flex flex-wrap gap-2">
           <button
             type="button"
@@ -213,7 +215,7 @@ function DocumentsPage() {
               categoryFilter === '' ? 'bg-cyan-accent text-ink-950' : 'bg-ink-800 text-ink-300 hover:bg-ink-700'
             }`}
           >
-            All
+            {m.all}
           </button>
           {CATEGORIES.map((c) => (
             <button
@@ -224,7 +226,7 @@ function DocumentsPage() {
                 categoryFilter === c ? 'bg-cyan-accent text-ink-950' : 'bg-ink-800 text-ink-300 hover:bg-ink-700'
               }`}
             >
-              {DOCUMENT_CATEGORY_LABELS[c]}
+              {m.categories[c]}
             </button>
           ))}
         </div>
@@ -234,17 +236,17 @@ function DocumentsPage() {
         {loading ? (
           <TableSkeleton cols={6} />
         ) : documents.length === 0 ? (
-          <EmptyState icon={FileText} message="No documents yet. Upload your first document to get started." />
+          <EmptyState icon={FileText} message={m.empty} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
-                  <th className="px-3 py-3 font-semibold">TITLE</th>
-                  <th className="px-3 py-3 font-semibold">CATEGORY</th>
-                  <th className="px-3 py-3 font-semibold">LINKED TO</th>
-                  <th className="px-3 py-3 font-semibold">SIZE</th>
-                  <th className="px-3 py-3 font-semibold">UPLOADED</th>
+                  <th className="px-3 py-3 font-semibold">{m.colTitle}</th>
+                  <th className="px-3 py-3 font-semibold">{m.colCategory}</th>
+                  <th className="px-3 py-3 font-semibold">{m.colLinked}</th>
+                  <th className="px-3 py-3 font-semibold">{m.colSize}</th>
+                  <th className="px-3 py-3 font-semibold">{m.colUploaded}</th>
                   <th className="px-3 py-3" />
                 </tr>
               </thead>
@@ -259,7 +261,7 @@ function DocumentsPage() {
                       <div className="mt-0.5 text-xs text-ink-400">{doc.fileName}</div>
                     </td>
                     <td className="px-3 py-3">
-                      <Badge tone={categoryTone[doc.category]}>{DOCUMENT_CATEGORY_LABELS[doc.category]}</Badge>
+                      <Badge tone={categoryTone[doc.category]}>{m.categories[doc.category]}</Badge>
                     </td>
                     <td className="px-3 py-3 text-ink-300">
                       {doc.project?.name || (doc.customer && (doc.customer.company || doc.customer.name)) || '—'}
@@ -275,13 +277,13 @@ function DocumentsPage() {
                           type="button"
                           onClick={() => handleDownload(doc)}
                           disabled={downloadingId === doc.id}
-                          aria-label="Download document"
+                          aria-label={m.downloadAria}
                           className="hover:text-cyan-accent disabled:opacity-50"
                         >
                           <Download className="h-4 w-4" />
                         </button>
                         {canWrite && (
-                          <button type="button" onClick={() => handleDelete(doc)} aria-label="Delete document" className="hover:text-red-400">
+                          <button type="button" onClick={() => handleDelete(doc)} aria-label={m.deleteAria} className="hover:text-red-400">
                             <Trash2 className="h-4 w-4" />
                           </button>
                         )}
@@ -296,10 +298,10 @@ function DocumentsPage() {
       </Panel>
 
       {showUpload && (
-        <Modal title="Upload Document" onClose={() => setShowUpload(false)}>
+        <Modal title={m.upload} onClose={() => setShowUpload(false)}>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div>
-              <label className={labelClass}>FILE</label>
+              <label className={labelClass}>{m.file}</label>
               <div className="mt-2 flex items-center gap-3 rounded-md border border-dashed border-ink-600 bg-ink-950 px-4 py-3">
                 <Paperclip className="h-4 w-4 shrink-0 text-ink-400" />
                 <input
@@ -309,25 +311,25 @@ function DocumentsPage() {
                 />
               </div>
               {fileError && <p className="mt-1 text-xs text-red-400">{fileError}</p>}
-              <p className="mt-1 text-xs text-ink-400">Any document type. Max 15MB.</p>
+              <p className="mt-1 text-xs text-ink-400">{m.fileHint}</p>
             </div>
             <div>
-              <label className={labelClass}>TITLE</label>
+              <label className={labelClass}>{m.titleLabel}</label>
               <input value={title} onChange={(e) => setTitle(e.target.value)} required className={`mt-2 ${inputClass}`} />
             </div>
             <div>
-              <label className={labelClass}>CATEGORY</label>
+              <label className={labelClass}>{m.category}</label>
               <select value={category} onChange={(e) => setCategory(e.target.value as DocumentCategory)} className={`mt-2 ${inputClass}`}>
                 {CATEGORIES.map((c) => (
                   <option key={c} value={c}>
-                    {DOCUMENT_CATEGORY_LABELS[c]}
+                    {m.categories[c]}
                   </option>
                 ))}
               </select>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className={labelClass}>PROJECT (OPTIONAL)</label>
+                <label className={labelClass}>{shared.projectOptional}</label>
                 <select value={projectId} onChange={(e) => setProjectId(e.target.value)} className={`mt-2 ${inputClass}`}>
                   <option value="">—</option>
                   {projects.map((p) => (
@@ -338,7 +340,7 @@ function DocumentsPage() {
                 </select>
               </div>
               <div>
-                <label className={labelClass}>CUSTOMER (OPTIONAL)</label>
+                <label className={labelClass}>{m.customerOptional}</label>
                 <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className={`mt-2 ${inputClass}`}>
                   <option value="">—</option>
                   {customers.map((c) => (
@@ -353,7 +355,7 @@ function DocumentsPage() {
             {formError && <p className="text-sm text-red-400">{formError}</p>}
 
             <button type="submit" disabled={submitting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
-              {submitting ? 'Uploading…' : 'Upload Document'}
+              {submitting ? m.uploading : m.upload}
             </button>
           </form>
         </Modal>
