@@ -69,7 +69,7 @@ export const STOREKEEPER_GUIDE_MFE: RoleGuide = {
               items: [
                 'Disponib: dan magazin, kapav done.',
                 "Finn sorti: enn kikenn ena li. Sa stati la met kan ou done li e tire kan ou anrezistre retour la. Ou pa kapav sanz li ar lamin.",
-                'Pe repare: finn retourn abime, ouswa finn avoye pou repare. Remet li Disponib avek Modifye kan li finn repare.',
+                'Pe repare: finn retourn abime, ouswa finn avoye pou repare. Remet li Disponib avek Modifie kan li finn repare.',
                 "Pa servi ankor: pa servi zot ankor. Met enn zouti Pa servi ankor olie efas li, pou gard so listwar.",
                 "Leta (Bon, Pasab, Abime) anrezistre kan ou azout zouti la, e ankor lor sak retour.",
               ],
@@ -135,7 +135,7 @@ export const STOREKEEPER_GUIDE_MFE: RoleGuide = {
           path: '/dashboard/operations/work-orders',
           blocks: [
             { kind: 'p', text: "Technet Operations montre bann travay prevwar pou teknisien ek bann rapor zournalie ek intervansion ki zot soumet. Rapor intervansion montre materyo ki finn servi lor sak vizit." },
-            { kind: 'note', text: "Se enn administrater ouswa Responsab Operasion ki kre travay e ki aksepte rapor." },
+            { kind: 'note', text: "Se enn administrater ouswa Responsab Operasion ki kre travay e ki aprouv rapor." },
           ],
         },
       ],
