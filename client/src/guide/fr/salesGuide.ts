@@ -114,9 +114,9 @@ export const SALES_GUIDE_FR: RoleGuide = {
             {
               kind: 'steps',
               items: [
-                'Ouvrez Technet ERP → Documents et cliquez sur Upload Document.',
-                "Choisissez le fichier (FILE), donnez-lui un titre (TITLE) et une catégorie (CATEGORY : contrat, projet, devis…), et choisissez le projet (PROJECT) ou le client (CUSTOMER) s'il en relève.",
-                'Cliquez sur Upload Document. Toute personne qui peut ouvrir Documents le retrouvera.',
+                'Ouvrez Technet ERP → Documents et cliquez sur Ajouter un document.',
+                "Choisissez le FICHIER, donnez-lui un TITRE et une CATÉGORIE (contrat, projet, devis…), et choisissez le PROJET ou le CLIENT s'il en relève.",
+                'Cliquez sur Ajouter un document. Toute personne qui peut ouvrir Documents le retrouvera.',
               ],
             },
           ],
