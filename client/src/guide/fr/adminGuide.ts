@@ -668,8 +668,8 @@ export const ADMIN_GUIDE_FR: RoleGuide = {
             {
               kind: 'list',
               items: [
-                "Technet ERP → Clients → Add Customer crée un client (nom, société, coordonnées, BRN, numéro de TVA, adresse).",
-                "L'accès au portail donne à un client son propre compte sur Technet Connect, où il voit ses devis et l'avancement de ses interventions et peut demander un devis. Cliquez sur Grant portal access, saisissez son e-mail et donnez-lui le mot de passe affiché. Vous pouvez le réinitialiser ou le retirer plus tard.",
+                "Technet ERP → Clients → Ajouter un client crée un client (nom, société, coordonnées, BRN, numéro de TVA, adresse).",
+                "L'accès au portail donne à un client son propre compte sur Technet Connect, où il voit ses devis et l'avancement de ses interventions et peut demander un devis. Cliquez sur l'icône de clé (Donner l'accès au portail), saisissez son e-mail, cliquez sur Donner l'accès et donnez-lui le mot de passe affiché. Vous pouvez le réinitialiser ou le retirer plus tard.",
               ],
             },
           ],
@@ -728,7 +728,7 @@ export const ADMIN_GUIDE_FR: RoleGuide = {
               kind: 'list',
               items: [
                 'Suivi liste les appels notés sur les devis, par client ou par date.',
-                "Contrats : New Contract enregistre un contrat de service avec un client, sa valeur et ses dates de début et de fin.",
+                "Contrats : Nouveau contrat enregistre un contrat de service avec un client, sa valeur et ses dates de début et de fin.",
               ],
             },
           ],
