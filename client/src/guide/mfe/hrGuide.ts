@@ -203,7 +203,7 @@ export const HR_GUIDE_MFE: RoleGuide = {
                 "Rapor zournalie ek Rapor intervansion montre seki teknisien finn soumet pou sak zour ek sak vizit. Servi filtre dat ek kliyan pou trouv enn.",
               ],
             },
-            { kind: 'note', text: "Se enn administrater ouswa Responsab Operasion ki kre bon travay e ki aksepte ouswa refiz rapor." },
+            { kind: 'note', text: "Se enn administrater ouswa Responsab Operasion ki kre bon travay e ki aprouv ouswa refiz rapor." },
           ],
         },
         {
