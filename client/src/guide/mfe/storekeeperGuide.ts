@@ -12,7 +12,7 @@ const shared = topicsFrom(ADMIN_GUIDE_MFE)
 export const STOREKEEPER_GUIDE_MFE: RoleGuide = {
   title: 'Gid magazinie',
   intro:
-    "Kouma pou fer magazin la marse dan Technet Digital: zouti ek lekipman, materyo, bann demann ki ariv, ek inventer ek lasa dan ERP. Li swiv ou meni depi anler ziska anba. Bann paz ERP pa ankor tradwir; zot bouton ekrir isi an angle.",
+    "Kouma pou fer magazin la marse dan Technet Digital: zouti ek lekipman, materyo, bann demann ki ariv, ek inventer ek lasa dan ERP. Li swiv ou meni depi anler ziska anba. Paz Sekirite pa ankor tradwir; so bann bouton ekrir isi an angle.",
   roles: ['STOREKEEPER'],
   updated: '2026-10-21',
   chapters: [
