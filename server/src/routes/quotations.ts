@@ -5,7 +5,7 @@ import { requireAuth, requireRole } from "../middleware/auth";
 import { isForeignKeyConstraintError, isNotFoundError, isUniqueConstraintError } from "../lib/prismaErrors";
 import { generateQuotationPdf } from "../lib/pdf/quotationPdf";
 import { generateQuotationNumber } from "../lib/quotationNumber";
-import { SALES_ROLES, QUOTE_REQUEST_VIEW_ROLES, NON_FIELD_ROLES, isAdminLike } from "../lib/roles";
+import { SALES_ROLES, QUOTE_REQUEST_VIEW_ROLES, NON_FIELD_ROLES, CUSTOMER_MANAGE_ROLES, isAdminLike } from "../lib/roles";
 import { notifyUser } from "../lib/notifications";
 
 const router = Router();
@@ -735,7 +735,9 @@ router.patch("/:id", requireRole(...SALES_ROLES), async (req, res) => {
  * quotation has gone out.
  * ------------------------------------------------------------------ */
 
-router.get("/:id/follow-ups", requireRole(...SALES_ROLES), async (req, res) => {
+// Reading the call history is open to Finance too (they manage the customer and see the quotation;
+// an empty list looked like nobody had called - user request 2026-10-20). Logging calls stays Sales.
+router.get("/:id/follow-ups", requireRole(...CUSTOMER_MANAGE_ROLES), async (req, res) => {
   const id = req.params.id as string;
   const followUps = await prisma.quotationFollowUp.findMany({
     where: { quotationId: id },
