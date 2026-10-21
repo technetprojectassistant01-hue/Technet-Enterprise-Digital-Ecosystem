@@ -33,32 +33,36 @@ import { contractStatusTone, projectStatusTone } from './erp/statusTones'
 import { formatMoney } from './lib/format'
 import { useAuth } from './context/AuthContext'
 import { hasRole, HR_ROLES } from './lib/permissions'
+import { useT } from './i18n'
+import type { ErpDict } from './i18n/erp/en'
 
 const PIPELINE_STEPS = [
   { label: 'CUSTOMERS', icon: UserPlus },
   { label: 'QUOTE', icon: FileText },
   { label: 'CONTRACT', icon: Radio },
   { label: 'PROJECT', icon: Wrench },
-]
+] as const
 
-function timeAgo(iso: string) {
+function timeAgo(iso: string, m: ErpDict['quoteRequests']) {
   const diffMs = Date.now() - new Date(iso).getTime()
   const mins = Math.floor(diffMs / 60000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins}m ago`
+  if (mins < 1) return m.justNow
+  if (mins < 60) return m.minutesAgo(mins)
   const hours = Math.floor(mins / 60)
-  if (hours < 24) return `${hours}h ago`
-  return `${Math.floor(hours / 24)}d ago`
+  if (hours < 24) return m.hoursAgo(hours)
+  return m.daysAgo(Math.floor(hours / 24))
 }
 
 function formatDate(iso: string | null) {
   if (!iso) return '—'
-  return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+  // Numbers only (21/10/2026) so the date reads the same in every language.
+  return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
 function TechnetErpPage() {
   const { user } = useAuth()
   const canSeeHr = hasRole(user?.role, HR_ROLES)
+  const { overview: m, quoteRequests: ago, shared, status, projectDetail } = useT().erp
 
   const [inventory, setInventory] = useState<InventoryItem[] | null>(null)
   const [customers, setCustomers] = useState<Customer[] | null>(null)
@@ -116,50 +120,50 @@ function TechnetErpPage() {
     ...(customers ?? []).map((c) => ({
       icon: UserCheck,
       tone: 'default' as const,
-      title: 'New Customer Added',
-      detail: `${c.company || c.name} · ${timeAgo(c.createdAt)}`,
+      title: m.newCustomer,
+      detail: `${c.company || c.name} · ${timeAgo(c.createdAt, ago)}`,
       at: c.createdAt,
     })),
     ...(quotations ?? []).map((q) => ({
       icon: Receipt,
       tone: 'accent' as const,
-      title: `Quotation "${q.title}" Created`,
-      detail: `For ${q.customer.company || q.customer.name} · ${timeAgo(q.createdAt)}`,
+      title: m.quotationCreated(q.title),
+      detail: `${m.forCustomer(q.customer.company || q.customer.name)} · ${timeAgo(q.createdAt, ago)}`,
       at: q.createdAt,
     })),
     ...lowStockItems.map((item) => ({
       icon: PackageX,
       tone: 'warning' as const,
-      title: 'Stock Alert Triggered',
-      detail: `${item.name} Low · ${timeAgo(item.updatedAt)}`,
+      title: m.stockAlert,
+      detail: `${m.lowItem(item.name)} · ${timeAgo(item.updatedAt, ago)}`,
       at: item.updatedAt,
     })),
     ...(requisitions ?? []).map((r) => ({
       icon: ClipboardList,
       tone: 'default' as const,
-      title: `Requisition ${r.requisitionNumber} Submitted`,
-      detail: `${r.project?.name || 'No project'} · ${timeAgo(r.createdAt)}`,
+      title: m.requisitionSubmitted(r.requisitionNumber),
+      detail: `${r.project?.name || shared.noProject} · ${timeAgo(r.createdAt, ago)}`,
       at: r.createdAt,
     })),
     ...(purchaseOrders ?? []).map((po) => ({
       icon: ShoppingCart,
       tone: 'default' as const,
-      title: `Purchase Order ${po.poNumber} Created`,
-      detail: `${po.supplier.name} · ${formatMoney(po.totalAmount)} · ${timeAgo(po.createdAt)}`,
+      title: m.poCreated(po.poNumber),
+      detail: `${po.supplier.name} · ${formatMoney(po.totalAmount)} · ${timeAgo(po.createdAt, ago)}`,
       at: po.createdAt,
     })),
     ...(projects ?? []).map((p) => ({
       icon: FolderKanban,
       tone: 'default' as const,
-      title: `Project "${p.name}" Created`,
-      detail: `${p.customer?.company || p.customer?.name || 'No customer'} · ${timeAgo(p.createdAt)}`,
+      title: m.projectCreated(p.name),
+      detail: `${p.customer?.company || p.customer?.name || projectDetail.noCustomer} · ${timeAgo(p.createdAt, ago)}`,
       at: p.createdAt,
     })),
     ...(documents ?? []).map((d) => ({
       icon: FileText,
       tone: 'default' as const,
-      title: `Document "${d.title}" Uploaded`,
-      detail: `${d.uploadedBy.name || d.uploadedBy.email} · ${timeAgo(d.createdAt)}`,
+      title: m.documentUploaded(d.title),
+      detail: `${d.uploadedBy.name || d.uploadedBy.email} · ${timeAgo(d.createdAt, ago)}`,
       at: d.createdAt,
     })),
   ]
@@ -179,48 +183,48 @@ function TechnetErpPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
         <div>
-          <h1 className="text-2xl font-bold text-ink-100">Engineering Dashboard</h1>
+          <h1 className="text-2xl font-bold text-ink-100">{m.title}</h1>
           <p className="mt-1 text-sm text-ink-300">
-            Customers, quotations, projects and purchasing at a glance.
+            {m.subtitle}
           </p>
         </div>
         <div className="flex gap-3">
           <button className="flex items-center gap-2 rounded-md border border-ink-700 bg-ink-900 px-4 py-2 text-sm text-ink-200 hover:bg-ink-800">
             <Calendar className="h-4 w-4" />
-            Last 30 Days
+            {m.last30}
           </button>
           <button className="flex items-center gap-2 rounded-md border border-ink-700 bg-ink-800 px-4 py-2 text-sm text-ink-100 hover:bg-ink-700">
             <Download className="h-4 w-4" />
-            Export PDF
+            {m.exportPdf}
           </button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <Link to="/dashboard/erp/customers" className="block">
-          <StatCard label="TOTAL CUSTOMERS" value={customers === null ? '—' : customers.length} />
+          <StatCard label={m.totalCustomers} value={customers === null ? '—' : customers.length} />
         </Link>
         <Link to="/dashboard/erp/customers/quotations" className="block">
           <StatCard
-            label="ACTIVE QUOTATIONS"
+            label={m.activeQuotations}
             value={quotations === null ? '—' : activeQuotations.length}
-            delta={quotations === null ? undefined : `${activeQuotations.length} Pending`}
+            delta={quotations === null ? undefined : m.pending(activeQuotations.length)}
             deltaTone="warning"
           />
         </Link>
         <Link to="/dashboard/erp/customers/contracts" className="block">
-          <StatCard label="ACTIVE CONTRACTS" value={contracts === null ? '—' : activeContracts.length} />
+          <StatCard label={m.activeContracts} value={contracts === null ? '—' : activeContracts.length} />
         </Link>
         <Link to="/dashboard/erp/inventory" className="block">
           <StatCard
-            label="INVENTORY ITEMS"
+            label={m.inventoryItems}
             value={inventory === null ? '—' : inventory.length}
             delta={
               inventory === null
                 ? undefined
                 : lowStockItems.length > 0
-                  ? `${lowStockItems.length} Low Stock`
-                  : 'All stocked'
+                  ? m.lowStock(lowStockItems.length)
+                  : m.allStocked
             }
             deltaTone="warning"
           />
@@ -229,28 +233,28 @@ function TechnetErpPage() {
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <Link to="/dashboard/erp/projects" className="block">
-          <StatCard label="ACTIVE PROJECTS" value={projects === null ? '—' : activeProjects.length} />
+          <StatCard label={m.activeProjects} value={projects === null ? '—' : activeProjects.length} />
         </Link>
         <Link to="/dashboard/erp/procurement/requisitions" className="block">
           <StatCard
-            label="PENDING REQUISITIONS"
+            label={m.pendingRequisitions}
             value={requisitions === null ? '—' : pendingRequisitions.length}
-            delta={requisitions !== null && pendingRequisitions.length > 0 ? 'Needs approval' : undefined}
+            delta={requisitions !== null && pendingRequisitions.length > 0 ? m.needsApproval : undefined}
             deltaTone="warning"
           />
         </Link>
         <Link to="/dashboard/erp/procurement/purchase-orders" className="block">
-          <StatCard label="OPEN PURCHASE ORDERS" value={purchaseOrders === null ? '—' : openPurchaseOrders.length} />
+          <StatCard label={m.openPurchaseOrders} value={purchaseOrders === null ? '—' : openPurchaseOrders.length} />
         </Link>
         <Link to="/dashboard/hr/employees" className="block">
-          <StatCard label="ACTIVE HEADCOUNT" value={employees === null ? '—' : activeHeadcount.length} />
+          <StatCard label={m.activeHeadcount} value={employees === null ? '—' : activeHeadcount.length} />
         </Link>
         {canSeeHr && (
           <Link to="/dashboard/hr/leave" className="block">
             <StatCard
-              label="LEAVE PENDING APPROVAL"
+              label={m.leavePending}
               value={pendingLeaveCount === null ? '—' : pendingLeaveCount}
-              delta={pendingLeaveCount !== null && pendingLeaveCount > 0 ? 'Needs approval' : undefined}
+              delta={pendingLeaveCount !== null && pendingLeaveCount > 0 ? m.needsApproval : undefined}
               deltaTone="warning"
             />
           </Link>
@@ -260,15 +264,15 @@ function TechnetErpPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Panel
           className="lg:col-span-2"
-          title="Sales Pipeline"
-          action={<span className="text-xs text-ink-400">CONVERSION RATE: {conversionRate}%</span>}
+          title={m.salesPipeline}
+          action={<span className="text-xs text-ink-400">{m.conversionRate(conversionRate)}</span>}
         >
           <span className="inline-block rounded bg-cyan-accent/10 px-2 py-1 text-[11px] font-semibold tracking-widest text-cyan-accent">
-            QUOTATIONS → CONTRACTS
+            {m.quotesToContracts}
           </span>
           <div className="mt-3 flex items-center justify-between text-xs text-ink-400">
             <span />
-            <span className="text-cyan-accent">{pipelineProgress}% Complete</span>
+            <span className="text-cyan-accent">{m.complete(pipelineProgress)}</span>
           </div>
           <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-ink-700">
             <div className="h-full rounded-full bg-cyan-accent" style={{ width: `${pipelineProgress}%` }} />
@@ -290,7 +294,7 @@ function TechnetErpPage() {
                     >
                       <step.icon className="h-4 w-4" />
                     </div>
-                    <span className="text-[10px] tracking-widest text-ink-400">{step.label}</span>
+                    <span className="text-[10px] tracking-widest text-ink-400">{m.steps[step.label]}</span>
                   </div>
                   {i < PIPELINE_STEPS.length - 1 && (
                     <div className="mx-2 mt-[-18px] h-px flex-1 bg-ink-700" />
@@ -302,21 +306,21 @@ function TechnetErpPage() {
         </Panel>
 
         <Panel
-          title="Inventory Alerts"
+          title={m.inventoryAlerts}
           icon={AlertTriangle}
           action={
             <Link
               to="/dashboard/erp/inventory"
               className="text-xs font-semibold text-cyan-accent hover:underline"
             >
-              Manage &gt;
+              {m.manage}
             </Link>
           }
         >
           {inventory === null ? (
             <TableSkeleton rows={2} cols={2} />
           ) : lowStockItems.length === 0 ? (
-            <EmptyState icon={AlertTriangle} message="No low-stock items." />
+            <EmptyState icon={AlertTriangle} message={m.noLowStock} />
           ) : (
             <div className="flex flex-col gap-3">
               {lowStockItems.slice(0, 5).map((item) => (
@@ -328,8 +332,8 @@ function TechnetErpPage() {
                     </span>
                   </div>
                   <div className="mt-1 flex items-center justify-between text-xs text-ink-400">
-                    <span>SKU: {item.sku}</span>
-                    <span>Min: {item.minStockLevel}</span>
+                    <span>{m.sku(item.sku)}</span>
+                    <span>{m.min(item.minStockLevel)}</span>
                   </div>
                 </div>
               ))}
@@ -341,30 +345,30 @@ function TechnetErpPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Panel
           className="lg:col-span-2"
-          title="Active Projects"
+          title={m.activeProjectsPanel}
           icon={FolderKanban}
           action={
             <Link
               to="/dashboard/erp/projects"
               className="text-xs font-semibold text-cyan-accent hover:underline"
             >
-              View All &gt;
+              {m.viewAll}
             </Link>
           }
         >
           {projects === null ? (
             <TableSkeleton rows={3} cols={4} />
           ) : activeProjects.length === 0 ? (
-            <EmptyState icon={FolderKanban} message="No active projects." />
+            <EmptyState icon={FolderKanban} message={m.noActiveProjects} />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="text-[11px] tracking-widest text-ink-400">
-                    <th className="pb-3 font-semibold">PROJECT</th>
-                    <th className="pb-3 font-semibold">CUSTOMER</th>
-                    <th className="pb-3 font-semibold">STATUS</th>
-                    <th className="pb-3 font-semibold">BUDGET</th>
+                    <th className="pb-3 font-semibold">{m.colProject}</th>
+                    <th className="pb-3 font-semibold">{m.colCustomer}</th>
+                    <th className="pb-3 font-semibold">{shared.status}</th>
+                    <th className="pb-3 font-semibold">{m.colBudget}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -376,7 +380,7 @@ function TechnetErpPage() {
                         <td className="py-3 text-ink-100">{p.name}</td>
                         <td className="py-3 text-ink-300">{p.customer?.company || p.customer?.name || '—'}</td>
                         <td className="py-3">
-                          <Badge tone={projectStatusTone[p.status]}>{p.status.replace('_', ' ')}</Badge>
+                          <Badge tone={projectStatusTone[p.status]}>{status.project[p.status]}</Badge>
                         </td>
                         <td className="py-3 font-medium text-ink-100">{p.budget ? formatMoney(p.budget) : '—'}</td>
                       </tr>
@@ -388,32 +392,32 @@ function TechnetErpPage() {
         </Panel>
 
         <Panel
-          title="Requisitions Awaiting Approval"
+          title={m.requisitionsAwaiting}
           icon={ClipboardList}
           action={
             <Link
               to="/dashboard/erp/procurement/requisitions"
               className="text-xs font-semibold text-cyan-accent hover:underline"
             >
-              View All &gt;
+              {m.viewAll}
             </Link>
           }
         >
           {requisitions === null ? (
             <TableSkeleton rows={3} cols={2} />
           ) : pendingRequisitions.length === 0 ? (
-            <EmptyState icon={ClipboardList} message="Nothing waiting for approval." />
+            <EmptyState icon={ClipboardList} message={m.nothingWaiting} />
           ) : (
             <div className="flex flex-col gap-3">
               {pendingRequisitions.slice(0, 5).map((r) => (
                 <div key={r.id} className="rounded-lg bg-ink-800 px-4 py-3">
                   <div className="flex items-start justify-between gap-2">
                     <span className="text-sm font-medium text-ink-100">{r.requisitionNumber}</span>
-                    <span className="shrink-0 text-xs text-ink-400">{r.items.length} item{r.items.length === 1 ? '' : 's'}</span>
+                    <span className="shrink-0 text-xs text-ink-400">{m.itemCount(r.items.length)}</span>
                   </div>
                   <div className="mt-1 flex items-center justify-between text-xs text-ink-400">
-                    <span>{r.project?.name || 'No project'}</span>
-                    <span>Needed {formatDate(r.neededByDate)}</span>
+                    <span>{r.project?.name || shared.noProject}</span>
+                    <span>{m.needed(formatDate(r.neededByDate))}</span>
                   </div>
                 </div>
               ))}
@@ -425,29 +429,29 @@ function TechnetErpPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Panel
           className="lg:col-span-2"
-          title="Active Customer Contracts"
+          title={m.activeCustomerContracts}
           action={
             <Link
               to="/dashboard/erp/customers/contracts"
               className="text-xs font-semibold text-cyan-accent hover:underline"
             >
-              View All &gt;
+              {m.viewAll}
             </Link>
           }
         >
           {contracts === null ? (
             <TableSkeleton rows={3} cols={4} />
           ) : activeContracts.length === 0 ? (
-            <EmptyState icon={Receipt} message="No active contracts yet." />
+            <EmptyState icon={Receipt} message={m.noActiveContracts} />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="text-[11px] tracking-widest text-ink-400">
-                    <th className="pb-3 font-semibold">COMPANY</th>
-                    <th className="pb-3 font-semibold">SERVICE</th>
-                    <th className="pb-3 font-semibold">CONTRACT VALUE</th>
-                    <th className="pb-3 font-semibold">STATUS</th>
+                    <th className="pb-3 font-semibold">{m.colCompany}</th>
+                    <th className="pb-3 font-semibold">{m.colService}</th>
+                    <th className="pb-3 font-semibold">{m.colContractValue}</th>
+                    <th className="pb-3 font-semibold">{shared.status}</th>
                     <th className="pb-3 font-semibold" />
                   </tr>
                 </thead>
@@ -465,7 +469,7 @@ function TechnetErpPage() {
                         <td className="py-3 text-ink-300">{c.service}</td>
                         <td className="py-3 font-medium text-ink-100">{formatMoney(c.value)}</td>
                         <td className="py-3">
-                          <Badge tone={contractStatusTone[c.status]}>{c.status.replace('_', ' ')}</Badge>
+                          <Badge tone={contractStatusTone[c.status]}>{status.contract[c.status]}</Badge>
                         </td>
                         <td className="py-3 text-ink-400">
                           <MoreHorizontal className="h-4 w-4" />
@@ -479,11 +483,11 @@ function TechnetErpPage() {
           )}
         </Panel>
 
-        <Panel title="Recent Activity">
+        <Panel title={m.recentActivity}>
           {!loaded ? (
             <TableSkeleton rows={4} cols={1} />
           ) : activity.length === 0 ? (
-            <EmptyState icon={UserCheck} message="No activity yet." />
+            <EmptyState icon={UserCheck} message={m.noActivity} />
           ) : (
             <div className="flex flex-col gap-4">
               {activity.map((item, i) => (
