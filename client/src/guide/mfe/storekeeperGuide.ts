@@ -96,9 +96,9 @@ export const STOREKEEPER_GUIDE_MFE: RoleGuide = {
             {
               kind: 'list',
               items: [
-                "Add Item kre enn lartik avek so SKU, kategori, linite, pri inite, plas, kantite depar ek stok minimom.",
-                "Adjust stock anrezistre enn Stock In, enn Stock Out ouswa enn Adjustment, avek enn rezon si ou anvi. Stock Ledger montre sak mouvman.",
-                'Bann lartik ki ariv nivo minimom ouswa anba konte kouma LOW STOCK.',
+                "Azout enn lartik kre enn lartik avek so REF., kategori, linite, pri inite, plas, kantite depar ek stok minimom.",
+                "Bouton Azist stok (bann fles) anrezistre enn Rantre, enn Sorti ouswa enn Azisteman, avek enn rezon si ou anvi. Rezis stok montre sak mouvman.",
+                'Bann lartik ki ariv nivo minimom ouswa anba konte kouma STOK BA.',
                 "Marsandiz ki resevwar lor enn bon komand azoute dan Inventer otomatikman pou bann lign ki konekte ar enn lartik.",
               ],
             },
