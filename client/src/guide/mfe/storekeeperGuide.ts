@@ -109,13 +109,13 @@ export const STOREKEEPER_GUIDE_MFE: RoleGuide = {
           title: 'Aprouv demann lasa',
           path: '/dashboard/erp/procurement/requisitions',
           blocks: [
-            { kind: 'p', text: "Enn demann lasa se enn demann depi biro pou aste kiksoz. Personel biro kre zot avek New Requisition; ou ek administrater deside." },
+            { kind: 'p', text: "Enn demann lasa se enn demann depi biro pou aste kiksoz. Personel biro kre zot avek Nouvo demann lasa; ou ek administrater deside." },
             {
               kind: 'steps',
               items: [
-                "Ouver Technet ERP → Lasa → Demann lasa e ouver enn demann AWAITING APPROVAL.",
-                "Klik Approve, ouswa Reject avek enn rezon. Dimoun ki finn demande gagn enn notifikasion.",
-                "Pou enn demann aprouve, klik Convert to Purchase Order, swazir fourniser la e rant pri inite.",
+                "Ouver Technet ERP → Lasa → Demann lasa e ouver enn demann PE ATANN.",
+                "Klik Aprouve, ouswa Refize avek enn rezon. Dimoun ki finn demande gagn enn notifikasion.",
+                "Pou enn demann aprouve, klik Konverti an bon komand, swazir fourniser la e rant pri inite.",
               ],
             },
           ],
