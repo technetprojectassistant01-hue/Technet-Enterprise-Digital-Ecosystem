@@ -23,21 +23,11 @@ import { useCustomers } from './useCustomers'
 import { usePaymentTermLabels } from './usePaymentTermLabels'
 import SalesLineItemsEditor, { EMPTY_SALES_LINE_ITEM, type SalesLineItemRow } from './SalesLineItemsEditor'
 import PaymentTermsLinesEditor, { EMPTY_PAYMENT_TERMS_LINE } from './PaymentTermsLinesEditor'
+import { useT } from '../i18n'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
 const labelClass = 'text-xs font-semibold tracking-widest text-ink-400'
-
-const FOLLOWUP_LABEL: Record<QuotationFollowUpOutcome, string> = Object.fromEntries(
-  QUOTATION_FOLLOWUP_OUTCOMES.map((o) => [o.value, o.label]),
-) as Record<QuotationFollowUpOutcome, string>
-
-function displayStatus(status: Quotation['status']): string {
-  if (status === 'ACCEPTED') return 'Approved'
-  if (status === 'REJECTED') return 'Not Approved'
-  if (status === 'EXPIRED') return 'Expired'
-  return 'In Progress'
-}
 
 function readFileAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -61,6 +51,7 @@ function QuotationDetailPage() {
   const { user } = useAuth()
   const canWrite = hasRole(user?.role, SALES_ROLES)
   const isAdmin = isAdminLike(user?.role)
+  const { quotationDetail: m, quotations: q, shared, followUpOutcomes, productLines, lineItems, salesLines } = useT().erp
   const customers = useCustomers()
   const paymentTermLabels = usePaymentTermLabels()
 
@@ -118,7 +109,7 @@ function QuotationDetailPage() {
         // but only if the user hasn't already started typing a different name in.
         setSpokenTo((prev) => prev || quotation.contactPerson || '')
       })
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load quotation'))
+      .catch((err) => setError(err instanceof Error ? err.message : m.loadFailed))
       .finally(() => setLoading(false))
   }
 
@@ -151,10 +142,10 @@ function QuotationDetailPage() {
     setUpdating(true)
     try {
       await api.updateQuotation(quotation.id, { status })
-      toast.success('Status updated')
+      toast.success(m.statusUpdated)
       load()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to update status')
+      toast.error(err instanceof Error ? err.message : m.statusFailed)
     } finally {
       setUpdating(false)
     }
@@ -185,13 +176,13 @@ function QuotationDetailPage() {
     e.preventDefault()
     setEditError(null)
     if (!quotation) return
-    if (!editCustomerId) return setEditError('Select a customer')
+    if (!editCustomerId) return setEditError(q.selectCustomer)
     if (editIncludesOrder && editAvailabilityStatus === 'ORDER_PENDING' && (!editOrderDays.trim() || Number(editOrderDays) <= 0)) {
-      return setEditError('Enter how many days until the order is received')
+      return setEditError(q.orderDaysRequired)
     }
     const editPaymentTotal = editPaymentTermsLines.reduce((sum, l) => sum + (Number(l.percentage) || 0), 0)
     if (Math.round(editPaymentTotal * 100) !== 10000) {
-      return setEditError('Payment terms percentages must sum to 100')
+      return setEditError(q.termsMustSum)
     }
 
     setSavingItems(true)
@@ -208,11 +199,11 @@ function QuotationDetailPage() {
           unitPrice: Number(item.unitPrice),
         })),
       })
-      toast.success('Quotation updated')
+      toast.success(m.updated)
       setEditingItems(false)
       load()
     } catch (err) {
-      setEditError(err instanceof Error ? err.message : 'Failed to save changes')
+      setEditError(err instanceof Error ? err.message : m.saveFailed)
     } finally {
       setSavingItems(false)
     }
@@ -223,10 +214,10 @@ function QuotationDetailPage() {
     setSavingContactPerson(true)
     try {
       await api.updateQuotation(quotation.id, { contactPerson: contactPersonInput.trim() || null })
-      toast.success('Saved')
+      toast.success(m.saved)
       load()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to save')
+      toast.error(err instanceof Error ? err.message : m.saveFailedShort)
     } finally {
       setSavingContactPerson(false)
     }
@@ -237,10 +228,10 @@ function QuotationDetailPage() {
     setSavingProductLine(true)
     try {
       await api.updateQuotation(quotation.id, { productLine: productLineInput || null })
-      toast.success('Saved')
+      toast.success(m.saved)
       load()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to save')
+      toast.error(err instanceof Error ? err.message : m.saveFailedShort)
     } finally {
       setSavingProductLine(false)
     }
@@ -251,10 +242,10 @@ function QuotationDetailPage() {
     setSavingPoReference(true)
     try {
       await api.updateQuotation(quotation.id, { poReference: poReference.trim() || null })
-      toast.success('Saved')
+      toast.success(m.saved)
       load()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to save')
+      toast.error(err instanceof Error ? err.message : m.saveFailedShort)
     } finally {
       setSavingPoReference(false)
     }
@@ -264,8 +255,8 @@ function QuotationDetailPage() {
     e.preventDefault()
     setLogError(null)
     if (!id) return
-    if (!spokenTo.trim()) return setLogError('Who was spoken to is required')
-    if (outcome === 'CALL_BACK' && !callScheduledOn) return setLogError('Call schedule date is required')
+    if (!spokenTo.trim()) return setLogError(m.spokenToRequired)
+    if (outcome === 'CALL_BACK' && !callScheduledOn) return setLogError(m.scheduleRequired)
 
     setLoggingCall(true)
     try {
@@ -274,13 +265,13 @@ function QuotationDetailPage() {
         outcome,
         callScheduledOn: outcome === 'CALL_BACK' ? callScheduledOn : undefined,
       })
-      toast.success('Call logged')
+      toast.success(m.callLogged)
       setSpokenTo(quotation?.contactPerson || '')
       setOutcome('CALL_BACK')
       setCallScheduledOn('')
       loadFollowUps()
     } catch (err) {
-      setLogError(err instanceof Error ? err.message : 'Failed to log call')
+      setLogError(err instanceof Error ? err.message : m.logFailed)
     } finally {
       setLoggingCall(false)
     }
@@ -294,10 +285,10 @@ function QuotationDetailPage() {
     try {
       const fileData = await readFileAsDataUrl(file)
       await api.createDocument({ title: file.name, category: 'QUOTATION', quotationId: id, fileData, fileName: file.name })
-      toast.success('Attachment uploaded')
+      toast.success(m.attachmentUploaded)
       loadDocuments()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to upload attachment')
+      toast.error(err instanceof Error ? err.message : m.attachmentUploadFailed)
     } finally {
       setUploading(false)
     }
@@ -305,18 +296,18 @@ function QuotationDetailPage() {
 
   async function handleDeleteAttachment(doc: Document) {
     const ok = await confirm({
-      title: 'Delete attachment',
-      message: `Delete "${doc.title}"? This cannot be undone.`,
-      confirmLabel: 'Delete',
+      title: m.deleteAttachmentTitle,
+      message: m.deleteAttachmentMessage(doc.title),
+      confirmLabel: shared.delete,
       tone: 'danger',
     })
     if (!ok) return
     try {
       await api.deleteDocument(doc.id)
-      toast.success('Attachment deleted')
+      toast.success(m.attachmentDeleted)
       loadDocuments()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to delete attachment')
+      toast.error(err instanceof Error ? err.message : m.attachmentDeleteFailed)
     }
   }
 
@@ -327,7 +318,7 @@ function QuotationDetailPage() {
     setDownloadingAttachmentId(doc.id)
     try {
       const res = await fetch(api.documentDownloadUrl(doc.id), { credentials: 'include' })
-      if (!res.ok) throw new Error('Failed to download attachment')
+      if (!res.ok) throw new Error(m.attachmentDownloadFailed)
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -338,7 +329,7 @@ function QuotationDetailPage() {
       a.remove()
       URL.revokeObjectURL(url)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to download attachment')
+      toast.error(err instanceof Error ? err.message : m.attachmentDownloadFailed)
     } finally {
       setDownloadingAttachmentId(null)
     }
@@ -349,7 +340,7 @@ function QuotationDetailPage() {
     setDownloading(true)
     try {
       const res = await fetch(api.quotationPdfUrl(quotation.id), { credentials: 'include' })
-      if (!res.ok) throw new Error('Failed to download PDF')
+      if (!res.ok) throw new Error(m.pdfFailed)
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -360,7 +351,7 @@ function QuotationDetailPage() {
       a.remove()
       URL.revokeObjectURL(url)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to download PDF')
+      toast.error(err instanceof Error ? err.message : m.pdfFailed)
     } finally {
       setDownloading(false)
     }
@@ -371,7 +362,7 @@ function QuotationDetailPage() {
     setEmailing(true)
     try {
       const res = await fetch(api.quotationPdfUrl(quotation.id), { credentials: 'include' })
-      if (!res.ok) throw new Error('Failed to download PDF')
+      if (!res.ok) throw new Error(m.pdfFailed)
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -388,16 +379,16 @@ function QuotationDetailPage() {
       )
       const to = quotation.customer.email || ''
       window.location.href = `mailto:${to}?subject=${subject}&body=${body}`
-      toast.success('PDF downloaded - attach it manually in the email that just opened')
+      toast.success(m.emailReady)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to prepare email')
+      toast.error(err instanceof Error ? err.message : m.emailFailed)
     } finally {
       setEmailing(false)
     }
   }
 
   if (loading) return <TableSkeleton rows={6} cols={4} />
-  if (error || !quotation) return <EmptyState icon={X} message={error || 'Quotation not found'} />
+  if (error || !quotation) return <EmptyState icon={X} message={error || m.notFound} />
 
   return (
     <div className="flex flex-col gap-6">
@@ -406,76 +397,74 @@ function QuotationDetailPage() {
         className="flex w-fit items-center gap-2 text-sm text-ink-400 hover:text-ink-100"
       >
         <ArrowLeft className="h-4 w-4" />
-        Back to Quotations
+        {m.back}
       </Link>
 
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
         <div>
           <div className="flex items-center gap-3">
             <h1 className="font-mono text-2xl font-bold text-ink-100">{quotation.quotationNumber}</h1>
-            <Badge tone={quotationStatusTone[quotation.status]}>{displayStatus(quotation.status)}</Badge>
+            <Badge tone={quotationStatusTone[quotation.status]}>{m.display[quotation.status]}</Badge>
           </div>
           <p className="mt-1 text-sm text-ink-300">
             {quotation.title} · {quotation.customer.company || quotation.customer.name}
-            {' · Valid for '}
-            {quotation.validityDays} day{quotation.validityDays === 1 ? '' : 's'} from issue
+            {` · ${m.validFor(quotation.validityDays)}`}
           </p>
         </div>
 
         <div className="flex flex-wrap gap-3">
           <button type="button" onClick={handleDownloadPdf} disabled={downloading} className={secondaryButtonClass}>
             <Download className="h-4 w-4" />
-            {downloading ? 'Downloading…' : 'Download PDF'}
+            {downloading ? m.downloading : m.downloadPdf}
           </button>
           <button type="button" onClick={handleEmailCustomer} disabled={emailing} className={primaryButtonClass}>
             <Mail className="h-4 w-4" />
-            {emailing ? 'Preparing…' : 'Email Customer'}
+            {emailing ? m.preparing : m.emailCustomer}
           </button>
           {canWrite && (
             <button
               type="button"
               onClick={async () => {
                 const ok = await confirm({
-                  title: 'Delete quotation',
-                  message: `Delete quotation "${quotation.title}"? This cannot be undone.`,
-                  confirmLabel: 'Delete',
+                  title: q.deleteTitle,
+                  message: q.deleteMessage(quotation.title),
+                  confirmLabel: shared.delete,
                   tone: 'danger',
                 })
                 if (!ok) return
                 try {
                   await api.deleteQuotation(quotation.id)
-                  toast.success('Quotation deleted')
+                  toast.success(q.deleted)
                   window.location.href = '/dashboard/erp/customers/quotations'
                 } catch (err) {
-                  toast.error(err instanceof Error ? err.message : 'Failed to delete quotation')
+                  toast.error(err instanceof Error ? err.message : q.deleteFailed)
                 }
               }}
               className={dangerButtonClass}
             >
               <Trash2 className="h-4 w-4" />
-              Delete
+              {shared.delete}
             </button>
           )}
         </div>
       </div>
 
       <p className="text-xs text-ink-400">
-        "Email Customer" downloads the PDF and opens a draft email addressed to the customer - browsers can't
-        auto-attach a file for security reasons, so you'll need to attach the downloaded PDF yourself before sending.
+        {m.emailNote}
       </p>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <Panel title="Customer" className="lg:col-span-1">
+        <Panel title={m.customer} className="lg:col-span-1">
           <div className="flex flex-col gap-1 text-sm text-ink-300">
             <div className="font-medium text-ink-100">{quotation.customer.company || quotation.customer.name}</div>
             {quotation.customer.email && <div>{quotation.customer.email}</div>}
             {quotation.customer.phone && <div>{quotation.customer.phone}</div>}
             {quotation.customer.address && <div>{quotation.customer.address}</div>}
-            {quotation.customer.vatNumber && <div>VAT: {quotation.customer.vatNumber}</div>}
+            {quotation.customer.vatNumber && <div>{m.vatShort(quotation.customer.vatNumber)}</div>}
           </div>
           <div className="mt-4 border-t border-ink-800 pt-4">
-            <label className={labelClass}>CONTACT PERSON</label>
-            <p className="mt-1 text-xs text-ink-400">Who to talk to about this quotation - defaults for logged calls below.</p>
+            <label className={labelClass}>{q.contactPerson}</label>
+            <p className="mt-1 text-xs text-ink-400">{m.contactHint}</p>
             <div className="mt-2 flex items-end gap-2">
               <input
                 value={contactPersonInput}
@@ -485,13 +474,13 @@ function QuotationDetailPage() {
               />
               {canWrite && (
                 <button type="button" onClick={handleSaveContactPerson} disabled={savingContactPerson} className={secondaryButtonClass}>
-                  {savingContactPerson ? 'Saving…' : 'Save'}
+                  {savingContactPerson ? shared.saving : m.save}
                 </button>
               )}
             </div>
           </div>
           <div className="mt-4 border-t border-ink-800 pt-4">
-            <label className={labelClass}>PRODUCT LINE (internal only)</label>
+            <label className={labelClass}>{m.productLine}</label>
             <div className="mt-2 flex items-end gap-2">
               <select
                 value={productLineInput}
@@ -499,37 +488,37 @@ function QuotationDetailPage() {
                 disabled={!canWrite}
                 className={`flex-1 ${inputClass}`}
               >
-                <option value="">Not specified</option>
+                <option value="">{q.notSpecified}</option>
                 {PRODUCT_LINE_OPTIONS.map((opt) => (
                   <option key={opt} value={opt}>
-                    {opt}
+                    {productLines[opt] ?? opt}
                   </option>
                 ))}
               </select>
               {canWrite && (
                 <button type="button" onClick={handleSaveProductLine} disabled={savingProductLine} className={secondaryButtonClass}>
-                  {savingProductLine ? 'Saving…' : 'Save'}
+                  {savingProductLine ? shared.saving : m.save}
                 </button>
               )}
             </div>
           </div>
         </Panel>
 
-        <Panel title="Terms" className="lg:col-span-2">
+        <Panel title={m.terms} className="lg:col-span-2">
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <span className="text-xs font-semibold tracking-widest text-ink-400">PAYMENT TERMS</span>
+              <span className="text-xs font-semibold tracking-widest text-ink-400">{shared.paymentTerms}</span>
               <p className="mt-1 text-ink-200">
                 {quotation.paymentTermsLines.map((l) => `${l.label} ${l.percentage}%`).join(', ')}
               </p>
             </div>
             {quotation.availabilityStatus && (
               <div>
-                <span className="text-xs font-semibold tracking-widest text-ink-400">AVAILABILITY</span>
+                <span className="text-xs font-semibold tracking-widest text-ink-400">{q.availability}</span>
                 <p className="mt-1 text-ink-200">
                   {quotation.availabilityStatus === 'IN_STOCK'
-                    ? 'In stock'
-                    : `Order to be received in ${quotation.orderDays} day${quotation.orderDays === 1 ? '' : 's'} from confirmation`}
+                    ? q.inStock
+                    : m.orderIn(quotation.orderDays ?? 0)}
                 </p>
               </div>
             )}
@@ -538,30 +527,30 @@ function QuotationDetailPage() {
       </div>
 
       <Panel
-        title="Line Items"
+        title={m.lineItems}
         action={
           canWrite &&
           quotation.status === 'DRAFT' &&
           !editingItems && (
             <button type="button" onClick={openEditItems} className={secondaryButtonClass}>
               <Pencil className="h-4 w-4" />
-              Edit
+              {m.edit}
             </button>
           )
         }
       >
         {canWrite && quotation.status === 'DRAFT' && !editingItems && (
           <p className="mb-3 text-xs text-ink-400">
-            Draft - click Edit to change the customer, terms, or line items.
+            {m.draftHint}
           </p>
         )}
         {editingItems ? (
           <form onSubmit={handleSaveItems} className="flex flex-col gap-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className={labelClass}>CUSTOMER</label>
+                <label className={labelClass}>{q.customer}</label>
                 <select value={editCustomerId} onChange={(e) => setEditCustomerId(e.target.value)} className={`mt-2 ${inputClass}`}>
-                  <option value="">Select a customer</option>
+                  <option value="">{q.selectCustomer}</option>
                   {customers.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.company || c.name}
@@ -570,7 +559,7 @@ function QuotationDetailPage() {
                 </select>
               </div>
               <div className="max-w-[200px]">
-                <label className={labelClass}>VAT %</label>
+                <label className={labelClass}>{q.vat}</label>
                 <input
                   type="number"
                   min={0}
@@ -592,24 +581,24 @@ function QuotationDetailPage() {
             <div className="rounded-md border border-ink-700 px-4 py-3">
               <label className="flex items-center gap-2 text-sm text-ink-200">
                 <input type="checkbox" checked={editIncludesOrder} onChange={(e) => setEditIncludesOrder(e.target.checked)} />
-                This quotation includes a product order (not just installation/service labor)
+                {q.includesOrder}
               </label>
               {editIncludesOrder && (
                 <div className="mt-3 grid grid-cols-2 gap-4">
                   <div>
-                    <label className={labelClass}>AVAILABILITY</label>
+                    <label className={labelClass}>{q.availability}</label>
                     <select
                       value={editAvailabilityStatus}
                       onChange={(e) => setEditAvailabilityStatus(e.target.value as QuotationAvailability)}
                       className={`mt-2 ${inputClass}`}
                     >
-                      <option value="IN_STOCK">In stock</option>
-                      <option value="ORDER_PENDING">Order to be received in...</option>
+                      <option value="IN_STOCK">{q.inStock}</option>
+                      <option value="ORDER_PENDING">{q.orderPending}</option>
                     </select>
                   </div>
                   {editAvailabilityStatus === 'ORDER_PENDING' && (
                     <div>
-                      <label className={labelClass}>DAYS FROM CONFIRMATION</label>
+                      <label className={labelClass}>{q.daysFromConfirmation}</label>
                       <input
                         type="number"
                         min={1}
@@ -629,10 +618,10 @@ function QuotationDetailPage() {
 
             <div className="flex gap-3">
               <button type="submit" disabled={savingItems} className={primaryButtonClass}>
-                {savingItems ? 'Saving…' : 'Save Changes'}
+                {savingItems ? shared.saving : shared.saveChanges}
               </button>
               <button type="button" onClick={() => setEditingItems(false)} className={secondaryButtonClass}>
-                Cancel
+                {shared.cancel}
               </button>
             </div>
           </form>
@@ -643,10 +632,10 @@ function QuotationDetailPage() {
                 <thead>
                   <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
                     <th className="px-3 py-3 font-semibold">#</th>
-                    <th className="px-3 py-3 font-semibold">DESCRIPTION</th>
-                    <th className="px-3 py-3 font-semibold">QTY</th>
-                    <th className="px-3 py-3 font-semibold">UNIT PRICE</th>
-                    <th className="px-3 py-3 font-semibold">TOTAL AMOUNT</th>
+                    <th className="px-3 py-3 font-semibold">{shared.description}</th>
+                    <th className="px-3 py-3 font-semibold">{lineItems.qty}</th>
+                    <th className="px-3 py-3 font-semibold">{salesLines.unitPrice}</th>
+                    <th className="px-3 py-3 font-semibold">{salesLines.totalAmount}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -664,15 +653,15 @@ function QuotationDetailPage() {
             </div>
             <div className="mt-4 flex flex-col items-end gap-1 text-sm">
               <div className="flex w-56 justify-between text-ink-300">
-                <span>Subtotal</span>
+                <span>{q.subtotal}</span>
                 <span>{formatMoney(quotation.subtotal)}</span>
               </div>
               <div className="flex w-56 justify-between text-ink-300">
-                <span>VAT ({Number(quotation.vatRate)}%)</span>
+                <span>{q.vatLine(Number(quotation.vatRate))}</span>
                 <span>{formatMoney(quotation.vatAmount)}</span>
               </div>
               <div className="flex w-56 justify-between border-t border-ink-700 pt-1 font-semibold text-cyan-accent">
-                <span>Total</span>
+                <span>{shared.total}</span>
                 <span>{formatMoney(quotation.total)}</span>
               </div>
             </div>
@@ -680,11 +669,11 @@ function QuotationDetailPage() {
         )}
       </Panel>
 
-      <Panel title="Attachments">
+      <Panel title={m.attachments}>
         {documentsLoading ? (
           <TableSkeleton rows={2} cols={2} />
         ) : documents.length === 0 ? (
-          <EmptyState icon={Paperclip} message="No datasheets or brochures attached yet." />
+          <EmptyState icon={Paperclip} message={m.noAttachments} />
         ) : (
           <ul className="flex flex-col gap-2">
             {documents.map((doc) => (
@@ -696,7 +685,7 @@ function QuotationDetailPage() {
                   className="text-left text-ink-100 hover:text-cyan-accent hover:underline disabled:opacity-60"
                 >
                   {doc.title} <span className="text-ink-400">({formatSize(doc.sizeBytes)})</span>
-                  {downloadingAttachmentId === doc.id && <span className="text-ink-400"> · downloading…</span>}
+                  {downloadingAttachmentId === doc.id && <span className="text-ink-400">{m.downloadingInline}</span>}
                 </button>
                 {canWrite && (
                   <button type="button" onClick={() => handleDeleteAttachment(doc)} className="text-ink-400 hover:text-red-400">
@@ -710,17 +699,17 @@ function QuotationDetailPage() {
         {canWrite && (
           <label className={`mt-4 inline-flex w-fit cursor-pointer items-center gap-2 ${secondaryButtonClass}`}>
             <Upload className="h-4 w-4" />
-            {uploading ? 'Uploading…' : 'Attach a file'}
+            {uploading ? m.uploading : m.attachFile}
             <input type="file" className="hidden" onChange={handleUploadAttachment} disabled={uploading} />
           </label>
         )}
       </Panel>
 
-      <Panel title="Follow-Up">
+      <Panel title={m.followUp}>
         <div className="flex flex-col gap-4">
           {canWrite && quotation.status === 'DRAFT' && (
             <button type="button" onClick={() => handleMarkStatus('SENT')} disabled={updating} className={`w-fit ${primaryButtonClass}`}>
-              Mark as Sent
+              {m.markSent}
             </button>
           )}
           {canWrite && quotation.status === 'SENT' && (
@@ -731,7 +720,7 @@ function QuotationDetailPage() {
                 disabled={updating}
                 className={primaryButtonClass}
               >
-                Mark Approved
+                {m.markApproved}
               </button>
               <button
                 type="button"
@@ -739,7 +728,7 @@ function QuotationDetailPage() {
                 disabled={updating}
                 className="rounded-md border border-red-400/50 px-4 py-2 text-sm text-red-400 hover:bg-red-400/10"
               >
-                Mark Not Approved
+                {m.markNotApproved}
               </button>
               <button
                 type="button"
@@ -747,7 +736,7 @@ function QuotationDetailPage() {
                 disabled={updating}
                 className="text-xs text-ink-400 hover:text-ink-100 hover:underline"
               >
-                Mark Expired
+                {m.markExpired}
               </button>
             </div>
           )}
@@ -755,29 +744,29 @@ function QuotationDetailPage() {
           {(quotation.status === 'ACCEPTED' || canWrite) && (
             <div className="flex items-end gap-3">
               <div className="flex-1">
-                <label className={labelClass}>PO / CONFIRMATION REFERENCE</label>
+                <label className={labelClass}>{m.poReference}</label>
                 <input
                   value={poReference}
                   onChange={(e) => setPoReference(e.target.value)}
-                  placeholder="e.g. PO#1234 received via email"
+                  placeholder={m.poPlaceholder}
                   disabled={!canWrite}
                   className={`mt-2 ${inputClass}`}
                 />
               </div>
               {canWrite && (
                 <button type="button" onClick={handleSavePoReference} disabled={savingPoReference} className={secondaryButtonClass}>
-                  {savingPoReference ? 'Saving…' : 'Save'}
+                  {savingPoReference ? shared.saving : m.save}
                 </button>
               )}
             </div>
           )}
 
           <div className="border-t border-ink-800 pt-4">
-            <p className={labelClass}>CALL HISTORY</p>
+            <p className={labelClass}>{m.callHistory}</p>
             {followUpsLoading ? (
               <TableSkeleton rows={2} cols={2} />
             ) : followUps.length === 0 ? (
-              <p className="mt-2 text-sm text-ink-400">No calls logged yet.</p>
+              <p className="mt-2 text-sm text-ink-400">{m.noCalls}</p>
             ) : (
               <ul className="mt-2 flex flex-col gap-2">
                 {followUps.map((f) => (
@@ -786,9 +775,9 @@ function QuotationDetailPage() {
                       <span className="text-ink-100">{f.spokenTo}</span>
                       <span className="text-xs text-ink-400">{new Date(f.calledAt).toLocaleString()}</span>
                     </div>
-                    <p className="mt-1 text-ink-300">{FOLLOWUP_LABEL[f.outcome]}</p>
+                    <p className="mt-1 text-ink-300">{followUpOutcomes[f.outcome]}</p>
                     {f.callScheduledOn && (
-                      <p className="mt-1 text-xs text-cyan-accent">Call scheduled: {f.callScheduledOn.slice(0, 10)}</p>
+                      <p className="mt-1 text-xs text-cyan-accent">{m.callScheduled(f.callScheduledOn.slice(0, 10))}</p>
                     )}
                   </li>
                 ))}
@@ -798,14 +787,14 @@ function QuotationDetailPage() {
 
           {canWrite && (
             <form onSubmit={handleLogCall} className="flex flex-col gap-3 border-t border-ink-800 pt-4">
-              <p className={labelClass}>LOG A CALL</p>
+              <p className={labelClass}>{m.logCall}</p>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label className={labelClass}>SPOKEN TO</label>
+                  <label className={labelClass}>{m.spokenTo}</label>
                   <input value={spokenTo} onChange={(e) => setSpokenTo(e.target.value)} className={`mt-2 ${inputClass}`} />
                 </div>
                 <div>
-                  <label className={labelClass}>OUTCOME</label>
+                  <label className={labelClass}>{m.outcome}</label>
                   <select
                     value={outcome}
                     onChange={(e) => setOutcome(e.target.value as QuotationFollowUpOutcome)}
@@ -813,7 +802,7 @@ function QuotationDetailPage() {
                   >
                     {QUOTATION_FOLLOWUP_OUTCOMES.map((opt) => (
                       <option key={opt.value} value={opt.value}>
-                        {opt.label}
+                        {followUpOutcomes[opt.value]}
                       </option>
                     ))}
                   </select>
@@ -821,7 +810,7 @@ function QuotationDetailPage() {
               </div>
               {outcome === 'CALL_BACK' && (
                 <div>
-                  <label className={labelClass}>CALL SCHEDULED ON</label>
+                  <label className={labelClass}>{m.callScheduledOn}</label>
                   <input
                     type="date"
                     value={callScheduledOn}
@@ -832,7 +821,7 @@ function QuotationDetailPage() {
               )}
               {logError && <p className="text-sm text-red-400">{logError}</p>}
               <button type="submit" disabled={loggingCall} className={`w-fit ${secondaryButtonClass}`}>
-                {loggingCall ? 'Saving…' : 'Log Call'}
+                {loggingCall ? shared.saving : m.logCallButton}
               </button>
             </form>
           )}
