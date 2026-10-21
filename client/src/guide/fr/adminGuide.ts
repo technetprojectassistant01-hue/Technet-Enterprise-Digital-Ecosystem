@@ -741,15 +741,15 @@ export const ADMIN_GUIDE_FR: RoleGuide = {
             {
               kind: 'steps',
               items: [
-                "Fournisseurs : Add Supplier avec les coordonnées et les conditions de paiement (par exemple « Net 30 »).",
-                "Demandes d'achat : New Requisition liste ce qu'il faut. Ouvrez-la pour Approve ou Reject.",
-                "Une demande approuvée peut être convertie : Convert to Purchase Order, en choisissant le fournisseur et les coûts unitaires.",
-                "Bons de commande : ouvrez le bon et cliquez sur Send to Supplier une fois envoyé.",
-                "À l'arrivée des marchandises, cliquez sur Record Receipt et saisissez les quantités reçues. Les articles liés à l'inventaire sont ajoutés au stock automatiquement. Le bon apparaît partiellement ou entièrement reçu.",
-                'Une fois tout arrivé, cliquez sur Close Order.',
+                "Fournisseurs : Ajouter un fournisseur avec les coordonnées et les conditions de paiement (par exemple « Net 30 »).",
+                "Demandes d'achat : Nouvelle demande d'achat liste ce qu'il faut. Ouvrez-la pour l'Approuver ou la Refuser.",
+                "Une demande approuvée peut être convertie : Convertir en bon de commande, en choisissant le fournisseur et les coûts unitaires.",
+                "Bons de commande : ouvrez le bon et cliquez sur Envoyer au fournisseur une fois envoyé.",
+                "À l'arrivée des marchandises, cliquez sur Enregistrer une réception et saisissez les quantités reçues. Les articles liés à l'inventaire sont ajoutés au stock automatiquement. Le bon apparaît partiellement ou entièrement reçu.",
+                'Une fois tout arrivé, cliquez sur Clôturer la commande.',
               ],
             },
-            { kind: 'tip', text: "Cancel Order arrête un bon encore en brouillon, ou envoyé mais dont rien n'est encore arrivé." },
+            { kind: 'tip', text: "Annuler arrête un bon encore en brouillon, ou envoyé mais dont rien n'est encore arrivé." },
           ],
         },
         {
