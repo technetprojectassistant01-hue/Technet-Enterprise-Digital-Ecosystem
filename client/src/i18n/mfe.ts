@@ -1,4 +1,5 @@
 import type { Dict } from './en'
+import { erpMfe } from './erp/mfe'
 
 /**
  * Mauritian Creole (Kreol Morisien), in the standard Grafi Larmoni spelling. Typed against the
@@ -2208,4 +2209,7 @@ export const mfe: Dict = {
       ],
     },
   },
+
+  /** Technet ERP pages - kept in ./erp/ to keep this file manageable. */
+  erp: erpMfe,
 }
