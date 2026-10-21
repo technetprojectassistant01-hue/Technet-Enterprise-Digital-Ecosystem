@@ -9,6 +9,7 @@ import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
 import { hasRole, PROCUREMENT_ROLES } from '../lib/permissions'
+import { useT } from '../i18n'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -41,6 +42,7 @@ function SuppliersPage() {
   const confirm = useConfirm()
   const { user } = useAuth()
   const canWrite = hasRole(user?.role, PROCUREMENT_ROLES)
+  const { suppliers: m, shared } = useT().erp
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -57,7 +59,7 @@ function SuppliersPage() {
     api
       .listSuppliers({ search: searchValue || undefined })
       .then(({ suppliers }) => setSuppliers(suppliers))
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load suppliers'))
+      .catch((err) => setError(err instanceof Error ? err.message : m.loadFailed))
       .finally(() => setLoading(false))
   }
 
@@ -90,7 +92,7 @@ function SuppliersPage() {
     setFormError(null)
 
     if (!form.name.trim()) {
-      setFormError('Name is required')
+      setFormError(m.nameRequired)
       return
     }
 
@@ -109,11 +111,11 @@ function SuppliersPage() {
       } else {
         await api.createSupplier(input)
       }
-      toast.success(editing ? 'Supplier updated' : 'Supplier created')
+      toast.success(editing ? m.updated : m.created)
       closeForm()
       load()
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Failed to save supplier')
+      setFormError(err instanceof Error ? err.message : m.saveFailed)
     } finally {
       setSubmitting(false)
     }
@@ -121,18 +123,18 @@ function SuppliersPage() {
 
   async function handleDelete(s: Supplier) {
     const ok = await confirm({
-      title: 'Delete supplier',
-      message: `Delete supplier "${s.name}"? This cannot be undone.`,
-      confirmLabel: 'Delete',
+      title: m.deleteTitle,
+      message: m.deleteMessage(s.name),
+      confirmLabel: shared.delete,
       tone: 'danger',
     })
     if (!ok) return
     try {
       await api.deleteSupplier(s.id)
-      toast.success(`Deleted ${s.name}`)
+      toast.success(shared.deleted(s.name))
       load()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to delete supplier')
+      toast.error(err instanceof Error ? err.message : m.deleteFailed)
     }
   }
 
@@ -140,11 +142,11 @@ function SuppliersPage() {
     downloadCsv(
       'suppliers',
       [
-        { header: 'Name', accessor: (s: Supplier) => s.name },
-        { header: 'Contact', accessor: (s: Supplier) => s.contactName },
-        { header: 'Email', accessor: (s: Supplier) => s.email },
-        { header: 'Phone', accessor: (s: Supplier) => s.phone },
-        { header: 'Payment Terms', accessor: (s: Supplier) => s.paymentTerms },
+        { header: m.csv.name, accessor: (s: Supplier) => s.name },
+        { header: m.csv.contact, accessor: (s: Supplier) => s.contactName },
+        { header: m.csv.email, accessor: (s: Supplier) => s.email },
+        { header: m.csv.phone, accessor: (s: Supplier) => s.phone },
+        { header: m.csv.terms, accessor: (s: Supplier) => s.paymentTerms },
       ],
       suppliers,
     )
@@ -154,31 +156,31 @@ function SuppliersPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-ink-100">Supplier Directory</h1>
-          <p className="mt-1 text-sm text-ink-300">Manage global engineering vendor relationships and compliance.</p>
+          <h1 className="text-2xl font-bold text-ink-100">{m.title}</h1>
+          <p className="mt-1 text-sm text-ink-300">{m.subtitle}</p>
         </div>
         <div className="flex items-center gap-3">
           <button type="button" onClick={exportCsv} className={secondaryButtonClass}>
             <Download className="h-4 w-4" />
-            Export List
+            {m.exportList}
           </button>
           {canWrite && (
             <button type="button" onClick={openCreate} className={primaryButtonClass}>
               <Plus className="h-4 w-4" />
-              Add Supplier
+              {m.add}
             </button>
           )}
         </div>
       </div>
 
-      <StatCard label="TOTAL SUPPLIERS" value={suppliers.length} icon={Truck} />
+      <StatCard label={m.statTotal} value={suppliers.length} icon={Truck} />
 
-      <Panel title="Suppliers Ledger">
+      <Panel title={m.panel}>
         <div className="mb-4 flex flex-1 max-w-sm items-center gap-2 rounded-md border border-ink-700 bg-ink-950 px-3 py-2">
           <Search className="h-4 w-4 text-ink-400" />
           <input
             type="text"
-            placeholder="Search by name, contact, or email..."
+            placeholder={m.search}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && load(search)}
@@ -191,16 +193,16 @@ function SuppliersPage() {
         {loading ? (
           <TableSkeleton cols={5} />
         ) : suppliers.length === 0 ? (
-          <EmptyState icon={Truck} message="No suppliers yet. Add your first supplier to get started." />
+          <EmptyState icon={Truck} message={m.empty} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
-                  <th className="px-3 py-3 font-semibold">NAME</th>
-                  <th className="px-3 py-3 font-semibold">CONTACT</th>
-                  <th className="px-3 py-3 font-semibold">EMAIL</th>
-                  <th className="px-3 py-3 font-semibold">PAYMENT TERMS</th>
+                  <th className="px-3 py-3 font-semibold">{shared.name}</th>
+                  <th className="px-3 py-3 font-semibold">{m.colContact}</th>
+                  <th className="px-3 py-3 font-semibold">{shared.email}</th>
+                  <th className="px-3 py-3 font-semibold">{shared.paymentTerms}</th>
                   {canWrite && <th className="px-3 py-3" />}
                 </tr>
               </thead>
@@ -214,10 +216,10 @@ function SuppliersPage() {
                     {canWrite && (
                       <td className="px-3 py-3">
                         <div className="flex items-center justify-end gap-3 text-ink-400">
-                          <button type="button" onClick={() => openEdit(s)} aria-label="Edit supplier" className="hover:text-ink-100">
+                          <button type="button" onClick={() => openEdit(s)} aria-label={m.editAria} className="hover:text-ink-100">
                             <Pencil className="h-4 w-4" />
                           </button>
-                          <button type="button" onClick={() => handleDelete(s)} aria-label="Delete supplier" className="hover:text-red-400">
+                          <button type="button" onClick={() => handleDelete(s)} aria-label={m.deleteAria} className="hover:text-red-400">
                             <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
@@ -232,11 +234,11 @@ function SuppliersPage() {
       </Panel>
 
       {(showCreate || editing) && (
-        <Modal title={editing ? 'Edit Supplier' : 'Add Supplier'} onClose={closeForm}>
+        <Modal title={editing ? m.edit : m.add} onClose={closeForm}>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="col-span-2">
-                <label className={labelClass}>NAME</label>
+                <label className={labelClass}>{shared.name}</label>
                 <input
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -245,7 +247,7 @@ function SuppliersPage() {
                 />
               </div>
               <div>
-                <label className={labelClass}>CONTACT NAME</label>
+                <label className={labelClass}>{m.contactName}</label>
                 <input
                   value={form.contactName}
                   onChange={(e) => setForm({ ...form, contactName: e.target.value })}
@@ -253,7 +255,7 @@ function SuppliersPage() {
                 />
               </div>
               <div>
-                <label className={labelClass}>EMAIL</label>
+                <label className={labelClass}>{shared.email}</label>
                 <input
                   type="email"
                   value={form.email}
@@ -262,7 +264,7 @@ function SuppliersPage() {
                 />
               </div>
               <div>
-                <label className={labelClass}>PHONE</label>
+                <label className={labelClass}>{shared.phone}</label>
                 <input
                   value={form.phone}
                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
@@ -270,16 +272,16 @@ function SuppliersPage() {
                 />
               </div>
               <div>
-                <label className={labelClass}>PAYMENT TERMS</label>
+                <label className={labelClass}>{shared.paymentTerms}</label>
                 <input
                   value={form.paymentTerms}
                   onChange={(e) => setForm({ ...form, paymentTerms: e.target.value })}
-                  placeholder="e.g. Net 30"
+                  placeholder={m.termsPlaceholder}
                   className={`mt-2 ${inputClass}`}
                 />
               </div>
               <div className="col-span-2">
-                <label className={labelClass}>ADDRESS</label>
+                <label className={labelClass}>{shared.address}</label>
                 <input
                   value={form.address}
                   onChange={(e) => setForm({ ...form, address: e.target.value })}
@@ -291,7 +293,7 @@ function SuppliersPage() {
             {formError && <p className="text-sm text-red-400">{formError}</p>}
 
             <button type="submit" disabled={submitting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
-              {submitting ? 'Saving…' : editing ? 'Save Changes' : 'Create Supplier'}
+              {submitting ? shared.saving : editing ? shared.saveChanges : m.create}
             </button>
           </form>
         </Modal>
