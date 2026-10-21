@@ -84,9 +84,9 @@ export const FINANCE_GUIDE_MFE: RoleGuide = {
             {
               kind: 'steps',
               items: [
-                "Ouver Technet ERP → Kliyan → Kontra e klik New Contract. Kliyan la bizin egziste avan.",
-                "Swazir kliyan la (CUSTOMER), dekrir servis la (SERVICE), e rant valer (VALUE), stati (STATUS), dat koumansman (START DATE) ek dat lafin (END DATE).",
-                'Klik Create Contract.',
+                "Ouver Technet ERP → Kliyan → Kontra e klik Nouvo kontra. Kliyan la bizin egziste avan.",
+                "Swazir KLIYAN la, dekrir SERVIS la, e rant VALER, STATI, DAT KOUMANSMAN ek DAT LAFIN.",
+                'Klik Kre kontra.',
               ],
             },
             { kind: 'p', text: "Servi aksion modifikasion ek efasman o bout sak lign pou sanz enn kontra (par egzanp so stati kan li fini) ouswa pou efas li." },
