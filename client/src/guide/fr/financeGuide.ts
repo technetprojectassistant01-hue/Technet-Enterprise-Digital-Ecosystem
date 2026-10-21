@@ -84,9 +84,9 @@ export const FINANCE_GUIDE_FR: RoleGuide = {
             {
               kind: 'steps',
               items: [
-                "Ouvrez Technet ERP → Clients → Contrats et cliquez sur New Contract. Le client doit d'abord exister.",
-                "Choisissez le client (CUSTOMER), décrivez le service (SERVICE), et saisissez la valeur (VALUE), le statut (STATUS), la date de début (START DATE) et la date de fin (END DATE).",
-                'Cliquez sur Create Contract.',
+                "Ouvrez Technet ERP → Clients → Contrats et cliquez sur Nouveau contrat. Le client doit d'abord exister.",
+                "Choisissez le CLIENT, décrivez le SERVICE, et saisissez la VALEUR, le STATUT, la DATE DE DÉBUT et la DATE DE FIN.",
+                'Cliquez sur Créer le contrat.',
               ],
             },
             { kind: 'p', text: "Les actions de modification et de suppression, au bout de chaque ligne, servent à changer un contrat (par exemple son statut une fois terminé) ou à le supprimer." },
