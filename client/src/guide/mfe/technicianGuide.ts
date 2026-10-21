@@ -213,7 +213,7 @@ export const TECHNICIAN_GUIDE_MFE: RoleGuide = {
             {
               kind: 'steps',
               items: [
-                'Pou gagn enn PDF, tap Export PDF, swazir bann dat e tap Telesarz PDF.',
+                'Pou gagn enn PDF, tap Exporte PDF, swazir bann dat e tap Telesarz PDF.',
                 "PDF la ena mark DRAFT ziska RH valid mwa la. Ou gagn enn notifikasion kan zot fer sa, e prosenn telesarzman pena mark DRAFT.",
               ],
             },
@@ -275,7 +275,7 @@ export const TECHNICIAN_GUIDE_MFE: RoleGuide = {
                 "Si ou anvi, azout ou ler, bann teknisien ki ti avek ou ek bann bon travay ki ou finn travay lor la.",
                 "Si ou finn soumet enn rapor intervansion zordi pou sa bann travay la, li lor lalis. Tap Met ladan pou kopie li dan ou rezime.",
                 'Azout ziska 3 foto avek Azout foto.',
-                'Tap Avoy rapor. Ou manazer aksepte ouswa refiz li, e ou gagn enn notifikasion.',
+                'Tap Avoy rapor. Ou manazer aprouv ouswa refiz li, e ou gagn enn notifikasion.',
               ],
             },
           ],
@@ -333,7 +333,7 @@ export const TECHNICIAN_GUIDE_MFE: RoleGuide = {
               kind: 'list',
               items: [
                 'Mo balans montre kominn zour ou ena ankor pou sak tip.',
-                "Tan ki enn demann PE ATANN, ou kapav Modifye li ouswa Retir li. Kan RH finn deside, ou kapav zis retir li.",
+                "Tan ki enn demann PE ATANN, ou kapav Modifie li ouswa Retir li. Kan RH finn deside, ou kapav zis retir li.",
               ],
             },
           ],
@@ -378,7 +378,7 @@ export const TECHNICIAN_GUIDE_MFE: RoleGuide = {
             {
               kind: 'list',
               items: [
-                "Tan ki demann la pe atann, ou kapav Modifye li. Ou kapav Efas li tan ki okenn zouti pa finn sorti.",
+                "Tan ki demann la pe atann, ou kapav Modifie li. Ou kapav Efas li tan ki okenn zouti pa finn sorti.",
                 "Technet Store → Zouti ek lekipman montre Zouti ki mo ena: sak zouti ki finn done ou ek kan pou remet li. Remet bann zouti ar magazin: se zot ki anrezistre retour la.",
               ],
             },
