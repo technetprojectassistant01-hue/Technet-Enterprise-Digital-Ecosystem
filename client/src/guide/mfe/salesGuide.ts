@@ -53,7 +53,7 @@ export const SALES_GUIDE_MFE: RoleGuide = {
               kind: 'list',
               items: [
                 "Enn kliyan finn demann enn devi depi portal. Klik lor li pou ouver Call Log.",
-                'Enn devi ki ou finn kre finn gagn mark Approved ouswa Not Approved.',
+                'Enn devi ki ou finn kre finn gagn mark Aprouve ouswa Pa aprouve.',
                 'Ou demann lasa finn aprouve ouswa refize.',
                 'Ou demann konze finn deside, ouswa ou zouti ouswa materyo pare pou pran.',
               ],
@@ -84,7 +84,7 @@ export const SALES_GUIDE_MFE: RoleGuide = {
             {
               kind: 'list',
               items: [
-                "Swivi montre bann apel ki finn anrezistre lor devi, par kliyan ouswa par dat. Pou anrezistre enn apel, ouver devi la e servi Follow-Up laba.",
+                "Swivi montre bann apel ki finn anrezistre lor devi, par kliyan ouswa par dat. Pou anrezistre enn apel, ouver devi la e servi so parti Swivi.",
                 "Kontra montre kontra servis avek kliyan, zot valer ek zot dat koumansman ek lafin. Ou kapav lir zot; se enn administrater ouswa Ofisie Finans ki azout ouswa sanz enn kontra.",
               ],
             },
