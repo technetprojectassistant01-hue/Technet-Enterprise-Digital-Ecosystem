@@ -2,6 +2,7 @@ import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { hasRole, NON_COMMERCIAL_ROLES } from '../lib/permissions'
 import type { Role } from '../lib/api'
+import { navLabel, useT } from '../i18n'
 
 /**
  * A storekeeper reaches ERP for Inventory and Procurement only — the selling half is not their
@@ -23,6 +24,7 @@ function visibleTabs(role: Role | undefined) {
 
 function ErpLayout() {
   const { user } = useAuth()
+  const t = useT()
   const tabs = visibleTabs(user?.role)
 
   return (
@@ -41,7 +43,7 @@ function ErpLayout() {
               }`
             }
           >
-            {tab.label}
+            {navLabel(t, tab.label)}
           </NavLink>
         ))}
       </nav>
