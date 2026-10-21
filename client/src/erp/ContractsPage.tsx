@@ -12,6 +12,7 @@ import { useAuth } from '../context/AuthContext'
 import { hasRole, FINANCE_ROLES } from '../lib/permissions'
 import { contractStatusTone as statusTone } from './statusTones'
 import { formatMoney } from '../lib/format'
+import { useT } from '../i18n'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -42,6 +43,7 @@ function ContractsPage() {
   const confirm = useConfirm()
   const { user } = useAuth()
   const canWrite = hasRole(user?.role, FINANCE_ROLES)
+  const { contracts: m, shared, status } = useT().erp
   const customers = useCustomers()
   const [contracts, setContracts] = useState<Contract[]>([])
   const [loading, setLoading] = useState(true)
@@ -59,7 +61,7 @@ function ContractsPage() {
     api
       .listContracts()
       .then(({ contracts }) => setContracts(contracts))
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load contracts'))
+      .catch((err) => setError(err instanceof Error ? err.message : m.loadFailed))
       .finally(() => setLoading(false))
   }
 
@@ -97,15 +99,15 @@ function ContractsPage() {
 
     const value = Number(form.value)
     if (!form.service.trim()) {
-      setFormError('Service is required')
+      setFormError(m.serviceRequired)
       return
     }
     if (!value || value <= 0) {
-      setFormError('Value must be a positive number')
+      setFormError(m.valuePositive)
       return
     }
     if (!editing && !form.customerId) {
-      setFormError('Select a customer')
+      setFormError(m.selectCustomer)
       return
     }
 
@@ -129,11 +131,11 @@ function ContractsPage() {
           endDate: form.endDate || undefined,
         })
       }
-      toast.success(editing ? 'Contract updated' : 'Contract created')
+      toast.success(editing ? m.updated : m.created)
       closeForm()
       load()
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Failed to save contract')
+      setFormError(err instanceof Error ? err.message : m.saveFailed)
     } finally {
       setSubmitting(false)
     }
@@ -141,18 +143,18 @@ function ContractsPage() {
 
   async function handleDelete(c: Contract) {
     const ok = await confirm({
-      title: 'Delete contract',
-      message: `Delete the contract for "${c.service}"? This cannot be undone.`,
-      confirmLabel: 'Delete',
+      title: m.deleteTitle,
+      message: m.deleteMessage(c.service),
+      confirmLabel: shared.delete,
       tone: 'danger',
     })
     if (!ok) return
     try {
       await api.deleteContract(c.id)
-      toast.success('Contract deleted')
+      toast.success(m.deleted)
       load()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to delete contract')
+      toast.error(err instanceof Error ? err.message : m.deleteFailed)
     }
   }
 
@@ -168,12 +170,12 @@ function ContractsPage() {
     downloadCsv(
       'contracts',
       [
-        { header: 'Customer', accessor: (c: Contract) => c.customer.company || c.customer.name },
-        { header: 'Service', accessor: (c: Contract) => c.service },
-        { header: 'Value', accessor: (c: Contract) => c.value },
-        { header: 'Status', accessor: (c: Contract) => c.status },
-        { header: 'Start Date', accessor: (c: Contract) => c.startDate?.slice(0, 10) },
-        { header: 'End Date', accessor: (c: Contract) => c.endDate?.slice(0, 10) },
+        { header: m.csv.customer, accessor: (c: Contract) => c.customer.company || c.customer.name },
+        { header: m.csv.service, accessor: (c: Contract) => c.service },
+        { header: m.csv.value, accessor: (c: Contract) => c.value },
+        { header: m.csv.status, accessor: (c: Contract) => status.contract[c.status] },
+        { header: m.csv.start, accessor: (c: Contract) => c.startDate?.slice(0, 10) },
+        { header: m.csv.end, accessor: (c: Contract) => c.endDate?.slice(0, 10) },
       ],
       contracts,
     )
@@ -183,15 +185,15 @@ function ContractsPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-ink-100">Contracts Ledger</h1>
+          <h1 className="text-2xl font-bold text-ink-100">{m.title}</h1>
           <p className="mt-1 text-sm text-ink-300">
-            Oversee service level agreements and technical partnership terms.
+            {m.subtitle}
           </p>
         </div>
         <div className="flex items-center gap-3">
           <button type="button" onClick={exportCsv} className={secondaryButtonClass}>
             <Download className="h-4 w-4" />
-            Export Registry
+            {m.exportRegistry}
           </button>
           {canWrite && (
             <button
@@ -201,45 +203,45 @@ function ContractsPage() {
               className={primaryButtonClass}
             >
               <Plus className="h-4 w-4" />
-              New Contract
+              {m.new}
             </button>
           )}
         </div>
       </div>
 
       {canWrite && customers.length === 0 && (
-        <p className="text-sm text-ink-400">Add a customer first before creating contracts.</p>
+        <p className="text-sm text-ink-400">{m.needCustomer}</p>
       )}
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
         <StatCard
-          label="Active Contracts"
+          label={m.statActive}
           value={contracts.filter((c) => c.status !== 'COMPLETED' && c.status !== 'CANCELLED').length}
           icon={ScrollText}
         />
-        <StatCard label="Active Value" value={formatMoney(activeValue)} icon={ScrollText} />
+        <StatCard label={m.statValue} value={formatMoney(activeValue)} icon={ScrollText} />
       </div>
 
-      <Panel title="Active Registry">
+      <Panel title={m.panel}>
         <div className="mb-4 flex max-w-md items-center gap-2 rounded-md border border-ink-600 bg-ink-950 px-3 py-2">
           <Search className="h-4 w-4 text-ink-400" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search company or service" className="w-full bg-transparent text-sm text-ink-100 outline-none placeholder-ink-500" />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={m.search} className="w-full bg-transparent text-sm text-ink-100 outline-none placeholder-ink-500" />
         </div>
         {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
 
         {loading ? (
           <TableSkeleton cols={5} />
         ) : visibleContracts.length === 0 ? (
-          <EmptyState icon={ScrollText} message="No contracts yet. Create your first contract to get started." />
+          <EmptyState icon={ScrollText} message={m.empty} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
-                  <th className="px-3 py-3 font-semibold">COMPANY</th>
-                  <th className="px-3 py-3 font-semibold">SERVICE</th>
-                  <th className="px-3 py-3 font-semibold">VALUE</th>
-                  <th className="px-3 py-3 font-semibold">STATUS</th>
+                  <th className="px-3 py-3 font-semibold">{m.company}</th>
+                  <th className="px-3 py-3 font-semibold">{m.service}</th>
+                  <th className="px-3 py-3 font-semibold">{m.value}</th>
+                  <th className="px-3 py-3 font-semibold">{shared.status}</th>
                   {canWrite && <th className="px-3 py-3" />}
                 </tr>
               </thead>
@@ -250,15 +252,15 @@ function ContractsPage() {
                     <td className="px-3 py-3 text-ink-300">{c.service}</td>
                     <td className="px-3 py-3 text-ink-100">{formatMoney(c.value)}</td>
                     <td className="px-3 py-3">
-                      <Badge tone={statusTone[c.status]}>{c.status.replace('_', ' ')}</Badge>
+                      <Badge tone={statusTone[c.status]}>{status.contract[c.status]}</Badge>
                     </td>
                     {canWrite && (
                       <td className="px-3 py-3">
                         <div className="flex items-center justify-end gap-3 text-ink-400">
-                          <button type="button" onClick={() => openEdit(c)} aria-label="Edit contract" className="hover:text-ink-100">
+                          <button type="button" onClick={() => openEdit(c)} aria-label={m.editAria} className="hover:text-ink-100">
                             <Pencil className="h-4 w-4" />
                           </button>
-                          <button type="button" onClick={() => handleDelete(c)} aria-label="Delete contract" className="hover:text-red-400">
+                          <button type="button" onClick={() => handleDelete(c)} aria-label={m.deleteAria} className="hover:text-red-400">
                             <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
@@ -273,11 +275,11 @@ function ContractsPage() {
       </Panel>
 
       {(showCreate || editing) && (
-        <Modal title={editing ? 'Edit Contract' : 'New Contract'} onClose={closeForm}>
+        <Modal title={editing ? m.edit : m.new} onClose={closeForm}>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             {!editing && (
               <div>
-                <label className={labelClass}>CUSTOMER</label>
+                <label className={labelClass}>{m.customer}</label>
                 <select
                   value={form.customerId}
                   onChange={(e) => setForm({ ...form, customerId: e.target.value })}
@@ -292,7 +294,7 @@ function ContractsPage() {
               </div>
             )}
             <div>
-              <label className={labelClass}>SERVICE</label>
+              <label className={labelClass}>{m.service}</label>
               <input
                 value={form.service}
                 onChange={(e) => setForm({ ...form, service: e.target.value })}
@@ -302,7 +304,7 @@ function ContractsPage() {
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className={labelClass}>VALUE</label>
+                <label className={labelClass}>{m.value}</label>
                 <input
                   type="number"
                   min={0}
@@ -314,7 +316,7 @@ function ContractsPage() {
                 />
               </div>
               <div>
-                <label className={labelClass}>STATUS</label>
+                <label className={labelClass}>{shared.status}</label>
                 <select
                   value={form.status}
                   onChange={(e) => setForm({ ...form, status: e.target.value as ContractStatus })}
@@ -322,7 +324,7 @@ function ContractsPage() {
                 >
                   {STATUSES.map((s) => (
                     <option key={s} value={s}>
-                      {s.replace('_', ' ')}
+                      {status.contract[s]}
                     </option>
                   ))}
                 </select>
@@ -330,7 +332,7 @@ function ContractsPage() {
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className={labelClass}>START DATE</label>
+                <label className={labelClass}>{m.startDate}</label>
                 <input
                   type="date"
                   value={form.startDate}
@@ -339,7 +341,7 @@ function ContractsPage() {
                 />
               </div>
               <div>
-                <label className={labelClass}>END DATE</label>
+                <label className={labelClass}>{m.endDate}</label>
                 <input
                   type="date"
                   value={form.endDate}
@@ -352,7 +354,7 @@ function ContractsPage() {
             {formError && <p className="text-sm text-red-400">{formError}</p>}
 
             <button type="submit" disabled={submitting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
-              {submitting ? 'Saving…' : editing ? 'Save Changes' : 'Create Contract'}
+              {submitting ? shared.saving : editing ? shared.saveChanges : m.create}
             </button>
           </form>
         </Modal>
