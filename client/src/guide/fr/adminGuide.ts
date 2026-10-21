@@ -3,13 +3,13 @@ import type { RoleGuide } from '../types'
 /**
  * Guide administrateur - French copy of ../adminGuide.ts (2026-10-20). Same chapters, topics, ids
  * and paths as the English guide; change both together. Button names are the ones the French
- * screen shows; pages not translated yet (Technet ERP, Marketing, Sécurité, Gestion des
- * utilisateurs, Employés, Certifications) keep their English button names, written as on screen.
+ * screen shows; pages not translated yet (Marketing, Sécurité, Gestion des utilisateurs,
+ * Employés, Certifications) keep their English button names, written as on screen.
  */
 export const ADMIN_GUIDE_FR: RoleGuide = {
   title: 'Guide administrateur',
   intro:
-    "Comment gérer Technet Digital en tant qu'administrateur : les comptes, la présence du personnel, les opérations, les RH, le magasin et l'ERP. Il suit le menu de gauche, de haut en bas. Le Responsable des opérations a exactement les mêmes accès qu'un administrateur : ce guide est aussi le sien. Certaines pages ne sont pas encore traduites ; leurs boutons sont nommés ici en anglais, tels qu'ils apparaissent à l'écran.",
+    "Comment gérer Technet Digital en tant qu'administrateur : les comptes, la présence du personnel, les opérations, les RH, le magasin et l'ERP. Il suit le menu de gauche, de haut en bas. Le Responsable des opérations a exactement les mêmes accès qu'un administrateur : ce guide est aussi le sien. Quelques pages ne sont pas encore traduites (Marketing, Sécurité, Gestion des utilisateurs, Employés et Certifications) ; leurs boutons sont nommés ici en anglais, tels qu'ils apparaissent à l'écran.",
   roles: ['ADMIN', 'OPERATIONS_MANAGER'],
   updated: '2026-10-20',
   chapters: [
@@ -658,7 +658,7 @@ export const ADMIN_GUIDE_FR: RoleGuide = {
     {
       id: 'erp',
       title: 'Technet ERP',
-      intro: "Clients et devis, achats, inventaire, projets et documents. Les factures et les dépenses sont tenues dans QuickBooks, pas dans cette application. Les pages de l'ERP ne sont pas encore traduites : leurs boutons sont nommés ici en anglais.",
+      intro: "Clients et devis, achats, inventaire, projets et documents. Les factures et les dépenses sont tenues dans QuickBooks, pas dans cette application.",
       topics: [
         {
           id: 'customers',
