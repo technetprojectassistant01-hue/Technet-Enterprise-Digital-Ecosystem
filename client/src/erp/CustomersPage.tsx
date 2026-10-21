@@ -9,6 +9,7 @@ import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
 import { hasRole, CUSTOMER_MANAGE_ROLES } from '../lib/permissions'
+import { useT } from '../i18n'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -51,6 +52,7 @@ function CustomersPage() {
   const confirm = useConfirm()
   const { user } = useAuth()
   const canWrite = hasRole(user?.role, CUSTOMER_MANAGE_ROLES)
+  const { customers: m, shared } = useT().erp
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -74,7 +76,7 @@ function CustomersPage() {
     api
       .listCustomers({ search: searchValue || undefined })
       .then(({ customers }) => setCustomers(customers))
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load customers'))
+      .catch((err) => setError(err instanceof Error ? err.message : m.loadFailed))
       .finally(() => setLoading(false))
   }
 
@@ -107,7 +109,7 @@ function CustomersPage() {
     setFormError(null)
 
     if (!form.name.trim()) {
-      setFormError('Name is required')
+      setFormError(m.nameRequired)
       return
     }
 
@@ -127,11 +129,11 @@ function CustomersPage() {
       } else {
         await api.createCustomer(input)
       }
-      toast.success(editing ? 'Customer updated' : 'Customer created')
+      toast.success(editing ? m.updated : m.created)
       closeForm()
       load()
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Failed to save customer')
+      setFormError(err instanceof Error ? err.message : m.saveFailed)
     } finally {
       setSubmitting(false)
     }
@@ -139,18 +141,18 @@ function CustomersPage() {
 
   async function handleDelete(c: Customer) {
     const ok = await confirm({
-      title: 'Delete customer',
-      message: `Delete customer "${c.name}"? This cannot be undone.`,
-      confirmLabel: 'Delete',
+      title: m.deleteTitle,
+      message: m.deleteMessage(c.name),
+      confirmLabel: shared.delete,
       tone: 'danger',
     })
     if (!ok) return
     try {
       await api.deleteCustomer(c.id)
-      toast.success(`Deleted ${c.name}`)
+      toast.success(shared.deleted(c.name))
       load()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to delete customer')
+      toast.error(err instanceof Error ? err.message : m.deleteFailed)
     }
   }
 
@@ -176,7 +178,7 @@ function CustomersPage() {
       setPortalCopied(false)
       load()
     } catch (err) {
-      setPortalError(err instanceof Error ? err.message : 'Failed to grant portal access')
+      setPortalError(err instanceof Error ? err.message : m.grantFailed)
     } finally {
       setPortalBusy(false)
     }
@@ -191,7 +193,7 @@ function CustomersPage() {
       setPortalResult(result)
       setPortalCopied(false)
     } catch (err) {
-      setPortalError(err instanceof Error ? err.message : 'Failed to reset portal access')
+      setPortalError(err instanceof Error ? err.message : m.resetFailed)
     } finally {
       setPortalBusy(false)
     }
@@ -200,9 +202,9 @@ function CustomersPage() {
   async function handleRevokePortalAccess() {
     if (!portalAccessFor) return
     const ok = await confirm({
-      title: 'Revoke portal access',
-      message: `Revoke ${portalAccessFor.name}'s portal login? They will no longer be able to sign in to view quotations or jobs.`,
-      confirmLabel: 'Revoke',
+      title: m.revokeTitle,
+      message: m.revokeMessage(portalAccessFor.name),
+      confirmLabel: m.revoke,
       tone: 'danger',
     })
     if (!ok) return
@@ -210,11 +212,11 @@ function CustomersPage() {
     setPortalBusy(true)
     try {
       await api.revokePortalAccess(portalAccessFor.id)
-      toast.success('Portal access revoked')
+      toast.success(m.revoked)
       closePortalAccess()
       load()
     } catch (err) {
-      setPortalError(err instanceof Error ? err.message : 'Failed to revoke portal access')
+      setPortalError(err instanceof Error ? err.message : m.revokeFailed)
     } finally {
       setPortalBusy(false)
     }
@@ -224,12 +226,12 @@ function CustomersPage() {
     downloadCsv(
       'customers',
       [
-        { header: 'Name', accessor: (c: Customer) => c.name },
-        { header: 'Company', accessor: (c: Customer) => c.company },
-        { header: 'Email', accessor: (c: Customer) => c.email },
-        { header: 'Phone', accessor: (c: Customer) => c.phone },
-        { header: 'VAT Number', accessor: (c: Customer) => c.vatNumber },
-        { header: 'BRN', accessor: (c: Customer) => c.taxNumber },
+        { header: m.csv.name, accessor: (c: Customer) => c.name },
+        { header: m.csv.company, accessor: (c: Customer) => c.company },
+        { header: m.csv.email, accessor: (c: Customer) => c.email },
+        { header: m.csv.phone, accessor: (c: Customer) => c.phone },
+        { header: m.csv.vat, accessor: (c: Customer) => c.vatNumber },
+        { header: m.csv.brn, accessor: (c: Customer) => c.taxNumber },
       ],
       customers,
     )
@@ -239,31 +241,31 @@ function CustomersPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-ink-100">Customer Directory</h1>
-          <p className="mt-1 text-sm text-ink-300">Manage strategic partnerships and client engineering accounts.</p>
+          <h1 className="text-2xl font-bold text-ink-100">{m.title}</h1>
+          <p className="mt-1 text-sm text-ink-300">{m.subtitle}</p>
         </div>
         <div className="flex items-center gap-3">
           <button type="button" onClick={exportCsv} className={secondaryButtonClass}>
             <Download className="h-4 w-4" />
-            Export CSV
+            {m.exportCsv}
           </button>
           {canWrite && (
             <button type="button" onClick={openCreate} className={primaryButtonClass}>
               <Plus className="h-4 w-4" />
-              Add Customer
+              {m.add}
             </button>
           )}
         </div>
       </div>
 
-      <StatCard label="Total Customers" value={customers.length} icon={Users} />
+      <StatCard label={m.statTotal} value={customers.length} icon={Users} />
 
-      <Panel title="Customer Directory">
+      <Panel title={m.panel}>
         <div className="mb-4 flex flex-1 max-w-sm items-center gap-2 rounded-md border border-ink-700 bg-ink-950 px-3 py-2">
           <Search className="h-4 w-4 text-ink-400" />
           <input
             type="text"
-            placeholder="Search by name, company, or email..."
+            placeholder={m.search}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && load(search)}
@@ -276,16 +278,16 @@ function CustomersPage() {
         {loading ? (
           <TableSkeleton cols={5} />
         ) : customers.length === 0 ? (
-          <EmptyState icon={Users} message="No customers yet. Add your first customer to get started." />
+          <EmptyState icon={Users} message={m.empty} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
-                  <th className="px-3 py-3 font-semibold">NAME</th>
-                  <th className="px-3 py-3 font-semibold">COMPANY</th>
-                  <th className="px-3 py-3 font-semibold">EMAIL</th>
-                  <th className="px-3 py-3 font-semibold">PHONE</th>
+                  <th className="px-3 py-3 font-semibold">{shared.name}</th>
+                  <th className="px-3 py-3 font-semibold">{m.company}</th>
+                  <th className="px-3 py-3 font-semibold">{shared.email}</th>
+                  <th className="px-3 py-3 font-semibold">{shared.phone}</th>
                   {canWrite && <th className="px-3 py-3" />}
                 </tr>
               </thead>
@@ -302,16 +304,16 @@ function CustomersPage() {
                           <button
                             type="button"
                             onClick={() => openPortalAccess(c)}
-                            aria-label="Portal access"
-                            title={c.portalUser ? `Portal access granted (${c.portalUser.email})` : 'Grant portal access'}
+                            aria-label={m.portalAria}
+                            title={c.portalUser ? m.portalGranted(c.portalUser.email) : m.grantPortal}
                             className={c.portalUser ? 'text-cyan-accent hover:text-cyan-accent-dark' : 'hover:text-ink-100'}
                           >
                             <KeyRound className="h-4 w-4" />
                           </button>
-                          <button type="button" onClick={() => openEdit(c)} aria-label="Edit customer" className="hover:text-ink-100">
+                          <button type="button" onClick={() => openEdit(c)} aria-label={m.editAria} className="hover:text-ink-100">
                             <Pencil className="h-4 w-4" />
                           </button>
-                          <button type="button" onClick={() => handleDelete(c)} aria-label="Delete customer" className="hover:text-red-400">
+                          <button type="button" onClick={() => handleDelete(c)} aria-label={m.deleteAria} className="hover:text-red-400">
                             <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
@@ -326,11 +328,11 @@ function CustomersPage() {
       </Panel>
 
       {(showCreate || editing) && (
-        <Modal title={editing ? 'Edit Customer' : 'Add Customer'} onClose={closeForm}>
+        <Modal title={editing ? m.edit : m.add} onClose={closeForm}>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="col-span-2">
-                <label className={labelClass}>NAME</label>
+                <label className={labelClass}>{shared.name}</label>
                 <input
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -339,7 +341,7 @@ function CustomersPage() {
                 />
               </div>
               <div>
-                <label className={labelClass}>COMPANY</label>
+                <label className={labelClass}>{m.company}</label>
                 <input
                   value={form.company}
                   onChange={(e) => setForm({ ...form, company: e.target.value })}
@@ -347,7 +349,7 @@ function CustomersPage() {
                 />
               </div>
               <div>
-                <label className={labelClass}>EMAIL</label>
+                <label className={labelClass}>{shared.email}</label>
                 <input
                   type="email"
                   value={form.email}
@@ -356,7 +358,7 @@ function CustomersPage() {
                 />
               </div>
               <div>
-                <label className={labelClass}>PHONE</label>
+                <label className={labelClass}>{shared.phone}</label>
                 <input
                   value={form.phone}
                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
@@ -364,7 +366,7 @@ function CustomersPage() {
                 />
               </div>
               <div>
-                <label className={labelClass}>ADDRESS</label>
+                <label className={labelClass}>{shared.address}</label>
                 <input
                   value={form.address}
                   onChange={(e) => setForm({ ...form, address: e.target.value })}
@@ -372,7 +374,7 @@ function CustomersPage() {
                 />
               </div>
               <div>
-                <label className={labelClass}>VAT NUMBER</label>
+                <label className={labelClass}>{m.vatNumber}</label>
                 <input
                   value={form.vatNumber}
                   onChange={(e) => setForm({ ...form, vatNumber: e.target.value })}
@@ -380,7 +382,7 @@ function CustomersPage() {
                 />
               </div>
               <div>
-                <label className={labelClass}>BRN</label>
+                <label className={labelClass}>{m.brn}</label>
                 <input
                   value={form.taxNumber}
                   onChange={(e) => setForm({ ...form, taxNumber: e.target.value })}
@@ -392,14 +394,14 @@ function CustomersPage() {
             {formError && <p className="text-sm text-red-400">{formError}</p>}
 
             <button type="submit" disabled={submitting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
-              {submitting ? 'Saving…' : editing ? 'Save Changes' : 'Create Customer'}
+              {submitting ? shared.saving : editing ? shared.saveChanges : m.create}
             </button>
           </form>
         </Modal>
       )}
 
       {portalAccessFor && (
-        <Modal title="Portal Access" onClose={closePortalAccess}>
+        <Modal title={m.portalTitle} onClose={closePortalAccess}>
           <p className="mb-4 text-sm text-ink-400">
             {portalAccessFor.name} {portalAccessFor.company ? `(${portalAccessFor.company})` : ''}
           </p>
@@ -407,8 +409,7 @@ function CustomersPage() {
           {portalResult ? (
             <div className="flex flex-col gap-3">
               <p className="text-sm text-ink-300">
-                Portal login for <span className="text-ink-100">{portalResult.email}</span>. Copy the password and
-                share it with them directly — it won't be shown again, and no email was sent.
+                {m.portalLoginFor} <span className="text-ink-100">{portalResult.email}</span>. {m.portalShare}
               </p>
               <div className="flex items-center gap-2">
                 <code className="flex-1 rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-cyan-accent">
@@ -423,19 +424,19 @@ function CustomersPage() {
                   className="flex items-center gap-1.5 rounded-md bg-cyan-accent px-3 py-2 text-xs font-semibold text-ink-950 hover:bg-cyan-accent-dark"
                 >
                   <Copy className="h-3.5 w-3.5" />
-                  {portalCopied ? 'Copied' : 'Copy'}
+                  {portalCopied ? m.copied : m.copy}
                 </button>
               </div>
             </div>
           ) : portalAccessFor.portalUser ? (
             <div className="flex flex-col gap-4">
               <p className="text-sm text-ink-300">
-                Portal access is active for <span className="text-ink-100">{portalAccessFor.portalUser.email}</span>.
+                {m.portalActive} <span className="text-ink-100">{portalAccessFor.portalUser.email}</span>.
               </p>
               {portalError && <p className="text-sm text-red-400">{portalError}</p>}
               <div className="flex gap-3">
                 <button type="button" onClick={handleResetPortalAccess} disabled={portalBusy} className={secondaryButtonClass}>
-                  Reset Password
+                  {m.resetPassword}
                 </button>
                 <button
                   type="button"
@@ -443,18 +444,17 @@ function CustomersPage() {
                   disabled={portalBusy}
                   className="rounded-md border border-red-400/50 px-4 py-2 text-sm text-red-400 hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  Revoke Access
+                  {m.revokeAccess}
                 </button>
               </div>
             </div>
           ) : (
             <div className="flex flex-col gap-4">
               <p className="text-sm text-ink-300">
-                Grant this customer their own login to view quotations and job status, and to request new
-                quotations.
+                {m.portalIntro}
               </p>
               <div>
-                <label className={labelClass}>PORTAL EMAIL</label>
+                <label className={labelClass}>{m.portalEmail}</label>
                 <input
                   type="email"
                   value={portalEmailInput}
@@ -470,7 +470,7 @@ function CustomersPage() {
                 disabled={portalBusy || !portalEmailInput.trim()}
                 className={`justify-center py-2.5 ${primaryButtonClass}`}
               >
-                {portalBusy ? 'Granting…' : 'Grant Access'}
+                {portalBusy ? m.granting : m.grantAccess}
               </button>
             </div>
           )}
