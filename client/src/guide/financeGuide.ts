@@ -40,7 +40,7 @@ export const FINANCE_GUIDE: RoleGuide = {
               items: [
                 'You add and edit customers, including their billing details (BRN, VAT number), and give them portal access.',
                 'You record and update service contracts.',
-                'You can read every quotation, download its PDF and email it, but creating and changing quotations is done by Sales.',
+                'You can read every quotation and its call history, download its PDF and email it, but creating and changing quotations is done by Sales.',
                 'You can upload documents and ask for purchases with a requisition.',
                 'Projects, inventory, suppliers, purchase orders and Technet Operations are view-only for you.',
                 'You do not check in or out, so there is no Attendance page in your menu. My Leave and My Documents work once HR has linked your login to your employee record.',
@@ -106,7 +106,8 @@ export const FINANCE_GUIDE: RoleGuide = {
                 'Quotations lists every quotation with its customer, status and total. Open one to see its lines, payment terms and attachments.',
                 'Download PDF saves the quotation as a PDF. Email Customer downloads it and opens an email with the text ready; attach the PDF yourself before sending.',
                 'Follow-Up lists quotations by customer or by date, to see what was quoted and when.',
-                'Creating, editing and marking quotations (sent, approved, not approved) is done by Sales. The Call Log of quote requests and the call history on each quotation are visible to Sales only.',
+                'Follow-Up on a quotation shows each call Sales logged: the date, who they spoke to and the outcome.',
+                'Creating, editing and marking quotations (sent, approved, not approved), logging calls and the Call Log of quote requests are for Sales.',
               ],
             },
           ],
