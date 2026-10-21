@@ -683,13 +683,13 @@ export const ADMIN_GUIDE_MFE: RoleGuide = {
             {
               kind: 'steps',
               items: [
-                "Klik Log a Request e met kliyan la (ouswa nom enn lantrepriz si li nouvo) ek seki li pe demande.",
+                "Klik Anrezistre enn demann e met kliyan la (ouswa nom enn lantrepriz si li nouvo) ek seki li pe demande.",
                 "Azout enn not stati pou lezot trouv kifer li ankor pe atann (par egzanp « pe atann pri fourniser »).",
-                "Avoy enn akize resepsion: sanz imel la, apre Save Draft ouswa Send. Send ouver ou progranm imel avek text la deza ranpli.",
-                'Convert to Quotation fer demann la vinn enn devi brouyon, ouswa Decline ferm li.',
+                "Avoy enn akize resepsion: klik Akize resepsion, sanz imel la, apre Anrezistre brouyon ouswa Avoye. Avoye ouver ou progranm imel avek text la deza ranpli (imel la limem an angle, parey kouma devi la).",
+                'Konverti fer demann la vinn enn devi brouyon, ouswa Refize ferm li.',
               ],
             },
-            { kind: 'note', text: "Enn demann ki pa finn gagn akize resepsion, ki pa finn konverti ouswa refize dan 24 ler gagn mark OVERDUE." },
+            { kind: 'note', text: "Enn demann ki pa finn gagn akize resepsion, ki pa finn konverti ouswa refize dan 24 ler gagn mark AN RETAR." },
           ],
         },
         {
@@ -700,23 +700,23 @@ export const ADMIN_GUIDE_MFE: RoleGuide = {
             {
               kind: 'steps',
               items: [
-                "Klik New Quotation. Swazir kliyan la, rant tit la ek dimoun pou kontakte, e azout bann lign (bouton Labor ek Transport azout bann lign ki servi souvan).",
+                "Klik Nouvo devi. Swazir kliyan la, rant tit la ek dimoun pou kontakte, e azout bann lign (bouton + Labor ek + Transport azout sa bann lign ki servi souvan, an angle kouma res devi la).",
                 "Met kondision peyman (bann lign bizin fer 100% total), validite an zour (15 par default) ek disponibilite.",
                 "Anrezistre. Nimero devi la donn otomatikman e li koumans kouma brouyon.",
-                "Ouver li pou verifie, apre Download PDF, ouswa Email Customer.",
-                "Servi Mark as Sent kan finn avoy li, apre Mark Approved, Mark Not Approved ouswa Mark Expired.",
+                "Ouver li pou verifie, apre Telesarz PDF, ouswa Avoy kliyan.",
+                "Servi Mark kouma avoye kan finn avoy li, apre Mark aprouve, Mark pa aprouve ouswa Mark expire.",
               ],
             },
             {
               kind: 'list',
               items: [
                 "Kliyan, kondision ek bann lign kapav sanze zis tan ki devi la enn brouyon.",
-                "Follow-Up lor devi la anrezistre sak apel: dat, kisannla ou finn koze ek rezilta. Ekrir osi bon komand ouswa referans konfirmasion kliyan la la.",
-                'Attachments ena bann fisie ki konekte ar devi la.',
+                "Swivi lor devi la anrezistre sak apel: dat, kisannla ou finn koze ek rezilta. Ekrir osi bon komand ouswa referans konfirmasion kliyan la la.",
+                'Fisie atase ena bann fisie ki konekte ar devi la.',
                 "Zis enn administrater kapav azout enn nouvo nom kondision peyman. Lezot swazir parmi bann nom ki deza servi.",
               ],
             },
-            { kind: 'note', text: "Email Customer telesarz PDF la e ouver enn imel avek text la pare. Enn navigater pa kapav atas fisie la pou ou, alor atas PDF ki finn telesarze ou-mem avan avoye." },
+            { kind: 'note', text: "Avoy kliyan telesarz PDF la e ouver enn imel avek text la pare. Enn navigater pa kapav atas fisie la pou ou, alor atas PDF ki finn telesarze ou-mem avan avoye." },
           ],
         },
         {
