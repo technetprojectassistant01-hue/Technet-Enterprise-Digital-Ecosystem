@@ -1,5 +1,6 @@
 import { Plus, Trash2 } from 'lucide-react'
 import { formatMoney } from '../lib/format'
+import { useT } from '../i18n'
 
 export interface SalesLineItemRow {
   description: string
@@ -20,6 +21,7 @@ function SalesLineItemsEditor({
   items: SalesLineItemRow[]
   onChange: (items: SalesLineItemRow[]) => void
 }) {
+  const { salesLines: m, lineItems, shared } = useT().erp
   function updateRow(index: number, patch: Partial<SalesLineItemRow>) {
     onChange(items.map((row, i) => (i === index ? { ...row, ...patch } : row)))
   }
@@ -34,7 +36,7 @@ function SalesLineItemsEditor({
 
   return (
     <div className="flex flex-col gap-3">
-      <label className="text-xs font-semibold tracking-widest text-ink-400">LINE ITEMS</label>
+      <label className="text-xs font-semibold tracking-widest text-ink-400">{lineItems.title}</label>
       {items.map((row, i) => {
         const lineTotal = (Number(row.quantity) || 0) * (Number(row.unitPrice) || 0)
         return (
@@ -42,7 +44,7 @@ function SalesLineItemsEditor({
             <div className="flex items-start gap-2">
               <span className="mt-1.5 w-6 shrink-0 font-mono text-[10px] text-ink-400">{String(i + 1).padStart(2, '0')}</span>
               <div className="flex-1">
-                <label className={fieldLabelClass}>DESCRIPTION</label>
+                <label className={fieldLabelClass}>{shared.description}</label>
                 <textarea
                   value={row.description}
                   onChange={(e) => updateRow(i, { description: e.target.value })}
@@ -56,7 +58,7 @@ function SalesLineItemsEditor({
                 type="button"
                 onClick={() => removeRow(i)}
                 disabled={items.length === 1}
-                aria-label="Remove line item"
+                aria-label={lineItems.remove}
                 className="mt-6 shrink-0 text-ink-400 hover:text-red-400 disabled:opacity-30"
               >
                 <Trash2 className="h-4 w-4" />
@@ -64,7 +66,7 @@ function SalesLineItemsEditor({
             </div>
             <div className="mt-2 flex items-end gap-2 pl-8">
               <div className="w-20">
-                <label className={fieldLabelClass}>QTY</label>
+                <label className={fieldLabelClass}>{lineItems.qty}</label>
                 <input
                   type="number"
                   min={1}
@@ -75,7 +77,7 @@ function SalesLineItemsEditor({
                 />
               </div>
               <div className="w-28">
-                <label className={fieldLabelClass}>UNIT PRICE</label>
+                <label className={fieldLabelClass}>{m.unitPrice}</label>
                 <input
                   type="number"
                   min={0}
@@ -87,7 +89,7 @@ function SalesLineItemsEditor({
                 />
               </div>
               <div className="flex-1 text-right">
-                <span className={fieldLabelClass}>TOTAL AMOUNT</span>
+                <span className={fieldLabelClass}>{m.totalAmount}</span>
                 <div className="mt-1 text-sm font-semibold text-ink-100">{formatMoney(lineTotal)}</div>
               </div>
             </div>
@@ -101,8 +103,9 @@ function SalesLineItemsEditor({
           className="flex items-center gap-1.5 text-xs font-semibold text-cyan-accent hover:underline"
         >
           <Plus className="h-3.5 w-3.5" />
-          Add line item
+          {lineItems.add}
         </button>
+        {/* These two insert English text on purpose: it goes on the customer's (English) quotation. */}
         <button type="button" onClick={() => addRow('Labor')} className="text-xs text-ink-400 hover:text-ink-100 hover:underline">
           + Labor
         </button>
