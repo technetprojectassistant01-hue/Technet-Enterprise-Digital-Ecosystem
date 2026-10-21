@@ -101,9 +101,9 @@ export const FINANCE_GUIDE_MFE: RoleGuide = {
               kind: 'list',
               items: [
                 "Devi montre tou devi avek zot kliyan, zot stati ek zot total. Ouver enn pou trouv so bann lign, so kondision peyman ek so bann fisie atase.",
-                "Download PDF anrezistre devi la an PDF. Email Customer telesarz li e ouver enn imel avek text la pare; atas PDF la ou-mem avan avoye.",
+                "Telesarz PDF anrezistre devi la an PDF. Avoy kliyan telesarz li e ouver enn imel avek text la pare; atas PDF la ou-mem avan avoye.",
                 "Swivi montre bann devi par kliyan ouswa par dat, pou trouv seki finn propoze ek kan.",
-                "Follow-Up lor enn devi montre sak apel ki Lavant finn anrezistre: dat, kisannla zot finn koze ek rezilta.",
+                "Swivi lor enn devi montre sak apel ki Lavant finn anrezistre: dat, kisannla zot finn koze ek rezilta.",
                 "Kre, sanz ek mark bann devi (avoye, aprouve, pa aprouve), anrezistre apel ek Call Log bann demann devi se pou Lavant.",
               ],
             },
