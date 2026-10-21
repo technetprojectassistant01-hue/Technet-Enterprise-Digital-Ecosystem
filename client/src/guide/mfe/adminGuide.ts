@@ -759,9 +759,9 @@ export const ADMIN_GUIDE_MFE: RoleGuide = {
             {
               kind: 'list',
               items: [
-                "Inventer: Add Item, apre Adjust stock pou bann mouvman. Stock Ledger montre zot. Stok ba siyale kan li ariv nivo minimom.",
-                'Proze: New Project avek kliyan, responsab, dat ek bidze.',
-                "Dokiman: Upload Document gard enn fisie dan enn kategori (kontra, RH, proze, devi…) e kapav konekte li ar enn kliyan ouswa enn proze.",
+                "Inventer: Azout enn lartik, apre bouton Azist stok (bann fles) pou bann mouvman. Rezis stok montre zot. Stok ba siyale kan li ariv nivo minimom.",
+                'Proze: Nouvo proze avek kliyan, responsab, dat ek bidze.',
+                "Dokiman: Azout enn dokiman gard enn fisie dan enn kategori (kontra, RH, proze, devi…) e kapav konekte li ar enn kliyan ouswa enn proze.",
               ],
             },
           ],
