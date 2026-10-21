@@ -11,6 +11,7 @@ import { useAuth } from '../context/AuthContext'
 import { hasRole, PROCUREMENT_ROLES } from '../lib/permissions'
 import { useSuppliers } from './useSuppliers'
 import { requisitionStatusTone } from './statusTones'
+import { useT } from '../i18n'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -22,6 +23,7 @@ function RequisitionDetailPage() {
   const confirm = useConfirm()
   const { user } = useAuth()
   const canManage = hasRole(user?.role, PROCUREMENT_ROLES)
+  const { requisitionDetail: m, shared, status } = useT().erp
   const suppliers = useSuppliers()
 
   const [requisition, setRequisition] = useState<RequisitionDetail | null>(null)
@@ -47,7 +49,7 @@ function RequisitionDetailPage() {
     api
       .getRequisition(id)
       .then(({ requisition }) => setRequisition(requisition))
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load requisition'))
+      .catch((err) => setError(err instanceof Error ? err.message : m.loadFailed))
       .finally(() => setLoading(false))
   }
 
@@ -56,17 +58,17 @@ function RequisitionDetailPage() {
   async function handleApprove() {
     if (!requisition) return
     const ok = await confirm({
-      title: 'Approve requisition',
-      message: `Approve requisition ${requisition.requisitionNumber}?`,
-      confirmLabel: 'Approve',
+      title: m.approveTitle,
+      message: m.approveMessage(requisition.requisitionNumber),
+      confirmLabel: shared.approve,
     })
     if (!ok) return
     try {
       await api.approveRequisition(requisition.id)
-      toast.success('Requisition approved')
+      toast.success(m.approved)
       load()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to approve requisition')
+      toast.error(err instanceof Error ? err.message : m.approveFailed)
     }
   }
 
@@ -74,17 +76,17 @@ function RequisitionDetailPage() {
     e.preventDefault()
     setRejectError(null)
     if (!rejectNote.trim()) {
-      setRejectError('A reason is required')
+      setRejectError(m.reasonRequired)
       return
     }
     setRejecting(true)
     try {
       await api.rejectRequisition(requisition!.id, rejectNote.trim())
-      toast.success('Requisition rejected')
+      toast.success(m.rejected)
       setShowReject(false)
       load()
     } catch (err) {
-      setRejectError(err instanceof Error ? err.message : 'Failed to reject requisition')
+      setRejectError(err instanceof Error ? err.message : m.rejectFailed)
     } finally {
       setRejecting(false)
     }
@@ -104,11 +106,11 @@ function RequisitionDetailPage() {
     setConvertError(null)
 
     if (!supplierId) {
-      setConvertError('Select a supplier')
+      setConvertError(m.selectSupplier)
       return
     }
     if (!poNumber.trim()) {
-      setConvertError('PO number is required')
+      setConvertError(m.poNumberRequired)
       return
     }
 
@@ -123,18 +125,18 @@ function RequisitionDetailPage() {
           unitCost: Number(unitCosts[item.id] || 0),
         })),
       })
-      toast.success('Converted to purchase order')
+      toast.success(m.convertedToast)
       setShowConvert(false)
       load()
     } catch (err) {
-      setConvertError(err instanceof Error ? err.message : 'Failed to convert requisition')
+      setConvertError(err instanceof Error ? err.message : m.convertFailed)
     } finally {
       setConverting(false)
     }
   }
 
   if (loading) return <TableSkeleton rows={6} cols={4} />
-  if (error || !requisition) return <EmptyState icon={X} message={error || 'Requisition not found'} />
+  if (error || !requisition) return <EmptyState icon={X} message={error || m.notFound} />
 
   return (
     <div className="flex flex-col gap-6">
@@ -143,19 +145,18 @@ function RequisitionDetailPage() {
         className="flex w-fit items-center gap-2 text-sm text-ink-400 hover:text-ink-100"
       >
         <ArrowLeft className="h-4 w-4" />
-        Back to Requisitions
+        {m.back}
       </Link>
 
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
         <div>
           <div className="flex items-center gap-3">
             <h1 className="font-mono text-2xl font-bold text-ink-100">{requisition.requisitionNumber}</h1>
-            <Badge tone={requisitionStatusTone[requisition.status]}>{requisition.status}</Badge>
+            <Badge tone={requisitionStatusTone[requisition.status]}>{status.requisition[requisition.status]}</Badge>
           </div>
           <p className="mt-1 text-sm text-ink-300">
-            {requisition.project?.name || 'No project'} · Requested by{' '}
-            {requisition.requestedBy.name || requisition.requestedBy.email}
-            {requisition.neededByDate && ` · Needed by ${requisition.neededByDate.slice(0, 10)}`}
+            {requisition.project?.name || shared.noProject} · {m.requestedBy(requisition.requestedBy.name || requisition.requestedBy.email)}
+            {requisition.neededByDate && ` · ${m.neededBy(requisition.neededByDate.slice(0, 10))}`}
           </p>
           {requisition.notes && <p className="mt-2 max-w-2xl text-sm text-ink-400">{requisition.notes}</p>}
         </div>
@@ -165,30 +166,30 @@ function RequisitionDetailPage() {
             <>
               <button type="button" onClick={handleApprove} className={primaryButtonClass}>
                 <Check className="h-4 w-4" />
-                Approve
+                {shared.approve}
               </button>
               <button type="button" onClick={() => setShowReject(true)} className={dangerButtonClass}>
                 <X className="h-4 w-4" />
-                Reject
+                {shared.reject}
               </button>
             </>
           )}
           {canManage && requisition.status === 'APPROVED' && (
             <button type="button" onClick={openConvert} className={primaryButtonClass}>
-              Convert to Purchase Order
+              {m.convert}
             </button>
           )}
         </div>
       </div>
 
-      <Panel title="Line Items">
+      <Panel title={m.lineItems}>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
-                <th className="px-3 py-3 font-semibold">DESCRIPTION</th>
-                <th className="px-3 py-3 font-semibold">INVENTORY ITEM</th>
-                <th className="px-3 py-3 font-semibold">QUANTITY</th>
+                <th className="px-3 py-3 font-semibold">{shared.description}</th>
+                <th className="px-3 py-3 font-semibold">{m.colInventoryItem}</th>
+                <th className="px-3 py-3 font-semibold">{shared.quantity}</th>
               </tr>
             </thead>
             <tbody>
@@ -205,7 +206,7 @@ function RequisitionDetailPage() {
       </Panel>
 
       {requisition.purchaseOrders.length > 0 && (
-        <Panel title="Purchase Orders">
+        <Panel title={m.purchaseOrders}>
           <div className="flex flex-col gap-2">
             {requisition.purchaseOrders.map((po) => (
               <Link
@@ -214,20 +215,22 @@ function RequisitionDetailPage() {
                 className="flex items-center justify-between rounded-lg bg-ink-800 px-4 py-2.5 hover:bg-ink-700"
               >
                 <span className="font-mono text-sm text-ink-100">{po.poNumber}</span>
-                <span className="text-xs text-ink-400">{po.status.replace('_', ' ')}</span>
+                <span className="text-xs text-ink-400">{status.purchaseOrder[po.status]}</span>
               </Link>
             ))}
           </div>
         </Panel>
       )}
 
-      <Panel title="Status History">
+      <Panel title={m.history}>
         <div className="flex flex-col gap-3">
           {requisition.statusHistory.map((h) => (
             <div key={h.id} className="rounded-lg bg-ink-800 px-4 py-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-ink-100">
-                  {h.fromStatus ? `${h.fromStatus} → ${h.toStatus}` : `Created (${h.toStatus})`}
+                  {h.fromStatus
+                    ? `${status.requisition[h.fromStatus]} → ${status.requisition[h.toStatus]}`
+                    : m.created(status.requisition[h.toStatus])}
                 </span>
                 <span className="text-xs text-ink-400">{new Date(h.createdAt).toLocaleString()}</span>
               </div>
@@ -241,10 +244,10 @@ function RequisitionDetailPage() {
       </Panel>
 
       {showReject && (
-        <Modal title="Reject Requisition" onClose={() => setShowReject(false)}>
+        <Modal title={m.rejectTitle} onClose={() => setShowReject(false)}>
           <form onSubmit={handleReject} className="flex flex-col gap-4">
             <div>
-              <label className={labelClass}>REASON</label>
+              <label className={labelClass}>{shared.reason}</label>
               <textarea
                 value={rejectNote}
                 onChange={(e) => setRejectNote(e.target.value)}
@@ -255,20 +258,20 @@ function RequisitionDetailPage() {
             </div>
             {rejectError && <p className="text-sm text-red-400">{rejectError}</p>}
             <button type="submit" disabled={rejecting} className={`justify-center py-2.5 ${dangerButtonClass}`}>
-              {rejecting ? 'Rejecting…' : 'Reject Requisition'}
+              {rejecting ? m.rejecting : m.rejectTitle}
             </button>
           </form>
         </Modal>
       )}
 
       {showConvert && (
-        <Modal title="Convert to Purchase Order" onClose={() => setShowConvert(false)}>
+        <Modal title={m.convert} onClose={() => setShowConvert(false)}>
           <form onSubmit={handleConvert} className="flex flex-col gap-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className={labelClass}>SUPPLIER</label>
+                <label className={labelClass}>{shared.supplier}</label>
                 <select value={supplierId} onChange={(e) => setSupplierId(e.target.value)} className={`mt-2 ${inputClass}`}>
-                  <option value="">Select a supplier</option>
+                  <option value="">{shared.selectSupplier}</option>
                   {suppliers.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name}
@@ -277,12 +280,12 @@ function RequisitionDetailPage() {
                 </select>
               </div>
               <div>
-                <label className={labelClass}>PO NUMBER</label>
+                <label className={labelClass}>{shared.poNumber}</label>
                 <input value={poNumber} onChange={(e) => setPoNumber(e.target.value)} required className={`mt-2 ${inputClass}`} />
               </div>
             </div>
             <div>
-              <label className={labelClass}>EXPECTED DATE</label>
+              <label className={labelClass}>{shared.expectedDate}</label>
               <input
                 type="date"
                 value={expectedDate}
@@ -292,7 +295,7 @@ function RequisitionDetailPage() {
             </div>
 
             <div className="flex flex-col gap-3">
-              <label className={labelClass}>UNIT COSTS</label>
+              <label className={labelClass}>{m.unitCosts}</label>
               {requisition.items.map((item) => (
                 <div key={item.id} className="flex items-center gap-3 rounded-md border border-ink-700 bg-ink-950 p-3">
                   <span className="flex-1 text-sm text-ink-200">
@@ -302,7 +305,7 @@ function RequisitionDetailPage() {
                     type="number"
                     min={0.01}
                     step="0.01"
-                    placeholder="Unit cost"
+                    placeholder={m.unitCostPlaceholder}
                     value={unitCosts[item.id] || ''}
                     onChange={(e) => setUnitCosts({ ...unitCosts, [item.id]: e.target.value })}
                     required
@@ -315,7 +318,7 @@ function RequisitionDetailPage() {
             {convertError && <p className="text-sm text-red-400">{convertError}</p>}
 
             <button type="submit" disabled={converting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
-              {converting ? 'Converting…' : 'Create Purchase Order'}
+              {converting ? m.converting : m.createPo}
             </button>
           </form>
         </Modal>
