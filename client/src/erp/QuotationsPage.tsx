@@ -18,6 +18,7 @@ import { formatMoney } from '../lib/format'
 import SalesLineItemsEditor, { EMPTY_SALES_LINE_ITEM, type SalesLineItemRow } from './SalesLineItemsEditor'
 import PaymentTermsLinesEditor, { EMPTY_PAYMENT_TERMS_LINE } from './PaymentTermsLinesEditor'
 import QuoteRequestsTab from './QuoteRequestsTab'
+import { useT } from '../i18n'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -31,6 +32,7 @@ function QuotationsPage() {
   const canWrite = hasRole(user?.role, SALES_ROLES)
   const canViewRequests = hasRole(user?.role, QUOTE_REQUEST_VIEW_ROLES)
   const isAdmin = isAdminLike(user?.role)
+  const { quotations: m, shared, status, productLines } = useT().erp
   const customers = useCustomers()
   const paymentTermLabels = usePaymentTermLabels()
   const [quotations, setQuotations] = useState<Quotation[]>([])
@@ -70,7 +72,7 @@ function QuotationsPage() {
         search: search || undefined,
       })
       .then(({ quotations }) => setQuotations(quotations))
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load quotations'))
+      .catch((err) => setError(err instanceof Error ? err.message : m.loadFailed))
       .finally(() => setLoading(false))
   }
 
@@ -116,20 +118,20 @@ function QuotationsPage() {
     setFormError(null)
 
     if (!customerId) {
-      setFormError('Select a customer')
+      setFormError(m.selectCustomer)
       return
     }
     if (!title.trim()) {
-      setFormError('Title is required')
+      setFormError(m.titleRequired)
       return
     }
     if (includesOrder && availabilityStatus === 'ORDER_PENDING' && (!orderDays.trim() || Number(orderDays) <= 0)) {
-      setFormError('Enter how many days until the order is received')
+      setFormError(m.orderDaysRequired)
       return
     }
     const paymentTotal = paymentTermsLines.reduce((sum, l) => sum + (Number(l.percentage) || 0), 0)
     if (Math.round(paymentTotal * 100) !== 10000) {
-      setFormError('Payment terms percentages must sum to 100')
+      setFormError(m.termsMustSum)
       return
     }
 
@@ -151,13 +153,13 @@ function QuotationsPage() {
           unitPrice: Number(item.unitPrice),
         })),
       })
-      toast.success('Quotation saved as draft - you can keep editing it from here')
+      toast.success(m.savedDraft)
       setShowCreate(false)
       // Jump straight to the new quotation instead of leaving the user on the list to hunt for
       // it - same fix already applied to the quote-request conversion flow.
       navigate(`/dashboard/erp/customers/quotations/${quotation.id}`)
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Failed to create quotation')
+      setFormError(err instanceof Error ? err.message : m.createFailed)
     } finally {
       setSubmitting(false)
     }
@@ -165,18 +167,18 @@ function QuotationsPage() {
 
   async function handleDelete(q: Quotation) {
     const ok = await confirm({
-      title: 'Delete quotation',
-      message: `Delete quotation "${q.title}"? This cannot be undone.`,
-      confirmLabel: 'Delete',
+      title: m.deleteTitle,
+      message: m.deleteMessage(q.title),
+      confirmLabel: shared.delete,
       tone: 'danger',
     })
     if (!ok) return
     try {
       await api.deleteQuotation(q.id)
-      toast.success('Quotation deleted')
+      toast.success(m.deleted)
       load()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to delete quotation')
+      toast.error(err instanceof Error ? err.message : m.deleteFailed)
     }
   }
 
@@ -187,11 +189,11 @@ function QuotationsPage() {
     downloadCsv(
       'quotations',
       [
-        { header: 'Quotation #', accessor: (q: Quotation) => q.quotationNumber },
-        { header: 'Title', accessor: (q: Quotation) => q.title },
-        { header: 'Customer', accessor: (q: Quotation) => q.customer.company || q.customer.name },
-        { header: 'Total', accessor: (q: Quotation) => q.total },
-        { header: 'Status', accessor: (q: Quotation) => q.status },
+        { header: m.csv.number, accessor: (q: Quotation) => q.quotationNumber },
+        { header: m.csv.title, accessor: (q: Quotation) => q.title },
+        { header: m.csv.customer, accessor: (q: Quotation) => q.customer.company || q.customer.name },
+        { header: m.csv.total, accessor: (q: Quotation) => q.total },
+        { header: m.csv.status, accessor: (q: Quotation) => status.quotation[q.status] },
       ],
       quotations,
     )
@@ -201,14 +203,14 @@ function QuotationsPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-ink-100">Quotations</h1>
-          <p className="mt-1 text-sm text-ink-300">Draft, send, and track the sales pipeline.</p>
+          <h1 className="text-2xl font-bold text-ink-100">{m.title}</h1>
+          <p className="mt-1 text-sm text-ink-300">{m.subtitle}</p>
         </div>
         {view === 'quotations' && (
           <div className="flex items-center gap-3">
             <button type="button" onClick={exportCsv} className={secondaryButtonClass}>
               <Download className="h-4 w-4" />
-              Export CSV
+              {m.exportCsv}
             </button>
             {canWrite && (
               <button
@@ -218,7 +220,7 @@ function QuotationsPage() {
                 className={primaryButtonClass}
               >
                 <Plus className="h-4 w-4" />
-                New Quotation
+                {m.new}
               </button>
             )}
           </div>
@@ -234,7 +236,7 @@ function QuotationsPage() {
               view === 'quotations' ? 'bg-cyan-accent/10 text-cyan-accent' : 'text-ink-300 hover:bg-ink-800 hover:text-ink-100'
             }`}
           >
-            Quotations
+            {m.tabQuotations}
           </button>
           <button
             type="button"
@@ -243,7 +245,7 @@ function QuotationsPage() {
               view === 'requests' ? 'bg-cyan-accent/10 text-cyan-accent' : 'text-ink-300 hover:bg-ink-800 hover:text-ink-100'
             }`}
           >
-            Call Log
+            {m.tabCallLog}
           </button>
         </div>
       )}
@@ -253,23 +255,23 @@ function QuotationsPage() {
       ) : (
         <>
       {canWrite && customers.length === 0 && (
-        <p className="text-sm text-ink-400">Add a customer first before creating quotations.</p>
+        <p className="text-sm text-ink-400">{m.needCustomer}</p>
       )}
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-        <StatCard label="Active Quotations" value={activeCount} icon={FileSignature} />
-        <StatCard label="Accepted" value={acceptedCount} icon={FileSignature} />
+        <StatCard label={m.statActive} value={activeCount} icon={FileSignature} />
+        <StatCard label={m.statAccepted} value={acceptedCount} icon={FileSignature} />
       </div>
 
-      <Panel title="Quotation Registry">
+      <Panel title={m.panel}>
         <div className="mb-4 flex flex-wrap items-end gap-4">
           <div className="flex max-w-xs flex-1 flex-col gap-1">
-            <label className={labelClass}>SEARCH</label>
+            <label className={labelClass}>{m.search}</label>
             <div className="flex items-center gap-2 rounded-md border border-ink-700 bg-ink-950 px-3 py-2">
               <Search className="h-4 w-4 text-ink-400" />
               <input
                 type="text"
-                placeholder="Number, title, or customer..."
+                placeholder={m.searchPlaceholder}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full bg-transparent text-sm text-ink-100 placeholder-ink-500 outline-none"
@@ -277,9 +279,9 @@ function QuotationsPage() {
             </div>
           </div>
           <div className="flex max-w-xs flex-1 flex-col gap-1">
-            <label className={labelClass}>CUSTOMER</label>
+            <label className={labelClass}>{m.customer}</label>
             <select value={filterCustomerId} onChange={(e) => setFilterCustomerId(e.target.value)} className={inputClass}>
-              <option value="">All customers</option>
+              <option value="">{m.allCustomers}</option>
               {customers.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.company || c.name}
@@ -288,31 +290,31 @@ function QuotationsPage() {
             </select>
           </div>
           <div className="flex flex-col gap-1">
-            <label className={labelClass}>STATUS</label>
+            <label className={labelClass}>{shared.status}</label>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as QuotationStatus | '')}
               className={inputClass}
             >
-              <option value="">All statuses</option>
+              <option value="">{m.allStatuses}</option>
               {(['DRAFT', 'SENT', 'ACCEPTED', 'REJECTED', 'EXPIRED'] as QuotationStatus[]).map((s) => (
                 <option key={s} value={s}>
-                  {s}
+                  {status.quotation[s]}
                 </option>
               ))}
             </select>
           </div>
           <div className="flex flex-col gap-1">
-            <label className={labelClass}>FROM</label>
+            <label className={labelClass}>{m.from}</label>
             <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className={inputClass} />
           </div>
           <div className="flex flex-col gap-1">
-            <label className={labelClass}>TO</label>
+            <label className={labelClass}>{m.to}</label>
             <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className={inputClass} />
           </div>
           {(search || filterCustomerId || statusFilter || from || to) && (
             <button type="button" onClick={clearFilters} className="text-xs font-semibold text-ink-400 hover:text-ink-100">
-              Clear filters
+              {m.clearFilters}
             </button>
           )}
         </div>
@@ -326,8 +328,8 @@ function QuotationsPage() {
             icon={FileSignature}
             message={
               search || filterCustomerId || statusFilter || from || to
-                ? 'No quotations match these filters.'
-                : 'No quotations yet. Create your first quotation to get started.'
+                ? m.noMatch
+                : m.empty
             }
           />
         ) : (
@@ -335,11 +337,11 @@ function QuotationsPage() {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
-                  <th className="px-3 py-3 font-semibold">QUOTATION #</th>
-                  <th className="px-3 py-3 font-semibold">TITLE</th>
-                  <th className="px-3 py-3 font-semibold">CUSTOMER</th>
-                  <th className="px-3 py-3 font-semibold">TOTAL</th>
-                  <th className="px-3 py-3 font-semibold">STATUS</th>
+                  <th className="px-3 py-3 font-semibold">{m.colNumber}</th>
+                  <th className="px-3 py-3 font-semibold">{m.colTitle}</th>
+                  <th className="px-3 py-3 font-semibold">{m.customer}</th>
+                  <th className="px-3 py-3 font-semibold">{shared.totalCol}</th>
+                  <th className="px-3 py-3 font-semibold">{shared.status}</th>
                   {canWrite && <th className="px-3 py-3" />}
                 </tr>
               </thead>
@@ -358,12 +360,12 @@ function QuotationsPage() {
                     <td className="px-3 py-3 text-ink-300">{q.customer.company || q.customer.name}</td>
                     <td className="px-3 py-3 text-ink-100">{formatMoney(q.total)}</td>
                     <td className="px-3 py-3">
-                      <Badge tone={statusTone[q.status]}>{q.status}</Badge>
+                      <Badge tone={statusTone[q.status]}>{status.quotation[q.status]}</Badge>
                     </td>
                     {canWrite && (
                       <td className="px-3 py-3">
                         <div className="flex items-center justify-end gap-3 text-ink-400">
-                          <button type="button" onClick={() => handleDelete(q)} aria-label="Delete quotation" className="hover:text-red-400">
+                          <button type="button" onClick={() => handleDelete(q)} aria-label={m.deleteAria} className="hover:text-red-400">
                             <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
@@ -378,13 +380,13 @@ function QuotationsPage() {
       </Panel>
 
       {showCreate && (
-        <Modal title="New Quotation" onClose={() => setShowCreate(false)}>
+        <Modal title={m.new} onClose={() => setShowCreate(false)}>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className={labelClass}>CUSTOMER</label>
+                <label className={labelClass}>{m.customer}</label>
                 <select value={customerId} onChange={(e) => handleCustomerChange(e.target.value)} className={`mt-2 ${inputClass}`}>
-                  <option value="">Select a customer</option>
+                  <option value="">{m.selectCustomer}</option>
                   {customers.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.company || c.name}
@@ -393,33 +395,33 @@ function QuotationsPage() {
                 </select>
               </div>
               <div>
-                <label className={labelClass}>TITLE</label>
+                <label className={labelClass}>{m.titleLabel}</label>
                 <input value={title} onChange={(e) => setTitle(e.target.value)} required className={`mt-2 ${inputClass}`} />
               </div>
             </div>
             <div>
-              <label className={labelClass}>PRODUCT LINE (internal only, not shown on the PDF)</label>
+              <label className={labelClass}>{m.productLine}</label>
               <select value={productLine} onChange={(e) => setProductLine(e.target.value)} className={`mt-2 ${inputClass}`}>
-                <option value="">Not specified</option>
+                <option value="">{m.notSpecified}</option>
                 {PRODUCT_LINE_OPTIONS.map((opt) => (
                   <option key={opt} value={opt}>
-                    {opt}
+                    {productLines[opt] ?? opt}
                   </option>
                 ))}
               </select>
             </div>
             <div>
-              <label className={labelClass}>CONTACT PERSON</label>
+              <label className={labelClass}>{m.contactPerson}</label>
               <input
                 value={contactPerson}
                 onChange={(e) => setContactPerson(e.target.value)}
-                placeholder="Who to talk to about this quotation"
+                placeholder={m.contactPlaceholder}
                 className={`mt-2 ${inputClass}`}
               />
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className={labelClass}>VAT %</label>
+                <label className={labelClass}>{m.vat}</label>
                 <input
                   type="number"
                   min={0}
@@ -430,7 +432,7 @@ function QuotationsPage() {
                 />
               </div>
               <div>
-                <label className={labelClass}>VALIDITY (DAYS)</label>
+                <label className={labelClass}>{m.validity}</label>
                 <input
                   type="number"
                   min={1}
@@ -451,24 +453,24 @@ function QuotationsPage() {
             <div className="rounded-md border border-ink-700 px-4 py-3">
               <label className="flex items-center gap-2 text-sm text-ink-200">
                 <input type="checkbox" checked={includesOrder} onChange={(e) => setIncludesOrder(e.target.checked)} />
-                This quotation includes a product order (not just installation/service labor)
+                {m.includesOrder}
               </label>
               {includesOrder && (
                 <div className="mt-3 grid grid-cols-2 gap-4">
                   <div>
-                    <label className={labelClass}>AVAILABILITY</label>
+                    <label className={labelClass}>{m.availability}</label>
                     <select
                       value={availabilityStatus}
                       onChange={(e) => setAvailabilityStatus(e.target.value as QuotationAvailability)}
                       className={`mt-2 ${inputClass}`}
                     >
-                      <option value="IN_STOCK">In stock</option>
-                      <option value="ORDER_PENDING">Order to be received in...</option>
+                      <option value="IN_STOCK">{m.inStock}</option>
+                      <option value="ORDER_PENDING">{m.orderPending}</option>
                     </select>
                   </div>
                   {availabilityStatus === 'ORDER_PENDING' && (
                     <div>
-                      <label className={labelClass}>DAYS FROM CONFIRMATION</label>
+                      <label className={labelClass}>{m.daysFromConfirmation}</label>
                       <input
                         type="number"
                         min={1}
@@ -486,15 +488,15 @@ function QuotationsPage() {
 
             <div className="flex flex-col gap-1 rounded-md bg-ink-800 px-4 py-3 text-sm">
               <div className="flex items-center justify-between text-ink-300">
-                <span>Subtotal</span>
+                <span>{m.subtotal}</span>
                 <span>{formatMoney(liveSubtotal)}</span>
               </div>
               <div className="flex items-center justify-between text-ink-300">
-                <span>VAT ({vatRate || 0}%)</span>
+                <span>{m.vatLine(vatRate || 0)}</span>
                 <span>{formatMoney(liveVatAmount)}</span>
               </div>
               <div className="flex items-center justify-between font-semibold text-cyan-accent">
-                <span>Total</span>
+                <span>{shared.total}</span>
                 <span>{formatMoney(liveTotal)}</span>
               </div>
             </div>
@@ -502,7 +504,7 @@ function QuotationsPage() {
             {formError && <p className="text-sm text-red-400">{formError}</p>}
 
             <button type="submit" disabled={submitting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
-              {submitting ? 'Creating…' : 'Create Quotation'}
+              {submitting ? shared.creating : m.create}
             </button>
           </form>
         </Modal>
