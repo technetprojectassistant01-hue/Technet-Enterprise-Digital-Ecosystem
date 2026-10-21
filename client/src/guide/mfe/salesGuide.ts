@@ -16,7 +16,7 @@ const tech = topicsFrom(TECHNICIAN_GUIDE_MFE)
 export const SALES_GUIDE_MFE: RoleGuide = {
   title: 'Gid ofisie lavant',
   intro:
-    "Travay enn ofisie lavant dan Technet Digital: kliyan, demann devi, devi ek zot swivi, portal kliyan ek kalandrie marketing. Sak size se enn travay, etap par etap. Bann paz ERP ek Marketing pa ankor tradwir; zot bouton ekrir isi an angle, kouma zot paret lor lekran.",
+    "Travay enn ofisie lavant dan Technet Digital: kliyan, demann devi, devi ek zot swivi, portal kliyan ek kalandrie marketing. Sak size se enn travay, etap par etap. Bann paz Marketing ek Sekirite pa ankor tradwir; zot bouton ekrir isi an angle, kouma zot paret lor lekran.",
   roles: ['SALES_OFFICER'],
   updated: '2026-10-21',
   chapters: [
