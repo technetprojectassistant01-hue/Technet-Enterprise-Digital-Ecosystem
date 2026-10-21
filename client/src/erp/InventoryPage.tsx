@@ -10,6 +10,7 @@ import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
 import { hasRole, PROCUREMENT_ROLES } from '../lib/permissions'
 import { formatMoney } from '../lib/format'
+import { useT } from '../i18n'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -55,6 +56,8 @@ function InventoryPage() {
   const confirm = useConfirm()
   const { user } = useAuth()
   const canWrite = hasRole(user?.role, PROCUREMENT_ROLES)
+  const t = useT()
+  const { inventory: m, shared } = t.erp
   const [items, setItems] = useState<InventoryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -78,7 +81,7 @@ function InventoryPage() {
     api
       .listInventory({ search: searchValue || undefined })
       .then(({ items }) => setItems(items))
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load inventory'))
+      .catch((err) => setError(err instanceof Error ? err.message : m.loadFailed))
       .finally(() => setLoading(false))
   }
 
@@ -116,7 +119,7 @@ function InventoryPage() {
     setFormError(null)
 
     if (!form.sku.trim() || !form.name.trim()) {
-      setFormError('SKU and name are required')
+      setFormError(m.skuNameRequired)
       return
     }
 
@@ -144,11 +147,11 @@ function InventoryPage() {
           location: form.location || undefined,
         })
       }
-      toast.success(editingItem ? 'Item updated' : 'Item created')
+      toast.success(editingItem ? m.updated : m.created)
       closeForm()
       loadItems()
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Failed to save item')
+      setFormError(err instanceof Error ? err.message : m.saveFailed)
     } finally {
       setSubmitting(false)
     }
@@ -156,18 +159,18 @@ function InventoryPage() {
 
   async function handleDelete(item: InventoryItem) {
     const ok = await confirm({
-      title: 'Delete inventory item',
-      message: `Delete "${item.name}" (${item.sku})? This cannot be undone.`,
-      confirmLabel: 'Delete',
+      title: m.deleteTitle,
+      message: m.deleteMessage(item.name, item.sku),
+      confirmLabel: shared.delete,
       tone: 'danger',
     })
     if (!ok) return
     try {
       await api.deleteInventoryItem(item.id)
-      toast.success(`Deleted ${item.name}`)
+      toast.success(shared.deleted(item.name))
       loadItems()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to delete item')
+      toast.error(err instanceof Error ? err.message : m.deleteFailed)
     }
   }
 
@@ -185,7 +188,7 @@ function InventoryPage() {
 
     const quantity = Number(adjustQuantity)
     if (!quantity || quantity <= 0) {
-      setAdjustError('Quantity must be a positive number')
+      setAdjustError(m.quantityPositive)
       return
     }
 
@@ -196,11 +199,11 @@ function InventoryPage() {
         quantity,
         reason: adjustReason || undefined,
       })
-      toast.success(`Stock adjusted for ${adjustingItem!.name}`)
+      toast.success(m.adjusted(adjustingItem!.name))
       setAdjustingItem(null)
       loadItems()
     } catch (err) {
-      setAdjustError(err instanceof Error ? err.message : 'Failed to adjust stock')
+      setAdjustError(err instanceof Error ? err.message : m.adjustFailed)
     } finally {
       setAdjusting(false)
     }
@@ -213,13 +216,13 @@ function InventoryPage() {
     downloadCsv(
       'inventory',
       [
-        { header: 'SKU', accessor: (i: InventoryItem) => i.sku },
-        { header: 'Name', accessor: (i: InventoryItem) => i.name },
-        { header: 'Category', accessor: (i: InventoryItem) => i.category },
-        { header: 'Quantity', accessor: (i: InventoryItem) => i.quantity },
-        { header: 'Min Stock', accessor: (i: InventoryItem) => i.minStockLevel },
-        { header: 'Unit Cost', accessor: (i: InventoryItem) => i.unitCost },
-        { header: 'Location', accessor: (i: InventoryItem) => i.location },
+        { header: m.csv.sku, accessor: (i: InventoryItem) => i.sku },
+        { header: m.csv.name, accessor: (i: InventoryItem) => i.name },
+        { header: m.csv.category, accessor: (i: InventoryItem) => i.category },
+        { header: m.csv.quantity, accessor: (i: InventoryItem) => i.quantity },
+        { header: m.csv.minStock, accessor: (i: InventoryItem) => i.minStockLevel },
+        { header: m.csv.unitCost, accessor: (i: InventoryItem) => i.unitCost },
+        { header: m.csv.location, accessor: (i: InventoryItem) => i.location },
       ],
       items,
     )
@@ -229,49 +232,49 @@ function InventoryPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-2xl font-bold text-ink-100">Inventory</h1>
-          <p className="mt-1 text-sm text-ink-300">Stock items, levels, and adjustments.</p>
+          <h1 className="text-2xl font-bold text-ink-100">{m.title}</h1>
+          <p className="mt-1 text-sm text-ink-300">{m.subtitle}</p>
         </div>
         <div className="flex items-center gap-3">
           <button type="button" onClick={exportCsv} className={secondaryButtonClass}>
             <Download className="h-4 w-4" />
-            Export CSV
+            {m.exportCsv}
           </button>
           {canWrite && (
             <button type="button" onClick={openCreate} className={primaryButtonClass}>
               <Plus className="h-4 w-4" />
-              Add Item
+              {m.add}
             </button>
           )}
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
-        <StatCard label="TOTAL ITEMS" value={items.length} icon={PackageSearch} />
+        <StatCard label={m.statTotal} value={items.length} icon={PackageSearch} />
         <StatCard
-          label="LOW STOCK"
+          label={m.statLow}
           value={lowStockCount}
-          delta={lowStockCount > 0 ? 'Needs attention' : undefined}
+          delta={lowStockCount > 0 ? m.needsAttention : undefined}
           deltaTone="warning"
           icon={PackageSearch}
         />
-        <StatCard label="STOCK VALUE" value={formatMoney(totalValue)} icon={PackageSearch} />
+        <StatCard label={m.statValue} value={formatMoney(totalValue)} icon={PackageSearch} />
       </div>
 
-      <Panel title="Stock Ledger">
+      <Panel title={m.panel}>
         <form onSubmit={handleSearchSubmit} className="mb-4 flex items-center gap-2">
           <div className="flex flex-1 max-w-sm items-center gap-2 rounded-md border border-ink-700 bg-ink-950 px-3 py-2">
             <Search className="h-4 w-4 text-ink-400" />
             <input
               type="text"
-              placeholder="Search by name or SKU..."
+              placeholder={m.search}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full bg-transparent text-sm text-ink-100 placeholder-ink-500 outline-none"
             />
           </div>
           <button type="submit" className={secondaryButtonClass}>
-            Search
+            {m.searchButton}
           </button>
         </form>
 
@@ -280,19 +283,19 @@ function InventoryPage() {
         {loading ? (
           <TableSkeleton cols={7} />
         ) : items.length === 0 ? (
-          <EmptyState icon={PackageSearch} message="No inventory items yet. Add your first item to get started." />
+          <EmptyState icon={PackageSearch} message={m.empty} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
-                  <th className="px-3 py-3 font-semibold">SKU</th>
-                  <th className="px-3 py-3 font-semibold">NAME</th>
-                  <th className="px-3 py-3 font-semibold">CATEGORY</th>
-                  <th className="px-3 py-3 font-semibold">QTY</th>
-                  <th className="px-3 py-3 font-semibold">MIN</th>
-                  <th className="px-3 py-3 font-semibold">UNIT COST</th>
-                  <th className="px-3 py-3 font-semibold">LOCATION</th>
+                  <th className="px-3 py-3 font-semibold">{m.sku}</th>
+                  <th className="px-3 py-3 font-semibold">{shared.name}</th>
+                  <th className="px-3 py-3 font-semibold">{m.category}</th>
+                  <th className="px-3 py-3 font-semibold">{t.erp.lineItems.qty}</th>
+                  <th className="px-3 py-3 font-semibold">{m.min}</th>
+                  <th className="px-3 py-3 font-semibold">{shared.unitCost}</th>
+                  <th className="px-3 py-3 font-semibold">{m.location}</th>
                   {canWrite && <th className="px-3 py-3" />}
                 </tr>
               </thead>
@@ -318,7 +321,7 @@ function InventoryPage() {
                             <button
                               type="button"
                               onClick={() => openAdjust(item)}
-                              aria-label="Adjust stock"
+                              aria-label={m.adjustAria}
                               className="hover:text-cyan-accent"
                             >
                               <ArrowUpDown className="h-4 w-4" />
@@ -326,7 +329,7 @@ function InventoryPage() {
                             <button
                               type="button"
                               onClick={() => openEdit(item)}
-                              aria-label="Edit item"
+                              aria-label={m.editAria}
                               className="hover:text-ink-100"
                             >
                               <Pencil className="h-4 w-4" />
@@ -334,7 +337,7 @@ function InventoryPage() {
                             <button
                               type="button"
                               onClick={() => handleDelete(item)}
-                              aria-label="Delete item"
+                              aria-label={m.deleteAria}
                               className="hover:text-red-400"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -352,11 +355,11 @@ function InventoryPage() {
       </Panel>
 
       {(showCreate || editingItem) && (
-        <Modal title={editingItem ? 'Edit Item' : 'Add Item'} onClose={closeForm}>
+        <Modal title={editingItem ? m.edit : m.add} onClose={closeForm}>
           <form onSubmit={handleFormSubmit} className="flex flex-col gap-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className={labelClass}>SKU</label>
+                <label className={labelClass}>{m.sku}</label>
                 <input
                   value={form.sku}
                   onChange={(e) => setForm({ ...form, sku: e.target.value })}
@@ -365,7 +368,7 @@ function InventoryPage() {
                 />
               </div>
               <div>
-                <label className={labelClass}>NAME</label>
+                <label className={labelClass}>{shared.name}</label>
                 <input
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -374,7 +377,7 @@ function InventoryPage() {
                 />
               </div>
               <div>
-                <label className={labelClass}>CATEGORY</label>
+                <label className={labelClass}>{m.category}</label>
                 <input
                   value={form.category}
                   onChange={(e) => setForm({ ...form, category: e.target.value })}
@@ -382,7 +385,7 @@ function InventoryPage() {
                 />
               </div>
               <div>
-                <label className={labelClass}>UNIT OF MEASURE</label>
+                <label className={labelClass}>{m.unitOfMeasure}</label>
                 <input
                   value={form.unitOfMeasure}
                   onChange={(e) => setForm({ ...form, unitOfMeasure: e.target.value })}
@@ -391,7 +394,7 @@ function InventoryPage() {
               </div>
               {!editingItem && (
                 <div>
-                  <label className={labelClass}>INITIAL QUANTITY</label>
+                  <label className={labelClass}>{m.initialQuantity}</label>
                   <input
                     type="number"
                     min={0}
@@ -402,7 +405,7 @@ function InventoryPage() {
                 </div>
               )}
               <div>
-                <label className={labelClass}>MIN STOCK LEVEL</label>
+                <label className={labelClass}>{m.minStock}</label>
                 <input
                   type="number"
                   min={0}
@@ -412,7 +415,7 @@ function InventoryPage() {
                 />
               </div>
               <div>
-                <label className={labelClass}>UNIT COST</label>
+                <label className={labelClass}>{shared.unitCost}</label>
                 <input
                   type="number"
                   min={0}
@@ -423,7 +426,7 @@ function InventoryPage() {
                 />
               </div>
               <div>
-                <label className={labelClass}>LOCATION</label>
+                <label className={labelClass}>{m.location}</label>
                 <input
                   value={form.location}
                   onChange={(e) => setForm({ ...form, location: e.target.value })}
@@ -434,42 +437,42 @@ function InventoryPage() {
 
             {editingItem && (
               <p className="text-xs text-ink-400">
-                Quantity is changed via stock adjustments, not this form.
+                {m.quantityNote}
               </p>
             )}
 
             {formError && <p className="text-sm text-red-400">{formError}</p>}
 
             <button type="submit" disabled={submitting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
-              {submitting ? 'Saving…' : editingItem ? 'Save Changes' : 'Create Item'}
+              {submitting ? shared.saving : editingItem ? shared.saveChanges : m.create}
             </button>
           </form>
         </Modal>
       )}
 
       {adjustingItem && (
-        <Modal title={`Adjust Stock — ${adjustingItem.name}`} onClose={() => setAdjustingItem(null)}>
+        <Modal title={m.adjustTitle(adjustingItem.name)} onClose={() => setAdjustingItem(null)}>
           <form onSubmit={handleAdjustSubmit} className="flex flex-col gap-4">
             <p className="text-sm text-ink-300">
-              Current quantity: <span className="font-semibold text-ink-100">{adjustingItem.quantity}</span>{' '}
+              {m.currentQuantity} <span className="font-semibold text-ink-100">{adjustingItem.quantity}</span>{' '}
               {adjustingItem.unitOfMeasure}
             </p>
 
             <div>
-              <label className={labelClass}>TYPE</label>
+              <label className={labelClass}>{m.type}</label>
               <select
                 value={adjustType}
                 onChange={(e) => setAdjustType(e.target.value as MovementType)}
                 className={`mt-2 ${inputClass}`}
               >
-                <option value="IN">Stock In (+)</option>
-                <option value="OUT">Stock Out (-)</option>
-                <option value="ADJUSTMENT">Adjustment (+)</option>
+                <option value="IN">{m.stockIn}</option>
+                <option value="OUT">{m.stockOut}</option>
+                <option value="ADJUSTMENT">{m.adjustment}</option>
               </select>
             </div>
 
             <div>
-              <label className={labelClass}>QUANTITY</label>
+              <label className={labelClass}>{shared.quantity}</label>
               <input
                 type="number"
                 min={1}
@@ -481,7 +484,7 @@ function InventoryPage() {
             </div>
 
             <div>
-              <label className={labelClass}>REASON (OPTIONAL)</label>
+              <label className={labelClass}>{m.reasonOptional}</label>
               <input
                 value={adjustReason}
                 onChange={(e) => setAdjustReason(e.target.value)}
@@ -492,7 +495,7 @@ function InventoryPage() {
             {adjustError && <p className="text-sm text-red-400">{adjustError}</p>}
 
             <button type="submit" disabled={adjusting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
-              {adjusting ? 'Saving…' : 'Apply Adjustment'}
+              {adjusting ? shared.saving : m.apply}
             </button>
           </form>
         </Modal>
