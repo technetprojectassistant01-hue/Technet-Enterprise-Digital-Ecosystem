@@ -10,7 +10,7 @@ export const TECHNICIAN_GUIDE_FR: RoleGuide = {
   intro:
     "Comment utiliser Technet Digital sur votre téléphone : pointer votre arrivée et votre départ, vos interventions du jour, les rapports, les congés, les outils et les documents. Chaque sujet est une tâche, étape par étape.",
   roles: ['FIELD_TECHNICIAN'],
-  updated: '2026-10-20',
+  updated: '2026-10-21',
   chapters: [
     // ------------------------------------------------------------------------------------------
     {
@@ -67,7 +67,7 @@ export const TECHNICIAN_GUIDE_FR: RoleGuide = {
           title: 'Changer la langue',
           path: '/dashboard/settings',
           blocks: [
-            { kind: 'p', text: "Ouvrez Paramètres et choisissez English, Français ou Kreol sous Langue. Votre choix est enregistré sur votre compte. Ce guide existe en anglais et en français ; en kreol, il s'affiche en anglais pour l'instant." },
+            { kind: 'p', text: "Ouvrez Paramètres et choisissez English, Français ou Kreol sous Langue. Votre choix est enregistré sur votre compte. Ce guide existe en anglais, en français et en kreol." },
           ],
         },
         {
