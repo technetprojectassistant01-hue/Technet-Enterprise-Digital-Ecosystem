@@ -101,9 +101,9 @@ export const FINANCE_GUIDE_FR: RoleGuide = {
               kind: 'list',
               items: [
                 "Devis liste tous les devis avec leur client, leur statut et leur total. Ouvrez-en un pour voir ses lignes, ses conditions de paiement et ses pièces jointes.",
-                "Download PDF enregistre le devis en PDF. Email Customer le télécharge et ouvre un e-mail avec le texte prêt ; joignez vous-même le PDF avant d'envoyer.",
+                "Télécharger le PDF enregistre le devis en PDF. Envoyer au client le télécharge et ouvre un e-mail avec le texte prêt ; joignez vous-même le PDF avant d'envoyer.",
                 "Suivi liste les devis par client ou par date, pour voir ce qui a été proposé et quand.",
-                "Follow-Up, sur un devis, montre chaque appel noté par les ventes : la date, l'interlocuteur et le résultat.",
+                "Suivi, sur un devis, montre chaque appel noté par les ventes : la date, l'interlocuteur et le résultat.",
                 "Créer, modifier et marquer les devis (envoyé, approuvé, non approuvé), noter les appels et le Call Log des demandes de devis reviennent aux ventes.",
               ],
             },
