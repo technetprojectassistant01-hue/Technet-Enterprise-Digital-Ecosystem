@@ -73,7 +73,7 @@ export const OFFICE_GUIDE_MFE: RoleGuide = {
             {
               kind: 'steps',
               items: [
-                'Pou gagn enn PDF, tap Export PDF, swazir bann dat e tap Telesarz PDF.',
+                'Pou gagn enn PDF, tap Exporte PDF, swazir bann dat e tap Telesarz PDF.',
                 "PDF la ena mark DRAFT ziska RH valid mwa la. Ou gagn enn notifikasion kan zot fer sa, e prosenn telesarzman pena mark DRAFT.",
               ],
             },
