@@ -96,9 +96,9 @@ export const STOREKEEPER_GUIDE_FR: RoleGuide = {
             {
               kind: 'list',
               items: [
-                "Add Item crée un article avec sa référence (SKU), sa catégorie, son unité, son coût unitaire, son emplacement, sa quantité de départ et son stock minimum.",
-                "Adjust stock enregistre une entrée (Stock In), une sortie (Stock Out) ou un ajustement (Adjustment), avec un motif facultatif. Le Stock Ledger liste chaque mouvement.",
-                'Les articles au niveau minimum ou en dessous comptent comme LOW STOCK.',
+                "Ajouter un article crée un article avec sa référence (RÉF.), sa catégorie, son unité, son coût unitaire, son emplacement, sa quantité de départ et son stock minimum.",
+                "Le bouton Ajuster le stock (les flèches) enregistre une Entrée, une Sortie ou un Ajustement, avec un motif facultatif. Le Registre du stock liste chaque mouvement.",
+                'Les articles au niveau minimum ou en dessous comptent comme STOCK BAS.',
                 "Les marchandises reçues sur un bon de commande sont ajoutées automatiquement à l'Inventaire pour les lignes reliées à un article.",
               ],
             },
