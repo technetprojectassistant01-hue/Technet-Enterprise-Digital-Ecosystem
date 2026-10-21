@@ -114,9 +114,9 @@ export const SALES_GUIDE_MFE: RoleGuide = {
             {
               kind: 'steps',
               items: [
-                'Ouver Technet ERP → Dokiman e klik Upload Document.',
-                "Swazir fisie la (FILE), donn li enn tit (TITLE) ek enn kategori (CATEGORY: kontra, proze, devi…), e swazir proze (PROJECT) ouswa kliyan (CUSTOMER) si li pou zot.",
-                'Klik Upload Document. Tou dimoun ki kapav ouver Dokiman pou trouv li.',
+                'Ouver Technet ERP → Dokiman e klik Azout enn dokiman.',
+                "Swazir FISIE la, donn li enn TIT ek enn KATEGORI (kontra, proze, devi…), e swazir PROZE ouswa KLIYAN si li pou zot.",
+                'Klik Azout enn dokiman. Tou dimoun ki kapav ouver Dokiman pou trouv li.',
               ],
             },
           ],
