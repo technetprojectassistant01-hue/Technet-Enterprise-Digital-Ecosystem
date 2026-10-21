@@ -370,8 +370,14 @@ Grouped by domain (not exhaustive on fields — read the schema for that):
   `guide/index.ts` logs a console error if a translation's shape differs from the English. **Any
   guide change now means editing the English, French and Kreol copies together.** Button names are
   the ones each language's screen shows (looked up in `i18n/fr.ts` / `i18n/mfe.ts`); pages still hardcoded in English
-  (all of Technet ERP, Marketing, Security, User Management, HR Employees/Certifications) keep their
-  English button names, and those guides' intros say so. Guide search ignores accents. Written role by role: **Admin done 2026-10-19** (also used by
+  (Marketing, Security, User Management, HR Employees/Certifications, Connect info, Insight) keep their
+  English button names, and those guides' intros say so. **Technet ERP is translated** (2026-10-21):
+  its text lives in `client/src/i18n/erp/{en,fr,mfe}.ts`, plugged in as `t.erp` (typed `ErpDict`, so a
+  missing French/Kreol key fails the build). Customer-facing output stays English on purpose: the
+  quotation PDF, the Email Customer and acknowledgement emails, and the + Labor / + Transport lines
+  (they insert English text into the quotation). Server error messages are still English. The
+  "Call Log" tab keeps that name in every language (Technet's own term). Dates in the ERP Overview
+  are numeric so they read the same in all three languages. Guide search ignores accents. Written role by role: **Admin done 2026-10-19** (also used by
   the Operations Manager via `hasRole`), **HR done 2026-10-19** (`hrGuide.ts`), **Staff Technician
   done 2026-10-19** (`technicianGuide.ts`, its own text - short sentences, one task per topic, for
   people who aren't very technical; FIELD_TECHNICIAN only), **Storekeeper done 2026-10-19**
