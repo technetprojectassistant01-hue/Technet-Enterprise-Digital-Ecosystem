@@ -13,6 +13,7 @@ import { useCustomers } from './useCustomers'
 import { useAssignableEmployees } from './useEmployees'
 import { projectStatusTone } from './statusTones'
 import { formatMoney } from '../lib/format'
+import { useT } from '../i18n'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -46,6 +47,8 @@ function ProjectsPage() {
   const toast = useToast()
   const { user } = useAuth()
   const canWrite = hasRole(user?.role, OPS_MANAGE_ROLES)
+  const t = useT()
+  const { projects: m, shared, status } = t.erp
   const customers = useCustomers()
   const employees = useAssignableEmployees()
   const [projects, setProjects] = useState<Project[]>([])
@@ -63,7 +66,7 @@ function ProjectsPage() {
     api
       .listProjects({ search: searchValue || undefined })
       .then(({ projects }) => setProjects(projects))
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load projects'))
+      .catch((err) => setError(err instanceof Error ? err.message : m.loadFailed))
       .finally(() => setLoading(false))
   }
 
@@ -87,7 +90,7 @@ function ProjectsPage() {
     setFormError(null)
 
     if (!form.name.trim()) {
-      setFormError('Name is required')
+      setFormError(m.nameRequired)
       return
     }
 
@@ -103,11 +106,11 @@ function ProjectsPage() {
         endDate: form.endDate || undefined,
         managerId: form.managerId || undefined,
       })
-      toast.success('Project created')
+      toast.success(m.created)
       closeForm()
       load()
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Failed to create project')
+      setFormError(err instanceof Error ? err.message : m.createFailed)
     } finally {
       setSubmitting(false)
     }
@@ -119,11 +122,11 @@ function ProjectsPage() {
     downloadCsv(
       'projects',
       [
-        { header: 'Name', accessor: (p: Project) => p.name },
-        { header: 'Customer', accessor: (p: Project) => p.customer?.company || p.customer?.name },
-        { header: 'Manager', accessor: (p: Project) => (p.manager ? `${p.manager.firstName} ${p.manager.lastName}` : '') },
-        { header: 'Budget', accessor: (p: Project) => p.budget },
-        { header: 'Status', accessor: (p: Project) => p.status },
+        { header: m.csv.name, accessor: (p: Project) => p.name },
+        { header: m.csv.customer, accessor: (p: Project) => p.customer?.company || p.customer?.name },
+        { header: m.csv.manager, accessor: (p: Project) => (p.manager ? `${p.manager.firstName} ${p.manager.lastName}` : '') },
+        { header: m.csv.budget, accessor: (p: Project) => p.budget },
+        { header: m.csv.status, accessor: (p: Project) => status.project[p.status as ProjectStatus] },
       ],
       projects,
     )
@@ -133,34 +136,34 @@ function ProjectsPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-ink-100">Projects</h1>
-          <p className="mt-1 text-sm text-ink-300">Track engineering projects from kickoff to closeout.</p>
+          <h1 className="text-2xl font-bold text-ink-100">{m.title}</h1>
+          <p className="mt-1 text-sm text-ink-300">{m.subtitle}</p>
         </div>
         <div className="flex items-center gap-3">
           <button type="button" onClick={exportCsv} className={secondaryButtonClass}>
             <Download className="h-4 w-4" />
-            Export CSV
+            {m.exportCsv}
           </button>
           {canWrite && (
             <button type="button" onClick={openCreate} className={primaryButtonClass}>
               <Plus className="h-4 w-4" />
-              New Project
+              {m.new}
             </button>
           )}
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-        <StatCard label="TOTAL PROJECTS" value={projects.length} icon={FolderKanban} />
-        <StatCard label="ACTIVE" value={activeCount} icon={FolderKanban} />
+        <StatCard label={m.statTotal} value={projects.length} icon={FolderKanban} />
+        <StatCard label={m.statActive} value={activeCount} icon={FolderKanban} />
       </div>
 
-      <Panel title="Project Registry">
+      <Panel title={m.panel}>
         <div className="mb-4 flex flex-1 max-w-sm items-center gap-2 rounded-md border border-ink-700 bg-ink-950 px-3 py-2">
           <Search className="h-4 w-4 text-ink-400" />
           <input
             type="text"
-            placeholder="Search projects..."
+            placeholder={m.search}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && load(search)}
@@ -173,17 +176,17 @@ function ProjectsPage() {
         {loading ? (
           <TableSkeleton cols={5} />
         ) : projects.length === 0 ? (
-          <EmptyState icon={FolderKanban} message="No projects yet. Create your first project to get started." />
+          <EmptyState icon={FolderKanban} message={m.empty} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
-                  <th className="px-3 py-3 font-semibold">NAME</th>
-                  <th className="px-3 py-3 font-semibold">CUSTOMER</th>
-                  <th className="px-3 py-3 font-semibold">MANAGER</th>
-                  <th className="px-3 py-3 font-semibold">BUDGET</th>
-                  <th className="px-3 py-3 font-semibold">STATUS</th>
+                  <th className="px-3 py-3 font-semibold">{shared.name}</th>
+                  <th className="px-3 py-3 font-semibold">{m.customer}</th>
+                  <th className="px-3 py-3 font-semibold">{m.manager}</th>
+                  <th className="px-3 py-3 font-semibold">{m.budget}</th>
+                  <th className="px-3 py-3 font-semibold">{shared.status}</th>
                 </tr>
               </thead>
               <tbody>
@@ -205,7 +208,7 @@ function ProjectsPage() {
                       {p.budget ? formatMoney(p.budget) : '—'}
                     </td>
                     <td className="px-3 py-3">
-                      <Badge tone={projectStatusTone[p.status as ProjectStatus]}>{p.status.replace('_', ' ')}</Badge>
+                      <Badge tone={projectStatusTone[p.status as ProjectStatus]}>{status.project[p.status as ProjectStatus]}</Badge>
                     </td>
                   </tr>
                 ))}
@@ -216,10 +219,10 @@ function ProjectsPage() {
       </Panel>
 
       {showCreate && (
-        <Modal title="New Project" onClose={closeForm}>
+        <Modal title={m.new} onClose={closeForm}>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div>
-              <label className={labelClass}>NAME</label>
+              <label className={labelClass}>{shared.name}</label>
               <input
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -229,7 +232,7 @@ function ProjectsPage() {
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className={labelClass}>CUSTOMER</label>
+                <label className={labelClass}>{m.customer}</label>
                 <select
                   value={form.customerId}
                   onChange={(e) => setForm({ ...form, customerId: e.target.value })}
@@ -244,7 +247,7 @@ function ProjectsPage() {
                 </select>
               </div>
               <div>
-                <label className={labelClass}>SERVICE CATEGORY</label>
+                <label className={labelClass}>{m.serviceCategory}</label>
                 <select
                   value={form.serviceCategory}
                   onChange={(e) => setForm({ ...form, serviceCategory: e.target.value as ServiceCategory })}
@@ -252,14 +255,14 @@ function ProjectsPage() {
                 >
                   {CATEGORIES.map((c) => (
                     <option key={c} value={c}>
-                      {c.replace('_', ' ')}
+                      {t.labels.workType[c]}
                     </option>
                   ))}
                 </select>
               </div>
             </div>
             <div>
-              <label className={labelClass}>DESCRIPTION</label>
+              <label className={labelClass}>{shared.description}</label>
               <input
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -268,7 +271,7 @@ function ProjectsPage() {
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className={labelClass}>BUDGET</label>
+                <label className={labelClass}>{m.budget}</label>
                 <input
                   type="number"
                   min={0}
@@ -279,7 +282,7 @@ function ProjectsPage() {
                 />
               </div>
               <div>
-                <label className={labelClass}>PROJECT MANAGER</label>
+                <label className={labelClass}>{m.projectManager}</label>
                 <select
                   value={form.managerId}
                   onChange={(e) => setForm({ ...form, managerId: e.target.value })}
@@ -296,7 +299,7 @@ function ProjectsPage() {
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className={labelClass}>START DATE</label>
+                <label className={labelClass}>{m.startDate}</label>
                 <input
                   type="date"
                   value={form.startDate}
@@ -305,7 +308,7 @@ function ProjectsPage() {
                 />
               </div>
               <div>
-                <label className={labelClass}>END DATE</label>
+                <label className={labelClass}>{m.endDate}</label>
                 <input
                   type="date"
                   value={form.endDate}
@@ -318,7 +321,7 @@ function ProjectsPage() {
             {formError && <p className="text-sm text-red-400">{formError}</p>}
 
             <button type="submit" disabled={submitting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
-              {submitting ? 'Creating…' : 'Create Project'}
+              {submitting ? shared.creating : m.create}
             </button>
           </form>
         </Modal>
