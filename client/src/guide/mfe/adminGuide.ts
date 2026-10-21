@@ -3,13 +3,13 @@ import type { RoleGuide } from '../types'
 /**
  * Gid administrater - Kreol Morisien copy of ../adminGuide.ts (2026-10-21). Same chapters, topics,
  * ids and paths as the English guide; change all three languages together. Button names are the
- * ones the Kreol screen shows (i18n/mfe.ts); pages not translated yet (Technet ERP, Marketing,
- * Sekirite, Zestion itilizater, Anplwaye, Sertifikasion) keep their English button names.
+ * ones the Kreol screen shows (i18n/mfe.ts); pages not translated yet (Marketing, Sekirite,
+ * Zestion itilizater, Anplwaye, Sertifikasion) keep their English button names.
  */
 export const ADMIN_GUIDE_MFE: RoleGuide = {
   title: 'Gid administrater',
   intro:
-    "Kouma pou fer Technet Digital marse kouma enn administrater: bann login, prezans personel, operasion, RH, magazin ek ERP. Li swiv meni agos, depi anler ziska anba. Responsab Operasion ena exakteman mem akse ki enn administrater, alor sa gid la pou li osi. Kek paz pa ankor tradwir; zot bouton ekrir isi an angle, kouma zot paret lor lekran.",
+    "Kouma pou fer Technet Digital marse kouma enn administrater: bann login, prezans personel, operasion, RH, magazin ek ERP. Li swiv meni agos, depi anler ziska anba. Responsab Operasion ena exakteman mem akse ki enn administrater, alor sa gid la pou li osi. Kek paz pa ankor tradwir (Marketing, Sekirite, Zestion itilizater, Anplwaye ek Sertifikasion); zot bouton ekrir isi an angle, kouma zot paret lor lekran.",
   roles: ['ADMIN', 'OPERATIONS_MANAGER'],
   updated: '2026-10-21',
   chapters: [
@@ -658,7 +658,7 @@ export const ADMIN_GUIDE_MFE: RoleGuide = {
     {
       id: 'erp',
       title: 'Technet ERP',
-      intro: "Kliyan ek devi, lasa, inventer, proze ek dokiman. Faktir ek depans gard dan QuickBooks, pa dan sa aplikasion la. Bann paz ERP pa ankor tradwir: zot bouton ekrir isi an angle.",
+      intro: "Kliyan ek devi, lasa, inventer, proze ek dokiman. Faktir ek depans gard dan QuickBooks, pa dan sa aplikasion la.",
       topics: [
         {
           id: 'customers',
