@@ -109,13 +109,13 @@ export const STOREKEEPER_GUIDE_FR: RoleGuide = {
           title: "Approuver les demandes d'achat",
           path: '/dashboard/erp/procurement/requisitions',
           blocks: [
-            { kind: 'p', text: "Une demande d'achat est une demande du bureau pour acheter quelque chose. Le personnel de bureau les crée avec New Requisition ; vous et l'administrateur décidez." },
+            { kind: 'p', text: "Une demande d'achat est une demande du bureau pour acheter quelque chose. Le personnel de bureau les crée avec Nouvelle demande d'achat ; vous et l'administrateur décidez." },
             {
               kind: 'steps',
               items: [
-                "Ouvrez Technet ERP → Achats → Demandes d'achat et ouvrez une demande AWAITING APPROVAL.",
-                "Cliquez sur Approve, ou sur Reject avec un motif. La personne qui a demandé est prévenue.",
-                "Pour une demande approuvée, cliquez sur Convert to Purchase Order, choisissez le fournisseur et saisissez les coûts unitaires.",
+                "Ouvrez Technet ERP → Achats → Demandes d'achat et ouvrez une demande EN ATTENTE.",
+                "Cliquez sur Approuver, ou sur Refuser avec un motif. La personne qui a demandé est prévenue.",
+                "Pour une demande approuvée, cliquez sur Convertir en bon de commande, choisissez le fournisseur et saisissez les coûts unitaires.",
               ],
             },
           ],
