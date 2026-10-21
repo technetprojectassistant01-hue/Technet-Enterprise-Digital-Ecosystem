@@ -133,7 +133,7 @@ function UserGuidePage() {
   }
 
   const [y, m, d] = guide.updated.split('-').map(Number)
-  const updated = new Date(y, m - 1, d).toLocaleDateString(l.locale, { day: 'numeric', month: 'long', year: 'numeric' })
+  const updated = l.formatDate(new Date(y, m - 1, d))
 
   return (
     <div className="mx-auto flex max-w-6xl gap-10">
