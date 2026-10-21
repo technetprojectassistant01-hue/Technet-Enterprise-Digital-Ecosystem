@@ -147,7 +147,7 @@ export const SALES_GUIDE_MFE: RoleGuide = {
               items: [
                 "Proze: kliyan, responsab, dat ek bidze sak proze. Se enn administrater ouswa Responsab Operasion ki zer proze.",
                 "Inventer, Fourniser ek Bon komand: nivo stok ek seki finn komande. Magazinie ouswa enn administrater met zot azour.",
-                "Technet Operations: Bon travay, Rapor zournalie ek Rapor intervansion, pou trouv kot travay enn kliyan ete. Se Responsab Operasion ouswa enn administrater ki kre ek aksepte zot.",
+                "Technet Operations: Bon travay, Rapor zournalie ek Rapor intervansion, pou trouv kot travay enn kliyan ete. Se Responsab Operasion ouswa enn administrater ki kre ek aprouv zot.",
                 'Technet Store: zouti ek materyo ki dan magazin.',
               ],
             },
