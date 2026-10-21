@@ -15,6 +15,7 @@ import { useInventoryItems } from './useInventoryItems'
 import LineItemsEditor, { EMPTY_LINE_ITEM, type LineItemRow } from './LineItemsEditor'
 import { purchaseOrderStatusTone } from './statusTones'
 import { formatMoney } from '../lib/format'
+import { useT } from '../i18n'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -25,6 +26,7 @@ function PurchaseOrdersPage() {
   const confirm = useConfirm()
   const { user } = useAuth()
   const canWrite = hasRole(user?.role, PROCUREMENT_ROLES)
+  const { purchaseOrders: m, shared, status } = useT().erp
   const suppliers = useSuppliers()
   const inventoryItems = useInventoryItems()
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([])
@@ -45,7 +47,7 @@ function PurchaseOrdersPage() {
     api
       .listPurchaseOrders({ search: searchValue || undefined })
       .then(({ purchaseOrders }) => setPurchaseOrders(purchaseOrders))
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load purchase orders'))
+      .catch((err) => setError(err instanceof Error ? err.message : m.loadFailed))
       .finally(() => setLoading(false))
   }
 
@@ -70,11 +72,11 @@ function PurchaseOrdersPage() {
     setFormError(null)
 
     if (!supplierId) {
-      setFormError('Select a supplier')
+      setFormError(shared.selectSupplier)
       return
     }
     if (!poNumber.trim()) {
-      setFormError('PO number is required')
+      setFormError(shared.poNumberRequired)
       return
     }
 
@@ -91,11 +93,11 @@ function PurchaseOrdersPage() {
           inventoryItemId: item.inventoryItemId || undefined,
         })),
       })
-      toast.success('Purchase order created')
+      toast.success(m.created)
       setShowCreate(false)
       load()
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Failed to create purchase order')
+      setFormError(err instanceof Error ? err.message : m.createFailed)
     } finally {
       setSubmitting(false)
     }
@@ -103,18 +105,18 @@ function PurchaseOrdersPage() {
 
   async function handleDelete(po: PurchaseOrder) {
     const ok = await confirm({
-      title: 'Delete purchase order',
-      message: `Delete purchase order ${po.poNumber}? This cannot be undone.`,
-      confirmLabel: 'Delete',
+      title: m.deleteTitle,
+      message: m.deleteMessage(po.poNumber),
+      confirmLabel: shared.delete,
       tone: 'danger',
     })
     if (!ok) return
     try {
       await api.deletePurchaseOrder(po.id)
-      toast.success(`Deleted ${po.poNumber}`)
+      toast.success(shared.deleted(po.poNumber))
       load()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to delete purchase order')
+      toast.error(err instanceof Error ? err.message : m.deleteFailed)
     }
   }
 
@@ -125,11 +127,11 @@ function PurchaseOrdersPage() {
     downloadCsv(
       'purchase-orders',
       [
-        { header: 'PO Number', accessor: (po: PurchaseOrder) => po.poNumber },
-        { header: 'Supplier', accessor: (po: PurchaseOrder) => po.supplier.name },
-        { header: 'Items', accessor: (po: PurchaseOrder) => po.items.length },
-        { header: 'Total', accessor: (po: PurchaseOrder) => po.totalAmount },
-        { header: 'Status', accessor: (po: PurchaseOrder) => po.status },
+        { header: m.csv.number, accessor: (po: PurchaseOrder) => po.poNumber },
+        { header: m.csv.supplier, accessor: (po: PurchaseOrder) => po.supplier.name },
+        { header: m.csv.items, accessor: (po: PurchaseOrder) => po.items.length },
+        { header: m.csv.total, accessor: (po: PurchaseOrder) => po.totalAmount },
+        { header: m.csv.status, accessor: (po: PurchaseOrder) => status.purchaseOrder[po.status] },
       ],
       purchaseOrders,
     )
@@ -139,38 +141,38 @@ function PurchaseOrdersPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-ink-100">Purchase Orders</h1>
-          <p className="mt-1 text-sm text-ink-300">Manage outbound orders placed with approved suppliers.</p>
+          <h1 className="text-2xl font-bold text-ink-100">{m.title}</h1>
+          <p className="mt-1 text-sm text-ink-300">{m.subtitle}</p>
         </div>
         <div className="flex items-center gap-3">
           <button type="button" onClick={exportCsv} className={secondaryButtonClass}>
             <Download className="h-4 w-4" />
-            Export Registry
+            {m.exportRegistry}
           </button>
           {canWrite && (
             <button type="button" onClick={openCreate} disabled={suppliers.length === 0} className={primaryButtonClass}>
               <Plus className="h-4 w-4" />
-              New Purchase Order
+              {m.new}
             </button>
           )}
         </div>
       </div>
 
       {canWrite && suppliers.length === 0 && (
-        <p className="text-sm text-ink-400">Add a supplier first before creating purchase orders.</p>
+        <p className="text-sm text-ink-400">{m.needSupplier}</p>
       )}
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-        <StatCard label="OPEN ORDERS" value={openCount} icon={ShoppingCart} />
-        <StatCard label="TOTAL VALUE" value={formatMoney(totalValue)} icon={ShoppingCart} />
+        <StatCard label={m.statOpen} value={openCount} icon={ShoppingCart} />
+        <StatCard label={m.statValue} value={formatMoney(totalValue)} icon={ShoppingCart} />
       </div>
 
-      <Panel title="Order Registry">
+      <Panel title={m.panel}>
         <div className="mb-4 flex flex-1 max-w-sm items-center gap-2 rounded-md border border-ink-700 bg-ink-950 px-3 py-2">
           <Search className="h-4 w-4 text-ink-400" />
           <input
             type="text"
-            placeholder="Search by PO number..."
+            placeholder={m.search}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && load(search)}
@@ -183,17 +185,17 @@ function PurchaseOrdersPage() {
         {loading ? (
           <TableSkeleton cols={5} />
         ) : purchaseOrders.length === 0 ? (
-          <EmptyState icon={ShoppingCart} message="No purchase orders yet. Create your first order to get started." />
+          <EmptyState icon={ShoppingCart} message={m.empty} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
-                  <th className="px-3 py-3 font-semibold">PO NUMBER</th>
-                  <th className="px-3 py-3 font-semibold">SUPPLIER</th>
-                  <th className="px-3 py-3 font-semibold">ITEMS</th>
-                  <th className="px-3 py-3 font-semibold">TOTAL</th>
-                  <th className="px-3 py-3 font-semibold">STATUS</th>
+                  <th className="px-3 py-3 font-semibold">{shared.poNumber}</th>
+                  <th className="px-3 py-3 font-semibold">{shared.supplier}</th>
+                  <th className="px-3 py-3 font-semibold">{shared.items}</th>
+                  <th className="px-3 py-3 font-semibold">{shared.totalCol}</th>
+                  <th className="px-3 py-3 font-semibold">{shared.status}</th>
                   {canWrite && <th className="px-3 py-3" />}
                 </tr>
               </thead>
@@ -212,14 +214,14 @@ function PurchaseOrdersPage() {
                     <td className="px-3 py-3 text-ink-300">{po.items.length}</td>
                     <td className="px-3 py-3 text-ink-100">{formatMoney(po.totalAmount)}</td>
                     <td className="px-3 py-3">
-                      <Badge tone={purchaseOrderStatusTone[po.status]}>{po.status.replace('_', ' ')}</Badge>
+                      <Badge tone={purchaseOrderStatusTone[po.status]}>{status.purchaseOrder[po.status]}</Badge>
                     </td>
                     {canWrite && (
                       <td className="px-3 py-3">
                         <button
                           type="button"
                           onClick={() => handleDelete(po)}
-                          aria-label="Delete purchase order"
+                          aria-label={m.deleteAria}
                           className="text-ink-400 hover:text-red-400"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -235,13 +237,13 @@ function PurchaseOrdersPage() {
       </Panel>
 
       {showCreate && (
-        <Modal title="New Purchase Order" onClose={() => setShowCreate(false)}>
+        <Modal title={m.new} onClose={() => setShowCreate(false)}>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className={labelClass}>SUPPLIER</label>
+                <label className={labelClass}>{shared.supplier}</label>
                 <select value={supplierId} onChange={(e) => setSupplierId(e.target.value)} className={`mt-2 ${inputClass}`}>
-                  <option value="">Select a supplier</option>
+                  <option value="">{shared.selectSupplier}</option>
                   {suppliers.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name}
@@ -250,12 +252,12 @@ function PurchaseOrdersPage() {
                 </select>
               </div>
               <div>
-                <label className={labelClass}>PO NUMBER</label>
+                <label className={labelClass}>{shared.poNumber}</label>
                 <input value={poNumber} onChange={(e) => setPoNumber(e.target.value)} required className={`mt-2 ${inputClass}`} />
               </div>
             </div>
             <div>
-              <label className={labelClass}>EXPECTED DATE</label>
+              <label className={labelClass}>{shared.expectedDate}</label>
               <input
                 type="date"
                 value={expectedDate}
@@ -267,14 +269,14 @@ function PurchaseOrdersPage() {
             <LineItemsEditor items={items} onChange={setItems} showUnitCost inventoryItems={inventoryItems} />
 
             <div className="flex items-center justify-between rounded-md bg-ink-800 px-4 py-3">
-              <span className="text-sm text-ink-300">Total</span>
+              <span className="text-sm text-ink-300">{shared.total}</span>
               <span className="text-lg font-semibold text-cyan-accent">{formatMoney(liveTotal)}</span>
             </div>
 
             {formError && <p className="text-sm text-red-400">{formError}</p>}
 
             <button type="submit" disabled={submitting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
-              {submitting ? 'Creating…' : 'Create Purchase Order'}
+              {submitting ? shared.creating : m.create}
             </button>
           </form>
         </Modal>
