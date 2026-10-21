@@ -152,7 +152,8 @@ export const MAIN_NAV: NavItem[] = [
       { label: 'Known Places', to: '/dashboard/operations/known-places', icon: MapPin, hiddenFrom: NON_OPS_MANAGE_ROLES },
     ],
   },
-  { label: 'Technet Digital Marketing', to: '/dashboard/marketing', icon: Megaphone, hiddenFrom: NON_COMMERCIAL_ROLES },
+  // Marketing is Admin + Sales only (MARKETING_ROLES); Finance would only reach a "not available" page.
+  { label: 'Technet Digital Marketing', to: '/dashboard/marketing', icon: Megaphone, hiddenFrom: [...NON_COMMERCIAL_ROLES, 'FINANCE_OFFICER'] },
   { label: 'Technet Insight', to: '/dashboard/insight', icon: LineChart, hiddenFrom: NON_ADMIN_ROLES },
 ]
 
