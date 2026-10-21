@@ -685,7 +685,7 @@ export const ADMIN_GUIDE: RoleGuide = {
               items: [
                 'Click Log a Request and fill in the customer (or a company name if they are new) and what they are asking for.',
                 'Add a status note so others can see why it is still waiting (for example "awaiting supplier pricing").',
-                'Send an acknowledgement: edit the email, then Save Draft or Send. Send opens your email program with the text filled in.',
+                'Send an acknowledgement: click Acknowledge, edit the email, then Save Draft or Send. Send opens your email program with the text filled in.',
                 'Convert to Quotation turns the request into a draft quotation, or Decline closes it.',
               ],
             },
