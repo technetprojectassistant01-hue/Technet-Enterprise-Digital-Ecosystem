@@ -18,7 +18,7 @@ const tech = topicsFrom(TECHNICIAN_GUIDE_FR)
 export const FINANCE_GUIDE_FR: RoleGuide = {
   title: 'Guide du chargé des finances',
   intro:
-    "Le travail d'un chargé des finances dans Technet Digital : les fiches clients et leur accès au portail, les contrats de service, les devis, les documents et les demandes d'achat. Chaque sujet est une tâche, étape par étape. Les pages de l'ERP ne sont pas encore traduites ; leurs boutons sont nommés ici en anglais, tels qu'ils apparaissent à l'écran.",
+    "Le travail d'un chargé des finances dans Technet Digital : les fiches clients et leur accès au portail, les contrats de service, les devis, les documents et les demandes d'achat. Chaque sujet est une tâche, étape par étape. La page Sécurité n'est pas encore traduite ; ses boutons sont nommés ici en anglais.",
   roles: ['FINANCE_OFFICER'],
   updated: '2026-10-20',
   chapters: [
