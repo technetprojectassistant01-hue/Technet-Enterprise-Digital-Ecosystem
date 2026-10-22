@@ -13,7 +13,7 @@ const shared = topicsFrom(ADMIN_GUIDE_FR)
 export const HR_GUIDE_FR: RoleGuide = {
   title: 'Guide RH',
   intro:
-    "Le travail des RH dans Technet Digital : fiches employés, congés, heures supplémentaires, validation de fin de mois, paie et certifications, ainsi que la présence du personnel qui sert à les vérifier. Il suit votre menu de haut en bas. Certaines pages ne sont pas encore traduites ; leurs boutons sont nommés ici en anglais, tels qu'ils apparaissent à l'écran.",
+    "Le travail des RH dans Technet Digital : fiches employés, congés, heures supplémentaires, validation de fin de mois, paie et certifications, ainsi que la présence du personnel qui sert à les vérifier. Il suit votre menu de haut en bas. La page Sécurité n'est pas encore traduite ; ses boutons sont nommés ici en anglais.",
   roles: ['HR_OFFICER'],
   updated: '2026-10-22',
   chapters: [
@@ -136,8 +136,8 @@ export const HR_GUIDE_FR: RoleGuide = {
               kind: 'steps',
               items: [
                 "Demandez à un administrateur de créer le compte de la personne dans Gestion des utilisateurs (les RH ne peuvent pas créer de comptes).",
-                "Ouvrez Technet HR → Employés et ouvrez la personne, ou cliquez sur Add Employee. Le code employé est attribué automatiquement.",
-                'Cliquez sur Edit, choisissez son compte sous Linked Login, puis enregistrez.',
+                "Ouvrez Technet HR → Employés et ouvrez la personne, ou cliquez sur Ajouter un employé. Le code employé est attribué automatiquement.",
+                'Cliquez sur Modifier, choisissez son compte sous Compte lié, puis enregistrez.',
                 "La prochaine fois qu'elle ouvre l'application, la carte de pointage apparaît.",
               ],
             },
