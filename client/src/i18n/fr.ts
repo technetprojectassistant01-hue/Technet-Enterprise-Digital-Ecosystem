@@ -2041,6 +2041,19 @@ export const fr: Dict = {
         ],
       },
       {
+        title: 'Formulaires',
+        faqs: [
+          {
+            q: "J'ai fermé un formulaire par erreur. Ce que j'ai saisi est-il perdu ?",
+            a: [
+              "Non, pas dans un formulaire qui ajoute quelque chose de nouveau (nouveau client, bon de travail, rapport journalier, demande de congé ou d'outils, etc.). Ce que vous saisissez est gardé sur votre appareil. Rouvrez le même formulaire : une bannière indique « Nous avons remis ce que vous aviez saisi ».",
+              "Le brouillon est effacé dès que vous enregistrez ou envoyez. Pour repartir d'un formulaire vide, touchez « Supprimer le brouillon ». Les photos, les fichiers et les mots de passe ne sont jamais gardés : ajoutez-les à nouveau.",
+              "Un brouillon reste uniquement sur cet appareil et ce navigateur, pour votre compte seulement, pendant 30 jours au plus. Les formulaires qui modifient un enregistrement existant ne gardent pas de brouillon.",
+            ],
+          },
+        ],
+      },
+      {
         title: 'Accès',
         faqs: [
           {
