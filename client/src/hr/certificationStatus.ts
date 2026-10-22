@@ -30,10 +30,3 @@ export const certificationStateTone: Record<CertificationState, BadgeTone> = {
   EXPIRING: 'warning',
   EXPIRED: 'danger',
 }
-
-export const certificationStateLabel: Record<CertificationState, string> = {
-  NO_EXPIRY: 'NO EXPIRY',
-  VALID: 'VALID',
-  EXPIRING: 'RENEW SOON',
-  EXPIRED: 'EXPIRED',
-}
