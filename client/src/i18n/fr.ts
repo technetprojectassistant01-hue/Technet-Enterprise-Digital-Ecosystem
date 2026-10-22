@@ -2,6 +2,7 @@ import type { Dict } from './en'
 import { erpFr } from './erp/fr'
 import { peopleFr } from './people/fr'
 import { systemFr } from './system/fr'
+import { marketingFr } from './marketing/fr'
 
 /** French. Typed against the English master (en.ts) — every key there must exist here. */
 export const fr: Dict = {
@@ -2244,4 +2245,5 @@ export const fr: Dict = {
   erp: erpFr,
   people: peopleFr,
   system: systemFr,
+  marketing: marketingFr,
 }
