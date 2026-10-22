@@ -9,6 +9,8 @@ import { inputClass, labelClass, primaryButtonClass } from './dashboard/buttonSt
 import { useToast } from './dashboard/ToastContext'
 import { useConfirm } from './dashboard/ConfirmContext'
 import { useT } from './i18n'
+import { useFormDraft } from './lib/useFormDraft'
+import { DraftNotice } from './dashboard/DraftNotice'
 import { isAdminLike } from './lib/permissions'
 
 /** A random temporary password for an admin-forced reset - the employee should change it on first login. */
@@ -56,6 +58,9 @@ function UsersPage() {
   const [role, setRole] = useState<Role>('EMPLOYEE')
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  // The password is left out on purpose: it must never sit in browser storage.
+  const draftValue = { email, name, role }
+  const draft = useFormDraft('user', draftValue, creating)
 
   // Name, email and role are edited together in one dialog: they are the same job ("who is this
   // person, and what may they do"), and three separate actions per row made the table unreadable.
@@ -97,11 +102,15 @@ function UsersPage() {
 
   const unlinked = users.filter((u) => !u.employee && !isAdminLike(u.role)).length
 
+  function fillDraft(d: typeof draftValue) {
+    setEmail(d.email)
+    setName(d.name)
+    setRole(d.role)
+  }
+
   function openCreate() {
-    setEmail('')
-    setName('')
+    fillDraft(draft.take({ email: '', name: '', role: 'EMPLOYEE' as Role }))
     setPassword('')
-    setRole('EMPLOYEE')
     setFormError(null)
     setCreating(true)
   }
@@ -112,6 +121,7 @@ function UsersPage() {
     setSubmitting(true)
     try {
       await api.createUser({ email, password, name: name || undefined, role })
+      draft.clear()
       toast.success(`User ${email} created`)
       setCreating(false)
       loadUsers()
@@ -424,6 +434,7 @@ function UsersPage() {
       {creating && (
         <Modal title="Add User" onClose={() => setCreating(false)}>
           <form onSubmit={handleCreate} className="flex flex-col gap-4">
+            {draft.restored && <DraftNotice onDiscard={() => fillDraft(draft.discard())} />}
             <div>
               <label htmlFor="new-name" className={labelClass}>
                 FULL NAME
