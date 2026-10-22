@@ -1,6 +1,7 @@
 import { erpEn } from './erp/en'
 import { peopleEn } from './people/en'
 import { systemEn } from './system/en'
+import { marketingEn } from './marketing/en'
 /**
  * English — the master dictionary. fr.ts and mfe.ts are typed against this shape (`Dict`), so a
  * key added here fails the build until it's translated in both.
@@ -2243,6 +2244,8 @@ export const en = {
   people: peopleEn,
   /** User Management, Security, Insight and the Connect info page - kept in ./system/. */
   system: systemEn,
+  /** Technet Digital Marketing - kept in ./marketing/. */
+  marketing: marketingEn,
 }
 
 export type Dict = typeof en
