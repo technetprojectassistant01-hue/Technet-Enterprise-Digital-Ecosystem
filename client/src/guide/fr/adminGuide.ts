@@ -3,13 +3,13 @@ import type { RoleGuide } from '../types'
 /**
  * Guide administrateur - French copy of ../adminGuide.ts (2026-10-20). Same chapters, topics, ids
  * and paths as the English guide; change both together. Button names are the ones the French
- * screen shows; pages not translated yet (Marketing, Sécurité, Gestion des utilisateurs,
- * Employés, Certifications) keep their English button names, written as on screen.
+ * screen shows; pages not translated yet (Marketing, Sécurité, Gestion des utilisateurs) keep
+ * their English button names, written as on screen.
  */
 export const ADMIN_GUIDE_FR: RoleGuide = {
   title: 'Guide administrateur',
   intro:
-    "Comment gérer Technet Digital en tant qu'administrateur : les comptes, la présence du personnel, les opérations, les RH, le magasin et l'ERP. Il suit le menu de gauche, de haut en bas. Le Responsable des opérations a exactement les mêmes accès qu'un administrateur : ce guide est aussi le sien. Quelques pages ne sont pas encore traduites (Marketing, Sécurité, Gestion des utilisateurs, Employés et Certifications) ; leurs boutons sont nommés ici en anglais, tels qu'ils apparaissent à l'écran.",
+    "Comment gérer Technet Digital en tant qu'administrateur : les comptes, la présence du personnel, les opérations, les RH, le magasin et l'ERP. Il suit le menu de gauche, de haut en bas. Le Responsable des opérations a exactement les mêmes accès qu'un administrateur : ce guide est aussi le sien. Quelques pages ne sont pas encore traduites (Marketing, Sécurité et Gestion des utilisateurs) ; leurs boutons sont nommés ici en anglais, tels qu'ils apparaissent à l'écran.",
   roles: ['ADMIN', 'OPERATIONS_MANAGER'],
   updated: '2026-10-22',
   chapters: [
@@ -145,8 +145,8 @@ export const ADMIN_GUIDE_FR: RoleGuide = {
               kind: 'steps',
               items: [
                 'Ouvrez Technet HR → Employés.',
-                "Ouvrez la personne (ou cliquez sur Add Employee si elle n'y est pas encore ; son code employé est attribué automatiquement).",
-                'Cliquez sur Edit et choisissez son compte sous Linked Login.',
+                "Ouvrez la personne (ou cliquez sur Ajouter un employé si elle n'y est pas encore ; son code employé est attribué automatiquement).",
+                'Cliquez sur Modifier et choisissez son compte sous Compte lié.',
                 "Enregistrez. La prochaine fois qu'elle ouvre l'application, la carte de pointage apparaît.",
               ],
             },
@@ -472,7 +472,7 @@ export const ADMIN_GUIDE_FR: RoleGuide = {
             {
               kind: 'list',
               items: [
-                'Add Employee crée une fiche. Le code employé est attribué automatiquement.',
+                'Ajouter un employé crée une fiche. Le code employé est attribué automatiquement.',
                 "Ouvrez un employé pour modifier ses informations, relier son compte, fixer un salaire de base pour la paie et voir ses certifications.",
                 "Domicile (RH uniquement) : son adresse personnelle. Un pointage à moins de 300 m de celle-ci crée une anomalie « pointage près du domicile », sauf s'il a une intervention près de chez lui ce jour-là. L'adresse n'est jamais montrée en dehors des RH.",
                 "Documents personnels : les documents que l'employé a ajoutés lui-même (pièce d'identité, permis, certificats). Vous pouvez les voir et les télécharger.",
@@ -600,7 +600,7 @@ export const ADMIN_GUIDE_FR: RoleGuide = {
           title: 'Certifications et formations',
           path: '/dashboard/hr/certifications',
           blocks: [
-            { kind: 'p', text: "Technet HR → Certifications liste les certifications de chaque personne avec leur date d'expiration, ainsi que ses formations. Utilisez Add Certification ou Record Training. Les certifications qui expirent dans les 60 prochains jours apparaissent dans la Vue d'ensemble RH." },
+            { kind: 'p', text: "Technet HR → Certifications liste les certifications de chaque personne avec leur date d'expiration, ainsi que ses formations. Utilisez Ajouter une certification ou Enregistrer une formation. Les certifications qui expirent dans les 60 prochains jours apparaissent dans la Vue d'ensemble RH." },
           ],
         },
         {
