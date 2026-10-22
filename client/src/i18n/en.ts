@@ -2033,6 +2033,19 @@ export const en = {
         ],
       },
       {
+        title: 'Forms',
+        faqs: [
+          {
+            q: 'I closed a form by mistake. Is what I typed lost?',
+            a: [
+              'No, not on a form that adds something new (a new customer, work order, daily report, leave or tool request, and so on). What you type is kept on your device. Open the same form again and a banner says "We brought back what you typed last time".',
+              'The draft is removed once you save or submit. To start over with an empty form, tap "Discard draft". Photos, files and passwords are never kept, so add them again.',
+              'A draft stays only on that device and browser, only for your login, for up to 30 days. Forms that change an existing record do not keep drafts.',
+            ],
+          },
+        ],
+      },
+      {
         title: 'Access',
         faqs: [
           {
