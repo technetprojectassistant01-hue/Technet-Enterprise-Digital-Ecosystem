@@ -4,12 +4,12 @@ import type { RoleGuide } from '../types'
  * Gid administrater - Kreol Morisien copy of ../adminGuide.ts (2026-10-21). Same chapters, topics,
  * ids and paths as the English guide; change all three languages together. Button names are the
  * ones the Kreol screen shows (i18n/mfe.ts); pages not translated yet (Marketing, Sekirite,
- * Zestion itilizater, Anplwaye, Sertifikasion) keep their English button names.
+ * Zestion itilizater) keep their English button names.
  */
 export const ADMIN_GUIDE_MFE: RoleGuide = {
   title: 'Gid administrater',
   intro:
-    "Kouma pou fer Technet Digital marse kouma enn administrater: bann login, prezans personel, operasion, RH, magazin ek ERP. Li swiv meni agos, depi anler ziska anba. Responsab Operasion ena exakteman mem akse ki enn administrater, alor sa gid la pou li osi. Kek paz pa ankor tradwir (Marketing, Sekirite, Zestion itilizater, Anplwaye ek Sertifikasion); zot bouton ekrir isi an angle, kouma zot paret lor lekran.",
+    "Kouma pou fer Technet Digital marse kouma enn administrater: bann login, prezans personel, operasion, RH, magazin ek ERP. Li swiv meni agos, depi anler ziska anba. Responsab Operasion ena exakteman mem akse ki enn administrater, alor sa gid la pou li osi. Kek paz pa ankor tradwir (Marketing, Sekirite ek Zestion itilizater); zot bouton ekrir isi an angle, kouma zot paret lor lekran.",
   roles: ['ADMIN', 'OPERATIONS_MANAGER'],
   updated: '2026-10-22',
   chapters: [
@@ -85,7 +85,7 @@ export const ADMIN_GUIDE_MFE: RoleGuide = {
           id: 'form-drafts',
           title: 'Si enn formiler ferme avan ou sov li',
           blocks: [
-            { kind: 'p', text: "Lor bann formiler ki azout kitsoz nouvo (azout enn klian, nouvo work order, nouvo kotasion, azout enn anplwaye, demann konze ek lezot), seki ou ekrir reste garde lor sa aparey la amezir ou pe ekrir. Si fenet la, aplikasion la ouswa pop-up la ferme par erer, ouver mem formiler la ankor: enn banier dir « Nou finn remet seki ou ti ekrir » ek ou text retourn dan bann kaz." },
+            { kind: 'p', text: "Lor bann formiler ki azout kitsoz nouvo (azout enn kliyan, nouvo work order, nouvo kotasion, azout enn anplwaye, demann konze ek lezot), seki ou ekrir reste garde lor sa aparey la amezir ou pe ekrir. Si fenet la, aplikasion la ouswa pop-up la ferme par erer, ouver mem formiler la ankor: enn banier dir « Nou finn remet seki ou ti ekrir » ek ou text retourn dan bann kaz." },
             {
               kind: 'list',
               items: [
@@ -145,8 +145,8 @@ export const ADMIN_GUIDE_MFE: RoleGuide = {
               kind: 'steps',
               items: [
                 'Ouver Technet HR → Anplwaye.',
-                "Ouver dimoun la (ouswa klik Add Employee si li pa ankor la; so kod anplwaye donn otomatikman).",
-                'Klik Edit e swazir so login anba Linked Login.',
+                "Ouver dimoun la (ouswa klik Azout enn anplwaye si li pa ankor la; so kod anplwaye donn otomatikman).",
+                'Klik Modifie e swazir so login anba Login konekte.',
                 "Anrezistre. Prosenn fwa li ouver aplikasion la, kart pointaz paret.",
               ],
             },
@@ -472,7 +472,7 @@ export const ADMIN_GUIDE_MFE: RoleGuide = {
             {
               kind: 'list',
               items: [
-                'Add Employee kre enn dosie. Kod anplwaye donn otomatikman.',
+                'Azout enn anplwaye kre enn dosie. Kod anplwaye donn otomatikman.',
                 "Ouver enn anplwaye pou sanz so detay, konekte so login, met enn saler de baz pou lapey ek trouv so bann sertifikasion.",
                 "Kot li reste (RH zis): ladres so lakaz. Enn pointaz mwins ki 300 m depi la leve enn anomali « pointe pre kot li reste », sof si li ena enn travay pre kot li sa zour la. Ladres la zame montre personn deor RH.",
                 "Dokiman personel: bann dokiman ki anplwaye la finn azoute limem (kart idantite, permi, sertifika). Ou kapav get zot ek telesarz zot.",
@@ -600,7 +600,7 @@ export const ADMIN_GUIDE_MFE: RoleGuide = {
           title: 'Sertifikasion ek formasion',
           path: '/dashboard/hr/certifications',
           blocks: [
-            { kind: 'p', text: "Technet HR → Sertifikasion montre sertifikasion sak dimoun avek zot dat expirasion, ek zot formasion. Servi Add Certification ouswa Record Training. Bann sertifikasion ki pou expire dan 60 prosenn zour paret dan Vi zeneral RH." },
+            { kind: 'p', text: "Technet HR → Sertifikasion montre sertifikasion sak dimoun avek zot dat expirasion, ek zot formasion. Servi Azout enn sertifikasion ouswa Anrezistre enn formasion. Bann sertifikasion ki pou expire dan 60 prosenn zour paret dan Vi zeneral RH." },
           ],
         },
         {
