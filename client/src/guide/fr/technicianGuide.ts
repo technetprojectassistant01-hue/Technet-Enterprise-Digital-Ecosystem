@@ -10,7 +10,7 @@ export const TECHNICIAN_GUIDE_FR: RoleGuide = {
   intro:
     "Comment utiliser Technet Digital sur votre téléphone : pointer votre arrivée et votre départ, vos interventions du jour, les rapports, les congés, les outils et les documents. Chaque sujet est une tâche, étape par étape.",
   roles: ['FIELD_TECHNICIAN'],
-  updated: '2026-10-21',
+  updated: '2026-10-22',
   chapters: [
     // ------------------------------------------------------------------------------------------
     {
@@ -75,6 +75,22 @@ export const TECHNICIAN_GUIDE_FR: RoleGuide = {
           title: 'Je ne vois pas la carte de pointage',
           blocks: [
             { kind: 'p', text: "Votre compte n'est pas encore relié à votre fiche employé. Demandez aux RH de le relier. Une fois fait, la carte apparaît la prochaine fois que vous ouvrez l'application." },
+          ],
+        },
+        {
+          id: 'form-drafts',
+          title: "Si un formulaire se ferme avant l'envoi",
+          blocks: [
+            { kind: 'p', text: "Quand vous remplissez quelque chose de nouveau (un rapport journalier, une demande d'outils ou de matériel, une demande de congé, un document), le téléphone garde ce que vous tapez. Si l'application ou le formulaire se ferme par erreur, rouvrez le même formulaire. Un message indique « Nous avons remis ce que vous aviez saisi » et votre texte est de retour." },
+            {
+              kind: 'list',
+              items: [
+                "Le brouillon disparaît dès que vous envoyez.",
+                'Pour repartir d\'un formulaire vide, touchez Supprimer le brouillon.',
+                'Les photos et les fichiers ne sont pas gardés. Ajoutez-les à nouveau.',
+                'Le brouillon reste uniquement sur ce téléphone, pour votre compte.',
+              ],
+            },
           ],
         },
       ],
