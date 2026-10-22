@@ -10,6 +10,8 @@ import { useEmployees } from '../erp/useEmployees'
 import { leaveRequestStatusTone } from '../erp/statusTones'
 import { inputClass, labelClass, primaryButtonClass } from './formStyles'
 import { enumLabel, useT } from '../i18n'
+import { useFormDraft } from '../lib/useFormDraft'
+import { DraftNotice } from '../dashboard/DraftNotice'
 
 const STATUS_FILTERS: (LeaveRequestStatus | '')[] = ['', 'PENDING', 'APPROVED', 'REJECTED', 'CANCELLED']
 
@@ -70,6 +72,7 @@ function LeaveRequestsTab({ leaveTypes, initialStatus = '', lockStatus = false }
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<LeaveRequest | null>(null)
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
+  const draft = useFormDraft('hr-leave-request', form, showForm && !editing)
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -113,7 +116,7 @@ function LeaveRequestsTab({ leaveTypes, initialStatus = '', lockStatus = false }
   }, [showForm, form.startDate, form.endDate, form.halfDay])
 
   function openCreate() {
-    setForm(EMPTY_FORM)
+    setForm(draft.take(EMPTY_FORM))
     setFormError(null)
     setEditing(null)
     setShowForm(true)
@@ -165,6 +168,7 @@ function LeaveRequestsTab({ leaveTypes, initialStatus = '', lockStatus = false }
         await api.updateLeaveRequest(editing.id, input)
       } else {
         await api.createLeaveRequest(input)
+        draft.clear()
       }
       toast.success(editing ? t.hr.requests.updated : t.hr.requests.recorded)
       closeForm()
@@ -434,6 +438,7 @@ function LeaveRequestsTab({ leaveTypes, initialStatus = '', lockStatus = false }
       {showForm && (
         <Modal title={editing ? t.hr.requests.edit : t.hr.requests.record} onClose={closeForm}>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            {!editing && draft.restored && <DraftNotice onDiscard={() => setForm(draft.discard())} />}
             <div>
               <label className={labelClass}>{t.shared.employeeCol}</label>
               <select
