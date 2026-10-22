@@ -10,7 +10,7 @@ export const TECHNICIAN_GUIDE_MFE: RoleGuide = {
   intro:
     "Kouma pou servi Technet Digital lor ou telefonn: pointe ou lariver ek ou depar, ou travay pou zordi, bann rapor, konze, zouti ek dokiman. Sak size se enn travay, etap par etap.",
   roles: ['FIELD_TECHNICIAN'],
-  updated: '2026-10-21',
+  updated: '2026-10-22',
   chapters: [
     // ------------------------------------------------------------------------------------------
     {
@@ -75,6 +75,22 @@ export const TECHNICIAN_GUIDE_MFE: RoleGuide = {
           title: 'Mo pa trouv kart pointaz',
           blocks: [
             { kind: 'p', text: "Ou login pa ankor konekte ar ou dosie anplwaye. Demann RH konekte li. Kan zot finn fer li, kart la paret prosenn fwa ou ouver aplikasion la." },
+          ],
+        },
+        {
+          id: 'form-drafts',
+          title: 'Si enn formiler ferme avan ou avoy li',
+          blocks: [
+            { kind: 'p', text: "Kan ou ranpli kitsoz nouvo (enn rapor zournalie, enn demann zouti ouswa materyo, enn demann konze, enn dokiman), telefonn la gard seki ou ekrir. Si aplikasion la ouswa formiler la ferme par erer, ouver mem formiler la ankor. Enn mesaz dir « Nou finn remet seki ou ti ekrir » ek ou text retourne." },
+            {
+              kind: 'list',
+              items: [
+                'Brouyon la disparet kan ou finn avoy li.',
+                'Pou rekoumans ar enn formiler vid, tap Zet brouyon.',
+                'Foto ek fisie pa garde. Azout zot ankor.',
+                'Brouyon la zis lor sa telefonn la, pou ou login.',
+              ],
+            },
           ],
         },
       ],
