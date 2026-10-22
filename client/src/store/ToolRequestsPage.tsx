@@ -9,6 +9,8 @@ import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
 import { hasRole, TOOL_MANAGE_ROLES } from '../lib/permissions'
 import { useT } from '../i18n'
+import { useFormDraft } from '../lib/useFormDraft'
+import { DraftNotice } from '../dashboard/DraftNotice'
 import { dayOf, toolRequestStatusTone } from './toolTones'
 import { ClipboardList as ClipboardListIcon } from 'lucide-react'
 import PageTitle from '../dashboard/PageTitle'
@@ -51,6 +53,8 @@ function ToolRequestsPage() {
   const [typeOrBrand, setTypeOrBrand] = useState('')
   const [purpose, setPurpose] = useState('')
   const [neededBy, setNeededBy] = useState('')
+  const draftValue = { items, typeOrBrand, purpose, neededBy }
+  const draft = useFormDraft('tool-request', draftValue, showForm && !editing)
   const [formError, setFormError] = useState<string | null>(null)
 
   // Issue
@@ -87,12 +91,16 @@ function ToolRequestsPage() {
       .catch(() => setMyToolCount(null))
   }, [user?.employeeId])
 
+  function fillDraft(d: typeof draftValue) {
+    setItems(d.items)
+    setTypeOrBrand(d.typeOrBrand)
+    setPurpose(d.purpose)
+    setNeededBy(d.neededBy)
+  }
+
   function openForm() {
     setEditing(null)
-    setItems('')
-    setTypeOrBrand('')
-    setPurpose('')
-    setNeededBy('')
+    fillDraft(draft.take({ items: '', typeOrBrand: '', purpose: '', neededBy: '' }))
     setFormError(null)
     setShowForm(true)
   }
@@ -127,6 +135,7 @@ function ToolRequestsPage() {
         toast.success(t.toolRequests.updated)
       } else {
         await api.createToolRequest(input)
+        draft.clear()
         toast.success(t.toolRequests.submitted)
       }
       setShowForm(false)
@@ -406,6 +415,7 @@ function ToolRequestsPage() {
           onClose={() => setShowForm(false)}
         >
           <form onSubmit={handleCreate} className="flex flex-col gap-4">
+            {!editing && draft.restored && <DraftNotice onDiscard={() => fillDraft(draft.discard())} />}
             <div>
               <label className={labelClass}>{t.toolRequests.itemsLabel}</label>
               <textarea
