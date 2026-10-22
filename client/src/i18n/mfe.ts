@@ -1,5 +1,6 @@
 import type { Dict } from './en'
 import { erpMfe } from './erp/mfe'
+import { peopleMfe } from './people/mfe'
 
 /**
  * Mauritian Creole (Kreol Morisien), in the standard Grafi Larmoni spelling. Typed against the
@@ -2037,7 +2038,7 @@ export const mfe: Dict = {
           {
             q: 'Mo finn ferme enn formiler par erer. Eski seki mo ti ekrir finn perdi?',
             a: [
-              "Non, pa lor enn formiler ki azout kitsoz nouvo (enn nouvo klian, work order, rapor zournalie, demann konze ouswa zouti, ek lezot). Seki ou ekrir reste garde lor ou aparey. Ouver mem formiler la ankor ek enn banier dir « Nou finn remet seki ou ti ekrir ».",
+              "Non, pa lor enn formiler ki azout kitsoz nouvo (enn nouvo kliyan, work order, rapor zournalie, demann konze ouswa zouti, ek lezot). Seki ou ekrir reste garde lor ou aparey. Ouver mem formiler la ankor ek enn banier dir « Nou finn remet seki ou ti ekrir ».",
               "Brouyon la efase kan ou sove ouswa avoy li. Pou rekoumans ar enn formiler vid, tap « Zet brouyon ». Foto, fisie ek mo de pas zamai garde, alor azout zot ankor.",
               "Enn brouyon reste zis lor sa aparey ek sa navigater la, zis pou ou login, ziska 30 zour. Bann formiler ki sanz enn dosie ki deza egziste pa gard brouyon.",
             ],
@@ -2231,4 +2232,5 @@ export const mfe: Dict = {
 
   /** Technet ERP pages - kept in ./erp/ to keep this file manageable. */
   erp: erpMfe,
+  people: peopleMfe,
 }
