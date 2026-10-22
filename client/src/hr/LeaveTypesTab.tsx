@@ -7,6 +7,8 @@ import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
 import { inputClass, labelClass, primaryButtonClass, secondaryButtonClass } from './formStyles'
 import { useT } from '../i18n'
+import { useFormDraft } from '../lib/useFormDraft'
+import { DraftNotice } from '../dashboard/DraftNotice'
 
 interface FormState {
   code: string
@@ -34,12 +36,13 @@ function LeaveTypesTab({ leaveTypes, onChanged }: { leaveTypes: LeaveType[]; onC
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<LeaveType | null>(null)
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
+  const draft = useFormDraft('leave-type', form, showForm && !editing)
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [seeding, setSeeding] = useState(false)
 
   function openCreate() {
-    setForm(EMPTY_FORM)
+    setForm(draft.take(EMPTY_FORM))
     setFormError(null)
     setEditing(null)
     setShowForm(true)
@@ -96,6 +99,7 @@ function LeaveTypesTab({ leaveTypes, onChanged }: { leaveTypes: LeaveType[]; onC
         await api.updateLeaveType(editing.id, input)
       } else {
         await api.createLeaveType(input)
+        draft.clear()
       }
       toast.success(editing ? t.hr.leaveTypes.updated : t.hr.leaveTypes.created)
       setShowForm(false)
@@ -210,6 +214,7 @@ function LeaveTypesTab({ leaveTypes, onChanged }: { leaveTypes: LeaveType[]; onC
           }}
         >
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            {!editing && draft.restored && <DraftNotice onDiscard={() => setForm(draft.discard())} />}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className={labelClass}>{t.hr.leaveTypes.colCode}</label>
