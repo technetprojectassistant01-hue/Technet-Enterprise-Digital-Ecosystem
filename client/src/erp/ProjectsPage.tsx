@@ -14,6 +14,8 @@ import { useAssignableEmployees } from './useEmployees'
 import { projectStatusTone } from './statusTones'
 import { formatMoney } from '../lib/format'
 import { useT } from '../i18n'
+import { useFormDraft } from '../lib/useFormDraft'
+import { DraftNotice } from '../dashboard/DraftNotice'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -58,6 +60,7 @@ function ProjectsPage() {
 
   const [showCreate, setShowCreate] = useState(false)
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
+  const draft = useFormDraft('project', form, showCreate)
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -76,7 +79,7 @@ function ProjectsPage() {
   }, [])
 
   function openCreate() {
-    setForm(EMPTY_FORM)
+    setForm(draft.take(EMPTY_FORM))
     setFormError(null)
     setShowCreate(true)
   }
@@ -106,6 +109,7 @@ function ProjectsPage() {
         endDate: form.endDate || undefined,
         managerId: form.managerId || undefined,
       })
+      draft.clear()
       toast.success(m.created)
       closeForm()
       load()
@@ -221,6 +225,7 @@ function ProjectsPage() {
       {showCreate && (
         <Modal title={m.new} onClose={closeForm}>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            {draft.restored && <DraftNotice onDiscard={() => setForm(draft.discard())} />}
             <div>
               <label className={labelClass}>{shared.name}</label>
               <input
