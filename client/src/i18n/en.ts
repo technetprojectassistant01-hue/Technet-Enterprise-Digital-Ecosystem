@@ -17,6 +17,12 @@ export const en = {
     somethingWentWrong: 'Something went wrong. Please try again.',
   },
 
+  draft: {
+    restored: 'We brought back what you typed last time, before this form was closed.',
+    filesNote: 'Files and photos are not kept - add them again.',
+    discard: 'Discard draft',
+  },
+
   language: {
     label: 'Language',
     settingsHint: "Choose the language for the app. It's saved to your account, so it follows you to any device.",
