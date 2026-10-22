@@ -16,7 +16,7 @@ const tech = topicsFrom(TECHNICIAN_GUIDE_FR)
 export const SALES_GUIDE_FR: RoleGuide = {
   title: 'Guide du chargé des ventes',
   intro:
-    "Le travail d'un chargé des ventes dans Technet Digital : les clients, les demandes de devis, les devis et leur suivi, le portail client et le calendrier marketing. Chaque sujet est une tâche, étape par étape. La page Marketing n'est pas encore traduite ; ses boutons sont nommés ici en anglais, tels qu'ils apparaissent à l'écran.",
+    "Le travail d'un chargé des ventes dans Technet Digital : les clients, les demandes de devis, les devis et leur suivi, le portail client et le calendrier marketing. Chaque sujet est une tâche, étape par étape.",
   roles: ['SALES_OFFICER'],
   updated: '2026-10-22',
   chapters: [
