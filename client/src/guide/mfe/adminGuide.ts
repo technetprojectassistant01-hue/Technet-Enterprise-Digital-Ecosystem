@@ -3,13 +3,12 @@ import type { RoleGuide } from '../types'
 /**
  * Gid administrater - Kreol Morisien copy of ../adminGuide.ts (2026-10-21). Same chapters, topics,
  * ids and paths as the English guide; change all three languages together. Button names are the
- * ones the Kreol screen shows (i18n/mfe.ts); Marketing, not translated yet,
- * keeps its English button names.
+ * ones the Kreol screen shows (i18n/mfe.ts).
  */
 export const ADMIN_GUIDE_MFE: RoleGuide = {
   title: 'Gid administrater',
   intro:
-    "Kouma pou fer Technet Digital marse kouma enn administrater: bann login, prezans personel, operasion, RH, magazin ek ERP. Li swiv meni agos, depi anler ziska anba. Responsab Operasion ena exakteman mem akse ki enn administrater, alor sa gid la pou li osi. Paz Marketing pa ankor tradwir; so bann bouton ekrir isi an angle, kouma zot paret lor lekran.",
+    "Kouma pou fer Technet Digital marse kouma enn administrater: bann login, prezans personel, operasion, RH, magazin ek ERP. Li swiv meni agos, depi anler ziska anba. Responsab Operasion ena exakteman mem akse ki enn administrater, alor sa gid la pou li osi.",
   roles: ['ADMIN', 'OPERATIONS_MANAGER'],
   updated: '2026-10-22',
   chapters: [
@@ -806,9 +805,9 @@ export const ADMIN_GUIDE_MFE: RoleGuide = {
             {
               kind: 'list',
               items: [
-                "Kanpagn: Add Campaign, apre ouver li e klik Add Post pou sak piblikasion (tit, rezo, text, dat).",
-                'Content Calendar montre tou piblikasion prevwar dan tou kanpagn, avek filtre.',
-                'Apre ki ou finn poste lor rezo sosial la ou-mem, klik Mark Posted isi.',
+                "Kanpagn: Azout enn kanpagn, apre ouver li e klik Azout enn piblikasion pou sak piblikasion (tit, platform, text, dat).",
+                'Kalandrie kontni montre tou piblikasion prevwar dan tou kanpagn, avek filtre.',
+                'Apre ki ou finn poste lor rezo sosial la ou-mem, klik Marke piblie isi.',
               ],
             },
             { kind: 'note', text: "Aplikasion la pa poste lor rezo sosial e li pa ekrir piblikasion pou ou. Se enn lalis planifikasion." },
