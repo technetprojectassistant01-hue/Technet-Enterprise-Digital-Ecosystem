@@ -3,13 +3,12 @@ import type { RoleGuide } from '../types'
 /**
  * Guide administrateur - French copy of ../adminGuide.ts (2026-10-20). Same chapters, topics, ids
  * and paths as the English guide; change both together. Button names are the ones the French
- * screen shows; Marketing, not translated yet, keeps its English button names, written as on
- * screen.
+ * screen shows (i18n/fr.ts).
  */
 export const ADMIN_GUIDE_FR: RoleGuide = {
   title: 'Guide administrateur',
   intro:
-    "Comment gérer Technet Digital en tant qu'administrateur : les comptes, la présence du personnel, les opérations, les RH, le magasin et l'ERP. Il suit le menu de gauche, de haut en bas. Le Responsable des opérations a exactement les mêmes accès qu'un administrateur : ce guide est aussi le sien. La page Marketing n'est pas encore traduite ; ses boutons sont nommés ici en anglais, tels qu'ils apparaissent à l'écran.",
+    "Comment gérer Technet Digital en tant qu'administrateur : les comptes, la présence du personnel, les opérations, les RH, le magasin et l'ERP. Il suit le menu de gauche, de haut en bas. Le Responsable des opérations a exactement les mêmes accès qu'un administrateur : ce guide est aussi le sien.",
   roles: ['ADMIN', 'OPERATIONS_MANAGER'],
   updated: '2026-10-22',
   chapters: [
@@ -806,9 +805,9 @@ export const ADMIN_GUIDE_FR: RoleGuide = {
             {
               kind: 'list',
               items: [
-                "Campagnes : Add Campaign, puis ouvrez-la et cliquez sur Add Post pour chaque publication (titre, réseau, texte, date).",
-                'Content Calendar liste toutes les publications prévues de toutes les campagnes, avec des filtres.',
-                'Après avoir publié vous-même sur le réseau social, cliquez ici sur Mark Posted.',
+                "Campagnes : Ajouter une campagne, puis ouvrez-la et cliquez sur Ajouter une publication pour chaque publication (titre, plateforme, texte, date).",
+                'Calendrier de contenu liste toutes les publications prévues de toutes les campagnes, avec des filtres.',
+                'Après avoir publié vous-même sur le réseau social, cliquez ici sur Marquer publié.',
               ],
             },
             { kind: 'note', text: "L'application ne publie pas sur les réseaux sociaux et n'écrit pas les publications à votre place. C'est une liste de planification." },
