@@ -7,6 +7,8 @@ import { MARKETING_PLATFORMS } from '../lib/api'
 import { Panel, Badge, Modal, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { primaryButtonClass, secondaryButtonClass } from '../dashboard/buttonStyles'
 import { useToast } from '../dashboard/ToastContext'
+import { useFormDraft } from '../lib/useFormDraft'
+import { DraftNotice } from '../dashboard/DraftNotice'
 import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
 import { hasRole, MARKETING_ROLES } from '../lib/permissions'
@@ -38,6 +40,7 @@ function CampaignDetailPage() {
 
   const [showAddPost, setShowAddPost] = useState(false)
   const [postForm, setPostForm] = useState<PostFormState>(EMPTY_POST_FORM)
+  const draft = useFormDraft('marketing-post', postForm, showAddPost)
   const [postFormError, setPostFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -54,7 +57,7 @@ function CampaignDetailPage() {
   useEffect(load, [id])
 
   function openAddPost() {
-    setPostForm(EMPTY_POST_FORM)
+    setPostForm(draft.take(EMPTY_POST_FORM))
     setPostFormError(null)
     setShowAddPost(true)
   }
@@ -81,6 +84,7 @@ function CampaignDetailPage() {
         copy: postForm.copy || undefined,
         scheduledDate: postForm.scheduledDate,
       })
+      draft.clear()
       toast.success('Post added')
       setShowAddPost(false)
       load()
@@ -231,6 +235,7 @@ function CampaignDetailPage() {
       {showAddPost && (
         <Modal title="Add Post" onClose={() => setShowAddPost(false)}>
           <form onSubmit={handleAddPost} className="flex flex-col gap-4">
+            {draft.restored && <DraftNotice onDiscard={() => setPostForm(draft.discard())} />}
             <div>
               <label className={labelClass}>TITLE</label>
               <input
