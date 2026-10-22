@@ -42,6 +42,7 @@ const ghostButton =
 function UsersPage() {
   const toast = useToast()
   const t = useT()
+  const u = t.system.users
   const confirm = useConfirm()
   const { user: currentUser } = useAuth()
   const [users, setUsers] = useState<ManagedUser[]>([])
@@ -84,7 +85,7 @@ function UsersPage() {
     api
       .listUsers()
       .then(({ users }) => setUsers(users))
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load users'))
+      .catch((err) => setError(err instanceof Error ? err.message : u.loadFailed))
       .finally(() => setLoading(false))
   }
 
@@ -92,15 +93,15 @@ function UsersPage() {
 
   const visible = useMemo(() => {
     const term = search.trim().toLowerCase()
-    return users.filter((u) => {
-      if (roleFilter && u.role !== roleFilter) return false
+    return users.filter((row) => {
+      if (roleFilter && row.role !== roleFilter) return false
       if (!term) return true
-      const employee = u.employee ? `${u.employee.employeeCode} ${u.employee.firstName} ${u.employee.lastName}` : ''
-      return `${u.name ?? ''} ${u.email} ${employee}`.toLowerCase().includes(term)
+      const employee = row.employee ? `${row.employee.employeeCode} ${row.employee.firstName} ${row.employee.lastName}` : ''
+      return `${row.name ?? ''} ${row.email} ${employee}`.toLowerCase().includes(term)
     })
   }, [users, search, roleFilter])
 
-  const unlinked = users.filter((u) => !u.employee && !isAdminLike(u.role)).length
+  const unlinked = users.filter((row) => !row.employee && !isAdminLike(row.role)).length
 
   function fillDraft(d: typeof draftValue) {
     setEmail(d.email)
@@ -122,21 +123,21 @@ function UsersPage() {
     try {
       await api.createUser({ email, password, name: name || undefined, role })
       draft.clear()
-      toast.success(`User ${email} created`)
+      toast.success(u.created(email))
       setCreating(false)
       loadUsers()
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Failed to create user')
+      setFormError(err instanceof Error ? err.message : u.createFailed)
     } finally {
       setSubmitting(false)
     }
   }
 
-  function openEdit(u: ManagedUser) {
-    setEditing(u)
-    setEditName(u.name ?? '')
-    setEditEmail(u.email)
-    setEditRole(u.role)
+  function openEdit(target: ManagedUser) {
+    setEditing(target)
+    setEditName(target.name ?? '')
+    setEditEmail(target.email)
+    setEditRole(target.role)
     setEditError(null)
   }
 
@@ -146,7 +147,7 @@ function UsersPage() {
     const nextName = editName.trim()
     const nextEmail = editEmail.trim().toLowerCase()
     if (!nextEmail) {
-      setEditError('An email address is required')
+      setEditError(u.emailRequired)
       return
     }
 
@@ -165,18 +166,18 @@ function UsersPage() {
     setEditError(null)
     try {
       await api.updateUser(editing.id, patch)
-      toast.success(patch.email ? `Now signs in as ${nextEmail}` : `${nextName || nextEmail} updated`)
+      toast.success(patch.email ? u.nowSignsInAs(nextEmail) : u.updated(nextName || nextEmail))
       setEditing(null)
       loadUsers()
     } catch (err) {
-      setEditError(err instanceof Error ? err.message : 'Failed to save changes')
+      setEditError(err instanceof Error ? err.message : u.saveFailed)
     } finally {
       setSaving(false)
     }
   }
 
-  function openPasswordReset(u: ManagedUser) {
-    setResettingUser(u)
+  function openPasswordReset(target: ManagedUser) {
+    setResettingUser(target)
     setNewPassword('')
     setConfirmPassword('')
     setShowPassword(false)
@@ -187,40 +188,40 @@ function UsersPage() {
     e.preventDefault()
     if (!resettingUser) return
     if (newPassword.length < 8) {
-      setResetError('Password must be at least 8 characters')
+      setResetError(u.passwordTooShort)
       return
     }
     if (newPassword !== confirmPassword) {
-      setResetError('The two passwords do not match')
+      setResetError(u.passwordsDiffer)
       return
     }
     setSavingPassword(true)
     setResetError(null)
     try {
       await api.updateUser(resettingUser.id, { password: newPassword })
-      toast.success(`Password updated for ${resettingUser.email}`)
+      toast.success(u.passwordUpdated(resettingUser.email))
       setResettingUser(null)
     } catch (err) {
-      setResetError(err instanceof Error ? err.message : 'Failed to reset password')
+      setResetError(err instanceof Error ? err.message : u.resetFailed)
     } finally {
       setSavingPassword(false)
     }
   }
 
-  async function handleDelete(u: ManagedUser) {
+  async function handleDelete(target: ManagedUser) {
     const ok = await confirm({
-      title: 'Delete user',
-      message: `Delete the login for ${u.name || u.email}? This cannot be undone. If they have work on file the server will refuse — change the email and password instead to hand the login to someone else.`,
-      confirmLabel: 'Delete',
+      title: u.deleteTitle,
+      message: u.deleteMessage(target.name || target.email),
+      confirmLabel: u.delete,
       tone: 'danger',
     })
     if (!ok) return
     try {
-      await api.deleteUser(u.id)
-      toast.success(`Deleted ${u.email}`)
+      await api.deleteUser(target.id)
+      toast.success(u.deleted(target.email))
       loadUsers()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to delete user')
+      toast.error(err instanceof Error ? err.message : u.deleteFailed)
     }
   }
 
@@ -238,14 +239,14 @@ function UsersPage() {
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-ink-100">User Management</h1>
+          <h1 className="text-2xl font-bold text-ink-100">{u.title}</h1>
           <p className="mt-1 text-sm text-ink-300">
-            Who can sign in, and what they may do. Passwords are set here — there is no self-service reset.
+            {u.subtitle}
           </p>
         </div>
         <button type="button" onClick={openCreate} className={primaryButtonClass}>
           <Plus className="h-4 w-4" />
-          Add user
+          {u.addUser}
         </button>
       </div>
 
@@ -253,10 +254,9 @@ function UsersPage() {
         <div className="flex items-start gap-2 rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-2.5 text-sm text-amber-300">
           <Link2Off className="mt-0.5 h-4 w-4 shrink-0" />
           <span>
-            {unlinked === 1 ? '1 login is' : `${unlinked} logins are`} not attached to an employee record, so those
-            people cannot check in, request leave or be paid. Attach them under{' '}
+            {u.unlinkedBanner(unlinked)}
             <Link to="/dashboard/hr/employees" className="font-semibold underline">
-              Technet HR → Employees
+              {u.unlinkedLink}
             </Link>
             .
           </span>
@@ -271,18 +271,18 @@ function UsersPage() {
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search name, email or employee"
-              aria-label="Search users"
+              placeholder={u.searchPlaceholder}
+              aria-label={u.searchAria}
               className={`w-full pl-9 ${inputClass}`}
             />
           </div>
           <select
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value as Role | '')}
-            aria-label="Filter by role"
+            aria-label={u.roleFilterAria}
             className={`sm:w-56 ${inputClass}`}
           >
-            <option value="">All roles</option>
+            <option value="">{u.allRoles}</option>
             {ROLES.map((r) => (
               <option key={r} value={r}>
                 {t.roles[r]}
@@ -302,52 +302,52 @@ function UsersPage() {
         <Panel>
           <EmptyState
             icon={UserCog}
-            message={users.length === 0 ? 'No users yet.' : 'No user matches that search.'}
+            message={users.length === 0 ? u.noUsers : u.noMatch}
           />
         </Panel>
       ) : (
         <Panel className="p-0">
           {/* Phone: one card per person. A five-column table at 400px is unreadable however it scrolls. */}
           <ul className="flex flex-col divide-y divide-ink-800 md:hidden">
-            {visible.map((u) => (
-              <li key={u.id} className="flex flex-col gap-3 p-4">
+            {visible.map((row) => (
+              <li key={row.id} className="flex flex-col gap-3 p-4">
                 <div className="flex items-start gap-3">
-                  <Avatar name={u.name || u.email} size={40} />
+                  <Avatar name={row.name || row.email} size={40} />
                   <div className="min-w-0 flex-1">
-                    <div className="truncate font-semibold text-ink-100">{u.name || '—'}</div>
-                    <div className="truncate text-sm text-ink-300">{u.email}</div>
+                    <div className="truncate font-semibold text-ink-100">{row.name || '—'}</div>
+                    <div className="truncate text-sm text-ink-300">{row.email}</div>
                     <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <Badge tone={roleTone(u.role)}>{t.roles[u.role]}</Badge>
-                      {u.id === currentUser?.id && <span className="text-xs text-ink-400">You</span>}
+                      <Badge tone={roleTone(row.role)}>{t.roles[row.role]}</Badge>
+                      {row.id === currentUser?.id && <span className="text-xs text-ink-400">{u.you}</span>}
                     </div>
                   </div>
                 </div>
                 <div className="text-xs text-ink-400">
-                  {u.employee ? (
+                  {row.employee ? (
                     <>
-                      {u.employee.employeeCode} · {u.employee.firstName} {u.employee.lastName}
+                      {row.employee.employeeCode} · {row.employee.firstName} {row.employee.lastName}
                     </>
                   ) : (
-                    <span className="text-amber-300">No employee record</span>
+                    <span className="text-amber-300">{u.noEmployeeRecord}</span>
                   )}
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <button type="button" onClick={() => openEdit(u)} className={ghostButton}>
+                  <button type="button" onClick={() => openEdit(row)} className={ghostButton}>
                     <Pencil className="h-3.5 w-3.5" />
-                    Edit
+                    {u.edit}
                   </button>
-                  <button type="button" onClick={() => openPasswordReset(u)} className={ghostButton}>
+                  <button type="button" onClick={() => openPasswordReset(row)} className={ghostButton}>
                     <KeyRound className="h-3.5 w-3.5" />
-                    Password
+                    {u.password}
                   </button>
                   <button
                     type="button"
-                    disabled={u.id === currentUser?.id}
-                    onClick={() => handleDelete(u)}
+                    disabled={row.id === currentUser?.id}
+                    onClick={() => handleDelete(row)}
                     className="flex items-center gap-1.5 rounded-md border border-red-400/50 px-2.5 py-1.5 text-xs font-medium text-red-400 transition hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
-                    Delete
+                    {u.delete}
                   </button>
                 </div>
               </li>
@@ -358,68 +358,68 @@ function UsersPage() {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
-                  <th className="px-5 py-3 font-semibold">USER</th>
-                  <th className="px-5 py-3 font-semibold">ROLE</th>
-                  <th className="px-5 py-3 font-semibold">EMPLOYEE RECORD</th>
-                  <th className="px-5 py-3 font-semibold">CREATED</th>
+                  <th className="px-5 py-3 font-semibold">{u.colUser}</th>
+                  <th className="px-5 py-3 font-semibold">{u.colRole}</th>
+                  <th className="px-5 py-3 font-semibold">{u.colEmployee}</th>
+                  <th className="px-5 py-3 font-semibold">{u.colCreated}</th>
                   <th className="px-5 py-3" />
                 </tr>
               </thead>
               <tbody>
-                {visible.map((u) => (
-                  <tr key={u.id} className="border-b border-ink-800 last:border-0">
+                {visible.map((row) => (
+                  <tr key={row.id} className="border-b border-ink-800 last:border-0">
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-3">
-                        <Avatar name={u.name || u.email} size={36} />
+                        <Avatar name={row.name || row.email} size={36} />
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="font-medium text-ink-100">{u.name || '—'}</span>
-                            {u.id === currentUser?.id && <span className="text-xs text-ink-400">You</span>}
+                            <span className="font-medium text-ink-100">{row.name || '—'}</span>
+                            {row.id === currentUser?.id && <span className="text-xs text-ink-400">{u.you}</span>}
                           </div>
-                          <div className="truncate text-xs text-ink-400">{u.email}</div>
+                          <div className="truncate text-xs text-ink-400">{row.email}</div>
                         </div>
                       </div>
                     </td>
                     <td className="px-5 py-3">
-                      <Badge tone={roleTone(u.role)}>{t.roles[u.role]}</Badge>
+                      <Badge tone={roleTone(row.role)}>{t.roles[row.role]}</Badge>
                     </td>
                     <td className="px-5 py-3">
-                      {u.employee ? (
+                      {row.employee ? (
                         <Link
-                          to={`/dashboard/hr/employees/${u.employee.id}`}
+                          to={`/dashboard/hr/employees/${row.employee.id}`}
                           className="text-ink-200 hover:text-cyan-accent hover:underline"
                         >
-                          <span className="font-mono text-xs text-ink-400">{u.employee.employeeCode}</span>{' '}
-                          {u.employee.firstName} {u.employee.lastName}
+                          <span className="font-mono text-xs text-ink-400">{row.employee.employeeCode}</span>{' '}
+                          {row.employee.firstName} {row.employee.lastName}
                         </Link>
-                      ) : isAdminLike(u.role) ? (
+                      ) : isAdminLike(row.role) ? (
                         <span className="text-ink-500">—</span>
                       ) : (
-                        <span className="text-xs text-amber-300">Not attached</span>
+                        <span className="text-xs text-amber-300">{u.notAttached}</span>
                       )}
                     </td>
                     <td className="whitespace-nowrap px-5 py-3 text-ink-400">
-                      {new Date(u.createdAt).toLocaleDateString()}
+                      {new Date(row.createdAt).toLocaleDateString(t.shared.dateLocale)}
                     </td>
                     <td className="px-5 py-3">
                       <div className="flex items-center justify-end gap-2">
-                        <button type="button" onClick={() => openEdit(u)} title="Edit name, email and role" className={ghostButton}>
+                        <button type="button" onClick={() => openEdit(row)} title={u.editTitleAttr} className={ghostButton}>
                           <Pencil className="h-3.5 w-3.5" />
-                          Edit
+                          {u.edit}
                         </button>
-                        <button type="button" onClick={() => openPasswordReset(u)} title="Set a new password" className={ghostButton}>
+                        <button type="button" onClick={() => openPasswordReset(row)} title={u.passwordTitleAttr} className={ghostButton}>
                           <KeyRound className="h-3.5 w-3.5" />
-                          Password
+                          {u.password}
                         </button>
                         <button
                           type="button"
-                          disabled={u.id === currentUser?.id}
-                          onClick={() => handleDelete(u)}
-                          title={u.id === currentUser?.id ? 'You cannot delete your own account' : 'Delete this login'}
+                          disabled={row.id === currentUser?.id}
+                          onClick={() => handleDelete(row)}
+                          title={row.id === currentUser?.id ? u.cannotDeleteSelf : u.deleteTitleAttr}
                           className="flex items-center gap-1.5 rounded-md border border-red-400/50 px-2.5 py-1.5 text-xs font-medium text-red-400 transition hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-40"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
-                          Delete
+                          {u.delete}
                         </button>
                       </div>
                     </td>
@@ -432,25 +432,25 @@ function UsersPage() {
       )}
 
       {creating && (
-        <Modal title="Add User" onClose={() => setCreating(false)}>
+        <Modal title={u.addUserTitle} onClose={() => setCreating(false)}>
           <form onSubmit={handleCreate} className="flex flex-col gap-4">
             {draft.restored && <DraftNotice onDiscard={() => fillDraft(draft.discard())} />}
             <div>
               <label htmlFor="new-name" className={labelClass}>
-                FULL NAME
+                {u.fullName}
               </label>
               <input
                 id="new-name"
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Alan Steeve Smith"
+                placeholder={u.namePlaceholder}
                 className={`mt-2 w-full ${inputClass}`}
               />
             </div>
             <div>
               <label htmlFor="new-email" className={labelClass}>
-                SIGN-IN EMAIL
+                {u.signInEmail}
               </label>
               <input
                 id="new-email"
@@ -463,7 +463,7 @@ function UsersPage() {
             </div>
             <div>
               <label htmlFor="new-user-password" className={labelClass}>
-                PASSWORD
+                {u.passwordLabel}
               </label>
               <input
                 id="new-user-password"
@@ -476,19 +476,19 @@ function UsersPage() {
                 className={`mt-2 w-full ${inputClass}`}
               />
               <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2">
-                <span className="text-xs text-ink-400">At least 8 characters. Tell them what it is — no email is sent.</span>
+                <span className="text-xs text-ink-400">{u.passwordHint}</span>
                 <button
                   type="button"
                   onClick={() => setPassword(generateTempPassword())}
                   className="text-xs text-cyan-accent hover:underline"
                 >
-                  Suggest one for me
+                  {u.suggest}
                 </button>
               </div>
             </div>
             <div>
               <label htmlFor="new-role" className={labelClass}>
-                ROLE
+                {u.role}
               </label>
               <div className="mt-2">{roleSelect(role, setRole, 'new-role')}</div>
             </div>
@@ -498,41 +498,40 @@ function UsersPage() {
             {/* A login on its own cannot check in — SiteAttendance hangs off Employee, not User.
                 Saying so here is cheaper than the silent blank landing page it otherwise causes. */}
             <p className="rounded-lg border border-ink-800 bg-ink-950 px-3 py-2.5 text-xs text-ink-300">
-              A login on its own cannot check in, request leave or be paid. After creating it, add the person under
-              Technet HR → Employees and set this account as their Linked Login.
+              {u.loginOnlyNote}
             </p>
 
             <button type="submit" disabled={submitting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
               <UserPlus className="h-4 w-4" />
-              {submitting ? 'Creating…' : 'Create user'}
+              {submitting ? u.creating : u.createUser}
             </button>
           </form>
         </Modal>
       )}
 
       {editing && (
-        <Modal title="Edit User" onClose={() => setEditing(null)}>
+        <Modal title={u.editTitle} onClose={() => setEditing(null)}>
           <form onSubmit={handleSaveEdit} className="flex flex-col gap-4">
             <div>
               <label htmlFor="edit-name" className={labelClass}>
-                FULL NAME
+                {u.fullName}
               </label>
               <input
                 id="edit-name"
                 type="text"
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
-                placeholder="Not set"
+                placeholder={u.notSet}
                 className={`mt-2 w-full ${inputClass}`}
               />
               <p className="mt-1.5 text-xs text-ink-400">
-                Shown in the app header and on notifications. It does not change their employee record.
+                {u.nameHint}
               </p>
             </div>
 
             <div>
               <label htmlFor="edit-email" className={labelClass}>
-                SIGN-IN EMAIL
+                {u.signInEmail}
               </label>
               <input
                 id="edit-email"
@@ -545,22 +544,22 @@ function UsersPage() {
               {editEmail.trim().toLowerCase() !== editing.email && (
                 <p className="mt-1.5 text-xs text-amber-300">
                   {editing.id === currentUser?.id
-                    ? 'You will sign in with this address from now on. Make sure you can receive mail there.'
-                    : 'Their old address stops working immediately — tell them it has changed.'}
+                    ? u.ownEmailWarning
+                    : u.otherEmailWarning}
                 </p>
               )}
             </div>
 
             <div>
               <label htmlFor="edit-role" className={labelClass}>
-                ROLE
+                {u.role}
               </label>
               <div className="mt-2">
                 {roleSelect(editRole, setEditRole, 'edit-role', editing.id === currentUser?.id)}
               </div>
               {editing.id === currentUser?.id && (
                 <p className="mt-1.5 text-xs text-ink-400">
-                  You cannot change your own role — that is what stops an admin locking themselves out.
+                  {u.ownRoleNote}
                 </p>
               )}
             </div>
@@ -568,23 +567,22 @@ function UsersPage() {
             {editError && <p className="text-sm text-red-400">{editError}</p>}
 
             <button type="submit" disabled={saving} className={`justify-center py-2.5 ${primaryButtonClass}`}>
-              {saving ? 'Saving…' : 'Save changes'}
+              {saving ? u.saving : u.saveChanges}
             </button>
           </form>
         </Modal>
       )}
 
       {resettingUser && (
-        <Modal title="Set New Password" onClose={() => setResettingUser(null)}>
+        <Modal title={u.passwordTitle} onClose={() => setResettingUser(null)}>
           <form onSubmit={handleResetPassword} className="flex flex-col gap-4">
             <p className="text-sm text-ink-300">
-              Choose the password {resettingUser.name || resettingUser.email} will sign in with, then tell them what
-              it is — no email is sent. Their old password stops working straight away.
+              {u.passwordIntro(resettingUser.name || resettingUser.email)}
             </p>
 
             <div>
               <label htmlFor="new-password" className={labelClass}>
-                NEW PASSWORD
+                {u.newPassword}
               </label>
               <input
                 id="new-password"
@@ -596,12 +594,12 @@ function UsersPage() {
                 required
                 className={`mt-2 w-full ${inputClass}`}
               />
-              <p className="mt-1.5 text-xs text-ink-400">At least 8 characters.</p>
+              <p className="mt-1.5 text-xs text-ink-400">{u.minLength}</p>
             </div>
 
             <div>
               <label htmlFor="confirm-password" className={labelClass}>
-                CONFIRM PASSWORD
+                {u.confirmPassword}
               </label>
               <input
                 id="confirm-password"
@@ -622,7 +620,7 @@ function UsersPage() {
                   onChange={(e) => setShowPassword(e.target.checked)}
                   className="h-3.5 w-3.5 accent-cyan-accent"
                 />
-                Show password
+                {u.showPassword}
               </label>
               {/* A suggestion the admin can still edit or replace — never the only option. */}
               <button
@@ -635,14 +633,14 @@ function UsersPage() {
                 }}
                 className="text-xs text-cyan-accent hover:underline"
               >
-                Suggest one for me
+                {u.suggest}
               </button>
             </div>
 
             {resetError && <p className="text-sm text-red-400">{resetError}</p>}
 
             <button type="submit" disabled={savingPassword} className={`justify-center py-2.5 ${primaryButtonClass}`}>
-              {savingPassword ? 'Saving…' : 'Save password'}
+              {savingPassword ? u.saving : u.savePassword}
             </button>
           </form>
         </Modal>
