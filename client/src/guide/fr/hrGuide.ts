@@ -15,7 +15,7 @@ export const HR_GUIDE_FR: RoleGuide = {
   intro:
     "Le travail des RH dans Technet Digital : fiches employés, congés, heures supplémentaires, validation de fin de mois, paie et certifications, ainsi que la présence du personnel qui sert à les vérifier. Il suit votre menu de haut en bas. Certaines pages ne sont pas encore traduites ; leurs boutons sont nommés ici en anglais, tels qu'ils apparaissent à l'écran.",
   roles: ['HR_OFFICER'],
-  updated: '2026-10-20',
+  updated: '2026-10-22',
   chapters: [
     // ------------------------------------------------------------------------------------------
     {
@@ -50,6 +50,7 @@ export const HR_GUIDE_FR: RoleGuide = {
         },
         shared('install-language'),
         shared('slow-first-load'),
+        shared('form-drafts'),
       ],
     },
 
