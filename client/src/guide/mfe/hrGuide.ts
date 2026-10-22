@@ -12,7 +12,7 @@ const shared = topicsFrom(ADMIN_GUIDE_MFE)
 export const HR_GUIDE_MFE: RoleGuide = {
   title: 'Gid RH',
   intro:
-    "Travay RH dan Technet Digital: dosie anplwaye, konze, ler siplemanter, validasion lafin mwa, lapey ek sertifikasion, ek prezans personel ki servi pou verifie zot. Li swiv ou meni depi anler ziska anba. Paz Sekirite pa ankor tradwir; so bann bouton ekrir isi an angle.",
+    "Travay RH dan Technet Digital: dosie anplwaye, konze, ler siplemanter, validasion lafin mwa, lapey ek sertifikasion, ek prezans personel ki servi pou verifie zot. Li swiv ou meni depi anler ziska anba.",
   roles: ['HR_OFFICER'],
   updated: '2026-10-22',
   chapters: [
@@ -232,7 +232,7 @@ export const HR_GUIDE_MFE: RoleGuide = {
               kind: 'list',
               items: [
                 "Se enn administrater ki zer ou mo de pas. Si ou bliye li, demann li reinisializ li dan Zestion itilizater.",
-                'Sekirite → My Account montre ou prop dernie koneksion.',
+                'Sekirite → Mo kont montre ou prop dernie koneksion.',
                 "Ou res konekte pandan 30 zour, e sa 30 zour la rekomans sak fwa ou servi aplikasion la. Dekonekte, anba dan meni, dekonekte ou toutswit.",
               ],
             },
