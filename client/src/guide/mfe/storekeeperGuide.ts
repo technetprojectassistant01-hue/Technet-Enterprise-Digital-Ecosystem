@@ -12,7 +12,7 @@ const shared = topicsFrom(ADMIN_GUIDE_MFE)
 export const STOREKEEPER_GUIDE_MFE: RoleGuide = {
   title: 'Gid magazinie',
   intro:
-    "Kouma pou fer magazin la marse dan Technet Digital: zouti ek lekipman, materyo, bann demann ki ariv, ek inventer ek lasa dan ERP. Li swiv ou meni depi anler ziska anba. Paz Sekirite pa ankor tradwir; so bann bouton ekrir isi an angle.",
+    "Kouma pou fer magazin la marse dan Technet Digital: zouti ek lekipman, materyo, bann demann ki ariv, ek inventer ek lasa dan ERP. Li swiv ou meni depi anler ziska anba.",
   roles: ['STOREKEEPER'],
   updated: '2026-10-22',
   chapters: [
@@ -156,7 +156,7 @@ export const STOREKEEPER_GUIDE_MFE: RoleGuide = {
               kind: 'list',
               items: [
                 "Se enn administrater ki zer ou mo de pas. Si ou bliye li, demann li reinisializ li dan Zestion itilizater.",
-                'Sekirite → My Account montre ou prop dernie koneksion.',
+                'Sekirite → Mo kont montre ou prop dernie koneksion.',
                 "Ou res konekte pandan 30 zour, e sa 30 zour la rekomans sak fwa ou servi aplikasion la. Dekonekte, anba dan meni, dekonekte ou toutswit.",
               ],
             },
