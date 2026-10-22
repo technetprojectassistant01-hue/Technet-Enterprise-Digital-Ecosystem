@@ -7,6 +7,8 @@ import { useToast } from '../dashboard/ToastContext'
 import { useConfirm } from '../dashboard/ConfirmContext'
 import { inputClass, labelClass, primaryButtonClass } from './formStyles'
 import { useT } from '../i18n'
+import { useFormDraft } from '../lib/useFormDraft'
+import { DraftNotice } from '../dashboard/DraftNotice'
 
 function currentYear(): number {
   return new Date().getUTCFullYear()
@@ -36,6 +38,8 @@ function HolidaysTab() {
   const [name, setName] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const draftValue = { date, name }
+  const draft = useFormDraft('public-holiday', draftValue, showForm && !editing)
 
   const load = useCallback(() => {
     setLoading(true)
@@ -48,10 +52,14 @@ function HolidaysTab() {
 
   useEffect(load, [load])
 
+  function fillDraft(d: typeof draftValue) {
+    setDate(d.date)
+    setName(d.name)
+  }
+
   function openCreate() {
     setEditing(null)
-    setDate('')
-    setName('')
+    fillDraft(draft.take({ date: '', name: '' }))
     setFormError(null)
     setShowForm(true)
   }
@@ -77,6 +85,7 @@ function HolidaysTab() {
         toast.success(t.hr.holidays.updated)
       } else {
         await api.createPublicHoliday({ date, name: name.trim() })
+        draft.clear()
         toast.success(t.hr.holidays.added)
       }
       setShowForm(false)
@@ -183,6 +192,7 @@ function HolidaysTab() {
           }}
         >
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            {!editing && draft.restored && <DraftNotice onDiscard={() => fillDraft(draft.discard())} />}
             <div>
               <label className={labelClass}>{t.shared.date}</label>
               <input
