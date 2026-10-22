@@ -12,6 +12,12 @@ export const fr: Dict = {
     somethingWentWrong: "Une erreur s'est produite. Veuillez réessayer.",
   },
 
+  draft: {
+    restored: 'Nous avons remis ce que vous aviez saisi avant la fermeture de ce formulaire.',
+    filesNote: 'Les fichiers et les photos ne sont pas gardés : ajoutez-les à nouveau.',
+    discard: 'Supprimer le brouillon',
+  },
+
   language: {
     label: 'Langue',
     settingsHint:
