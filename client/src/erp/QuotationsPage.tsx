@@ -19,6 +19,8 @@ import SalesLineItemsEditor, { EMPTY_SALES_LINE_ITEM, type SalesLineItemRow } fr
 import PaymentTermsLinesEditor, { EMPTY_PAYMENT_TERMS_LINE } from './PaymentTermsLinesEditor'
 import QuoteRequestsTab from './QuoteRequestsTab'
 import { useT } from '../i18n'
+import { useFormDraft } from '../lib/useFormDraft'
+import { DraftNotice } from '../dashboard/DraftNotice'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -60,6 +62,20 @@ function QuotationsPage() {
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [view, setView] = useState<'quotations' | 'requests'>('quotations')
+  const draftValue = {
+    customerId,
+    contactPerson,
+    title,
+    productLine,
+    vatRate,
+    validityDays,
+    paymentTermsLines,
+    includesOrder,
+    availabilityStatus,
+    orderDays,
+    items,
+  }
+  const draft = useFormDraft('quotation', draftValue, showCreate && view === 'quotations')
 
   function load() {
     setLoading(true)
@@ -86,18 +102,34 @@ function QuotationsPage() {
     setTo('')
   }
 
+  function fillDraft(d: typeof draftValue) {
+    setCustomerId(d.customerId)
+    setContactPerson(d.contactPerson)
+    setTitle(d.title)
+    setProductLine(d.productLine)
+    setVatRate(d.vatRate)
+    setValidityDays(d.validityDays)
+    setPaymentTermsLines(d.paymentTermsLines)
+    setIncludesOrder(d.includesOrder)
+    setAvailabilityStatus(d.availabilityStatus)
+    setOrderDays(d.orderDays)
+    setItems(d.items)
+  }
+
   function openCreate() {
-    setCustomerId(customers[0]?.id || '')
-    setContactPerson(customers[0]?.name || '')
-    setTitle('')
-    setProductLine('')
-    setVatRate('15')
-    setValidityDays('15')
-    setPaymentTermsLines([{ ...EMPTY_PAYMENT_TERMS_LINE }])
-    setIncludesOrder(false)
-    setAvailabilityStatus('IN_STOCK')
-    setOrderDays('')
-    setItems([{ ...EMPTY_SALES_LINE_ITEM }])
+    fillDraft(draft.take({
+      customerId: customers[0]?.id || '',
+      contactPerson: customers[0]?.name || '',
+      title: '',
+      productLine: '',
+      vatRate: '15',
+      validityDays: '15',
+      paymentTermsLines: [{ ...EMPTY_PAYMENT_TERMS_LINE }],
+      includesOrder: false,
+      availabilityStatus: 'IN_STOCK' as QuotationAvailability,
+      orderDays: '',
+      items: [{ ...EMPTY_SALES_LINE_ITEM }],
+    }))
     setFormError(null)
     setShowCreate(true)
   }
@@ -153,6 +185,7 @@ function QuotationsPage() {
           unitPrice: Number(item.unitPrice),
         })),
       })
+      draft.clear()
       toast.success(m.savedDraft)
       setShowCreate(false)
       // Jump straight to the new quotation instead of leaving the user on the list to hunt for
@@ -382,6 +415,7 @@ function QuotationsPage() {
       {showCreate && (
         <Modal title={m.new} onClose={() => setShowCreate(false)}>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            {draft.restored && <DraftNotice onDiscard={() => fillDraft(draft.discard())} />}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className={labelClass}>{m.customer}</label>
