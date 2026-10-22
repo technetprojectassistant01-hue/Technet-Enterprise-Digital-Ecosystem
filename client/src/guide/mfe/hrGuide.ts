@@ -12,7 +12,7 @@ const shared = topicsFrom(ADMIN_GUIDE_MFE)
 export const HR_GUIDE_MFE: RoleGuide = {
   title: 'Gid RH',
   intro:
-    "Travay RH dan Technet Digital: dosie anplwaye, konze, ler siplemanter, validasion lafin mwa, lapey ek sertifikasion, ek prezans personel ki servi pou verifie zot. Li swiv ou meni depi anler ziska anba. Kek paz pa ankor tradwir; zot bouton ekrir isi an angle, kouma zot paret lor lekran.",
+    "Travay RH dan Technet Digital: dosie anplwaye, konze, ler siplemanter, validasion lafin mwa, lapey ek sertifikasion, ek prezans personel ki servi pou verifie zot. Li swiv ou meni depi anler ziska anba. Paz Sekirite pa ankor tradwir; so bann bouton ekrir isi an angle.",
   roles: ['HR_OFFICER'],
   updated: '2026-10-22',
   chapters: [
@@ -135,8 +135,8 @@ export const HR_GUIDE_MFE: RoleGuide = {
               kind: 'steps',
               items: [
                 "Demann enn administrater kre login dimoun la dan Zestion itilizater (RH pa kapav kre login).",
-                "Ouver Technet HR → Anplwaye e ouver dimoun la, ouswa klik Add Employee. Kod anplwaye donn otomatikman.",
-                'Klik Edit, swazir so login anba Linked Login, apre anrezistre.',
+                "Ouver Technet HR → Anplwaye e ouver dimoun la, ouswa klik Azout enn anplwaye. Kod anplwaye donn otomatikman.",
+                'Klik Modifie, swazir so login anba Login konekte, apre anrezistre.',
                 "Prosenn fwa li ouver aplikasion la, kart pointaz paret.",
               ],
             },
