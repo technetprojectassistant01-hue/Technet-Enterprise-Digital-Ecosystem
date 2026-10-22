@@ -3,13 +3,13 @@ import type { RoleGuide } from '../types'
 /**
  * Guide administrateur - French copy of ../adminGuide.ts (2026-10-20). Same chapters, topics, ids
  * and paths as the English guide; change both together. Button names are the ones the French
- * screen shows; pages not translated yet (Marketing, Sécurité, Gestion des utilisateurs) keep
- * their English button names, written as on screen.
+ * screen shows; Marketing, not translated yet, keeps its English button names, written as on
+ * screen.
  */
 export const ADMIN_GUIDE_FR: RoleGuide = {
   title: 'Guide administrateur',
   intro:
-    "Comment gérer Technet Digital en tant qu'administrateur : les comptes, la présence du personnel, les opérations, les RH, le magasin et l'ERP. Il suit le menu de gauche, de haut en bas. Le Responsable des opérations a exactement les mêmes accès qu'un administrateur : ce guide est aussi le sien. Quelques pages ne sont pas encore traduites (Marketing, Sécurité et Gestion des utilisateurs) ; leurs boutons sont nommés ici en anglais, tels qu'ils apparaissent à l'écran.",
+    "Comment gérer Technet Digital en tant qu'administrateur : les comptes, la présence du personnel, les opérations, les RH, le magasin et l'ERP. Il suit le menu de gauche, de haut en bas. Le Responsable des opérations a exactement les mêmes accès qu'un administrateur : ce guide est aussi le sien. La page Marketing n'est pas encore traduite ; ses boutons sont nommés ici en anglais, tels qu'ils apparaissent à l'écran.",
   roles: ['ADMIN', 'OPERATIONS_MANAGER'],
   updated: '2026-10-22',
   chapters: [
@@ -115,8 +115,8 @@ export const ADMIN_GUIDE_FR: RoleGuide = {
               kind: 'steps',
               items: [
                 'Ouvrez Gestion des utilisateurs, en bas du menu.',
-                'Cliquez sur Add user.',
-                "Saisissez le nom de la personne, l'e-mail avec lequel elle se connectera, un mot de passe et son rôle, puis cliquez sur Create user.",
+                'Cliquez sur Ajouter un utilisateur.',
+                "Saisissez le nom de la personne, l'e-mail avec lequel elle se connectera, un mot de passe et son rôle, puis cliquez sur Créer l'utilisateur.",
                 'Donnez vous-même son e-mail et son mot de passe à la personne.',
                 "Si elle doit pointer, prendre des congés ou être payée, reliez le compte à sa fiche employé (sujet suivant).",
               ],
@@ -161,8 +161,8 @@ export const ADMIN_GUIDE_FR: RoleGuide = {
               kind: 'steps',
               items: [
                 'Ouvrez Gestion des utilisateurs et trouvez la personne (zone de recherche ou filtre par rôle).',
-                "Cliquez sur Edit User pour changer son nom, son e-mail de connexion ou son rôle, puis sur Save changes.",
-                'Cliquez sur Reset Password pour lui donner un nouveau mot de passe, puis sur Save password. Communiquez-lui le nouveau mot de passe.',
+                "Cliquez sur Modifier pour changer son nom, son e-mail de connexion ou son rôle, puis sur Enregistrer les modifications.",
+                'Cliquez sur Mot de passe pour lui donner un nouveau mot de passe, puis sur Enregistrer le mot de passe. Communiquez-lui le nouveau mot de passe.',
               ],
             },
             { kind: 'tip', text: "Changez l'e-mail de quelqu'un ici plutôt que de supprimer son compte pour en créer un autre. Supprimer un compte le détache de sa fiche employé et efface ses notifications." },
@@ -177,8 +177,8 @@ export const ADMIN_GUIDE_FR: RoleGuide = {
             {
               kind: 'list',
               items: [
-                'Sécurité → My Account liste vos propres connexions récentes.',
-                "Sécurité → Audit Log liste les événements de sécurité de toute l'entreprise : connexions réussies et échouées, réinitialisations de mot de passe, comptes créés, modifiés ou supprimés. Filtrez par type d'événement et par date.",
+                'Sécurité → Mon compte liste vos propres connexions récentes.',
+                "Sécurité → Journal d'audit liste les événements de sécurité de toute l'entreprise : connexions réussies et échouées, réinitialisations de mot de passe, comptes créés, modifiés ou supprimés. Filtrez par type d'événement et par date.",
               ],
             },
             { kind: 'note', text: "Le journal d'audit ne couvre que les comptes et les mots de passe. Ce n'est pas l'historique de toutes les modifications faites dans l'application." },
