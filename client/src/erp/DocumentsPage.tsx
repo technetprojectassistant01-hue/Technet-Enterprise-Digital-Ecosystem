@@ -12,6 +12,8 @@ import { hasRole, DOCUMENT_ROLES } from '../lib/permissions'
 import { useCustomers } from './useCustomers'
 import { useProjects } from './useProjects'
 import { useT } from '../i18n'
+import { useFormDraft } from '../lib/useFormDraft'
+import { DraftNotice } from '../dashboard/DraftNotice'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -67,6 +69,8 @@ function DocumentsPage() {
   const [fileError, setFileError] = useState<string | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const draftValue = { title, category, projectId, customerId }
+  const draft = useFormDraft('document', draftValue, showUpload)
 
   function load(category = categoryFilter) {
     setLoading(true)
@@ -84,11 +88,20 @@ function DocumentsPage() {
     load(next)
   }
 
+  function fillDraft(d: typeof draftValue) {
+    setTitle(d.title)
+    setCategory(d.category)
+    setProjectId(d.projectId)
+    setCustomerId(d.customerId)
+  }
+
   function openUpload() {
-    setTitle('')
-    setCategory('GENERAL')
-    setProjectId('')
-    setCustomerId('')
+    fillDraft(draft.take({
+      title: '',
+      category: 'GENERAL' as DocumentCategory,
+      projectId: '',
+      customerId: '',
+    }))
     setFile(null)
     setFileError(null)
     setFormError(null)
@@ -132,6 +145,7 @@ function DocumentsPage() {
         fileData,
         fileName: file.name,
       })
+      draft.clear()
       toast.success(m.uploaded)
       setShowUpload(false)
       load()
@@ -300,6 +314,7 @@ function DocumentsPage() {
       {showUpload && (
         <Modal title={m.upload} onClose={() => setShowUpload(false)}>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            {draft.restored && <DraftNotice files onDiscard={() => fillDraft(draft.discard())} />}
             <div>
               <label className={labelClass}>{m.file}</label>
               <div className="mt-2 flex items-center gap-3 rounded-md border border-dashed border-ink-600 bg-ink-950 px-4 py-3">
