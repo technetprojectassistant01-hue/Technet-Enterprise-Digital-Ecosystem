@@ -10,6 +10,8 @@ import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
 import { hasRole, PROCUREMENT_ROLES } from '../lib/permissions'
 import { useT } from '../i18n'
+import { useFormDraft } from '../lib/useFormDraft'
+import { DraftNotice } from '../dashboard/DraftNotice'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -51,6 +53,7 @@ function SuppliersPage() {
   const [editing, setEditing] = useState<Supplier | null>(null)
   const [showCreate, setShowCreate] = useState(false)
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
+  const draft = useFormDraft('supplier', form, showCreate && !editing)
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -69,7 +72,7 @@ function SuppliersPage() {
   }, [])
 
   function openCreate() {
-    setForm(EMPTY_FORM)
+    setForm(draft.take(EMPTY_FORM))
     setFormError(null)
     setEditing(null)
     setShowCreate(true)
@@ -110,6 +113,7 @@ function SuppliersPage() {
         await api.updateSupplier(editing.id, input)
       } else {
         await api.createSupplier(input)
+        draft.clear()
       }
       toast.success(editing ? m.updated : m.created)
       closeForm()
@@ -236,6 +240,7 @@ function SuppliersPage() {
       {(showCreate || editing) && (
         <Modal title={editing ? m.edit : m.add} onClose={closeForm}>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            {!editing && draft.restored && <DraftNotice onDiscard={() => setForm(draft.discard())} />}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="col-span-2">
                 <label className={labelClass}>{shared.name}</label>
