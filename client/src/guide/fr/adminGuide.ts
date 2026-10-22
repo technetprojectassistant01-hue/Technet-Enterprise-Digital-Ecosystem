@@ -11,7 +11,7 @@ export const ADMIN_GUIDE_FR: RoleGuide = {
   intro:
     "Comment gérer Technet Digital en tant qu'administrateur : les comptes, la présence du personnel, les opérations, les RH, le magasin et l'ERP. Il suit le menu de gauche, de haut en bas. Le Responsable des opérations a exactement les mêmes accès qu'un administrateur : ce guide est aussi le sien. Quelques pages ne sont pas encore traduites (Marketing, Sécurité, Gestion des utilisateurs, Employés et Certifications) ; leurs boutons sont nommés ici en anglais, tels qu'ils apparaissent à l'écran.",
   roles: ['ADMIN', 'OPERATIONS_MANAGER'],
-  updated: '2026-10-20',
+  updated: '2026-10-22',
   chapters: [
     // ------------------------------------------------------------------------------------------
     {
@@ -79,6 +79,22 @@ export const ADMIN_GUIDE_FR: RoleGuide = {
           blocks: [
             { kind: 'p', text: "Le serveur se met en veille quand personne n'a utilisé l'application depuis environ 15 minutes. La première page ouverte ensuite peut prendre 30 à 60 secondes. Patientez plutôt que de recharger encore et encore. Une fois réveillé, tout est rapide." },
             { kind: 'p', text: "Quand une nouvelle version de l'application est publiée, une barre indique « Une nouvelle version de Technet Digital est disponible. » Cliquez sur Recharger." },
+          ],
+        },
+        {
+          id: 'form-drafts',
+          title: 'Si un formulaire se ferme avant que vous enregistriez',
+          blocks: [
+            { kind: 'p', text: "Dans les formulaires qui ajoutent quelque chose de nouveau (ajouter un client, nouveau bon de travail, nouveau devis, ajouter un employé, demander un congé, etc.), ce que vous saisissez est gardé sur cet appareil au fur et à mesure. Si la fenêtre, l'application ou la fenêtre contextuelle se ferme par erreur, rouvrez le même formulaire : une bannière indique « Nous avons remis ce que vous aviez saisi » et votre texte est de retour dans les champs." },
+            {
+              kind: 'list',
+              items: [
+                "Le brouillon est effacé dès que l'enregistrement est sauvegardé.",
+                'Fermer le formulaire sans enregistrer garde le brouillon. Pour repartir d\'un formulaire vide, cliquez sur Supprimer le brouillon dans la bannière.',
+                'Les fichiers, les photos et les mots de passe ne sont jamais gardés. Ajoutez-les à nouveau.',
+              ],
+            },
+            { kind: 'note', text: "Un brouillon reste uniquement sur cet appareil et ce navigateur, pour votre compte seulement, pendant 30 jours au plus. Il ne vous suit pas sur un autre téléphone ou ordinateur. Les formulaires qui modifient un enregistrement existant ne gardent pas de brouillon." },
           ],
         },
       ],
