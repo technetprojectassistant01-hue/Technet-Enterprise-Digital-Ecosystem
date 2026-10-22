@@ -20,6 +20,7 @@ import EmployeeForm, {
   type EmployeeFormState,
 } from './EmployeeForm'
 import { inputClass } from './formStyles'
+import { useT, enumLabel } from '../i18n'
 
 const STATUS_FILTERS: (EmploymentStatus | '')[] = ['', 'ACTIVE', 'ON_LEAVE', 'TERMINATED']
 
@@ -27,6 +28,8 @@ function EmployeesPage() {
   const toast = useToast()
   const confirm = useConfirm()
   const { user } = useAuth()
+  const t = useT()
+  const p = t.people.employees
   const canWrite = hasRole(user?.role, HR_ROLES)
 
   const [employees, setEmployees] = useState<Employee[]>([])
@@ -61,10 +64,10 @@ function EmployeesPage() {
           status: params.status || undefined,
         })
         .then(({ employees }) => setEmployees(employees))
-        .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load employees'))
+        .catch((err) => setError(err instanceof Error ? err.message : p.loadFailed))
         .finally(() => setLoading(false))
     },
-    [search, department, status],
+    [search, department, status, p],
   )
 
   useEffect(() => {
@@ -102,11 +105,11 @@ function EmployeesPage() {
     // Only when editing: the server assigns the code on create, and the form deliberately shows
     // no field for it there — requiring it made Add Employee impossible to submit at all.
     if (editing && !form.employeeCode.trim()) {
-      setFormError('Employee code is required')
+      setFormError(p.codeRequired)
       return
     }
     if (!form.firstName.trim() || !form.lastName.trim()) {
-      setFormError('First and last name are required')
+      setFormError(p.namesRequired)
       return
     }
 
@@ -119,7 +122,7 @@ function EmployeesPage() {
         await api.createEmployee(input)
         draft.clear()
       }
-      toast.success(editing ? 'Employee updated' : 'Employee added')
+      toast.success(editing ? p.updated : p.added)
       closeForm()
       load()
       api
@@ -127,7 +130,7 @@ function EmployeesPage() {
         .then(({ departments }) => setDepartments(departments))
         .catch(() => undefined)
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Failed to save employee')
+      setFormError(err instanceof Error ? err.message : p.saveFailed)
     } finally {
       setSubmitting(false)
     }
@@ -135,18 +138,18 @@ function EmployeesPage() {
 
   async function handleDelete(employee: Employee) {
     const ok = await confirm({
-      title: 'Delete employee',
-      message: `Delete ${employee.firstName} ${employee.lastName}? This cannot be undone.`,
-      confirmLabel: 'Delete',
+      title: p.deleteTitle,
+      message: p.deleteMessage(`${employee.firstName} ${employee.lastName}`),
+      confirmLabel: p.deleteConfirm,
       tone: 'danger',
     })
     if (!ok) return
     try {
       await api.deleteEmployee(employee.id)
-      toast.success(`Deleted ${employee.firstName} ${employee.lastName}`)
+      toast.success(p.deleted(`${employee.firstName} ${employee.lastName}`))
       load()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to delete employee')
+      toast.error(err instanceof Error ? err.message : p.deleteFailed)
     }
   }
 
@@ -157,13 +160,13 @@ function EmployeesPage() {
     downloadCsv(
       'employees',
       [
-        { header: 'Code', accessor: (e: Employee) => e.employeeCode },
-        { header: 'First Name', accessor: (e: Employee) => e.firstName },
-        { header: 'Last Name', accessor: (e: Employee) => e.lastName },
-        { header: 'Position', accessor: (e: Employee) => e.position },
-        { header: 'Department', accessor: (e: Employee) => e.department },
-        { header: 'Contract', accessor: (e: Employee) => e.contractType },
-        { header: 'Status', accessor: (e: Employee) => e.employmentStatus },
+        { header: p.csv.code, accessor: (e: Employee) => e.employeeCode },
+        { header: p.csv.firstName, accessor: (e: Employee) => e.firstName },
+        { header: p.csv.lastName, accessor: (e: Employee) => e.lastName },
+        { header: p.csv.position, accessor: (e: Employee) => e.position },
+        { header: p.csv.department, accessor: (e: Employee) => e.department },
+        { header: p.csv.contract, accessor: (e: Employee) => e.contractType },
+        { header: p.csv.status, accessor: (e: Employee) => e.employmentStatus },
       ],
       employees,
     )
@@ -173,36 +176,36 @@ function EmployeesPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-ink-100">Employee Directory</h1>
-          <p className="mt-1 text-sm text-ink-300">Manage staff records, contracts, and employment status.</p>
+          <h1 className="text-2xl font-bold text-ink-100">{p.title}</h1>
+          <p className="mt-1 text-sm text-ink-300">{p.subtitle}</p>
         </div>
         <div className="flex items-center gap-3">
           <button type="button" onClick={exportCsv} className={secondaryButtonClass}>
             <Download className="h-4 w-4" />
-            Export CSV
+            {p.exportCsv}
           </button>
           {canWrite && (
             <button type="button" onClick={openCreate} className={primaryButtonClass}>
               <Plus className="h-4 w-4" />
-              Add Employee
+              {p.add}
             </button>
           )}
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard label="EMPLOYEES SHOWN" value={employees.length} icon={UserCog} />
-        <StatCard label="ACTIVE" value={activeCount} icon={UserCog} />
-        <StatCard label="ON LEAVE" value={onLeaveCount} icon={UserCog} />
+        <StatCard label={p.statShown} value={employees.length} icon={UserCog} />
+        <StatCard label={p.statActive} value={activeCount} icon={UserCog} />
+        <StatCard label={p.statOnLeave} value={onLeaveCount} icon={UserCog} />
       </div>
 
-      <Panel title="Staff Directory">
+      <Panel title={p.panel}>
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <div className="flex min-w-[16rem] flex-1 items-center gap-2 rounded-md border border-ink-700 bg-ink-950 px-3 py-2">
             <Search className="h-4 w-4 text-ink-400" />
             <input
               type="text"
-              placeholder="Search by name, code, or position..."
+              placeholder={p.searchPlaceholder}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && load()}
@@ -218,7 +221,7 @@ function EmployeesPage() {
             }}
             className={`max-w-[12rem] ${inputClass}`}
           >
-            <option value="">All departments</option>
+            <option value="">{p.allDepartments}</option>
             {departments.map((d) => (
               <option key={d} value={d}>
                 {d}
@@ -237,7 +240,7 @@ function EmployeesPage() {
           >
             {STATUS_FILTERS.map((s) => (
               <option key={s} value={s}>
-                {s ? s.replace('_', ' ') : 'All statuses'}
+                {s ? enumLabel(t.labels.employmentStatus, s) : p.allStatuses}
               </option>
             ))}
           </select>
@@ -248,18 +251,18 @@ function EmployeesPage() {
         {loading ? (
           <TableSkeleton cols={6} />
         ) : employees.length === 0 ? (
-          <EmptyState icon={UserCog} message="No employees match these filters." />
+          <EmptyState icon={UserCog} message={p.empty} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
-                  <th className="px-3 py-3 font-semibold">CODE</th>
-                  <th className="px-3 py-3 font-semibold">NAME</th>
-                  <th className="px-3 py-3 font-semibold">POSITION</th>
-                  <th className="px-3 py-3 font-semibold">DEPARTMENT</th>
-                  <th className="px-3 py-3 font-semibold">CONTRACT</th>
-                  <th className="px-3 py-3 font-semibold">STATUS</th>
+                  <th className="px-3 py-3 font-semibold">{p.colCode}</th>
+                  <th className="px-3 py-3 font-semibold">{p.colName}</th>
+                  <th className="px-3 py-3 font-semibold">{p.colPosition}</th>
+                  <th className="px-3 py-3 font-semibold">{p.colDepartment}</th>
+                  <th className="px-3 py-3 font-semibold">{p.colContract}</th>
+                  <th className="px-3 py-3 font-semibold">{p.colStatus}</th>
                   {canWrite && <th className="px-3 py-3" />}
                 </tr>
               </thead>
@@ -275,10 +278,10 @@ function EmployeesPage() {
                     <td className="px-3 py-3 text-ink-300">{e.position || '—'}</td>
                     <td className="px-3 py-3 text-ink-300">{e.department || '—'}</td>
                     <td className="px-3 py-3 text-ink-300">
-                      {e.contractType ? e.contractType.replace('_', ' ') : '—'}
+                      {e.contractType ? enumLabel(t.people.contractType, e.contractType) : '—'}
                     </td>
                     <td className="px-3 py-3">
-                      <Badge tone={statusTone[e.employmentStatus]}>{e.employmentStatus.replace('_', ' ')}</Badge>
+                      <Badge tone={statusTone[e.employmentStatus]}>{enumLabel(t.labels.employmentStatus, e.employmentStatus)}</Badge>
                     </td>
                     {canWrite && (
                       <td className="px-3 py-3">
@@ -286,7 +289,7 @@ function EmployeesPage() {
                           <button
                             type="button"
                             onClick={() => openEdit(e)}
-                            aria-label="Edit employee"
+                            aria-label={p.editAria}
                             className="hover:text-ink-100"
                           >
                             <Pencil className="h-4 w-4" />
@@ -294,7 +297,7 @@ function EmployeesPage() {
                           <button
                             type="button"
                             onClick={() => handleDelete(e)}
-                            aria-label="Delete employee"
+                            aria-label={p.deleteAria}
                             className="hover:text-red-400"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -311,7 +314,7 @@ function EmployeesPage() {
       </Panel>
 
       {(showCreate || editing) && (
-        <Modal title={editing ? 'Edit Employee' : 'Add Employee'} size="lg" onClose={closeForm}>
+        <Modal title={editing ? p.edit : p.add} size="lg" onClose={closeForm}>
           {!editing && draft.restored && (
             <div className="mb-4">
               <DraftNotice onDiscard={() => setForm(draft.discard())} />
@@ -323,7 +326,7 @@ function EmployeesPage() {
             onSubmit={handleSubmit}
             submitting={submitting}
             error={formError}
-            submitLabel={editing ? 'Save Changes' : 'Add Employee'}
+            submitLabel={editing ? p.saveChanges : p.add}
             isCreate={!editing}
           />
         </Modal>
