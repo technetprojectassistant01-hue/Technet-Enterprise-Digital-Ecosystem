@@ -16,6 +16,8 @@ import LineItemsEditor, { EMPTY_LINE_ITEM, type LineItemRow } from './LineItemsE
 import { purchaseOrderStatusTone } from './statusTones'
 import { formatMoney } from '../lib/format'
 import { useT } from '../i18n'
+import { useFormDraft } from '../lib/useFormDraft'
+import { DraftNotice } from '../dashboard/DraftNotice'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -41,6 +43,8 @@ function PurchaseOrdersPage() {
   const [items, setItems] = useState<LineItemRow[]>([{ ...EMPTY_LINE_ITEM }])
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const draftValue = { supplierId, poNumber, expectedDate, items }
+  const draft = useFormDraft('purchase-order', draftValue, showCreate)
 
   function load(searchValue = search) {
     setLoading(true)
@@ -56,11 +60,15 @@ function PurchaseOrdersPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  function fillDraft(d: typeof draftValue) {
+    setSupplierId(d.supplierId)
+    setPoNumber(d.poNumber)
+    setExpectedDate(d.expectedDate)
+    setItems(d.items)
+  }
+
   function openCreate() {
-    setSupplierId('')
-    setPoNumber('')
-    setExpectedDate('')
-    setItems([{ ...EMPTY_LINE_ITEM }])
+    fillDraft(draft.take({ supplierId: '', poNumber: '', expectedDate: '', items: [{ ...EMPTY_LINE_ITEM }] }))
     setFormError(null)
     setShowCreate(true)
   }
@@ -93,6 +101,7 @@ function PurchaseOrdersPage() {
           inventoryItemId: item.inventoryItemId || undefined,
         })),
       })
+      draft.clear()
       toast.success(m.created)
       setShowCreate(false)
       load()
@@ -239,6 +248,7 @@ function PurchaseOrdersPage() {
       {showCreate && (
         <Modal title={m.new} onClose={() => setShowCreate(false)}>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            {draft.restored && <DraftNotice onDiscard={() => fillDraft(draft.discard())} />}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className={labelClass}>{shared.supplier}</label>
