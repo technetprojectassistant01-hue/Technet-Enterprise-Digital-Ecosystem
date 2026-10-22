@@ -159,8 +159,8 @@ export const ADMIN_GUIDE: RoleGuide = {
               kind: 'steps',
               items: [
                 'Open User Management and find the person (use the search box or the role filter).',
-                'Click Edit User to change their name, sign-in email or role, then Save changes.',
-                'Click Reset Password to give them a new password, then Save password. Tell them the new password.',
+                'Click Edit to change their name, sign-in email or role, then Save changes.',
+                'Click Password to give them a new password, then Save password. Tell them the new password.',
               ],
             },
             { kind: 'tip', text: 'Change someone\'s email here instead of deleting their login and making a new one. Deleting a login unlinks it from their employee record and removes their notifications.' },
