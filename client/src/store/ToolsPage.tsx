@@ -10,6 +10,8 @@ import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
 import { hasRole, TOOL_MANAGE_ROLES } from '../lib/permissions'
 import { useT } from '../i18n'
+import { useFormDraft } from '../lib/useFormDraft'
+import { DraftNotice } from '../dashboard/DraftNotice'
 import { dayOf, isOverdue, toolConditionTone, toolStatusTone } from './toolTones'
 import { Hammer as HammerIcon } from 'lucide-react'
 import PageTitle from '../dashboard/PageTitle'
@@ -79,6 +81,7 @@ function ToolsPage() {
   const [editing, setEditing] = useState<Tool | null>(null)
   const [showCreate, setShowCreate] = useState(false)
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
+  const draft = useFormDraft('tool', form, showCreate && !editing)
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -135,7 +138,7 @@ function ToolsPage() {
   }
 
   function openCreate() {
-    setForm(EMPTY_FORM)
+    setForm(draft.take(EMPTY_FORM))
     setFormError(null)
     setEditing(null)
     setShowCreate(true)
@@ -178,6 +181,7 @@ function ToolsPage() {
         await api.updateTool(editing.id, statusChanged ? { ...input, status: form.status } : input)
       } else {
         await api.createTool(input)
+        draft.clear()
       }
       toast.success(editing ? t.tools.updated : t.tools.created)
       closeForm()
@@ -465,6 +469,7 @@ function ToolsPage() {
       {(showCreate || editing) && (
         <Modal title={editing ? t.tools.editTitle : t.tools.add} onClose={closeForm}>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            {!editing && draft.restored && <DraftNotice onDiscard={() => setForm(draft.discard())} />}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <label className={labelClass}>{t.shared.name}</label>
