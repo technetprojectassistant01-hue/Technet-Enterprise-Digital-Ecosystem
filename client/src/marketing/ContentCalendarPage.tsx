@@ -9,6 +9,7 @@ import { useToast } from '../dashboard/ToastContext'
 import { useAuth } from '../context/AuthContext'
 import { hasRole, MARKETING_ROLES } from '../lib/permissions'
 import { marketingPostStatusTone } from '../erp/statusTones'
+import { useT, enumLabel } from '../i18n'
 
 const inputClass =
   'rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -22,6 +23,9 @@ const STATUSES: MarketingPostStatus[] = ['PLANNED', 'POSTED', 'CANCELLED']
 function ContentCalendarPage() {
   const toast = useToast()
   const { user } = useAuth()
+  const t = useT()
+  const m = t.marketing.calendar
+  const pt = t.marketing.posts
   const canWrite = hasRole(user?.role, MARKETING_ROLES)
 
   const [posts, setPosts] = useState<MarketingPost[]>([])
@@ -43,7 +47,7 @@ function ContentCalendarPage() {
         platform: platform || undefined,
       })
       .then(({ posts }) => setPosts(posts))
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load posts'))
+      .catch((err) => setError(err instanceof Error ? err.message : m.loadFailed))
       .finally(() => setLoading(false))
   }
 
@@ -52,48 +56,48 @@ function ContentCalendarPage() {
   async function handleMarkPosted(post: MarketingPost) {
     try {
       await api.markMarketingPostPosted(post.id)
-      toast.success(`Marked "${post.title}" as posted`)
+      toast.success(pt.markedPosted(post.title))
       load()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to update post')
+      toast.error(err instanceof Error ? err.message : pt.updateFailed)
     }
   }
 
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold text-ink-100">Content Calendar</h1>
-        <p className="mt-1 text-sm text-ink-300">All planned posts across every campaign, sorted by date.</p>
+        <h1 className="text-2xl font-bold text-ink-100">{m.title}</h1>
+        <p className="mt-1 text-sm text-ink-300">{m.subtitle}</p>
       </div>
 
-      <Panel title="Planned & Posted Content">
+      <Panel title={m.panel}>
         <div className="mb-4 flex flex-wrap items-end gap-4">
           <div className="flex flex-col gap-1">
-            <label className={labelClass}>FROM</label>
+            <label className={labelClass}>{m.from}</label>
             <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className={inputClass} />
           </div>
           <div className="flex flex-col gap-1">
-            <label className={labelClass}>TO</label>
+            <label className={labelClass}>{m.to}</label>
             <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className={inputClass} />
           </div>
           <div className="flex flex-col gap-1">
-            <label className={labelClass}>STATUS</label>
+            <label className={labelClass}>{m.status}</label>
             <select value={status} onChange={(e) => setStatus(e.target.value as MarketingPostStatus | '')} className={inputClass}>
-              <option value="">All</option>
+              <option value="">{m.all}</option>
               {STATUSES.map((s) => (
                 <option key={s} value={s}>
-                  {s}
+                  {enumLabel(t.marketing.status, s)}
                 </option>
               ))}
             </select>
           </div>
           <div className="flex flex-col gap-1">
-            <label className={labelClass}>PLATFORM</label>
+            <label className={labelClass}>{m.platform}</label>
             <select value={platform} onChange={(e) => setPlatform(e.target.value as MarketingPlatform | '')} className={inputClass}>
-              <option value="">All</option>
+              <option value="">{m.all}</option>
               {MARKETING_PLATFORMS.map((p) => (
                 <option key={p} value={p}>
-                  {p}
+                  {p === 'Other' ? t.marketing.platformOther : p}
                 </option>
               ))}
             </select>
@@ -109,7 +113,7 @@ function ContentCalendarPage() {
               }}
               className="text-xs font-semibold text-ink-400 hover:text-ink-100"
             >
-              Clear filters
+              {m.clearFilters}
             </button>
           )}
         </div>
@@ -119,17 +123,17 @@ function ContentCalendarPage() {
         {loading ? (
           <TableSkeleton cols={5} />
         ) : posts.length === 0 ? (
-          <EmptyState icon={CalendarDays} message="No posts match these filters." />
+          <EmptyState icon={CalendarDays} message={m.empty} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
-                  <th className="px-3 py-3 font-semibold">SCHEDULED</th>
-                  <th className="px-3 py-3 font-semibold">TITLE</th>
-                  <th className="px-3 py-3 font-semibold">CAMPAIGN</th>
-                  <th className="px-3 py-3 font-semibold">PLATFORM</th>
-                  <th className="px-3 py-3 font-semibold">STATUS</th>
+                  <th className="px-3 py-3 font-semibold">{pt.colScheduled}</th>
+                  <th className="px-3 py-3 font-semibold">{pt.colTitle}</th>
+                  <th className="px-3 py-3 font-semibold">{m.colCampaign}</th>
+                  <th className="px-3 py-3 font-semibold">{pt.colPlatform}</th>
+                  <th className="px-3 py-3 font-semibold">{pt.colStatus}</th>
                   {canWrite && <th className="px-3 py-3" />}
                 </tr>
               </thead>
@@ -147,9 +151,9 @@ function ContentCalendarPage() {
                         '—'
                       )}
                     </td>
-                    <td className="px-3 py-3 text-ink-300">{p.platform}</td>
+                    <td className="px-3 py-3 text-ink-300">{p.platform === 'Other' ? t.marketing.platformOther : p.platform}</td>
                     <td className="px-3 py-3">
-                      <Badge tone={marketingPostStatusTone[p.status]}>{p.status}</Badge>
+                      <Badge tone={marketingPostStatusTone[p.status]}>{enumLabel(t.marketing.status, p.status)}</Badge>
                     </td>
                     {canWrite && (
                       <td className="px-3 py-3">
@@ -157,9 +161,9 @@ function ContentCalendarPage() {
                           <button
                             type="button"
                             onClick={() => handleMarkPosted(p)}
-                            aria-label="Mark as posted"
+                            aria-label={pt.markPostedAria}
                             className="flex items-center gap-1 text-ink-400 hover:text-emerald-400"
-                            title="Mark Posted"
+                            title={pt.markPostedTitle}
                           >
                             <Check className="h-4 w-4" />
                           </button>
