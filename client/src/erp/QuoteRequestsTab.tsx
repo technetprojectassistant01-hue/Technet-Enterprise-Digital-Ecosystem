@@ -14,6 +14,8 @@ import { formatMoney } from '../lib/format'
 import SalesLineItemsEditor, { EMPTY_SALES_LINE_ITEM, type SalesLineItemRow } from './SalesLineItemsEditor'
 import PaymentTermsLinesEditor, { EMPTY_PAYMENT_TERMS_LINE } from './PaymentTermsLinesEditor'
 import { useT } from '../i18n'
+import { useFormDraft } from '../lib/useFormDraft'
+import { DraftNotice } from '../dashboard/DraftNotice'
 import type { ErpDict } from '../i18n/erp/en'
 
 type RequestsText = ErpDict['quoteRequests']
@@ -110,6 +112,22 @@ function QuoteRequestsTab() {
   const [logRemarks, setLogRemarks] = useState('')
   const [logError, setLogError] = useState<string | null>(null)
   const [logSubmitting, setLogSubmitting] = useState(false)
+  const draftValue = {
+    useExistingCustomer,
+    logCustomerId,
+    logCompanyName,
+    logContactEmail,
+    logContactPhone,
+    logContactTitle,
+    logOtherContactName,
+    logOtherContactPhone,
+    logSource,
+    logRequestFor,
+    logRequestForOther,
+    logDescription,
+    logRemarks,
+  }
+  const draft = useFormDraft('quote-request', draftValue, logging)
 
   // Convert to Quotation
   const [converting, setConverting] = useState<QuotationRequest | null>(null)
@@ -152,20 +170,39 @@ function QuoteRequestsTab() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  function fillDraft(d: typeof draftValue) {
+    setUseExistingCustomer(d.useExistingCustomer)
+    setLogCustomerId(d.logCustomerId)
+    setLogCompanyName(d.logCompanyName)
+    setLogContactEmail(d.logContactEmail)
+    setLogContactPhone(d.logContactPhone)
+    setLogContactTitle(d.logContactTitle)
+    setLogOtherContactName(d.logOtherContactName)
+    setLogOtherContactPhone(d.logOtherContactPhone)
+    setLogSource(d.logSource)
+    setLogRequestFor(d.logRequestFor)
+    setLogRequestForOther(d.logRequestForOther)
+    setLogDescription(d.logDescription)
+    setLogRemarks(d.logRemarks)
+  }
+
   function openLogRequest() {
-    setUseExistingCustomer(true)
-    setLogCustomerId(customers[0]?.id || '')
-    setLogCompanyName('')
-    setLogContactEmail('')
-    setLogContactPhone('')
-    setLogContactTitle('')
-    setLogOtherContactName('')
-    setLogOtherContactPhone('')
-    setLogSource('PHONE_CALL')
-    setLogRequestFor('')
-    setLogRequestForOther('')
-    setLogDescription('')
-    setLogRemarks('')
+    fillDraft(draft.take({
+      useExistingCustomer: true,
+      logCustomerId: customers[0]?.id || '',
+      logCompanyName: '',
+      logContactEmail: '',
+      logContactPhone: '',
+      logContactTitle: '',
+      logOtherContactName: '',
+      logOtherContactPhone: '',
+      logSource: 'PHONE_CALL' as Exclude<RequestSource,
+      'PORTAL'>,
+      logRequestFor: '' as RequestCategory | '',
+      logRequestForOther: '',
+      logDescription: '',
+      logRemarks: '',
+    }))
     setLogError(null)
     setLogging(true)
   }
@@ -194,6 +231,7 @@ function QuoteRequestsTab() {
         description: logDescription.trim(),
         remarks: logRemarks.trim() || undefined,
       })
+      draft.clear()
       toast.success(m.logged)
       setLogging(false)
       load()
@@ -459,6 +497,7 @@ function QuoteRequestsTab() {
       {logging && (
         <Modal title={m.logRequest} onClose={() => setLogging(false)}>
           <form onSubmit={handleLogRequest} className="flex flex-col gap-4">
+            {draft.restored && <DraftNotice onDiscard={() => fillDraft(draft.discard())} />}
             <div>
               <label className="flex items-center gap-2 text-sm text-ink-200">
                 <input
