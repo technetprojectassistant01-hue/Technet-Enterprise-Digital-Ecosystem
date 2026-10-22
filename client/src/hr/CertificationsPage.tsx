@@ -5,6 +5,8 @@ import * as api from '../lib/api'
 import type { Certification, TrainingRecord } from '../lib/api'
 import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { useToast } from '../dashboard/ToastContext'
+import { useFormDraft } from '../lib/useFormDraft'
+import { DraftNotice } from '../dashboard/DraftNotice'
 import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
 import { hasRole, HR_ROLES } from '../lib/permissions'
@@ -95,10 +97,12 @@ function CertificationsPage() {
   const [certForm, setCertForm] = useState<CertFormState>(EMPTY_CERT)
   const [editingCert, setEditingCert] = useState<Certification | null>(null)
   const [showCertForm, setShowCertForm] = useState(false)
+  const certDraft = useFormDraft('certification', certForm, showCertForm && !editingCert)
 
   const [trainingForm, setTrainingForm] = useState<TrainingFormState>(EMPTY_TRAINING)
   const [editingTraining, setEditingTraining] = useState<TrainingRecord | null>(null)
   const [showTrainingForm, setShowTrainingForm] = useState(false)
+  const trainingDraft = useFormDraft('training-record', trainingForm, showTrainingForm && !editingTraining)
 
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -143,7 +147,7 @@ function CertificationsPage() {
   /* ---------------- certifications ---------------- */
 
   function openCertCreate() {
-    setCertForm(EMPTY_CERT)
+    setCertForm(certDraft.take(EMPTY_CERT))
     setEditingCert(null)
     setFormError(null)
     setShowCertForm(true)
@@ -178,6 +182,7 @@ function CertificationsPage() {
         await api.updateCertification(editingCert.id, certForm)
       } else {
         await api.createCertification(certForm)
+        certDraft.clear()
       }
       toast.success(editingCert ? 'Certification updated' : 'Certification added')
       setShowCertForm(false)
@@ -210,7 +215,7 @@ function CertificationsPage() {
   /* ---------------- training ---------------- */
 
   function openTrainingCreate() {
-    setTrainingForm(EMPTY_TRAINING)
+    setTrainingForm(trainingDraft.take(EMPTY_TRAINING))
     setEditingTraining(null)
     setFormError(null)
     setShowTrainingForm(true)
@@ -244,6 +249,7 @@ function CertificationsPage() {
         await api.updateTrainingRecord(editingTraining.id, trainingForm)
       } else {
         await api.createTrainingRecord(trainingForm)
+        trainingDraft.clear()
       }
       toast.success(editingTraining ? 'Training record updated' : 'Training recorded')
       setShowTrainingForm(false)
@@ -527,6 +533,7 @@ function CertificationsPage() {
           }}
         >
           <form onSubmit={handleCertSubmit} className="flex flex-col gap-4">
+            {!editingCert && certDraft.restored && <DraftNotice onDiscard={() => setCertForm(certDraft.discard())} />}
             <div>
               <label className={labelClass}>EMPLOYEE</label>
               <select
@@ -629,6 +636,7 @@ function CertificationsPage() {
           }}
         >
           <form onSubmit={handleTrainingSubmit} className="flex flex-col gap-4">
+            {!editingTraining && trainingDraft.restored && <DraftNotice onDiscard={() => setTrainingForm(trainingDraft.discard())} />}
             <div>
               <label className={labelClass}>EMPLOYEE</label>
               <select
