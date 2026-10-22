@@ -15,6 +15,8 @@ import { useWorkOrders } from './useWorkOrders'
 import { submitOrQueue } from '../lib/outbox'
 import { useReloadOnReconnect } from '../lib/useOnline'
 import { enumLabel, navLabel, useT } from '../i18n'
+import { useFormDraft } from '../lib/useFormDraft'
+import { DraftNotice } from '../dashboard/DraftNotice'
 import { ClipboardList as ClipboardListIcon } from 'lucide-react'
 import PageTitle from '../dashboard/PageTitle'
 import { shrinkImage } from '../lib/imageResize'
@@ -51,6 +53,8 @@ function DailyReportsPage() {
   const [submitting, setSubmitting] = useState(false)
   const [photos, setPhotos] = useState<{ fileData: string; fileName: string }[]>([])
   const [addingPhotos, setAddingPhotos] = useState(false)
+  const draftValue = { date, summary, hours, technicianIds, workOrderIds }
+  const draft = useFormDraft('daily-report', draftValue, showCreate)
   const [viewing, setViewing] = useState<DailyWorkReport | null>(null)
 
   const [relatedReports, setRelatedReports] = useState<InterventionReport[]>([])
@@ -124,12 +128,22 @@ function DailyReportsPage() {
       )
     : reports
 
+  function fillDraft(d: typeof draftValue) {
+    setDate(d.date)
+    setSummary(d.summary)
+    setHours(d.hours)
+    setTechnicianIds(d.technicianIds)
+    setWorkOrderIds(d.workOrderIds)
+  }
+
   function openCreate() {
-    setDate(todayISO())
-    setSummary('')
-    setHours('')
-    setTechnicianIds([])
-    setWorkOrderIds([])
+    fillDraft(draft.take({
+      date: todayISO(),
+      summary: '',
+      hours: '',
+      technicianIds: [] as string[],
+      workOrderIds: [] as string[],
+    }))
     setPhotos([])
     setFormError(null)
     setShowCreate(true)
@@ -181,6 +195,7 @@ function DailyReportsPage() {
           photos: photos.length ? photos : undefined,
         },
       })
+      draft.clear()
       toast.success(queued ? t.shared.savedOffline : t.ops.daily.submitted)
       setShowCreate(false)
       load()
@@ -367,6 +382,7 @@ function DailyReportsPage() {
       {showCreate && (
         <Modal title={t.ops.daily.newTitle} onClose={() => setShowCreate(false)}>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            {draft.restored && <DraftNotice files onDiscard={() => fillDraft(draft.discard())} />}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className={labelClass}>{t.shared.date}</label>
