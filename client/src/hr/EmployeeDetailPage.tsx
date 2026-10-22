@@ -24,19 +24,19 @@ import EmployeeForm, {
 } from './EmployeeForm'
 import {
   certificationState,
-  certificationStateLabel,
   certificationStateTone,
 } from './certificationStatus'
 import EmployeeDocumentsPanel from './EmployeeDocumentsPanel'
 import HomeLocationPanel from './HomeLocationPanel'
+import { useT, enumLabel, type Dict } from '../i18n'
 
-function formatDate(value: string | null): string {
+function formatDate(value: string | null, locale: string): string {
   if (!value) return '—'
-  return new Date(value).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+  return new Date(value).toLocaleDateString(locale, { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
 /** Whole years and months since the hire date, e.g. "2 yrs 3 mos". */
-function formatTenure(hireDate: string | null): string {
+function formatTenure(hireDate: string | null, d: Dict['people']['detail']): string {
   if (!hireDate) return '—'
   const start = new Date(hireDate)
   const now = new Date()
@@ -48,8 +48,8 @@ function formatTenure(hireDate: string | null): string {
 
   const years = Math.floor(months / 12)
   const remainder = months % 12
-  if (years === 0) return `${remainder} mo${remainder === 1 ? '' : 's'}`
-  return `${years} yr${years === 1 ? '' : 's'} ${remainder} mo${remainder === 1 ? '' : 's'}`
+  if (years === 0) return d.tenureMonths(remainder)
+  return d.tenureYears(years, remainder)
 }
 
 function daysUntil(value: string | null): number | null {
@@ -75,6 +75,9 @@ function EmployeeDetailPage() {
   const { id } = useParams<{ id: string }>()
   const toast = useToast()
   const { user } = useAuth()
+  const t = useT()
+  const d = t.people.detail
+  const locale = t.shared.dateLocale
   const canSeeSensitive = isAdminLike(user?.role) || user?.role === 'HR_OFFICER'
   // Uploaded ID cards, passports and medical notes are HR's alone — an admin runs the platform and
   // does not need them (PERSONAL_DOCUMENT_ROLES; the API refuses them too, not just this panel).
@@ -100,7 +103,7 @@ function EmployeeDetailPage() {
     api
       .getEmployee(id)
       .then(({ employee }) => setEmployee(employee))
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load employee'))
+      .catch((err) => setError(err instanceof Error ? err.message : d.loadFailed))
       .finally(() => setLoading(false))
 
     // Leave is HR-only, so these calls are expected to fail for other roles.
@@ -120,7 +123,7 @@ function EmployeeDetailPage() {
       .listTrainingRecords({ employeeId: id })
       .then(({ records }) => setTrainingRecords(records))
       .catch(() => setTrainingRecords([]))
-  }, [id])
+  }, [id, d])
 
   useEffect(load, [load])
 
@@ -137,25 +140,25 @@ function EmployeeDetailPage() {
     if (!employee) return
 
     if (!form.employeeCode.trim() || !form.firstName.trim() || !form.lastName.trim()) {
-      setFormError('Employee code, first name and last name are required')
+      setFormError(d.requiredFields)
       return
     }
 
     setSubmitting(true)
     try {
       await api.updateEmployee(employee.id, toEmployeeInput(form))
-      toast.success('Employee updated')
+      toast.success(t.people.employees.updated)
       setEditing(false)
       load()
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Failed to save employee')
+      setFormError(err instanceof Error ? err.message : t.people.employees.saveFailed)
     } finally {
       setSubmitting(false)
     }
   }
 
   if (loading) return <TableSkeleton rows={6} cols={4} />
-  if (error || !employee) return <EmptyState icon={X} message={error || 'Employee not found'} />
+  if (error || !employee) return <EmptyState icon={X} message={error || d.notFound} />
 
   const fullName = `${employee.firstName} ${employee.lastName}`
   const probationDays = daysUntil(employee.probationEndDate)
@@ -163,10 +166,10 @@ function EmployeeDetailPage() {
 
   const alerts: string[] = []
   if (probationDays !== null && probationDays >= 0 && probationDays <= 30) {
-    alerts.push(`Probation ends in ${probationDays} day${probationDays === 1 ? '' : 's'}.`)
+    alerts.push(d.probationAlert(probationDays))
   }
   if (contractDays !== null && contractDays >= 0 && contractDays <= 60) {
-    alerts.push(`Fixed-term contract ends in ${contractDays} day${contractDays === 1 ? '' : 's'}.`)
+    alerts.push(d.contractAlert(contractDays))
   }
 
   return (
@@ -176,7 +179,7 @@ function EmployeeDetailPage() {
         className="flex w-fit items-center gap-2 text-sm text-ink-300 hover:text-ink-100"
       >
         <ArrowLeft className="h-4 w-4" />
-        Back to employees
+        {d.back}
       </Link>
 
       <Panel>
@@ -186,16 +189,16 @@ function EmployeeDetailPage() {
             <div>
               <h2 className="text-xl font-semibold text-ink-100">{fullName}</h2>
               <p className="mt-1 text-sm text-ink-300">
-                {employee.position || 'No position set'}
+                {employee.position || d.noPosition}
                 {employee.department ? ` · ${employee.department}` : ''}
               </p>
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <Badge tone={employmentStatusTone[employee.employmentStatus]}>
-                  {employee.employmentStatus.replace('_', ' ')}
+                  {enumLabel(t.labels.employmentStatus, employee.employmentStatus)}
                 </Badge>
                 <span className="font-mono text-xs text-ink-400">{employee.employeeCode}</span>
                 {employee.contractType && (
-                  <span className="text-xs text-ink-400">· {employee.contractType.replace('_', ' ')}</span>
+                  <span className="text-xs text-ink-400">· {enumLabel(t.people.contractType, employee.contractType)}</span>
                 )}
               </div>
             </div>
@@ -204,7 +207,7 @@ function EmployeeDetailPage() {
           {canSeeSensitive && (
             <button type="button" onClick={openEdit} className={secondaryButtonClass}>
               <Pencil className="h-4 w-4" />
-              Edit
+              {d.edit}
             </button>
           )}
         </div>
@@ -225,40 +228,40 @@ function EmployeeDetailPage() {
       </Panel>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <Panel title="Employment">
+        <Panel title={d.employment}>
           <dl className="grid grid-cols-2 gap-4">
-            <Row label="HIRE DATE">{formatDate(employee.hireDate)}</Row>
-            <Row label="TENURE">{formatTenure(employee.hireDate)}</Row>
-            <Row label="JOB GRADE">{employee.jobGrade || '—'}</Row>
-            <Row label="CONTRACT TYPE">
-              {employee.contractType ? employee.contractType.replace('_', ' ') : '—'}
+            <Row label={d.hireDate}>{formatDate(employee.hireDate, locale)}</Row>
+            <Row label={d.tenure}>{formatTenure(employee.hireDate, d)}</Row>
+            <Row label={d.jobGrade}>{employee.jobGrade || '—'}</Row>
+            <Row label={d.contractType}>
+              {employee.contractType ? enumLabel(t.people.contractType, employee.contractType) : '—'}
             </Row>
-            <Row label="PROBATION ENDS">{formatDate(employee.probationEndDate)}</Row>
-            <Row label="CONTRACT ENDS">{formatDate(employee.contractEndDate)}</Row>
+            <Row label={d.probationEnds}>{formatDate(employee.probationEndDate, locale)}</Row>
+            <Row label={d.contractEnds}>{formatDate(employee.contractEndDate, locale)}</Row>
             {employee.employmentStatus === 'TERMINATED' && (
               <>
-                <Row label="EXIT DATE">{formatDate(employee.exitDate)}</Row>
-                <Row label="EXIT REASON">{employee.exitReason || '—'}</Row>
+                <Row label={d.exitDate}>{formatDate(employee.exitDate, locale)}</Row>
+                <Row label={d.exitReason}>{employee.exitReason || '—'}</Row>
               </>
             )}
-            <Row label="LINKED LOGIN">
-              {employee.user ? `${employee.user.email} (${employee.user.role})` : 'None'}
+            <Row label={d.linkedLogin}>
+              {employee.user ? `${employee.user.email} (${t.roles[employee.user.role]})` : d.none}
             </Row>
           </dl>
         </Panel>
 
-        <Panel title="Personal & Contact">
+        <Panel title={d.personal}>
           <dl className="grid grid-cols-2 gap-4">
-            <Row label="PHONE">{employee.phone || '—'}</Row>
-            <Row label="EMAIL">{employee.email || '—'}</Row>
+            <Row label={d.phone}>{employee.phone || '—'}</Row>
+            <Row label={d.email}>{employee.email || '—'}</Row>
             {canSeeSensitive && (
               <>
-                <Row label="NATIONAL ID">{employee.nationalId || '—'}</Row>
-                <Row label="DATE OF BIRTH">{formatDate(employee.dateOfBirth)}</Row>
-                <Row label="GENDER">
-                  {employee.gender ? employee.gender.charAt(0) + employee.gender.slice(1).toLowerCase() : '—'}
+                <Row label={d.nationalId}>{employee.nationalId || '—'}</Row>
+                <Row label={d.dateOfBirth}>{formatDate(employee.dateOfBirth, locale)}</Row>
+                <Row label={d.gender}>
+                  {employee.gender ? t.people.gender[employee.gender] : '—'}
                 </Row>
-                <Row label="ADDRESS">{employee.address || '—'}</Row>
+                <Row label={d.address}>{employee.address || '—'}</Row>
               </>
             )}
           </dl>
@@ -266,44 +269,44 @@ function EmployeeDetailPage() {
           {canSeeSensitive && (
             <>
               <h3 className="mt-6 mb-3 text-xs font-semibold tracking-widest text-ink-400">
-                EMERGENCY CONTACT
+                {d.emergencyContact}
               </h3>
               <dl className="grid grid-cols-2 gap-4">
-                <Row label="NAME">{employee.emergencyContactName || '—'}</Row>
-                <Row label="PHONE">{employee.emergencyContactPhone || '—'}</Row>
-                <Row label="RELATIONSHIP">{employee.emergencyContactRelation || '—'}</Row>
+                <Row label={d.name}>{employee.emergencyContactName || '—'}</Row>
+                <Row label={d.phone}>{employee.emergencyContactPhone || '—'}</Row>
+                <Row label={d.relationship}>{employee.emergencyContactRelation || '—'}</Row>
               </dl>
             </>
           )}
         </Panel>
 
         {canSeeSensitive && (
-          <Panel title="Payroll">
+          <Panel title={d.payroll}>
             <dl className="grid grid-cols-2 gap-4">
-              <Row label="BASIC SALARY">
+              <Row label={d.basicSalary}>
                 {employee.basicSalary ? formatMoney(employee.basicSalary) : '—'}
               </Row>
-              <Row label="BANK">{employee.bankName || '—'}</Row>
-              <Row label="ACCOUNT NUMBER">{employee.bankAccountNumber || '—'}</Row>
+              <Row label={d.bank}>{employee.bankName || '—'}</Row>
+              <Row label={d.accountNumber}>{employee.bankAccountNumber || '—'}</Row>
             </dl>
           </Panel>
         )}
 
         {canSeeSensitive && (
-          <Panel title={`Leave — ${new Date().getFullYear()}`} icon={CalendarDays}>
+          <Panel title={d.leaveTitle(new Date().getFullYear())} icon={CalendarDays}>
             {balances.length === 0 ? (
               <p className="py-4 text-center text-sm text-ink-400">
-                No leave balances for this year yet.
+                {d.noBalances}
               </p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
                   <thead>
                     <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
-                      <th className="py-2 pr-3 font-semibold">TYPE</th>
-                      <th className="py-2 pr-3 font-semibold">ENTITLED</th>
-                      <th className="py-2 pr-3 font-semibold">USED</th>
-                      <th className="py-2 font-semibold">REMAINING</th>
+                      <th className="py-2 pr-3 font-semibold">{d.colType}</th>
+                      <th className="py-2 pr-3 font-semibold">{d.colEntitled}</th>
+                      <th className="py-2 pr-3 font-semibold">{d.colUsed}</th>
+                      <th className="py-2 font-semibold">{d.colRemaining}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -333,17 +336,17 @@ function EmployeeDetailPage() {
             {leaveHistory.length > 0 && (
               <>
                 <h3 className="mt-6 mb-3 text-xs font-semibold tracking-widest text-ink-400">
-                  RECENT REQUESTS
+                  {d.recentRequests}
                 </h3>
                 <ul className="flex flex-col gap-2">
                   {leaveHistory.map((r) => (
                     <li key={r.id} className="flex items-center justify-between gap-3 text-sm">
                       <span className="text-ink-300">
-                        {r.leaveType.name} · {formatDate(r.startDate)}
-                        {r.startDate !== r.endDate ? ` → ${formatDate(r.endDate)}` : ''}
-                        <span className="text-ink-400"> · {r.days}d</span>
+                        {r.leaveType.name} · {formatDate(r.startDate, locale)}
+                        {r.startDate !== r.endDate ? ` → ${formatDate(r.endDate, locale)}` : ''}
+                        <span className="text-ink-400"> · {d.daysShort(r.days)}</span>
                       </span>
-                      <Badge tone={leaveRequestStatusTone[r.status]}>{r.status}</Badge>
+                      <Badge tone={leaveRequestStatusTone[r.status]}>{enumLabel(t.labels.leaveStatus, r.status)}</Badge>
                     </li>
                   ))}
                 </ul>
@@ -353,9 +356,9 @@ function EmployeeDetailPage() {
         )}
 
         {canSeeSensitive && (
-          <Panel title="Certifications & Training" icon={BadgeCheck}>
+          <Panel title={d.certsTitle} icon={BadgeCheck}>
             {certifications.length === 0 ? (
-              <p className="py-4 text-center text-sm text-ink-400">No certifications recorded.</p>
+              <p className="py-4 text-center text-sm text-ink-400">{d.noCerts}</p>
             ) : (
               <ul className="flex flex-col gap-3">
                 {certifications.map((c) => {
@@ -365,10 +368,10 @@ function EmployeeDetailPage() {
                       <div>
                         <div className="text-sm text-ink-100">{c.name}</div>
                         <div className="text-xs text-ink-400">
-                          {c.issuingBody || 'No issuing body'} · expires {formatDate(c.expiryDate)}
+                          {c.issuingBody || d.noIssuingBody} · {d.expires(formatDate(c.expiryDate, locale))}
                         </div>
                       </div>
-                      <Badge tone={certificationStateTone[state]}>{certificationStateLabel[state]}</Badge>
+                      <Badge tone={certificationStateTone[state]}>{t.labels.certificationState[state]}</Badge>
                     </li>
                   )
                 })}
@@ -377,12 +380,12 @@ function EmployeeDetailPage() {
 
             {trainingRecords.length > 0 && (
               <>
-                <h3 className="mt-6 mb-3 text-xs font-semibold tracking-widest text-ink-400">TRAINING</h3>
+                <h3 className="mt-6 mb-3 text-xs font-semibold tracking-widest text-ink-400">{d.training}</h3>
                 <ul className="flex flex-col gap-2">
-                  {trainingRecords.map((t) => (
-                    <li key={t.id} className="flex items-center justify-between gap-3 text-sm">
-                      <span className="text-ink-100">{t.title}</span>
-                      <span className="text-xs text-ink-400">{formatDate(t.completedDate)}</span>
+                  {trainingRecords.map((r) => (
+                    <li key={r.id} className="flex items-center justify-between gap-3 text-sm">
+                      <span className="text-ink-100">{r.title}</span>
+                      <span className="text-xs text-ink-400">{formatDate(r.completedDate, locale)}</span>
                     </li>
                   ))}
                 </ul>
@@ -395,14 +398,14 @@ function EmployeeDetailPage() {
         {/* HR only (the API refuses everyone else): used just for the check-in-near-home flag. */}
         {canSetHome && id && <HomeLocationPanel employeeId={id} />}
 
-        <Panel title="Project Involvement" icon={FolderKanban}>
+        <Panel title={d.projects} icon={FolderKanban}>
           {employee.managedProjects.length === 0 && employee.projectAssignments.length === 0 ? (
-            <p className="py-6 text-center text-sm text-ink-400">Not linked to any projects yet.</p>
+            <p className="py-6 text-center text-sm text-ink-400">{d.noProjects}</p>
           ) : (
             <div className="flex flex-col gap-4">
               {employee.managedProjects.length > 0 && (
                 <div>
-                  <h3 className="mb-2 text-xs font-semibold tracking-widest text-ink-400">MANAGING</h3>
+                  <h3 className="mb-2 text-xs font-semibold tracking-widest text-ink-400">{d.managing}</h3>
                   <ul className="flex flex-col gap-2">
                     {employee.managedProjects.map((p) => (
                       <li key={p.id} className="flex items-center justify-between gap-3">
@@ -412,7 +415,7 @@ function EmployeeDetailPage() {
                         >
                           {p.name}
                         </Link>
-                        <Badge tone={projectStatusTone[p.status]}>{p.status.replace('_', ' ')}</Badge>
+                        <Badge tone={projectStatusTone[p.status]}>{enumLabel(t.erp.status.project, p.status)}</Badge>
                       </li>
                     ))}
                   </ul>
@@ -421,7 +424,7 @@ function EmployeeDetailPage() {
 
               {employee.projectAssignments.length > 0 && (
                 <div>
-                  <h3 className="mb-2 text-xs font-semibold tracking-widest text-ink-400">ASSIGNED TO</h3>
+                  <h3 className="mb-2 text-xs font-semibold tracking-widest text-ink-400">{d.assignedTo}</h3>
                   <ul className="flex flex-col gap-2">
                     {employee.projectAssignments.map((a) => (
                       <li key={a.id} className="flex items-center justify-between gap-3">
@@ -433,7 +436,7 @@ function EmployeeDetailPage() {
                           {a.role ? <span className="text-ink-400"> · {a.role}</span> : null}
                         </Link>
                         <Badge tone={projectStatusTone[a.project.status]}>
-                          {a.project.status.replace('_', ' ')}
+                          {enumLabel(t.erp.status.project, a.project.status)}
                         </Badge>
                       </li>
                     ))}
@@ -446,20 +449,20 @@ function EmployeeDetailPage() {
       </div>
 
       {employee.notes && canSeeSensitive && (
-        <Panel title="Notes">
+        <Panel title={d.notes}>
           <p className="whitespace-pre-wrap text-sm text-ink-300">{employee.notes}</p>
         </Panel>
       )}
 
       {editing && (
-        <Modal title={`Edit ${fullName}`} size="lg" onClose={() => setEditing(false)}>
+        <Modal title={d.editTitle(fullName)} size="lg" onClose={() => setEditing(false)}>
           <EmployeeForm
             form={form}
             setForm={setForm}
             onSubmit={handleSubmit}
             submitting={submitting}
             error={formError}
-            submitLabel="Save Changes"
+            submitLabel={d.saveChanges}
           />
         </Modal>
       )}
