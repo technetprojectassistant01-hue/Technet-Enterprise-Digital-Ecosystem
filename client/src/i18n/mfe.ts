@@ -2,6 +2,7 @@ import type { Dict } from './en'
 import { erpMfe } from './erp/mfe'
 import { peopleMfe } from './people/mfe'
 import { systemMfe } from './system/mfe'
+import { marketingMfe } from './marketing/mfe'
 
 /**
  * Mauritian Creole (Kreol Morisien), in the standard Grafi Larmoni spelling. Typed against the
@@ -2235,4 +2236,5 @@ export const mfe: Dict = {
   erp: erpMfe,
   people: peopleMfe,
   system: systemMfe,
+  marketing: marketingMfe,
 }
