@@ -22,7 +22,7 @@ export const SALES_GUIDE: RoleGuide = {
   intro:
     'How a Sales Officer works in Technet Digital: customers, quote requests, quotations and follow-ups, the customer portal and the marketing calendar. Each topic is one task, step by step.',
   roles: ['SALES_OFFICER'],
-  updated: '2026-10-19',
+  updated: '2026-10-22',
   chapters: [
     // ------------------------------------------------------------------------------------------
     {
@@ -68,6 +68,7 @@ export const SALES_GUIDE: RoleGuide = {
         },
         admin('install-language'),
         admin('slow-first-load'),
+        admin('form-drafts'),
       ],
     },
 
