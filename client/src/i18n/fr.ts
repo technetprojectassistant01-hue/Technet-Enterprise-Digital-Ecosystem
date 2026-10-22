@@ -1,5 +1,6 @@
 import type { Dict } from './en'
 import { erpFr } from './erp/fr'
+import { peopleFr } from './people/fr'
 
 /** French. Typed against the English master (en.ts) — every key there must exist here. */
 export const fr: Dict = {
@@ -2240,4 +2241,5 @@ export const fr: Dict = {
 
   /** Technet ERP pages - kept in ./erp/ to keep this file manageable. */
   erp: erpFr,
+  people: peopleFr,
 }
