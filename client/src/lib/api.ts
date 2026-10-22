@@ -136,6 +136,7 @@ export type SecurityEventType =
   | 'ADMIN_PASSWORD_RESET_FORCED'
   | 'USER_CREATED'
   | 'USER_ROLE_CHANGED'
+  | 'USER_EMAIL_CHANGED'
   | 'USER_DELETED'
 
 export interface SecurityEvent {
