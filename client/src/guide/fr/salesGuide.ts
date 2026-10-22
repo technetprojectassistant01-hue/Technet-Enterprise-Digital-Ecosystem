@@ -18,7 +18,7 @@ export const SALES_GUIDE_FR: RoleGuide = {
   intro:
     "Le travail d'un chargé des ventes dans Technet Digital : les clients, les demandes de devis, les devis et leur suivi, le portail client et le calendrier marketing. Chaque sujet est une tâche, étape par étape. Les pages Marketing et Sécurité ne sont pas encore traduites ; leurs boutons sont nommés ici en anglais, tels qu'ils apparaissent à l'écran.",
   roles: ['SALES_OFFICER'],
-  updated: '2026-10-20',
+  updated: '2026-10-22',
   chapters: [
     // ------------------------------------------------------------------------------------------
     {
@@ -64,6 +64,7 @@ export const SALES_GUIDE_FR: RoleGuide = {
         },
         admin('install-language'),
         admin('slow-first-load'),
+        admin('form-drafts'),
       ],
     },
 
