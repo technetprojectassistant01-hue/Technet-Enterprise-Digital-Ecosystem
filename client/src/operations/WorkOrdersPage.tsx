@@ -16,6 +16,8 @@ import { useAuth } from '../context/AuthContext'
 import { hasRole, OPS_MANAGE_ROLES } from '../lib/permissions'
 import { workOrderStatusTone } from '../erp/statusTones'
 import { enumLabel, useT } from '../i18n'
+import { useFormDraft } from '../lib/useFormDraft'
+import { DraftNotice } from '../dashboard/DraftNotice'
 import { CalendarClock as CalendarClockIcon } from 'lucide-react'
 import PageTitle from '../dashboard/PageTitle'
 
@@ -56,6 +58,8 @@ function WorkOrdersPage() {
   const [technicianIds, setTechnicianIds] = useState<string[]>([])
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const draftValue = { customerId, title, jobCategory, description, scheduledDate, technicianIds }
+  const draft = useFormDraft('work-order', draftValue, showCreate && !editing)
 
   function load() {
     setLoading(true)
@@ -92,14 +96,25 @@ function WorkOrdersPage() {
     setFilterTechnicianId('')
   }
 
+  function fillDraft(d: typeof draftValue) {
+    setCustomerId(d.customerId)
+    setTitle(d.title)
+    setJobCategory(d.jobCategory)
+    setDescription(d.description)
+    setScheduledDate(d.scheduledDate)
+    setTechnicianIds(d.technicianIds)
+  }
+
   function openCreate() {
     setEditing(null)
-    setCustomerId(customers[0]?.id || '')
-    setTitle('')
-    setJobCategory('SERVICING')
-    setDescription('')
-    setScheduledDate('')
-    setTechnicianIds([])
+    fillDraft(draft.take({
+      customerId: customers[0]?.id || '',
+      title: '',
+      jobCategory: 'SERVICING' as JobCategory,
+      description: '',
+      scheduledDate: '',
+      technicianIds: [] as string[],
+    }))
     setFormError(null)
     setShowCreate(true)
   }
@@ -158,6 +173,7 @@ function WorkOrdersPage() {
           scheduledDate,
           technicianIds,
         })
+        draft.clear()
         toast.success(t.ops.wo.created)
       }
       setShowCreate(false)
@@ -366,6 +382,7 @@ function WorkOrdersPage() {
       {showCreate && (
         <Modal title={editing ? 'Edit Work Order' : t.ops.wo.newTitle} onClose={() => { setShowCreate(false); setEditing(null) }}>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            {!editing && draft.restored && <DraftNotice onDiscard={() => fillDraft(draft.discard())} />}
             {/* Full width: Project used to sit beside it, and a lone half-width select left a gap. */}
             <div>
               <label className={labelClass}>{t.shared.customer}</label>
