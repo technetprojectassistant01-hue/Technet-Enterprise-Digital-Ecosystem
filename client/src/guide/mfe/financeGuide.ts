@@ -20,7 +20,7 @@ export const FINANCE_GUIDE_MFE: RoleGuide = {
   intro:
     "Travay enn ofisie finans dan Technet Digital: dosie kliyan ek zot akse portal, kontra servis, devi, dokiman ek demann lasa. Sak size se enn travay, etap par etap. Paz Sekirite pa ankor tradwir; so bann bouton ekrir isi an angle.",
   roles: ['FINANCE_OFFICER'],
-  updated: '2026-10-21',
+  updated: '2026-10-22',
   chapters: [
     // ------------------------------------------------------------------------------------------
     {
@@ -66,6 +66,7 @@ export const FINANCE_GUIDE_MFE: RoleGuide = {
         },
         admin('install-language'),
         admin('slow-first-load'),
+        admin('form-drafts'),
       ],
     },
 
