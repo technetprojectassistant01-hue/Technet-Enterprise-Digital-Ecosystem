@@ -10,7 +10,7 @@ export const TECHNICIAN_GUIDE: RoleGuide = {
   intro:
     'How to use Technet Digital on your phone: checking in and out, your jobs for the day, reports, leave, tools and documents. Each topic is one task, step by step.',
   roles: ['FIELD_TECHNICIAN'],
-  updated: '2026-10-21',
+  updated: '2026-10-22',
   chapters: [
     // ------------------------------------------------------------------------------------------
     {
@@ -75,6 +75,22 @@ export const TECHNICIAN_GUIDE: RoleGuide = {
           title: 'I don\'t see the check-in card',
           blocks: [
             { kind: 'p', text: 'Your login is not linked to your employee record yet. Ask HR to link it. Once they do, the card appears the next time you open the app.' },
+          ],
+        },
+        {
+          id: 'form-drafts',
+          title: 'If a form closes before you send it',
+          blocks: [
+            { kind: 'p', text: 'When you fill in something new (a daily report, a tool or material request, a leave request, a document), the phone keeps what you type. If the app or the form closes by mistake, open the same form again. A message says "We brought back what you typed last time" and your text is back.' },
+            {
+              kind: 'list',
+              items: [
+                'The draft goes away once you submit.',
+                'To start again with an empty form, tap Discard draft.',
+                'Photos and files are not kept. Add them again.',
+                'The draft is only on this phone, for your login.',
+              ],
+            },
           ],
         },
       ],
