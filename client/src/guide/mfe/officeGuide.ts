@@ -14,7 +14,7 @@ export const OFFICE_GUIDE_MFE: RoleGuide = {
   intro:
     "Kouma personel biro servi Technet Digital: pointe lariver ek depar, konze, dokiman, ek demann zouti ek materyo dan magazin. Sak size se enn travay, etap par etap.",
   roles: ['EMPLOYEE'],
-  updated: '2026-10-21',
+  updated: '2026-10-22',
   chapters: [
     // ------------------------------------------------------------------------------------------
     {
@@ -42,6 +42,7 @@ export const OFFICE_GUIDE_MFE: RoleGuide = {
         tech('permissions'),
         tech('language'),
         tech('no-card'),
+        tech('form-drafts'),
       ],
     },
 
