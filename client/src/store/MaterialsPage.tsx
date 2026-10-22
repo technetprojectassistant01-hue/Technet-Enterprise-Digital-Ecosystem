@@ -9,6 +9,8 @@ import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
 import { hasRole, TOOL_MANAGE_ROLES } from '../lib/permissions'
 import { useT } from '../i18n'
+import { useFormDraft } from '../lib/useFormDraft'
+import { DraftNotice } from '../dashboard/DraftNotice'
 import { dayOf } from './toolTones'
 import PageTitle from '../dashboard/PageTitle'
 
@@ -52,6 +54,7 @@ function MaterialsPage() {
 
   const [editing, setEditing] = useState<Material | 'new' | null>(null)
   const [form, setForm] = useState<MaterialForm>(emptyForm)
+  const draft = useFormDraft('material', form, editing === 'new')
   const [formError, setFormError] = useState<string | null>(null)
 
   const [stock, setStock] = useState<{ material: Material; type: 'IN' | 'ADJUST' } | null>(null)
@@ -81,7 +84,7 @@ function MaterialsPage() {
 
   function openNew() {
     setEditing('new')
-    setForm(emptyForm)
+    setForm(draft.take(emptyForm))
     setFormError(null)
   }
 
@@ -118,6 +121,7 @@ function MaterialsPage() {
       }
       if (editing === 'new') await api.createMaterial({ ...input, quantity: form.quantity.trim() ? Number(form.quantity) : 0 })
       else await api.updateMaterial(editing.id, input)
+      if (editing === 'new') draft.clear()
       toast.success(m.saved)
       setEditing(null)
       load()
@@ -358,6 +362,7 @@ function MaterialsPage() {
       {editing && (
         <Modal title={editing === 'new' ? m.addTitle : m.editTitle(editing.materialNumber)} size="lg" onClose={() => setEditing(null)}>
           <form onSubmit={handleSave} className="flex flex-col gap-4">
+            {editing === 'new' && draft.restored && <DraftNotice onDiscard={() => setForm(draft.discard())} />}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className="flex flex-col gap-1 sm:col-span-2">
                 <span className={labelClass}>{m.name}</span>
