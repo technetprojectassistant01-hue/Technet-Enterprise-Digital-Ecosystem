@@ -11,6 +11,7 @@ import { DraftNotice } from '../dashboard/DraftNotice'
 import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
 import { hasRole, MARKETING_ROLES } from '../lib/permissions'
+import { useT } from '../i18n'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -29,6 +30,8 @@ function CampaignsPage() {
   const toast = useToast()
   const confirm = useConfirm()
   const { user } = useAuth()
+  const t = useT()
+  const m = t.marketing.campaigns
   const canWrite = hasRole(user?.role, MARKETING_ROLES)
   const [campaigns, setCampaigns] = useState<MarketingCampaign[]>([])
   const [loading, setLoading] = useState(true)
@@ -46,7 +49,7 @@ function CampaignsPage() {
     api
       .listMarketingCampaigns({ search: searchValue || undefined })
       .then(({ campaigns }) => setCampaigns(campaigns))
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load campaigns'))
+      .catch((err) => setError(err instanceof Error ? err.message : m.loadFailed))
       .finally(() => setLoading(false))
   }
 
@@ -66,7 +69,7 @@ function CampaignsPage() {
     setFormError(null)
 
     if (!form.name.trim()) {
-      setFormError('Campaign name is required')
+      setFormError(m.nameRequired)
       return
     }
 
@@ -79,11 +82,11 @@ function CampaignsPage() {
         endDate: form.endDate || undefined,
       })
       draft.clear()
-      toast.success('Campaign created')
+      toast.success(m.created)
       setShowCreate(false)
       load()
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Failed to create campaign')
+      setFormError(err instanceof Error ? err.message : m.createFailed)
     } finally {
       setSubmitting(false)
     }
@@ -91,18 +94,18 @@ function CampaignsPage() {
 
   async function handleDelete(c: MarketingCampaign) {
     const ok = await confirm({
-      title: 'Delete campaign',
-      message: `Delete "${c.name}" and all its planned posts? This cannot be undone.`,
-      confirmLabel: 'Delete',
+      title: m.deleteTitle,
+      message: m.deleteMessage(c.name),
+      confirmLabel: m.deleteConfirm,
       tone: 'danger',
     })
     if (!ok) return
     try {
       await api.deleteMarketingCampaign(c.id)
-      toast.success(`Deleted ${c.name}`)
+      toast.success(m.deleted(c.name))
       load()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to delete campaign')
+      toast.error(err instanceof Error ? err.message : m.deleteFailed)
     }
   }
 
@@ -110,25 +113,25 @@ function CampaignsPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-ink-100">Campaigns</h1>
-          <p className="mt-1 text-sm text-ink-300">Planned marketing campaigns and their content posts.</p>
+          <h1 className="text-2xl font-bold text-ink-100">{m.title}</h1>
+          <p className="mt-1 text-sm text-ink-300">{m.subtitle}</p>
         </div>
         {canWrite && (
           <button type="button" onClick={openCreate} className={primaryButtonClass}>
             <Plus className="h-4 w-4" />
-            Add Campaign
+            {m.add}
           </button>
         )}
       </div>
 
-      <StatCard label="TOTAL CAMPAIGNS" value={campaigns.length} icon={Megaphone} />
+      <StatCard label={m.statTotal} value={campaigns.length} icon={Megaphone} />
 
-      <Panel title="Campaign Registry">
+      <Panel title={m.panel}>
         <div className="mb-4 flex flex-1 max-w-sm items-center gap-2 rounded-md border border-ink-700 bg-ink-950 px-3 py-2">
           <Search className="h-4 w-4 text-ink-400" />
           <input
             type="text"
-            placeholder="Search by campaign name..."
+            placeholder={m.searchPlaceholder}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && load(search)}
@@ -141,16 +144,16 @@ function CampaignsPage() {
         {loading ? (
           <TableSkeleton cols={5} />
         ) : campaigns.length === 0 ? (
-          <EmptyState icon={Megaphone} message="No campaigns yet. Add your first campaign to get started." />
+          <EmptyState icon={Megaphone} message={m.empty} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-ink-800 text-[11px] tracking-widest text-ink-400">
-                  <th className="px-3 py-3 font-semibold">NAME</th>
-                  <th className="px-3 py-3 font-semibold">DATES</th>
-                  <th className="px-3 py-3 font-semibold">POSTS</th>
-                  <th className="px-3 py-3 font-semibold">CREATED BY</th>
+                  <th className="px-3 py-3 font-semibold">{m.colName}</th>
+                  <th className="px-3 py-3 font-semibold">{m.colDates}</th>
+                  <th className="px-3 py-3 font-semibold">{m.colPosts}</th>
+                  <th className="px-3 py-3 font-semibold">{m.colCreatedBy}</th>
                   {canWrite && <th className="px-3 py-3" />}
                 </tr>
               </thead>
@@ -174,7 +177,7 @@ function CampaignsPage() {
                           <button
                             type="button"
                             onClick={() => handleDelete(c)}
-                            aria-label="Delete campaign"
+                            aria-label={m.deleteAria}
                             className="hover:text-red-400"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -191,11 +194,11 @@ function CampaignsPage() {
       </Panel>
 
       {showCreate && (
-        <Modal title="Add Campaign" onClose={() => setShowCreate(false)}>
+        <Modal title={m.add} onClose={() => setShowCreate(false)}>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             {draft.restored && <DraftNotice onDiscard={() => setForm(draft.discard())} />}
             <div>
-              <label className={labelClass}>NAME</label>
+              <label className={labelClass}>{m.name}</label>
               <input
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -204,7 +207,7 @@ function CampaignsPage() {
               />
             </div>
             <div>
-              <label className={labelClass}>DESCRIPTION</label>
+              <label className={labelClass}>{m.description}</label>
               <textarea
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -214,7 +217,7 @@ function CampaignsPage() {
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className={labelClass}>START DATE</label>
+                <label className={labelClass}>{m.startDate}</label>
                 <input
                   type="date"
                   value={form.startDate}
@@ -223,7 +226,7 @@ function CampaignsPage() {
                 />
               </div>
               <div>
-                <label className={labelClass}>END DATE</label>
+                <label className={labelClass}>{m.endDate}</label>
                 <input
                   type="date"
                   value={form.endDate}
@@ -236,7 +239,7 @@ function CampaignsPage() {
             {formError && <p className="text-sm text-red-400">{formError}</p>}
 
             <button type="submit" disabled={submitting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
-              {submitting ? 'Saving…' : 'Create Campaign'}
+              {submitting ? m.saving : m.create}
             </button>
           </form>
         </Modal>
