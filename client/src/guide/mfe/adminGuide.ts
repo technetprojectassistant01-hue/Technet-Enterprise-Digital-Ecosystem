@@ -3,13 +3,13 @@ import type { RoleGuide } from '../types'
 /**
  * Gid administrater - Kreol Morisien copy of ../adminGuide.ts (2026-10-21). Same chapters, topics,
  * ids and paths as the English guide; change all three languages together. Button names are the
- * ones the Kreol screen shows (i18n/mfe.ts); pages not translated yet (Marketing, Sekirite,
- * Zestion itilizater) keep their English button names.
+ * ones the Kreol screen shows (i18n/mfe.ts); Marketing, not translated yet,
+ * keeps its English button names.
  */
 export const ADMIN_GUIDE_MFE: RoleGuide = {
   title: 'Gid administrater',
   intro:
-    "Kouma pou fer Technet Digital marse kouma enn administrater: bann login, prezans personel, operasion, RH, magazin ek ERP. Li swiv meni agos, depi anler ziska anba. Responsab Operasion ena exakteman mem akse ki enn administrater, alor sa gid la pou li osi. Kek paz pa ankor tradwir (Marketing, Sekirite ek Zestion itilizater); zot bouton ekrir isi an angle, kouma zot paret lor lekran.",
+    "Kouma pou fer Technet Digital marse kouma enn administrater: bann login, prezans personel, operasion, RH, magazin ek ERP. Li swiv meni agos, depi anler ziska anba. Responsab Operasion ena exakteman mem akse ki enn administrater, alor sa gid la pou li osi. Paz Marketing pa ankor tradwir; so bann bouton ekrir isi an angle, kouma zot paret lor lekran.",
   roles: ['ADMIN', 'OPERATIONS_MANAGER'],
   updated: '2026-10-22',
   chapters: [
@@ -115,8 +115,8 @@ export const ADMIN_GUIDE_MFE: RoleGuide = {
               kind: 'steps',
               items: [
                 'Ouver Zestion itilizater, anba dan meni.',
-                'Klik Add user.',
-                "Rant nom dimoun la, imel ki li pou servi pou konekte, enn mo de pas ek so rol, apre klik Create user.",
+                'Klik Azout itilizater.',
+                "Rant nom dimoun la, imel ki li pou servi pou konekte, enn mo de pas ek so rol, apre klik Kree itilizater.",
                 'Donn dimoun la so imel ek so mo de pas ou-mem.',
                 "Si li pou pointe, pran konze ouswa gagn lapey, konekte so login ar so dosie anplwaye (prosenn size).",
               ],
@@ -161,8 +161,8 @@ export const ADMIN_GUIDE_MFE: RoleGuide = {
               kind: 'steps',
               items: [
                 'Ouver Zestion itilizater e trouv dimoun la (servi kaz rod ouswa filtre rol).',
-                "Klik Edit User pou sanz so nom, so imel koneksion ouswa so rol, apre Save changes.",
-                'Klik Reset Password pou donn li enn nouvo mo de pas, apre Save password. Dir li ki nouvo mo de pas la ete.',
+                "Klik Modifie pou sanz so nom, so imel koneksion ouswa so rol, apre Anrezistre sanzman.",
+                'Klik Mo de pas pou donn li enn nouvo mo de pas, apre Anrezistre mo de pas. Dir li ki nouvo mo de pas la ete.',
               ],
             },
             { kind: 'tip', text: "Sanz imel enn dimoun isi olie efas so login pou kre enn nouvo. Efas enn login detas li depi so dosie anplwaye e efas so bann notifikasion." },
@@ -177,8 +177,8 @@ export const ADMIN_GUIDE_MFE: RoleGuide = {
             {
               kind: 'list',
               items: [
-                'Sekirite → My Account montre ou prop dernie koneksion.',
-                "Sekirite → Audit Log montre bann levennman sekirite pou tou lantrepriz: koneksion ki finn marse ek ki finn rate, reinisializasion mo de pas, ek login ki finn kre, sanze ouswa efase. Filtre par tip levennman ek par dat.",
+                'Sekirite → Mo kont montre ou prop dernie koneksion.',
+                "Sekirite → Rezis odit montre bann levennman sekirite pou tou lantrepriz: koneksion ki finn marse ek ki finn rate, reinisializasion mo de pas, ek login ki finn kre, sanze ouswa efase. Filtre par tip levennman ek par dat.",
               ],
             },
             { kind: 'note', text: "Zournal odit la kouver zis login ek mo de pas. Se pa listwar tou sanzman ki finn fer dan aplikasion la." },
