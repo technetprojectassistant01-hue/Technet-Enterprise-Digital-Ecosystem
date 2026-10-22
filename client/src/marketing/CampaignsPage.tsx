@@ -6,6 +6,8 @@ import type { MarketingCampaign } from '../lib/api'
 import { Panel, StatCard, Modal, EmptyState, TableSkeleton } from '../dashboard/ui'
 import { primaryButtonClass } from '../dashboard/buttonStyles'
 import { useToast } from '../dashboard/ToastContext'
+import { useFormDraft } from '../lib/useFormDraft'
+import { DraftNotice } from '../dashboard/DraftNotice'
 import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
 import { hasRole, MARKETING_ROLES } from '../lib/permissions'
@@ -35,6 +37,7 @@ function CampaignsPage() {
 
   const [showCreate, setShowCreate] = useState(false)
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
+  const draft = useFormDraft('marketing-campaign', form, showCreate)
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -53,7 +56,7 @@ function CampaignsPage() {
   }, [])
 
   function openCreate() {
-    setForm(EMPTY_FORM)
+    setForm(draft.take(EMPTY_FORM))
     setFormError(null)
     setShowCreate(true)
   }
@@ -75,6 +78,7 @@ function CampaignsPage() {
         startDate: form.startDate || undefined,
         endDate: form.endDate || undefined,
       })
+      draft.clear()
       toast.success('Campaign created')
       setShowCreate(false)
       load()
@@ -189,6 +193,7 @@ function CampaignsPage() {
       {showCreate && (
         <Modal title="Add Campaign" onClose={() => setShowCreate(false)}>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            {draft.restored && <DraftNotice onDiscard={() => setForm(draft.discard())} />}
             <div>
               <label className={labelClass}>NAME</label>
               <input
