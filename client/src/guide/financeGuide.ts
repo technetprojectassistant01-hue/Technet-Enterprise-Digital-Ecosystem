@@ -23,7 +23,7 @@ export const FINANCE_GUIDE: RoleGuide = {
   intro:
     'How a Finance Officer works in Technet Digital: customer records and portal access, service contracts, quotations, documents and purchase requests. Each topic is one task, step by step.',
   roles: ['FINANCE_OFFICER'],
-  updated: '2026-10-20',
+  updated: '2026-10-22',
   chapters: [
     // ------------------------------------------------------------------------------------------
     {
@@ -69,6 +69,7 @@ export const FINANCE_GUIDE: RoleGuide = {
         },
         admin('install-language'),
         admin('slow-first-load'),
+        admin('form-drafts'),
       ],
     },
 
