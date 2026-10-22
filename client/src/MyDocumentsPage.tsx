@@ -10,6 +10,8 @@ import { useToast } from './dashboard/ToastContext'
 import { useConfirm } from './dashboard/ConfirmContext'
 import { useAuth } from './context/AuthContext'
 import { useT } from './i18n'
+import { useFormDraft } from './lib/useFormDraft'
+import { DraftNotice } from './dashboard/DraftNotice'
 import { isAdminLike } from './lib/permissions'
 
 export const EMPLOYEE_DOCUMENT_TYPES: EmployeeDocumentType[] = [
@@ -69,6 +71,8 @@ function MyDocumentsPage() {
   const [file, setFile] = useState<File | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
+  const draftValue = { type, title }
+  const draft = useFormDraft('my-document', draftValue, showForm)
   const fileInput = useRef<HTMLInputElement>(null)
 
   function load() {
@@ -92,9 +96,13 @@ function MyDocumentsPage() {
 
   if (!user?.employeeId) return <EmptyState icon={Lock} message={t.myDocuments.notLinked} />
 
+  function fillDraft(d: typeof draftValue) {
+    setType(d.type)
+    setTitle(d.title)
+  }
+
   function openForm() {
-    setType('')
-    setTitle('')
+    fillDraft(draft.take({ type: '' as EmployeeDocumentType | '', title: '' }))
     setFile(null)
     setFormError(null)
     setShowForm(true)
@@ -117,6 +125,7 @@ function MyDocumentsPage() {
         fileName: file.name,
         fileData: await readFileAsDataUrl(file),
       })
+      draft.clear()
       toast.success(t.myDocuments.uploaded)
       setShowForm(false)
       load()
@@ -230,6 +239,7 @@ function MyDocumentsPage() {
       {showForm && (
         <Modal title={t.myDocuments.upload} onClose={() => setShowForm(false)}>
           <form onSubmit={handleUpload} className="flex flex-col gap-4">
+            {draft.restored && <DraftNotice files onDiscard={() => fillDraft(draft.discard())} />}
             <div>
               <label className={labelClass}>{t.myDocuments.titleLabel}</label>
               <input
