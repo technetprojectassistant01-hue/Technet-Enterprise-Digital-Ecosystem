@@ -11,7 +11,7 @@ export const ADMIN_GUIDE_MFE: RoleGuide = {
   intro:
     "Kouma pou fer Technet Digital marse kouma enn administrater: bann login, prezans personel, operasion, RH, magazin ek ERP. Li swiv meni agos, depi anler ziska anba. Responsab Operasion ena exakteman mem akse ki enn administrater, alor sa gid la pou li osi. Kek paz pa ankor tradwir (Marketing, Sekirite, Zestion itilizater, Anplwaye ek Sertifikasion); zot bouton ekrir isi an angle, kouma zot paret lor lekran.",
   roles: ['ADMIN', 'OPERATIONS_MANAGER'],
-  updated: '2026-10-21',
+  updated: '2026-10-22',
   chapters: [
     // ------------------------------------------------------------------------------------------
     {
@@ -79,6 +79,22 @@ export const ADMIN_GUIDE_MFE: RoleGuide = {
           blocks: [
             { kind: 'p', text: "Server la al dormi kan personn pa finn servi aplikasion la depi apepre 15 minit. Premie paz ki ou ouver apre sa kapav pran 30 a 60 segonn. Atann li olie rafresi plizier fwa. Kan li finn leve, tou al vit." },
             { kind: 'p', text: "Kan enn nouvo version aplikasion la sorti, enn bar dir « Ena enn nouvo version Technet Digital. » Klik Rafresi." },
+          ],
+        },
+        {
+          id: 'form-drafts',
+          title: 'Si enn formiler ferme avan ou sov li',
+          blocks: [
+            { kind: 'p', text: "Lor bann formiler ki azout kitsoz nouvo (azout enn klian, nouvo work order, nouvo kotasion, azout enn anplwaye, demann konze ek lezot), seki ou ekrir reste garde lor sa aparey la amezir ou pe ekrir. Si fenet la, aplikasion la ouswa pop-up la ferme par erer, ouver mem formiler la ankor: enn banier dir « Nou finn remet seki ou ti ekrir » ek ou text retourn dan bann kaz." },
+            {
+              kind: 'list',
+              items: [
+                'Brouyon la efase kan dosie la finn sove.',
+                'Si ou ferme formiler la san sove, brouyon la reste. Pou rekoumans ar enn formiler vid, klik Zet brouyon lor banier la.',
+                'Fisie, foto ek mo de pas zamai garde. Azout zot ankor.',
+              ],
+            },
+            { kind: 'note', text: "Enn brouyon reste zis lor sa aparey ek sa navigater la, zis pou ou login, ziska 30 zour. Li pa swiv ou lor enn lot telefonn ouswa lordinater. Bann formiler ki sanz enn dosie ki deza egziste pa gard brouyon." },
           ],
         },
       ],
