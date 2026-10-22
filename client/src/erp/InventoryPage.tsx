@@ -11,6 +11,8 @@ import { useAuth } from '../context/AuthContext'
 import { hasRole, PROCUREMENT_ROLES } from '../lib/permissions'
 import { formatMoney } from '../lib/format'
 import { useT } from '../i18n'
+import { useFormDraft } from '../lib/useFormDraft'
+import { DraftNotice } from '../dashboard/DraftNotice'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -66,6 +68,7 @@ function InventoryPage() {
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null)
   const [showCreate, setShowCreate] = useState(false)
   const [form, setForm] = useState<ItemFormState>(EMPTY_FORM)
+  const draft = useFormDraft('inventory-item', form, showCreate && !editingItem)
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -96,7 +99,7 @@ function InventoryPage() {
   }
 
   function openCreate() {
-    setForm(EMPTY_FORM)
+    setForm(draft.take(EMPTY_FORM))
     setFormError(null)
     setEditingItem(null)
     setShowCreate(true)
@@ -147,6 +150,7 @@ function InventoryPage() {
           location: form.location || undefined,
         })
       }
+      if (!editingItem) draft.clear()
       toast.success(editingItem ? m.updated : m.created)
       closeForm()
       loadItems()
@@ -357,6 +361,7 @@ function InventoryPage() {
       {(showCreate || editingItem) && (
         <Modal title={editingItem ? m.edit : m.add} onClose={closeForm}>
           <form onSubmit={handleFormSubmit} className="flex flex-col gap-4">
+            {!editingItem && draft.restored && <DraftNotice onDiscard={() => setForm(draft.discard())} />}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className={labelClass}>{m.sku}</label>
