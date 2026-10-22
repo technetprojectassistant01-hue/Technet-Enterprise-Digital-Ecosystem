@@ -1,6 +1,7 @@
 import type { Dict } from './en'
 import { erpMfe } from './erp/mfe'
 import { peopleMfe } from './people/mfe'
+import { systemMfe } from './system/mfe'
 
 /**
  * Mauritian Creole (Kreol Morisien), in the standard Grafi Larmoni spelling. Typed against the
@@ -2217,7 +2218,7 @@ export const mfe: Dict = {
           title: 'Rezis odit sekirite',
           paragraphs: [
             'Koneksion (avek bann tantativ rate), reinisializasion mo de pas ek sanzman lor kont itilizater — kreasion, sanzman rol ouswa imel, ek sipresion — anrezistre avek ler la ek kont ki konsernen.',
-            'Sak itilizater konekte kapav get so prop koneksion resan dan Sekirite → "My Account". Administrater kapav get rezis konple dan Sekirite → "Audit Log".',
+            'Sak itilizater konekte kapav get so prop koneksion resan dan Sekirite → "Mo kont". Administrater kapav get rezis konple dan Sekirite → "Rezis odit".',
           ],
         },
         {
@@ -2233,4 +2234,5 @@ export const mfe: Dict = {
   /** Technet ERP pages - kept in ./erp/ to keep this file manageable. */
   erp: erpMfe,
   people: peopleMfe,
+  system: systemMfe,
 }
