@@ -369,11 +369,12 @@ Grouped by domain (not exhaustive on fields — read the schema for that):
   names are written out there; browsers have none). In dev,
   `guide/index.ts` logs a console error if a translation's shape differs from the English. **Any
   guide change now means editing the English, French and Kreol copies together.** Button names are
-  the ones each language's screen shows (looked up in `i18n/fr.ts` / `i18n/mfe.ts`); pages still hardcoded in English
-  (Marketing, Security, User Management, HR Employees/Certifications, Connect info, Insight) keep their
-  English button names, and those guides' intros say so. **Technet ERP is translated** (2026-10-21):
-  its text lives in `client/src/i18n/erp/{en,fr,mfe}.ts`, plugged in as `t.erp` (typed `ErpDict`, so a
-  missing French/Kreol key fails the build). Customer-facing output stays English on purpose: the
+  the ones each language's screen shows (looked up in `i18n/fr.ts` / `i18n/mfe.ts` and the module
+  dictionaries below). **Every staff screen is translated** as of 2026-10-22. Module text lives in its
+  own folder, each plugged into the main dictionary and typed against its English file, so a missing
+  French/Kreol key fails the build: `client/src/i18n/erp/` (`t.erp`, Technet ERP, 2026-10-21),
+  `i18n/people/` (`t.people`, HR Employees + Certifications), `i18n/system/` (`t.system`, User
+  Management, Security, Insight, Connect info page) and `i18n/marketing/` (`t.marketing`), all 2026-10-22. Customer-facing output stays English on purpose: the
   quotation PDF, the Email Customer and acknowledgement emails, and the + Labor / + Transport lines
   (they insert English text into the quotation). Server error messages are still English. The
   "Call Log" tab keeps that name in every language (Technet's own term). Dates in the ERP Overview
