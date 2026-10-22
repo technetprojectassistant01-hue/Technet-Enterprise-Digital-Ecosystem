@@ -13,6 +13,8 @@ import { hasRole, FINANCE_ROLES } from '../lib/permissions'
 import { contractStatusTone as statusTone } from './statusTones'
 import { formatMoney } from '../lib/format'
 import { useT } from '../i18n'
+import { useFormDraft } from '../lib/useFormDraft'
+import { DraftNotice } from '../dashboard/DraftNotice'
 
 const inputClass =
   'w-full rounded-md border border-ink-600 bg-ink-950 px-3 py-2 text-sm text-ink-100 outline-none focus:border-cyan-accent'
@@ -53,6 +55,7 @@ function ContractsPage() {
   const [editing, setEditing] = useState<Contract | null>(null)
   const [showCreate, setShowCreate] = useState(false)
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
+  const draft = useFormDraft('contract', form, showCreate && !editing)
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -68,7 +71,7 @@ function ContractsPage() {
   useEffect(load, [])
 
   function openCreate() {
-    setForm({ ...EMPTY_FORM, customerId: customers[0]?.id || '' })
+    setForm(draft.take({ ...EMPTY_FORM, customerId: customers[0]?.id || '' }))
     setFormError(null)
     setEditing(null)
     setShowCreate(true)
@@ -131,6 +134,7 @@ function ContractsPage() {
           endDate: form.endDate || undefined,
         })
       }
+      if (!editing) draft.clear()
       toast.success(editing ? m.updated : m.created)
       closeForm()
       load()
@@ -277,6 +281,7 @@ function ContractsPage() {
       {(showCreate || editing) && (
         <Modal title={editing ? m.edit : m.new} onClose={closeForm}>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            {!editing && draft.restored && <DraftNotice onDiscard={() => setForm(draft.discard())} />}
             {!editing && (
               <div>
                 <label className={labelClass}>{m.customer}</label>
