@@ -9,7 +9,7 @@ export const ADMIN_GUIDE: RoleGuide = {
   intro:
     'How to run Technet Digital as an administrator: logins, staff attendance, operations, HR, the store and the ERP. It follows the menu on the left from top to bottom. The Operations Manager has exactly the same access as an administrator, so this guide is for them too.',
   roles: ['ADMIN', 'OPERATIONS_MANAGER'],
-  updated: '2026-10-19',
+  updated: '2026-10-22',
   chapters: [
     // ------------------------------------------------------------------------------------------
     {
@@ -77,6 +77,22 @@ export const ADMIN_GUIDE: RoleGuide = {
           blocks: [
             { kind: 'p', text: 'The server goes to sleep when nobody has used the app for about 15 minutes. The first page you open after that can take 30 to 60 seconds. Wait for it rather than reloading again and again. Pages are fast once it is awake.' },
             { kind: 'p', text: 'When a new version of the app is published, a bar appears saying "A new version of Technet Digital is available". Click Reload.' },
+          ],
+        },
+        {
+          id: 'form-drafts',
+          title: 'If a form closes before you save',
+          blocks: [
+            { kind: 'p', text: 'On the forms that add something new (Add Customer, New Work Order, New Quotation, Add Employee, Request Leave and the others), what you type is kept on this device as you go. If the window, the app or the pop-up closes by mistake, open the same form again: a banner says "We brought back what you typed last time" and your text is back in the fields.' },
+            {
+              kind: 'list',
+              items: [
+                'The draft is removed once the record is saved.',
+                'Closing the form without saving keeps the draft. To start again with an empty form, click Discard draft on the banner.',
+                'Files, photos and passwords are never kept. Add them again.',
+              ],
+            },
+            { kind: 'note', text: 'A draft stays on this device and browser only, for your login only, for up to 30 days. It does not follow you to another phone or computer. Forms that change an existing record do not keep drafts.' },
           ],
         },
       ],
