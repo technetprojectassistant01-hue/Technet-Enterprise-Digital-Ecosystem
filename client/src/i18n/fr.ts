@@ -1,6 +1,7 @@
 import type { Dict } from './en'
 import { erpFr } from './erp/fr'
 import { peopleFr } from './people/fr'
+import { systemFr } from './system/fr'
 
 /** French. Typed against the English master (en.ts) — every key there must exist here. */
 export const fr: Dict = {
@@ -2226,7 +2227,7 @@ export const fr: Dict = {
           title: "Journal d'audit de sécurité",
           paragraphs: [
             "Les connexions (y compris les tentatives échouées), les réinitialisations de mot de passe et les modifications des comptes — création, changement de rôle ou d'e-mail, suppression — sont enregistrées avec l'heure et le compte concerné.",
-            "Chaque utilisateur connecté peut consulter ses propres connexions récentes dans Sécurité → « My Account ». Les administrateurs consultent le journal complet dans Sécurité → « Audit Log ».",
+            "Chaque utilisateur connecté peut consulter ses propres connexions récentes dans Sécurité → « Mon compte ». Les administrateurs consultent le journal complet dans Sécurité → « Journal d'audit ».",
           ],
         },
         {
@@ -2242,4 +2243,5 @@ export const fr: Dict = {
   /** Technet ERP pages - kept in ./erp/ to keep this file manageable. */
   erp: erpFr,
   people: peopleFr,
+  system: systemFr,
 }
