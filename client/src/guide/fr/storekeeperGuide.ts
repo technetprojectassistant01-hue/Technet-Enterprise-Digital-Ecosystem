@@ -12,7 +12,7 @@ const shared = topicsFrom(ADMIN_GUIDE_FR)
 export const STOREKEEPER_GUIDE_FR: RoleGuide = {
   title: 'Guide du magasinier',
   intro:
-    "Comment tenir le magasin dans Technet Digital : outils et équipements, matériel, les demandes qui arrivent, et l'inventaire et les achats dans l'ERP. Il suit votre menu de haut en bas. La page Sécurité n'est pas encore traduite ; ses boutons sont nommés ici en anglais.",
+    "Comment tenir le magasin dans Technet Digital : outils et équipements, matériel, les demandes qui arrivent, et l'inventaire et les achats dans l'ERP. Il suit votre menu de haut en bas.",
   roles: ['STOREKEEPER'],
   updated: '2026-10-22',
   chapters: [
@@ -156,7 +156,7 @@ export const STOREKEEPER_GUIDE_FR: RoleGuide = {
               kind: 'list',
               items: [
                 "Votre mot de passe est géré par un administrateur. Si vous l'oubliez, demandez-lui de le réinitialiser dans Gestion des utilisateurs.",
-                'Sécurité → My Account liste vos propres connexions récentes.',
+                'Sécurité → Mon compte liste vos propres connexions récentes.',
                 "Vous restez connecté 30 jours, et ces 30 jours repartent à chaque utilisation de l'application. Se déconnecter, en bas du menu, vous déconnecte immédiatement.",
               ],
             },
