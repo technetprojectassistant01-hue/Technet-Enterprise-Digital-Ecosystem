@@ -10,6 +10,8 @@ import { useConfirm } from './dashboard/ConfirmContext'
 import { useAuth } from './context/AuthContext'
 import { leaveRequestStatusTone } from './erp/statusTones'
 import { useT } from './i18n'
+import { useFormDraft } from './lib/useFormDraft'
+import { DraftNotice } from './dashboard/DraftNotice'
 import { isAdminLike } from './lib/permissions'
 import { CalendarDays as CalendarDaysIcon } from 'lucide-react'
 import PageTitle from './dashboard/PageTitle'
@@ -46,6 +48,7 @@ function MyLeavePage() {
   /** The request being edited, or null when the form is creating a new one. */
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
+  const draft = useFormDraft('my-leave-request', form, showForm && !editingId)
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -84,7 +87,7 @@ function MyLeavePage() {
 
   function openForm() {
     setEditingId(null)
-    setForm(EMPTY_FORM)
+    setForm(draft.take(EMPTY_FORM))
     setFormError(null)
     setShowForm(true)
   }
@@ -134,6 +137,7 @@ function MyLeavePage() {
         toast.success(t.myLeave.updated)
       } else {
         await api.createMyLeaveRequest(input)
+        draft.clear()
         toast.success(t.myLeave.submitted)
       }
       setShowForm(false)
@@ -307,6 +311,7 @@ function MyLeavePage() {
       {showForm && (
         <Modal title={editingId ? t.myLeave.editTitle : t.myLeave.requestLeave} onClose={() => setShowForm(false)}>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            {!editingId && draft.restored && <DraftNotice onDiscard={() => setForm(draft.discard())} />}
             <div>
               <label className={labelClass}>{t.myLeave.colLeaveType}</label>
               <select
