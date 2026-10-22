@@ -7,6 +7,8 @@ import { Panel, StatCard, Modal, Badge, EmptyState, TableSkeleton } from '../das
 import { primaryButtonClass, secondaryButtonClass } from '../dashboard/buttonStyles'
 import { downloadCsv } from '../lib/csv'
 import { useToast } from '../dashboard/ToastContext'
+import { useFormDraft } from '../lib/useFormDraft'
+import { DraftNotice } from '../dashboard/DraftNotice'
 import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
 import { hasRole, HR_ROLES } from '../lib/permissions'
@@ -39,6 +41,7 @@ function EmployeesPage() {
   const [editing, setEditing] = useState<Employee | null>(null)
   const [showCreate, setShowCreate] = useState(false)
   const [form, setForm] = useState<EmployeeFormState>(EMPTY_EMPLOYEE_FORM)
+  const draft = useFormDraft('employee', form, showCreate && !editing)
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -74,7 +77,7 @@ function EmployeesPage() {
   }, [])
 
   function openCreate() {
-    setForm(EMPTY_EMPLOYEE_FORM)
+    setForm(draft.take(EMPTY_EMPLOYEE_FORM))
     setFormError(null)
     setEditing(null)
     setShowCreate(true)
@@ -114,6 +117,7 @@ function EmployeesPage() {
         await api.updateEmployee(editing.id, input)
       } else {
         await api.createEmployee(input)
+        draft.clear()
       }
       toast.success(editing ? 'Employee updated' : 'Employee added')
       closeForm()
@@ -308,6 +312,11 @@ function EmployeesPage() {
 
       {(showCreate || editing) && (
         <Modal title={editing ? 'Edit Employee' : 'Add Employee'} size="lg" onClose={closeForm}>
+          {!editing && draft.restored && (
+            <div className="mb-4">
+              <DraftNotice onDiscard={() => setForm(draft.discard())} />
+            </div>
+          )}
           <EmployeeForm
             form={form}
             setForm={setForm}
