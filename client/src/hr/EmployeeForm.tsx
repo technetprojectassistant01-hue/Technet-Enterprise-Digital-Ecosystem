@@ -9,7 +9,7 @@ import type {
   LinkableUser,
 } from '../lib/api'
 import { inputClass, labelClass, primaryButtonClass } from './formStyles'
-import { useT } from '../i18n'
+import { useT, enumLabel } from '../i18n'
 
 const STATUSES: EmploymentStatus[] = ['ACTIVE', 'ON_LEAVE', 'TERMINATED']
 const GENDERS: Gender[] = ['MALE', 'FEMALE', 'OTHER']
@@ -167,6 +167,7 @@ function EmployeeForm({
   isCreate?: boolean
 }) {
   const t = useT()
+  const f = t.people.form
   const [showPayroll, setShowPayroll] = useState(false)
   const [linkableUsers, setLinkableUsers] = useState<LinkableUser[]>([])
   const set = (patch: Partial<EmployeeFormState>) => setForm({ ...form, ...patch })
@@ -180,10 +181,10 @@ function EmployeeForm({
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-5">
-      <Section title="ACCOUNT ACCESS">
-        <Field label="LINKED LOGIN" full>
+      <Section title={f.accountAccess}>
+        <Field label={f.linkedLogin} full>
           <select value={form.userId} onChange={(e) => set({ userId: e.target.value })} className={inputClass}>
-            <option value="">Not linked</option>
+            <option value="">{f.notLinked}</option>
             {linkableUsers.map((u) => (
               <option
                 key={u.id}
@@ -191,17 +192,17 @@ function EmployeeForm({
                 disabled={u.linkedEmployeeId !== null && u.id !== form.userId}
               >
                 {u.email} ({t.roles[u.role]})
-                {u.linkedEmployeeId !== null && u.id !== form.userId ? ' — already linked' : ''}
+                {u.linkedEmployeeId !== null && u.id !== form.userId ? f.alreadyLinked : ''}
               </option>
             ))}
           </select>
         </Field>
       </Section>
 
-      <Section title="IDENTITY & CONTACT">
-        <Field label="EMPLOYEE CODE">
+      <Section title={f.identity}>
+        <Field label={f.employeeCode}>
           {isCreate ? (
-            <p className="text-sm text-ink-400">Assigned automatically on save.</p>
+            <p className="text-sm text-ink-400">{f.codeAutomatic}</p>
           ) : (
             <input
               value={form.employeeCode}
@@ -211,7 +212,7 @@ function EmployeeForm({
             />
           )}
         </Field>
-        <Field label="STATUS">
+        <Field label={f.status}>
           <select
             value={form.employmentStatus}
             onChange={(e) => set({ employmentStatus: e.target.value as EmploymentStatus })}
@@ -219,12 +220,12 @@ function EmployeeForm({
           >
             {STATUSES.map((s) => (
               <option key={s} value={s}>
-                {s.replace('_', ' ')}
+                {enumLabel(t.labels.employmentStatus, s)}
               </option>
             ))}
           </select>
         </Field>
-        <Field label="FIRST NAME">
+        <Field label={f.firstName}>
           <input
             value={form.firstName}
             onChange={(e) => set({ firstName: e.target.value })}
@@ -232,7 +233,7 @@ function EmployeeForm({
             className={inputClass}
           />
         </Field>
-        <Field label="LAST NAME">
+        <Field label={f.lastName}>
           <input
             value={form.lastName}
             onChange={(e) => set({ lastName: e.target.value })}
@@ -240,14 +241,14 @@ function EmployeeForm({
             className={inputClass}
           />
         </Field>
-        <Field label="NATIONAL ID (NIC)">
+        <Field label={f.nationalId}>
           <input
             value={form.nationalId}
             onChange={(e) => set({ nationalId: e.target.value })}
             className={inputClass}
           />
         </Field>
-        <Field label="DATE OF BIRTH">
+        <Field label={f.dateOfBirth}>
           <input
             type="date"
             value={form.dateOfBirth}
@@ -255,7 +256,7 @@ function EmployeeForm({
             className={inputClass}
           />
         </Field>
-        <Field label="GENDER">
+        <Field label={f.gender}>
           <select
             value={form.gender}
             onChange={(e) => set({ gender: e.target.value as Gender | '' })}
@@ -264,20 +265,20 @@ function EmployeeForm({
             <option value="">—</option>
             {GENDERS.map((g) => (
               <option key={g} value={g}>
-                {g.charAt(0) + g.slice(1).toLowerCase()}
+                {t.people.gender[g]}
               </option>
             ))}
           </select>
         </Field>
-        <Field label="PHONE">
+        <Field label={f.phone}>
           <input
             value={form.phone}
             onChange={(e) => set({ phone: e.target.value })}
-            placeholder="e.g. 5712 3456"
+            placeholder={f.phonePlaceholder}
             className={inputClass}
           />
         </Field>
-        <Field label="EMAIL">
+        <Field label={f.email}>
           <input
             type="email"
             value={form.email}
@@ -285,7 +286,7 @@ function EmployeeForm({
             className={inputClass}
           />
         </Field>
-        <Field label="ADDRESS" full>
+        <Field label={f.address} full>
           <textarea
             value={form.address}
             onChange={(e) => set({ address: e.target.value })}
@@ -295,24 +296,24 @@ function EmployeeForm({
         </Field>
       </Section>
 
-      <Section title="EMPLOYMENT">
-        <Field label="POSITION">
+      <Section title={f.employment}>
+        <Field label={f.position}>
           <input
             value={form.position}
             onChange={(e) => set({ position: e.target.value })}
-            placeholder="e.g. Senior Technician"
+            placeholder={f.positionPlaceholder}
             className={inputClass}
           />
         </Field>
-        <Field label="DEPARTMENT">
+        <Field label={f.department}>
           <input
             value={form.department}
             onChange={(e) => set({ department: e.target.value })}
-            placeholder="e.g. Operations"
+            placeholder={f.departmentPlaceholder}
             className={inputClass}
           />
         </Field>
-        <Field label="CONTRACT TYPE">
+        <Field label={f.contractType}>
           <select
             value={form.contractType}
             onChange={(e) => set({ contractType: e.target.value as ContractType | '' })}
@@ -321,19 +322,19 @@ function EmployeeForm({
             <option value="">—</option>
             {CONTRACT_TYPES.map((c) => (
               <option key={c} value={c}>
-                {c.replace('_', ' ')}
+                {enumLabel(t.people.contractType, c)}
               </option>
             ))}
           </select>
         </Field>
-        <Field label="JOB GRADE">
+        <Field label={f.jobGrade}>
           <input
             value={form.jobGrade}
             onChange={(e) => set({ jobGrade: e.target.value })}
             className={inputClass}
           />
         </Field>
-        <Field label="HIRE DATE">
+        <Field label={f.hireDate}>
           <input
             type="date"
             value={form.hireDate}
@@ -341,7 +342,7 @@ function EmployeeForm({
             className={inputClass}
           />
         </Field>
-        <Field label="PROBATION ENDS">
+        <Field label={f.probationEnds}>
           <input
             type="date"
             value={form.probationEndDate}
@@ -350,7 +351,7 @@ function EmployeeForm({
           />
         </Field>
         {form.contractType === 'FIXED_TERM' && (
-          <Field label="CONTRACT ENDS">
+          <Field label={f.contractEnds}>
             <input
               type="date"
               value={form.contractEndDate}
@@ -361,7 +362,7 @@ function EmployeeForm({
         )}
         {form.employmentStatus === 'TERMINATED' && (
           <>
-            <Field label="EXIT DATE">
+            <Field label={f.exitDate}>
               <input
                 type="date"
                 value={form.exitDate}
@@ -369,11 +370,11 @@ function EmployeeForm({
                 className={inputClass}
               />
             </Field>
-            <Field label="EXIT REASON" full>
+            <Field label={f.exitReason} full>
               <input
                 value={form.exitReason}
                 onChange={(e) => set({ exitReason: e.target.value })}
-                placeholder="e.g. Resignation, end of contract"
+                placeholder={f.exitReasonPlaceholder}
                 className={inputClass}
               />
             </Field>
@@ -381,26 +382,26 @@ function EmployeeForm({
         )}
       </Section>
 
-      <Section title="EMERGENCY CONTACT">
-        <Field label="NAME">
+      <Section title={f.emergencyContact}>
+        <Field label={f.name}>
           <input
             value={form.emergencyContactName}
             onChange={(e) => set({ emergencyContactName: e.target.value })}
             className={inputClass}
           />
         </Field>
-        <Field label="PHONE">
+        <Field label={f.phone}>
           <input
             value={form.emergencyContactPhone}
             onChange={(e) => set({ emergencyContactPhone: e.target.value })}
             className={inputClass}
           />
         </Field>
-        <Field label="RELATIONSHIP">
+        <Field label={f.relationship}>
           <input
             value={form.emergencyContactRelation}
             onChange={(e) => set({ emergencyContactRelation: e.target.value })}
-            placeholder="e.g. Spouse"
+            placeholder={f.relationshipPlaceholder}
             className={inputClass}
           />
         </Field>
@@ -412,12 +413,12 @@ function EmployeeForm({
           onClick={() => setShowPayroll((v) => !v)}
           className="flex w-full items-center justify-between px-4 py-3 text-xs font-semibold tracking-widest text-ink-400 hover:text-ink-100"
         >
-          PAYROLL DETAILS
-          <span className="text-ink-400">{showPayroll ? 'Hide' : 'Show'}</span>
+          {f.payrollDetails}
+          <span className="text-ink-400">{showPayroll ? f.hide : f.show}</span>
         </button>
         {showPayroll && (
           <div className="grid grid-cols-1 gap-4 px-4 pb-4 sm:grid-cols-2">
-            <Field label="BASIC SALARY (MUR)">
+            <Field label={f.basicSalary}>
               <input
                 type="number"
                 min="0"
@@ -427,14 +428,14 @@ function EmployeeForm({
                 className={inputClass}
               />
             </Field>
-            <Field label="BANK NAME">
+            <Field label={f.bankName}>
               <input
                 value={form.bankName}
                 onChange={(e) => set({ bankName: e.target.value })}
                 className={inputClass}
               />
             </Field>
-            <Field label="BANK ACCOUNT NUMBER">
+            <Field label={f.bankAccount}>
               <input
                 value={form.bankAccountNumber}
                 onChange={(e) => set({ bankAccountNumber: e.target.value })}
@@ -445,13 +446,13 @@ function EmployeeForm({
         )}
       </div>
 
-      <Section title="NOTES">
-        <Field label="INTERNAL NOTES" full>
+      <Section title={f.notes}>
+        <Field label={f.internalNotes} full>
           <textarea
             value={form.notes}
             onChange={(e) => set({ notes: e.target.value })}
             rows={3}
-            placeholder="Anything else worth recording about this employee..."
+            placeholder={f.notesPlaceholder}
             className={inputClass}
           />
         </Field>
@@ -460,7 +461,7 @@ function EmployeeForm({
       {error && <p className="text-sm text-red-400">{error}</p>}
 
       <button type="submit" disabled={submitting} className={`justify-center py-2.5 ${primaryButtonClass}`}>
-        {submitting ? 'Saving…' : submitLabel}
+        {submitting ? f.saving : submitLabel}
       </button>
     </form>
   )
