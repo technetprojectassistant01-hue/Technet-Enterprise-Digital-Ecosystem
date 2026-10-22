@@ -13,7 +13,7 @@ const shared = topicsFrom(ADMIN_GUIDE_FR)
 export const HR_GUIDE_FR: RoleGuide = {
   title: 'Guide RH',
   intro:
-    "Le travail des RH dans Technet Digital : fiches employés, congés, heures supplémentaires, validation de fin de mois, paie et certifications, ainsi que la présence du personnel qui sert à les vérifier. Il suit votre menu de haut en bas. La page Sécurité n'est pas encore traduite ; ses boutons sont nommés ici en anglais.",
+    "Le travail des RH dans Technet Digital : fiches employés, congés, heures supplémentaires, validation de fin de mois, paie et certifications, ainsi que la présence du personnel qui sert à les vérifier. Il suit votre menu de haut en bas.",
   roles: ['HR_OFFICER'],
   updated: '2026-10-22',
   chapters: [
@@ -233,7 +233,7 @@ export const HR_GUIDE_FR: RoleGuide = {
               kind: 'list',
               items: [
                 "Votre mot de passe est géré par un administrateur. Si vous l'oubliez, demandez-lui de le réinitialiser dans Gestion des utilisateurs.",
-                'Sécurité → My Account liste vos propres connexions récentes.',
+                'Sécurité → Mon compte liste vos propres connexions récentes.',
                 "Vous restez connecté 30 jours, et ces 30 jours repartent à chaque utilisation de l'application. Se déconnecter, en bas du menu, vous déconnecte immédiatement.",
               ],
             },
