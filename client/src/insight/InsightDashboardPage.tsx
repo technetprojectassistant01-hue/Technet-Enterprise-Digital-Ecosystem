@@ -3,8 +3,11 @@ import { FolderKanban, CalendarClock, Wrench, Box, MapPinned } from 'lucide-reac
 import * as api from '../lib/api'
 import type { InsightSummary } from '../lib/api'
 import { Panel, StatCard, TableSkeleton } from '../dashboard/ui'
+import { useT } from '../i18n'
 
 function InsightDashboardPage() {
+  const t = useT()
+  const s = t.system.insight
   const [summary, setSummary] = useState<InsightSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -14,7 +17,7 @@ function InsightDashboardPage() {
     api
       .getInsightSummary()
       .then(({ summary }) => setSummary(summary))
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load dashboard data'))
+      .catch((err) => setError(err instanceof Error ? err.message : s.loadFailed))
       .finally(() => setLoading(false))
   }
 
@@ -23,11 +26,8 @@ function InsightDashboardPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold text-ink-100">Technet Insight</h1>
-        <p className="mt-1 text-sm text-ink-300">
-          Cross-module executive summary, drawn from Projects, Operations, Tools & Equipment, and
-          Inventory. Read-only - it reflects a snapshot on load, not a live feed.
-        </p>
+        <h1 className="text-2xl font-bold text-ink-100">{s.title}</h1>
+        <p className="mt-1 text-sm text-ink-300">{s.subtitle}</p>
       </div>
 
       {error && <p className="text-sm text-red-400">{error}</p>}
@@ -39,33 +39,33 @@ function InsightDashboardPage() {
       ) : summary ? (
         <>
           <p className="text-xs text-ink-400">
-            As of {new Date(summary.generatedAt).toLocaleString()}
+            {s.asOf(new Date(summary.generatedAt).toLocaleString(t.shared.dateLocale))}
           </p>
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard label="Active Projects" value={summary.activeProjects} icon={FolderKanban} />
+            <StatCard label={s.activeProjects} value={summary.activeProjects} icon={FolderKanban} />
             <StatCard
-              label="Active Work Orders"
+              label={s.activeWorkOrders}
               value={summary.activeWorkOrders}
               icon={CalendarClock}
-              sub="Scheduled + in progress"
+              sub={s.activeWorkOrdersSub}
             />
             <StatCard
-              label="Pending Tool Requests"
+              label={s.pendingToolRequests}
               value={summary.pendingToolRequests}
               icon={Wrench}
             />
             <StatCard
-              label="Low Stock Items"
+              label={s.lowStock}
               value={summary.lowStockItems}
               icon={Box}
-              delta={summary.lowStockItems > 0 ? 'Attention' : undefined}
+              delta={summary.lowStockItems > 0 ? s.attention : undefined}
               deltaTone="warning"
             />
             <StatCard
-              label="Technicians On Site"
+              label={s.onSite}
               value={summary.techniciansOnSite}
               icon={MapPinned}
-              sub="Currently checked in"
+              sub={s.onSiteSub}
             />
           </div>
         </>
