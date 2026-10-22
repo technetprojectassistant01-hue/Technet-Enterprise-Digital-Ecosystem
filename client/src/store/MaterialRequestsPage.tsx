@@ -9,6 +9,8 @@ import { useConfirm } from '../dashboard/ConfirmContext'
 import { useAuth } from '../context/AuthContext'
 import { hasRole, TOOL_MANAGE_ROLES } from '../lib/permissions'
 import { useT } from '../i18n'
+import { useFormDraft } from '../lib/useFormDraft'
+import { DraftNotice } from '../dashboard/DraftNotice'
 import { dayOf } from './toolTones'
 import PageTitle from '../dashboard/PageTitle'
 
@@ -58,6 +60,8 @@ function MaterialRequestsPage() {
   const [lines, setLines] = useState<Line[]>([emptyLine()])
   const [purpose, setPurpose] = useState('')
   const [neededBy, setNeededBy] = useState('')
+  const draftValue = { lines, purpose, neededBy }
+  const draft = useFormDraft('material-request', draftValue, showForm && !editing)
   const [formError, setFormError] = useState<string | null>(null)
 
   // Store decisions
@@ -104,11 +108,15 @@ function MaterialRequestsPage() {
 
   useEffect(load, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  function fillDraft(d: typeof draftValue) {
+    setLines(d.lines)
+    setPurpose(d.purpose)
+    setNeededBy(d.neededBy)
+  }
+
   function openForm() {
     setEditing(null)
-    setLines([emptyLine()])
-    setPurpose('')
-    setNeededBy('')
+    fillDraft(draft.take({ lines: [emptyLine()], purpose: '', neededBy: '' }))
     setFormError(null)
     setShowForm(true)
   }
@@ -147,6 +155,7 @@ function MaterialRequestsPage() {
         toast.success(m.updated)
       } else {
         await api.createMaterialRequest(input)
+        draft.clear()
         toast.success(m.submitted)
       }
       setShowForm(false)
@@ -367,6 +376,7 @@ function MaterialRequestsPage() {
       {showForm && (
         <Modal title={editing ? m.editTitle(editing.requestNumber) : m.request} size="lg" onClose={() => setShowForm(false)}>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            {!editing && draft.restored && <DraftNotice onDiscard={() => fillDraft(draft.discard())} />}
             <div className="flex flex-col gap-2">
               <span className={labelClass}>{m.linesLabel}</span>
               {lines.map((l, i) => (
