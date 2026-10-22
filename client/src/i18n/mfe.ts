@@ -18,6 +18,12 @@ export const mfe: Dict = {
     somethingWentWrong: 'Ena enn problem. Silvouple eseye ankor.',
   },
 
+  draft: {
+    restored: 'Nou finn remet seki ou ti ekrir avan sa formiler la ti ferme.',
+    filesNote: 'Fisie ek foto pa garde - azout zot ankor.',
+    discard: 'Zet brouyon',
+  },
+
   language: {
     label: 'Lang',
     settingsHint: 'Swazir lang aplikasion la. Li anrezistre lor ou kont, alor li swiv ou lor nenport ki aparey.',
