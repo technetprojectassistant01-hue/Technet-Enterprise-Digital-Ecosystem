@@ -14,7 +14,7 @@ export const STOREKEEPER_GUIDE_FR: RoleGuide = {
   intro:
     "Comment tenir le magasin dans Technet Digital : outils et équipements, matériel, les demandes qui arrivent, et l'inventaire et les achats dans l'ERP. Il suit votre menu de haut en bas. La page Sécurité n'est pas encore traduite ; ses boutons sont nommés ici en anglais.",
   roles: ['STOREKEEPER'],
-  updated: '2026-10-20',
+  updated: '2026-10-22',
   chapters: [
     // ------------------------------------------------------------------------------------------
     {
@@ -49,6 +49,7 @@ export const STOREKEEPER_GUIDE_FR: RoleGuide = {
         },
         shared('install-language'),
         shared('slow-first-load'),
+        shared('form-drafts'),
       ],
     },
 
