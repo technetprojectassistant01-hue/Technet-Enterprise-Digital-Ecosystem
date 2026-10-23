@@ -10,7 +10,7 @@ export const ADMIN_GUIDE_FR: RoleGuide = {
   intro:
     "Comment gérer Technet Digital en tant qu'administrateur : les comptes, la présence du personnel, les opérations, les RH, le magasin et l'ERP. Il suit le menu de gauche, de haut en bas. Le Responsable des opérations a exactement les mêmes accès qu'un administrateur : ce guide est aussi le sien.",
   roles: ['ADMIN', 'OPERATIONS_MANAGER'],
-  updated: '2026-10-22',
+  updated: '2026-10-23',
   chapters: [
     // ------------------------------------------------------------------------------------------
     {
@@ -44,6 +44,7 @@ export const ADMIN_GUIDE_FR: RoleGuide = {
                 "La zone de recherche de l'en-tête trouve les pages par leur nom. Tapez une partie du nom (par exemple « heures ») et appuyez sur Entrée.",
                 "Dans un module, les onglets en haut passent d'une page à l'autre.",
                 "Centre d'aide et Guide d'utilisation sont en bas du menu. Le Centre d'aide donne le numéro du support, le 5885 1000.",
+                "Télécharger le PDF, en haut du Guide d'utilisation, enregistre tout le guide dans un fichier à garder ou à imprimer. Les administrateurs peuvent y choisir le guide de n'importe quel rôle, par exemple pour le remettre à un nouvel employé.",
               ],
             },
           ],
