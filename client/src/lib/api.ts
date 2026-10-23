@@ -2264,7 +2264,31 @@ export function unvalidateMonth(employeeId: string, month: string) {
 
 /** Fetches a PDF with the session cookie and hands it to the browser as a download. */
 export async function downloadPdf(url: string, fallbackName: string) {
-  const res = await fetch(url, { credentials: 'include' })
+  await saveDownload(await fetch(url, { credentials: 'include' }), fallbackName)
+}
+
+/** The User Guide text the server lays out as a PDF (POST /api/guide/pdf, 2026-10-23). */
+export interface GuidePdfRequest {
+  title: string
+  intro: string
+  lastChecked: string
+  contents: string
+  /** With {n} and {total} in place of the numbers, e.g. "Page {n} of {total}". */
+  pageLabel: string
+  chapters: { title: string; intro?: string; topics: { title: string; blocks: unknown[] }[] }[]
+}
+
+export async function downloadGuidePdf(guide: GuidePdfRequest) {
+  const res = await fetch(`${API_URL}/api/guide/pdf`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(guide),
+  })
+  await saveDownload(res, 'technet-user-guide.pdf')
+}
+
+async function saveDownload(res: Response, fallbackName: string) {
   if (!res.ok) {
     const body = await res.json().catch(() => null)
     throw new Error(body?.error || 'Failed to download PDF')
