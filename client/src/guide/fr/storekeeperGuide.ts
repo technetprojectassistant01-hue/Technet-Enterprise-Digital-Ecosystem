@@ -14,7 +14,7 @@ export const STOREKEEPER_GUIDE_FR: RoleGuide = {
   intro:
     "Comment tenir le magasin dans Technet Digital : outils et équipements, matériel, les demandes qui arrivent, et l'inventaire et les achats dans l'ERP. Il suit votre menu de haut en bas.",
   roles: ['STOREKEEPER'],
-  updated: '2026-10-22',
+  updated: '2026-10-23',
   chapters: [
     // ------------------------------------------------------------------------------------------
     {
