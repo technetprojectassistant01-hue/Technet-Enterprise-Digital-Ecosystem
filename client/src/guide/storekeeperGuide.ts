@@ -15,7 +15,7 @@ export const STOREKEEPER_GUIDE: RoleGuide = {
   intro:
     'How to run the store in Technet Digital: tools and equipment, materials, the requests that come in for them, and inventory and purchasing in the ERP. It follows your menu from top to bottom.',
   roles: ['STOREKEEPER'],
-  updated: '2026-10-22',
+  updated: '2026-10-23',
   chapters: [
     // ------------------------------------------------------------------------------------------
     {
