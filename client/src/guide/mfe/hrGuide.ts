@@ -14,7 +14,7 @@ export const HR_GUIDE_MFE: RoleGuide = {
   intro:
     "Travay RH dan Technet Digital: dosie anplwaye, konze, ler siplemanter, validasion lafin mwa, lapey ek sertifikasion, ek prezans personel ki servi pou verifie zot. Li swiv ou meni depi anler ziska anba.",
   roles: ['HR_OFFICER'],
-  updated: '2026-10-22',
+  updated: '2026-10-23',
   chapters: [
     // ------------------------------------------------------------------------------------------
     {
