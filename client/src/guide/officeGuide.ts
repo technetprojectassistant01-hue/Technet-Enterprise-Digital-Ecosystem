@@ -17,7 +17,7 @@ export const OFFICE_GUIDE: RoleGuide = {
   intro:
     'How office staff use Technet Digital: checking in and out, leave, documents, and asking the store for tools and materials. Each topic is one task, step by step.',
   roles: ['EMPLOYEE'],
-  updated: '2026-10-22',
+  updated: '2026-10-23',
   chapters: [
     // ------------------------------------------------------------------------------------------
     {
