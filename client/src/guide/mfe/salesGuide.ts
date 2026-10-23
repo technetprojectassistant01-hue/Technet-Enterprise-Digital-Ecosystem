@@ -18,7 +18,7 @@ export const SALES_GUIDE_MFE: RoleGuide = {
   intro:
     "Travay enn ofisie lavant dan Technet Digital: kliyan, demann devi, devi ek zot swivi, portal kliyan ek kalandrie marketing. Sak size se enn travay, etap par etap.",
   roles: ['SALES_OFFICER'],
-  updated: '2026-10-22',
+  updated: '2026-10-23',
   chapters: [
     // ------------------------------------------------------------------------------------------
     {
