@@ -26,6 +26,11 @@ export function guideLanguage(language: Language): Language {
   return GUIDES_BY_LANGUAGE[language] === GUIDES ? 'en' : language
 }
 
+/** Every role's guide in a language - for an administrator printing guides for others (2026-10-23). */
+export function allGuides(language: Language = 'en'): RoleGuide[] {
+  return GUIDES_BY_LANGUAGE[language]
+}
+
 /** The guide for a role, or null while that role's guide hasn't been written. */
 export function guideFor(role: Role | undefined, language: Language = 'en'): RoleGuide | null {
   if (!role) return null
