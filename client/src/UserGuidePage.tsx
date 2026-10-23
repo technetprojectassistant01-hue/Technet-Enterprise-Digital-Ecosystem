@@ -1,17 +1,20 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { AlertTriangle, ArrowRight, BookOpen, ChevronDown, Lightbulb, Search } from 'lucide-react'
+import { AlertTriangle, ArrowRight, BookOpen, ChevronDown, Download, Lightbulb, Search } from 'lucide-react'
 import { useAuth } from './context/AuthContext'
 import { EmptyState } from './dashboard/ui'
-import { guideFor, guideLanguage, type GuideBlock, type GuideChapter } from './guide'
-import { GUIDE_LABELS } from './guide/labels'
+import { useToast } from './dashboard/ToastContext'
+import { allGuides, guideFor, guideLanguage, type GuideBlock, type GuideChapter, type RoleGuide } from './guide'
+import { GUIDE_LABELS, type GuideLabels } from './guide/labels'
 import { useLanguage } from './i18n'
+import { downloadGuidePdf, type Language } from './lib/api'
+import { hasRole } from './lib/permissions'
 
 /**
  * The User Guide (/dashboard/guide): a step-by-step manual for the signed-in person's role. The
- * text lives in client/src/guide/ - English and French (2026-10-20), following the language picked in
- * Settings; Kreol shows English, labels included, until its guides are written. Static, so it opens
- * offline once the app is cached.
+ * text lives in client/src/guide/ - English, French (2026-10-20) and Kreol (2026-10-21), following the
+ * language picked in Settings. Static, so it opens offline once the app is cached; Download PDF
+ * (2026-10-23) needs a connection, since the server lays out the PDF.
  */
 
 function Block({ block }: { block: GuideBlock }) {
@@ -88,6 +91,88 @@ function Contents({ chapters, onPick }: { chapters: GuideChapter[]; onPick?: () 
   )
 }
 
+/** The guide's "last checked" date, worded for the page and the PDF. */
+function checkedDate(guide: RoleGuide, l: GuideLabels): string {
+  const [y, m, d] = guide.updated.split('-').map(Number)
+  return l.formatDate(new Date(y, m - 1, d))
+}
+
+/**
+ * Download PDF (2026-10-23): the whole guide, whatever the search box holds, laid out on the
+ * letterhead by the server. An administrator gets a menu of every role's guide, to print one for a
+ * new member of staff; everyone else gets their own.
+ */
+function DownloadGuideButton({ guide, isAdmin, language, l }: { guide: RoleGuide; isAdmin: boolean; language: Language; l: GuideLabels }) {
+  const toast = useToast()
+  const [busy, setBusy] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!menuOpen) return
+    const close = (e: MouseEvent) => {
+      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false)
+    }
+    document.addEventListener('mousedown', close)
+    return () => document.removeEventListener('mousedown', close)
+  }, [menuOpen])
+
+  async function download(chosen: RoleGuide) {
+    setMenuOpen(false)
+    setBusy(true)
+    try {
+      await downloadGuidePdf({
+        title: chosen.title,
+        intro: chosen.intro,
+        lastChecked: l.lastChecked(checkedDate(chosen, l)),
+        contents: l.contents,
+        pageLabel: l.pdfPage,
+        chapters: chosen.chapters.map((c) => ({
+          title: c.title,
+          intro: c.intro,
+          topics: c.topics.map((t) => ({ title: t.title, blocks: t.blocks })),
+        })),
+      })
+    } catch {
+      toast.error(l.downloadFailed)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div ref={menuRef} className="relative shrink-0">
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() => (isAdmin ? setMenuOpen((o) => !o) : download(guide))}
+        aria-expanded={isAdmin ? menuOpen : undefined}
+        className="inline-flex items-center gap-2 rounded-lg border border-ink-700 bg-ink-900 px-3 py-2 text-sm font-semibold text-ink-100 hover:border-cyan-accent hover:text-cyan-accent disabled:opacity-60"
+      >
+        <Download className="h-4 w-4" />
+        {busy ? l.preparingPdf : l.downloadPdf}
+        {isAdmin && <ChevronDown className="h-4 w-4 text-ink-400" />}
+      </button>
+      {menuOpen && (
+        <div className="absolute right-0 z-20 mt-2 w-64 rounded-xl border border-ink-700 bg-ink-900 py-2 shadow-lg shadow-black/40">
+          <p className="px-4 pb-1.5 text-[11px] font-semibold tracking-widest text-ink-400">{l.chooseGuide.toUpperCase()}</p>
+          {allGuides(language).map((g) => (
+            <button
+              key={g.title}
+              type="button"
+              onClick={() => download(g)}
+              className="block w-full px-4 py-2 text-left text-sm text-ink-200 hover:bg-ink-800 hover:text-ink-100"
+            >
+              {g.title}
+              {g === guide && <span className="ml-1 text-ink-500">{l.yours}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function UserGuidePage() {
   const { user } = useAuth()
   const { hash } = useLocation()
@@ -132,8 +217,7 @@ function UserGuidePage() {
     )
   }
 
-  const [y, m, d] = guide.updated.split('-').map(Number)
-  const updated = l.formatDate(new Date(y, m - 1, d))
+  const updated = checkedDate(guide, l)
 
   return (
     <div className="mx-auto flex max-w-6xl gap-10">
@@ -146,7 +230,10 @@ function UserGuidePage() {
       </aside>
 
       <div className="min-w-0 flex-1">
-        <h1 className="text-2xl font-bold text-ink-100">{guide.title}</h1>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <h1 className="text-2xl font-bold text-ink-100">{guide.title}</h1>
+          <DownloadGuideButton guide={guide} isAdmin={hasRole(user?.role, ['ADMIN'])} language={shown} l={l} />
+        </div>
         <p className="mt-2 text-sm leading-relaxed text-ink-300">{guide.intro}</p>
         <p className="mt-2 text-xs text-ink-500">{l.lastChecked(updated)}</p>
 
