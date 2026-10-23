@@ -14,7 +14,7 @@ export const OFFICE_GUIDE_FR: RoleGuide = {
   intro:
     "Comment le personnel de bureau utilise Technet Digital : pointer l'arrivée et le départ, les congés, les documents, et demander des outils et du matériel au magasin. Chaque sujet est une tâche, étape par étape.",
   roles: ['EMPLOYEE'],
-  updated: '2026-10-22',
+  updated: '2026-10-23',
   chapters: [
     // ------------------------------------------------------------------------------------------
     {
