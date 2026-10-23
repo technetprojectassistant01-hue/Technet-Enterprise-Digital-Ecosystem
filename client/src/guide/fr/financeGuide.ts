@@ -20,7 +20,7 @@ export const FINANCE_GUIDE_FR: RoleGuide = {
   intro:
     "Le travail d'un chargé des finances dans Technet Digital : les fiches clients et leur accès au portail, les contrats de service, les devis, les documents et les demandes d'achat. Chaque sujet est une tâche, étape par étape.",
   roles: ['FINANCE_OFFICER'],
-  updated: '2026-10-22',
+  updated: '2026-10-23',
   chapters: [
     // ------------------------------------------------------------------------------------------
     {
