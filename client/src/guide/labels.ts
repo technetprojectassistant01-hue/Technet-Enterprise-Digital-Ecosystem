@@ -20,6 +20,16 @@ export interface GuideLabels {
   noMatchHelp: string
   /** The "last checked" date, e.g. "20 October 2026". */
   formatDate: (date: Date) => string
+  /** The Download PDF button and its menu (2026-10-23). */
+  downloadPdf: string
+  preparingPdf: string
+  downloadFailed: string
+  /** Heading of the administrator's menu of every role's guide. */
+  chooseGuide: string
+  /** After the signed-in person's own guide in that menu. */
+  yours: string
+  /** The PDF's page footer; {n} and {total} are filled in by the server. */
+  pdfPage: string
 }
 
 const LONG_DATE: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'long', year: 'numeric' }
@@ -37,6 +47,12 @@ const EN: GuideLabels = {
   noMatch: (query) => `Nothing in the guide matches "${query}". Try another word, or look in the `,
   noMatchHelp: 'Help Center',
   formatDate: (date) => date.toLocaleDateString('en-GB', LONG_DATE),
+  downloadPdf: 'Download PDF',
+  preparingPdf: 'Preparing PDF…',
+  downloadFailed: 'The PDF could not be downloaded. Check your connection and try again.',
+  chooseGuide: 'Which guide?',
+  yours: '(yours)',
+  pdfPage: 'Page {n} of {total}',
 }
 
 const FR: GuideLabels = {
@@ -51,6 +67,12 @@ const FR: GuideLabels = {
   noMatch: (query) => `Rien dans le guide ne correspond à « ${query} ». Essayez un autre mot, ou consultez le `,
   noMatchHelp: "Centre d'aide",
   formatDate: (date) => date.toLocaleDateString('fr-FR', LONG_DATE),
+  downloadPdf: 'Télécharger le PDF',
+  preparingPdf: 'Préparation du PDF…',
+  downloadFailed: "Le PDF n'a pas pu être téléchargé. Vérifiez votre connexion et réessayez.",
+  chooseGuide: 'Quel guide ?',
+  yours: '(le vôtre)',
+  pdfPage: 'Page {n} sur {total}',
 }
 
 const MFE: GuideLabels = {
@@ -66,6 +88,12 @@ const MFE: GuideLabels = {
   noMatchHelp: 'Sant Led',
   // Browsers have no Kreol month names, so they are written out here.
   formatDate: (date) => `${date.getDate()} ${MFE_MONTHS[date.getMonth()]} ${date.getFullYear()}`,
+  downloadPdf: 'Telesarz PDF',
+  preparingPdf: 'Pe prepar PDF la…',
+  downloadFailed: 'PDF la pa finn kapav telesarze. Verifie ou koneksion ek reeseye.',
+  chooseGuide: 'Ki gid?',
+  yours: '(pou ou)',
+  pdfPage: 'Paz {n} lor {total}',
 }
 
 export const GUIDE_LABELS: Record<Language, GuideLabels> = { en: EN, fr: FR, mfe: MFE }
