@@ -10,7 +10,7 @@ export const ADMIN_GUIDE_MFE: RoleGuide = {
   intro:
     "Kouma pou fer Technet Digital marse kouma enn administrater: bann login, prezans personel, operasion, RH, magazin ek ERP. Li swiv meni agos, depi anler ziska anba. Responsab Operasion ena exakteman mem akse ki enn administrater, alor sa gid la pou li osi.",
   roles: ['ADMIN', 'OPERATIONS_MANAGER'],
-  updated: '2026-10-22',
+  updated: '2026-10-23',
   chapters: [
     // ------------------------------------------------------------------------------------------
     {
@@ -44,6 +44,7 @@ export const ADMIN_GUIDE_MFE: RoleGuide = {
                 "Kaz rod dan lantet trouv bann paz par zot nom. Tap enn bout nom la (par egzanp « siplemanter ») e pes Enter.",
                 "Dan enn modil, bann tab anler fer ou pas dan enn paz a enn lot.",
                 "Sant Led ek Gid Itilizater anba dan meni. Sant Led ena nimero sipor, 5885 1000.",
+                "Telesarz PDF, anle dan Gid Itilizater, sov tou gid la dan enn fisie pou gard ouswa enprime. Bann administrater kapav swazir gid nenport ki rol la, par egzanp pou donn enn nouvo anplwaye.",
               ],
             },
           ],
