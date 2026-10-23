@@ -9,7 +9,7 @@ export const ADMIN_GUIDE: RoleGuide = {
   intro:
     'How to run Technet Digital as an administrator: logins, staff attendance, operations, HR, the store and the ERP. It follows the menu on the left from top to bottom. The Operations Manager has exactly the same access as an administrator, so this guide is for them too.',
   roles: ['ADMIN', 'OPERATIONS_MANAGER'],
-  updated: '2026-10-22',
+  updated: '2026-10-23',
   chapters: [
     // ------------------------------------------------------------------------------------------
     {
@@ -43,6 +43,7 @@ export const ADMIN_GUIDE: RoleGuide = {
                 'The search box in the header finds pages by name. Type part of a name (for example "overtime") and press Enter.',
                 'Inside a module, the tabs across the top switch between its pages.',
                 'Help Center and User Guide are at the bottom of the menu. The Help Center has the support line, 5885 1000.',
+                "Download PDF at the top of the User Guide saves the whole guide as a file to keep or print. Administrators can pick any role's guide there, for example to give one to a new member of staff.",
               ],
             },
           ],
