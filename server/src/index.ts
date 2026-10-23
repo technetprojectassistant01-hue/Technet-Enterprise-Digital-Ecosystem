@@ -49,6 +49,7 @@ import notificationsRouter from "./routes/notifications";
 import marketingRouter from "./routes/marketing";
 import myLeaveRouter from "./routes/myLeave";
 import pushRouter from "./routes/push";
+import guideRouter from "./routes/guide";
 import { requireAuth, requireRole } from "./middleware/auth";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 import { startDbKeepWarm } from "./lib/keepWarm";
@@ -123,6 +124,7 @@ app.use("/api/notifications", notificationsRouter);
 app.use("/api/marketing", marketingRouter);
 app.use("/api/my-leave", myLeaveRouter);
 app.use("/api/push", pushRouter);
+app.use("/api/guide", guideRouter);
 
 app.get("/api/admin/ping", requireAuth, requireRole("ADMIN"), (_req, res) => {
   res.json({ ok: true, message: "You have admin access" });
