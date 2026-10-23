@@ -10,7 +10,7 @@ export const TECHNICIAN_GUIDE_MFE: RoleGuide = {
   intro:
     "Kouma pou servi Technet Digital lor ou telefonn: pointe ou lariver ek ou depar, ou travay pou zordi, bann rapor, konze, zouti ek dokiman. Sak size se enn travay, etap par etap.",
   roles: ['FIELD_TECHNICIAN'],
-  updated: '2026-10-22',
+  updated: '2026-10-23',
   chapters: [
     // ------------------------------------------------------------------------------------------
     {
@@ -67,7 +67,7 @@ export const TECHNICIAN_GUIDE_MFE: RoleGuide = {
           title: 'Sanz lang',
           path: '/dashboard/settings',
           blocks: [
-            { kind: 'p', text: "Ouver Paramet e swazir English, Français ouswa Kreol anba Lang. Ou swa anrezistre lor ou kont. Sa gid la egziste an angle, an franse ek an kreol." },
+            { kind: 'p', text: "Ouver Paramet e swazir English, Français ouswa Kreol anba Lang. Ou swa anrezistre lor ou kont. Sa gid la egziste an angle, an franse ek an kreol. Telesarz PDF, anle dan sa gid la, sov li dan enn fisie pou gard ouswa enprime, dan lang ou finn swazir." },
           ],
         },
         {
