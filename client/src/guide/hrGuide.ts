@@ -16,7 +16,7 @@ export const HR_GUIDE: RoleGuide = {
   intro:
     'How HR works in Technet Digital: employee records, leave, overtime, month-end validation, payroll and certifications, plus the staff attendance you check them against. It follows your menu from top to bottom.',
   roles: ['HR_OFFICER'],
-  updated: '2026-10-22',
+  updated: '2026-10-23',
   chapters: [
     // ------------------------------------------------------------------------------------------
     {
